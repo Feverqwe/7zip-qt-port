@@ -72,6 +72,42 @@ offscreen Qt; native Windows/Linux appearance, новые physical-device сце
 full и slow suites этой проверкой не подтверждены. Одноразовые raw APFS staging
 и seed удалены; сжатый generated fixture сохранён для регрессии.
 
+### Сквозная приёмка вложенных архивов
+
+Дополнительная UI regression открывает штатно созданный nameless gzip из
+exFAT с признаком некорректного отключения. EN Copy и RU Extract проверяют
+точные распакованные bytes, Unicode/пробелы, selected/all extraction, refresh,
+возврат через Parent, постоянный limited-access badge, запрет mutation commands
+и неизменность source bytes. Отдельный Cancel оставляет исходную панель.
+Тест использует существующий upstream `CPanel::OpenItemInArchive` путь
+`IInArchiveGetStream`/`OpenAsArc_Msg` с сохранённым source resource;
+сверена его stream/fallback ветка с тем же 7-Zip commit. Изменений production
+code для этого сценария не потребовалось; новых format algorithms нет.
+Переиспользована существующая UI automation, без нового окна или layout.
+
+Общие source-extraction suites покрывают owned streams и возврат к parent,
+ошибки/отмену с очисткой, malformed archive, точные binary bytes, небезопасные
+относительные/абсолютные цели ссылок и занятые symlink ancestors с сохранением
+данных вне destination. Это проверка общей extraction boundary; filesystem
+algorithms и path/name decoding остаются у ранее проверенных handlers.
+У каждого нового filesystem family отдельно проверено чтение через device
+stream в основной suite выше; полная UI matrix по всем вариантам форматов
+не подменяется одним вложенным exFAT сценарием.
+
+Итоговые `device_ui`, `source_extract_backend`, `source_extract_contract`,
+`source_link_extract`, `extraction_options` и `application_starts` PASS на
+macOS arm64, Linux x64 и Windows x64. Local запуск разделён на focused batches;
+для fixture creators bundled `7zz` добавлен в PATH (первоначальные source suites
+не доходили до проверки из-за отсутствующего executable). Remote receipt
+`20261023T011354Z-7d6857b1`: 6/6 на каждом госте, приложение собрано в тех же
+incremental worktrees. Native Cocoa JSON нового exFAT warning и badge EN/RU
+при 980×620/640×400 просмотрены, clipping не обнаружен. Source integration
+всех выбранных filesystem handlers закрыта; runtime evidence охватывает
+перечисленные generated fixtures и workflows. Ограничения самих readers
+сохраняются, новые recovery/repair algorithms не вводились. Физические носители,
+системная авторизация и native Windows/Linux appearance остаются вне этой
+автоматической приёмки; full/slow gates не запускались.
+
 ## Источник и границы
 
 Источник: https://github.com/ip7z/7zip.git,

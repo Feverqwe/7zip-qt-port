@@ -60,6 +60,16 @@ void ExfatFixture::emptyDirectory(int entry, const QString &name, unsigned clust
 void ExfatFixture::set64(int offset, quint64 value) {
     qToLittleEndian(value, image.data() + offset);
 }
+void ExfatFixture::setNestedFile(const QString &name, const QByteArray &payload) {
+    const auto records =
+        entrySet(name, 7, quint64(payload.size()), quint64(payload.size()), false, true);
+    Q_ASSERT(records.size() <= sectorSize && payload.size() <= 2 * sectorSize);
+    nestedName = name;
+    std::fill_n(image.data() + clusterOffset(6), sectorSize, '\0');
+    std::copy(records.begin(), records.end(), image.data() + clusterOffset(6));
+    std::fill_n(image.data() + clusterOffset(7), 2 * sectorSize, '\0');
+    std::copy(payload.begin(), payload.end(), image.data() + clusterOffset(7));
+}
 void ExfatFixture::fat(unsigned cluster, unsigned next) {
     set32(FatSector * sectorSize + cluster * 4, next);
 }

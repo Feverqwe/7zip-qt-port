@@ -3,6 +3,7 @@
 #include "archivecodecprobe.h"
 #include "copydialog.h"
 #include "deviceselectiondialog.h"
+#include "exfat_fixture.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
 #include "qtlanguageservices.h"
@@ -279,23 +280,31 @@ class DeviceUiTests final : public QObject {
         QTest::addColumn<QString>("copyCommand");
         QTest::addColumn<bool>("nestedArchive");
         QTest::addColumn<int>("readonlyBit");
+        QTest::addColumn<bool>("exfat");
         for (const QString &language : {"en", "ru"}) {
             QTest::newRow(qPrintable(language))
-                << language << false << false << QString() << false << -1;
+                << language << false << false << QString() << false << -1 << false;
             QTest::newRow(qPrintable(language + "-cancel-recovery"))
-                << language << true << false << QString() << false << -1;
+                << language << true << false << QString() << false << -1 << false;
             QTest::newRow(qPrintable(language + "-accept-recovery"))
-                << language << true << true << QString() << false << -1;
+                << language << true << true << QString() << false << -1 << false;
             for (bool accept : {false, true})
                 QTest::newRow(qPrintable(language + (accept ? "-accept-orphan" : "-cancel-orphan")))
-                    << language << true << accept << QString() << false << 16;
+                    << language << true << accept << QString() << false << 16 << false;
             for (const QString &command : {"copyAction", "extractArchiveAction"}) {
                 const bool nestedArchive = language == "en";
                 QTest::newRow(qPrintable(language + '-' + command +
                                          (nestedArchive ? "-nested" : "-timestamp")))
-                    << language << true << true << command << nestedArchive << -1;
+                    << language << true << true << command << nestedArchive << -1 << false;
             }
         }
+        QTest::newRow("exfat-copy-nested")
+            << QString("en") << true << true << QString("copyAction") << true << -1 << true;
+        QTest::newRow("exfat-extract-nested")
+            << QString("ru") << true << true << QString("extractArchiveAction") << true << -1
+            << true;
+        QTest::newRow("exfat-cancel")
+            << QString("en") << true << false << QString() << false << -1 << true;
     }
     void menuToSourcePanelCopyRefreshAndParent() {
         QFETCH(QString, language);
@@ -304,10 +313,28 @@ class DeviceUiTests final : public QObject {
         QFETCH(QString, copyCommand);
         QFETCH(bool, nestedArchive);
         QFETCH(int, readonlyBit);
+        QFETCH(bool, exfat);
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         auto bytes = std::make_shared<CDeviceBytes>(fixture_);
-        if (!copyCommand.isEmpty()) {
+        if (exfat) {
+            QTemporaryDir sample;
+            QVERIFY(sample.isValid());
+            const QString gzipPath = sample.filePath("payload.gz");
+            QProcess gzip;
+            gzip.start(engine_, {"a", "-tgzip", "-si", "--", gzipPath});
+            QVERIFY(gzip.waitForStarted());
+            QCOMPARE(gzip.write("SELECT 1;\n"), qint64(10));
+            gzip.closeWriteChannel();
+            QVERIFY(gzip.waitForFinished(10000));
+            QCOMPARE(gzip.exitCode(), 0);
+            QFile packed(gzipPath);
+            QVERIFY(packed.open(QIODevice::ReadOnly));
+            ExfatFixture fixture;
+            fixture.setNestedFile(QStringLiteral("данные с пробелом.sql.gz"), packed.readAll());
+            fixture.image[106] = char(2);
+            bytes->Bytes = fixture.image;
+        } else if (!copyCommand.isEmpty()) {
             QProcess gzip;
             gzip.start(engine_, {"x", "-so", "--",
                                  QStringLiteral(DEVICE_FIXTURE_DIR "/ext4-timestamp.img.gz")});
@@ -316,7 +343,7 @@ class DeviceUiTests final : public QObject {
             bytes->Bytes = gzip.readAllStandardOutput();
             QVERIFY(!bytes->Bytes.isEmpty());
         }
-        if (needsRecovery) {
+        if (needsRecovery && !exfat) {
             // Controlled Ext declarations inside the first GPT partition.
             const int superblock = copyCommand.isEmpty() ? 1024 * 1024 + 1024 : 1024;
             bytes->Bytes[superblock + 0x65] = char(quint8(bytes->Bytes[superblock + 0x65]) & ~4u);
@@ -363,8 +390,8 @@ class DeviceUiTests final : public QObject {
                     message->setProperty("uiInspection_language", language);
                     message->setProperty("uiInspection_state", "limited-read");
                     errorGeometry &= UiInspection::writeReport(
-                        *message, "device-limitations-" + language +
-                                      (readonlyBit < 0 ? "-journal" : "-orphan"));
+                        *message, "device-limitations-" + (exfat ? QString("exfat-") : QString()) +
+                                      language + (readonlyBit < 0 ? "-journal" : "-orphan"));
                     ++stage;
                     automation.stop();
                     if (acceptRecovery)
@@ -382,7 +409,7 @@ class DeviceUiTests final : public QObject {
             auto *back = dialog->findChild<QPushButton *>("deviceBackButton");
             if (stage == 0 && Items(*dialog)->topLevelItemCount() == 2) {
                 Items(*dialog)->setCurrentItem(Items(*dialog)->topLevelItem(1));
-                stage = copyCommand.isEmpty() ? 1u : 2u;
+                stage = !exfat && copyCommand.isEmpty() ? 1u : 2u;
                 Open(*dialog)->click();
             } else if (stage == 1 && back->isVisible()) {
                 Items(*dialog)->setCurrentItem(Items(*dialog)->topLevelItem(0));
@@ -397,7 +424,11 @@ class DeviceUiTests final : public QObject {
         if (needsRecovery) {
             QCOMPARE(stage, 3u);
             QVERIFY(!openingError.isEmpty());
-            QVERIFY(openingLimitations.contains(readonlyBit < 0 ? "RECOVER" : "ORPHAN_PRESENT"));
+            if (exfat)
+                QVERIFY(!openingLimitations.isEmpty());
+            else
+                QVERIFY(
+                    openingLimitations.contains(readonlyBit < 0 ? "RECOVER" : "ORPHAN_PRESENT"));
             QVERIFY(errorGeometry);
             if (!acceptRecovery) {
                 QVERIFY(!window.findChild<QLabel *>("deviceReadOnlyLabel")->isVisible());
@@ -409,8 +440,9 @@ class DeviceUiTests final : public QObject {
             QCOMPARE(stage, 2u);
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         QVERIFY(table);
-        const QString folder = copyCommand.isEmpty() ? QStringLiteral("папка 空")
-                                                     : QStringLiteral(".internal/twiMonBot");
+        const QString folder = exfat || copyCommand.isEmpty()
+                                   ? QStringLiteral("папка 空")
+                                   : QStringLiteral(".internal/twiMonBot");
         const QStringList folders = folder.split('/');
         QTRY_VERIFY(Row(*table, folders.first()) >= 0);
         auto *badge = window.findChild<QLabel *>("deviceReadOnlyLabel");
@@ -429,16 +461,18 @@ class DeviceUiTests final : public QObject {
             window.setProperty("uiInspection_state",
                                needsRecovery ? "journal-not-replayed" : "direct-device");
             QVERIFY(UiInspection::writeReport(
-                window, (needsRecovery ? "device-journal-panel-" : "device-panel-") + language +
-                            '-' + QString::number(size.width())));
+                window, (needsRecovery ? "device-journal-panel-" : "device-panel-") +
+                            (exfat ? QString("exfat-") : QString()) + language + '-' +
+                            QString::number(size.width())));
         }
         for (const QString &part : folders) {
             QTRY_VERIFY(Row(*table, part) >= 0);
             QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
                                               Q_ARG(int, Row(*table, part)), Q_ARG(int, 0)));
         }
-        QString name = copyCommand.isEmpty() ? QStringLiteral("данные с пробелом.txt")
-                                             : QStringLiteral("2024-05-07T02:00:02Z.sql.gz");
+        QString name = exfat                   ? QStringLiteral("данные с пробелом.sql.gz")
+                       : copyCommand.isEmpty() ? QStringLiteral("данные с пробелом.txt")
+                                               : QStringLiteral("2024-05-07T02:00:02Z.sql.gz");
         const QString outerName = name;
         if (nestedArchive) {
             QTRY_VERIFY(Row(*table, name) >= 0);
