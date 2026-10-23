@@ -1,3 +1,5 @@
+#include "fixtures/operation_kill.h"
+#include "fixtures/operation_parent.h"
 #include "fixtures/operation_temp_cleanup.h"
 #include "qtoperationlauncher.h"
 #include "source_extract_fixture.h"
@@ -5,11 +7,6 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
-#ifdef Q_OS_WIN
-#include <windows.h>
-#else
-#include <csignal>
-#endif
 
 class OperationLauncherTests final : public QObject {
     Q_OBJECT
@@ -135,15 +132,7 @@ class OperationLauncherTests final : public QObject {
             if (terminate) {
                 const auto pid = launcher.processId();
                 QVERIFY(pid > 0);
-#ifdef Q_OS_WIN
-                HANDLE child = OpenProcess(PROCESS_TERMINATE, FALSE, DWORD(pid));
-                QVERIFY(child);
-                const bool stopped = TerminateProcess(child, 0xc0000005u);
-                CloseHandle(child);
-                QVERIFY(stopped);
-#else
-                QCOMPARE(::kill(pid_t(pid), SIGKILL), 0);
-#endif
+                QVERIFY(KillOperationProbe(pid));
             }
             QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
             const auto result = qvariant_cast<QtOperationResult>(finished[0][0]);
@@ -185,22 +174,8 @@ class OperationLauncherTests final : public QObject {
 
 int main(int argc, char **argv) {
     QCoreApplication application(argc, argv);
-    if (application.arguments().contains("--probe-parent")) {
-        QtOperationLauncher launcher;
-        QtOperationMessage job;
-        job.Type = QtOperationMessage::Kind::Job;
-        job.Paths = {qEnvironmentVariable("SEVENZIP_OPERATION_ARCHIVE")};
-        job.YesToAll = true;
-        QObject::connect(&launcher, &QtOperationLauncher::accepted, &application,
-                         [&] { application.exit(0); });
-        QObject::connect(&launcher, &QtOperationLauncher::finished, &application,
-                         [&] { application.exit(103); });
-        QTimer::singleShot(12000, &application, [&] { application.exit(104); });
-        QString error;
-        if (!launcher.start(QStringLiteral(SEVENZIP_OPERATION_HOST), job, error))
-            return 105;
-        return application.exec();
-    }
+    if (application.arguments().contains("--probe-parent"))
+        return RunOperationParent(application, QStringLiteral(SEVENZIP_OPERATION_HOST));
     OperationLauncherTests tests;
     return QTest::qExec(&tests, argc, argv);
 }

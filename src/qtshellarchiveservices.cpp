@@ -18,6 +18,8 @@ namespace {
 // its current output root when the source callback validates a final path.
 class COutputPolicy final : public IQtExtractPathPolicy {
     const CExtractOptions &_options;
+
+  public:
     QString Root() const {
         const QString output =
             QDir::fromNativeSeparators(QString::fromWCharArray(fs2us(_options.OutputDir).Ptr()));
@@ -25,7 +27,6 @@ class COutputPolicy final : public IQtExtractPathPolicy {
         return wildcard < 0 ? output : output.left(output.lastIndexOf('/', wildcard) + 1);
     }
 
-  public:
     explicit COutputPolicy(const CExtractOptions &options) : _options(options) {}
     HRESULT CheckPath(const FString &path, bool directory, bool stream, UString &message) override {
         return CQtExtractPathPolicy(Root()).CheckPath(path, directory, stream, message);
@@ -40,10 +41,12 @@ class COutputPolicy final : public IQtExtractPathPolicy {
 QtShellArchiveServices::QtShellArchiveServices(ArchiveBackend &backend, QWidget *parent,
                                                OpenSink open, CompressSink compress,
                                                ErrorSink error, ModalSink modal,
-                                               QString settingsPath, TestSink test)
+                                               QString settingsPath, TestSink test,
+                                               ExtractSink extract, ExtractResultSink extracted)
     : _backend(backend), _parent(parent), _catalog(backend.codecCatalog()), _open(std::move(open)),
       _compress(std::move(compress)), _modal(std::move(modal)),
-      _settingsPath(std::move(settingsPath)), _error(std::move(error)), _test(std::move(test)) {
+      _settingsPath(std::move(settingsPath)), _error(std::move(error)), _test(std::move(test)),
+      _extract(std::move(extract)), _extracted(std::move(extracted)) {
     // Metadata alone supports source ParseOpenTypes. Native factories remain
     // with the retained immutable backend catalog, never copied/unloaded here.
     if (_catalog && _catalog->result() == S_OK)
@@ -110,7 +113,10 @@ HRESULT QtShellArchiveServices::ExtractGUI(CCodecs &codecs, const CObjectVector<
     options.NtOptions.QtPathPolicy = &policy;
     const HRESULT result =
         ::ExtractGUI(&codecs, types, excludedFormats, paths, fullPaths, censor, options, hashBundle,
-                     showDialog, messageWasDisplayed, &callback, &open, &open, _parent);
+                     showDialog, messageWasDisplayed, &callback, &open, &open, _parent, [&] {
+                         if (_extracted)
+                             _extracted(policy.Root());
+                     });
     return result;
 }
 HRESULT QtShellArchiveServices::HashCalcGUI(const CExternalCodecs *providers,
@@ -127,7 +133,8 @@ void QtShellArchiveServices::Open(const UString &path, const UString &type) {
 }
 void QtShellArchiveServices::ExtractArchives(const UStringVector &paths, const UString &folder,
                                              bool showDialog, bool elimDup, UInt32 zone) {
-    _result = ::ExtractArchives(paths, folder, showDialog, elimDup, zone, *this);
+    _result = _extract ? _extract(paths, folder, showDialog, elimDup, zone)
+                       : ::ExtractArchives(paths, folder, showDialog, elimDup, zone, *this);
 }
 void QtShellArchiveServices::TestArchives(const UStringVector &paths, bool hashMode) {
     _result = _test ? _test(paths, hashMode) : ::TestArchives(paths, hashMode, *this);

@@ -178,6 +178,9 @@ class ArchiveBackend : public QObject {
     // Independent filesystem archives only. The observer belongs to the app;
     // releasing this backend/window does not cancel an accepted GUI operation.
     virtual QtOperationLauncher *startGuiTest(const QStringList &archives, QString &error);
+    virtual QtOperationLauncher *startGuiExtract(const QStringList &archives,
+                                                 const QString &destination, bool showDialog,
+                                                 bool elimDup, quint32 writeZone, QString &error);
     // The native source extraction callback already owns listed metadata for
     // this archive, independent of the backend's last UI listing.
     virtual void testSourceArchive(const QString &archive, const QString &password);

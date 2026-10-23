@@ -6,6 +6,9 @@ get_property(sevenzip_port_consumers DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
 # consolidating those sources into shared production objects.
 foreach(consumer IN LISTS sevenzip_port_consumers)
     get_target_property(consumer_sources ${consumer} SOURCES)
+    if("src/mainwindow.cpp" IN_LIST consumer_sources)
+        target_sources(${consumer} PRIVATE src/mainwindow_guioperations.cpp)
+    endif()
     if("src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp" IN_LIST consumer_sources)
         target_sources(${consumer} PRIVATE src/qtvolumeprogress.cpp src/qtvolumeprogress.h
             src/qtvolumeio.cpp src/qtvolumeio.h src/qtvolumeservices.h)
@@ -86,6 +89,7 @@ sevenzip_share_port_objects(sevenzip_main_window src/mainwindow.h
     src/mainwindow.cpp
     src/mainwindow_archive_transfer.cpp
     src/mainwindow_archivecommands.cpp
+    src/mainwindow_guioperations.cpp
     src/mainwindow_archivelist.cpp
     src/mainwindow_archiveopening.cpp
     src/mainwindow_backendevents.cpp

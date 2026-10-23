@@ -3,6 +3,7 @@
 #include "qtguicommand.h"
 #include <QString>
 
-using QtGUIOperationRunner = std::function<int(const QtGUICommandSource &)>;
+using QtGUIOperationRunner =
+    std::function<int(const QtGUICommandSource &, const QtGUIOutputSink &)>;
 int RunGUIOperationEndpoint(QApplication &application, const QString &channel,
                             const QtGUIOperationRunner &run);

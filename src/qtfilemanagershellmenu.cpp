@@ -1,4 +1,5 @@
 #include "qtfilemanagershellmenu.h"
+#include "CPP/7zip/UI/Common/CompressCall.h"
 #include "CPP/7zip/UI/FileManager/App.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
@@ -20,7 +21,21 @@ QtFileManagerShellMenu::QtFileManagerShellMenu(MainWindow &window, QMenu &menu,
                  QWidget *parent) {
               return CreateArchiveDialog::PresentSource(source, paths, _services.Catalog(), parent);
           },
-          MainWindow::toolbarSettingsPath()),
+          MainWindow::toolbarSettingsPath(),
+          [this](const UStringVector &paths, bool hashMode) {
+              const auto &panel = _window.app_.GetFocusedPanel();
+              if (!hashMode && panel.Is_IO_FS_Folder() && panel.GetParentFolders().IsEmpty())
+                  return _window.launchGuiArchiveTest(paths, false);
+              return ::TestArchives(paths, hashMode, _services);
+          },
+          [this](const UStringVector &paths, const UString &folder, bool showDialog, bool elimDup,
+                 UInt32 writeZone) {
+              const auto &panel = _window.app_.GetFocusedPanel();
+              if (panel.Is_IO_FS_Folder() && panel.GetParentFolders().IsEmpty())
+                  return _window.launchGuiArchiveExtract(paths, folder, showDialog, elimDup,
+                                                         writeZone);
+              return ::ExtractArchives(paths, folder, showDialog, elimDup, writeZone, _services);
+          }),
       _dispatch(std::move(dispatch)) {
     static const bool initialized = [] {
         Q_INIT_RESOURCE(upstream_shell_icons);

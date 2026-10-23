@@ -19,9 +19,13 @@ class QtShellArchiveServices final : public IQtCompressCallServices, public IQtU
     using ModalSink = std::function<HRESULT(
         CCompressDialog &, const CObjectVector<NWildcard::CCensorPath> &, QWidget *)>;
     using TestSink = std::function<HRESULT(const UStringVector &, bool)>;
+    using ExtractSink =
+        std::function<HRESULT(const UStringVector &, const UString &, bool, bool, UInt32)>;
+    using ExtractResultSink = std::function<void(const QString &)>;
     QtShellArchiveServices(ArchiveBackend &backend, QWidget *parent, OpenSink open,
                            CompressSink compress, ErrorSink error = {}, ModalSink modal = {},
-                           QString settingsPath = {}, TestSink test = {});
+                           QString settingsPath = {}, TestSink test = {}, ExtractSink extract = {},
+                           ExtractResultSink extracted = {});
     QString CompressionSettingsPath() const override { return _settingsPath; }
     FString GetSfxModulePath() const override;
     HRESULT PresentCompressDialog(CCompressDialog &source,
@@ -78,5 +82,7 @@ class QtShellArchiveServices final : public IQtCompressCallServices, public IQtU
     QString _settingsPath;
     ErrorSink _error;
     TestSink _test;
+    ExtractSink _extract;
+    ExtractResultSink _extracted;
     HRESULT _result = S_OK;
 };

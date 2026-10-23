@@ -14,7 +14,6 @@
 #include "qtarchivefileresource.h"
 #include "qtextractpathpolicy.h"
 #include "qtlangcontrols.h"
-#include "qtoperationlauncher.h"
 #include "qtshellarchiveservices.h"
 #include <QScopeGuard>
 #include <QScopedValueRollback>
@@ -50,44 +49,24 @@ void MainWindow::calculateHash(const QString &method) {
 
 void MainWindow::extractArchives() { runArchiveBatchCommand(false); }
 
-HRESULT MainWindow::launchGuiArchiveTest(const UStringVector &paths, bool hashMode) {
-    if (hashMode)
-        return E_NOTIMPL;
-    QStringList archives;
-    FOR_VECTOR(i, paths) { archives.append(QString::fromWCharArray(paths[i])); }
-    const unsigned source = app_.GetFocusedPanelIndex();
-    QString error;
-    auto *operation = backend_->startGuiTest(archives, error);
-    if (!operation) {
-        app_.Panels[source].MessageBox_Error(ToUString(error));
-        return E_FAIL;
-    }
-    connect(operation, &QtOperationLauncher::finished, this,
-            [this, source](const QtOperationResult &result) {
-                if (app_.QtOperations().closed())
-                    return;
-                using Outcome = QtOperationResult::Outcome;
-                if (result.Status == Outcome::LaunchFailed ||
-                    result.Status == Outcome::ProtocolFailed || result.Status == Outcome::Crashed)
-                    app_.Panels[source].MessageBox_Error(ToUString(result.Error));
-                // Normal operation results are presented by 7zG's own source dialogs.
-                // Test does not mutate a source, so no navigation/refresh is necessary.
-            });
-    return S_OK;
-}
-
 void MainWindow::runArchiveBatchCommand(bool test) {
     if (app_.QtOperations().closed() || app_.QtOperations().active())
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
     auto &panel = app_.GetFocusedPanel();
     QtShellArchiveServices::TestSink independentTest;
+    QtShellArchiveServices::ExtractSink independentExtract;
     if (test && panel.GetParentFolders().IsEmpty())
         independentTest = [this](const UStringVector &paths, bool hashMode) {
             return launchGuiArchiveTest(paths, hashMode);
         };
+    if (!test && panel.GetParentFolders().IsEmpty())
+        independentExtract = [this](const UStringVector &paths, const UString &folder,
+                                    bool showDialog, bool elimDup, UInt32 zone) {
+            return launchGuiArchiveExtract(paths, folder, showDialog, elimDup, zone);
+        };
     QtShellArchiveServices services(*backend_, this, {}, {}, {}, {}, toolbarSettingsPath(),
-                                    std::move(independentTest));
+                                    std::move(independentTest), std::move(independentExtract));
     if (!test && !panel.GetParentFolders().IsEmpty()) {
         app_.ExtractArchives(services); // Original archive branch delegates to OnCopy.
         return;

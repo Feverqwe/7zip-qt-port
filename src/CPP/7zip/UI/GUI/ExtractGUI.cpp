@@ -167,7 +167,7 @@ HRESULT ExtractGUI(
 #endif
     bool showDialog, bool &messageWasDisplayed, CExtractCallbackImp *extractCallback,
     IQtArchiveOpenService *qtOpenService, IQtProgressServices *progressServices,
-    QWidget *hwndParent) {
+    QWidget *hwndParent, const std::function<void()> &outputReady) {
     messageWasDisplayed = false;
 
     CThreadExtracting extracter;
@@ -271,6 +271,8 @@ HRESULT ExtractGUI(
 
     extracter.IconID = IDI_ICON;
 
+    if (!options.TestMode && outputReady)
+        outputReady();
     RINOK(extracter.Create(title, hwndParent))
     messageWasDisplayed = extracter.ThreadFinishedOK && extracter.MessagesDisplayed;
     return extracter.Result;

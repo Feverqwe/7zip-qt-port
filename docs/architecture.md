@@ -117,14 +117,20 @@ and ArchiveExtractCallback in the same worker, including overwrite decisions
 delivered to the GUI and a final bounded-output policy. The CLI transport remains
 for write operations that have not yet migrated.
 
-The File Manager's Test command for ordinary filesystem archives launches the
-bundled `7zG`. The child owns native discovery, source GUI dispatch, dialogs and
+The File Manager's Test and Extract commands for ordinary filesystem archives
+launch the bundled `7zG`. The child owns native discovery, source GUI dispatch, dialogs and
 execution; the manager remains available. A versioned local request/ACK/result
-channel carries literal selections and typed outcomes. Native process observation
+channel carries literal selections, typed options and outcomes. Before extraction
+starts, the child reports the actual output root after any source dialog edits.
+The observer retains that metadata through partial results or a crash. Native
+process observation
 distinguishes a source result from a crash or missing result. An accepted job
 continues after the manager closes or the channel disconnects. Shell arguments
-still enter the original parser. Testing an open archive folder or a nested
-parent chain retains its direct source workflow; other operation commands have
+still enter the original parser. Toolbar and context-menu consumers share this
+boundary. Completion refreshes currently affected filesystem panels after their
+source guards release, preserving navigation made while the child was running.
+Operations in an open archive folder or a nested parent chain retain their direct
+source workflow; other operation commands have
 not yet moved to this process boundary.
 
 Seekable archive items can back nested readers directly. Each reader generation

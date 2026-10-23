@@ -356,7 +356,7 @@ void CPanel::ExtractArchives(IQtCompressCallServices &services) {
     outFolder.Add_PathSepar();
     CContextMenuInfo ci;
     ci.Load(_settingsPath);
-    ::ExtractArchives(paths, outFolder, true, false, ci.WriteZone, services);
+    services.ExtractArchives(paths, outFolder, true, false, ci.WriteZone);
 }
 
 void CPanel::TestArchives(IQtCompressCallServices *services) {

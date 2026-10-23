@@ -9,7 +9,8 @@
 #include <QEventLoop>
 #include <memory>
 
-int RunSevenzipGUICommand(QApplication &application, const QtGUICommandSource &command) {
+int RunSevenzipGUICommand(QApplication &application, const QtGUICommandSource &command,
+                          const QtGUIOutputSink &outputReady) {
     // The helper owns sequential source modals, without a File Manager window.
     // Closing one modal must not terminate the next source workflow stage.
     application.setQuitOnLastWindowClosed(false);
@@ -39,7 +40,8 @@ int RunSevenzipGUICommand(QApplication &application, const QtGUICommandSource &c
                 return CreateArchiveDialog::PresentSource(source, paths, backend.codecCatalog(),
                                                           parent);
             },
-            FmSettingsPath());
+            FmSettingsPath(), QtShellArchiveServices::TestSink{},
+            QtShellArchiveServices::ExtractSink{}, outputReady);
         return *services;
     };
     return SevenzipGUI(factory, command);
@@ -49,9 +51,10 @@ int RunSevenzipGUI(QApplication &application) {
     application.setQuitOnLastWindowClosed(false);
     const auto arguments = application.arguments();
     if (arguments.size() == 3 && arguments[1] == "--operation-channel")
-        return RunGUIOperationEndpoint(application, arguments[2],
-                                       [&](const QtGUICommandSource &command) {
-                                           return RunSevenzipGUICommand(application, command);
-                                       });
+        return RunGUIOperationEndpoint(
+            application, arguments[2],
+            [&](const QtGUICommandSource &command, const QtGUIOutputSink &outputReady) {
+                return RunSevenzipGUICommand(application, command, outputReady);
+            });
     return RunSevenzipGUICommand(application, {});
 }

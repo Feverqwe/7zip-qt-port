@@ -675,7 +675,7 @@ if(BUILD_TESTING)
     target_link_libraries(operation_protocol_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME operation_protocol COMMAND operation_protocol_tests -silent)
     set_tests_properties(operation_protocol PROPERTIES TIMEOUT 30)
-    qt_add_executable(operation_launcher_tests tests/operation_launcher_tests.cpp)
+    qt_add_executable(operation_launcher_tests tests/operation_launcher_tests.cpp tests/fixtures/operation_parent.cpp)
     target_include_directories(operation_launcher_tests PRIVATE src tests)
     target_link_libraries(operation_launcher_tests PRIVATE sevenzip_filesystem Qt6::Test)
     target_compile_definitions(operation_launcher_tests PRIVATE
@@ -687,6 +687,18 @@ if(BUILD_TESTING)
     add_dependencies(operation_launcher_tests sevenzip_desktop)
     add_test(NAME operation_launcher COMMAND operation_launcher_tests -silent)
     set_tests_properties(operation_launcher PROPERTIES TIMEOUT 90 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(operation_extraction_tests tests/operation_extraction_tests.cpp tests/fixtures/operation_parent.cpp)
+    target_include_directories(operation_extraction_tests PRIVATE src tests)
+    target_link_libraries(operation_extraction_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(operation_extraction_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    target_compile_definitions(operation_extraction_tests PRIVATE
+        "SEVENZIP_NATIVE_GUI=\"$<TARGET_FILE_DIR:sevenzip_desktop>/7zG${CMAKE_EXECUTABLE_SUFFIX}\"")
+    add_dependencies(operation_extraction_tests sevenzip_desktop)
+    add_test(NAME operation_extraction COMMAND operation_extraction_tests -silent)
+    set_tests_properties(operation_extraction PROPERTIES TIMEOUT 90 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     add_executable(object_vector_lifetime_tests tests/object_vector_lifetime_tests.cpp)
     target_include_directories(object_vector_lifetime_tests PRIVATE src/CPP third_party/7zip/CPP)
     set_target_properties(object_vector_lifetime_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF)
@@ -1496,16 +1508,19 @@ if(BUILD_TESTING)
     set_tests_properties(source_extract_backend PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
     get_target_property(source_extract_advanced_sources source_extract_backend_tests SOURCES)
     list(REMOVE_ITEM source_extract_advanced_sources tests/source_extract_backend_tests.cpp)
-    qt_add_executable(operation_host tests/fixtures/operation_host.cpp
+    qt_add_executable(operation_host tests/fixtures/operation_host.cpp tests/fixtures/operation_dialogs.cpp tests/layout_inspection.cpp
         src/qtguimain.cpp ${source_extract_advanced_sources}
         src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp
         src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp
         src/createarchivedialog_preferences.cpp)
-    target_include_directories(operation_host PRIVATE src)
+    target_include_directories(operation_host PRIVATE src tests)
     target_link_libraries(operation_host PRIVATE sevenzip_location Qt6::Widgets)
     target_compile_definitions(operation_launcher_tests PRIVATE
         "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
     add_dependencies(operation_launcher_tests operation_host)
+    target_compile_definitions(operation_extraction_tests PRIVATE
+        "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
+    add_dependencies(operation_extraction_tests operation_host)
     if(WIN32)
         qt_add_executable(native_mapi_host tests/fixtures/native_mapi_host.cpp
             tests/fixtures/native_mapi_loader.cpp
@@ -3208,7 +3223,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
             src/archivebackend_process.cpp
             src/archivebackend_sourceextract.cpp src/archivebackend_volumes.cpp
             src/archivebackend_creation.cpp src/archivebackend_hash.cpp src/archivebackend_preparation.cpp
-            src/archivebackend_test.cpp
+            src/archivebackend_test.cpp src/archivebackend_guioperations.cpp
             src/archivebackend_nativeentries.cpp src/archivebackend_nativeentries.h
             src/archivebackend_workerprogress.cpp src/archivebackend_transfer.cpp
             src/archivebackend_completion.cpp src/archivebackend_compression.cpp
@@ -3507,6 +3522,9 @@ if(BUILD_TESTING)
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\""
             "SEVENZIP_NATIVE_GUI=\"$<TARGET_FILE_DIR:sevenzip_desktop>/7zG${CMAKE_EXECUTABLE_SUFFIX}\"")
         add_dependencies(toolbar_archive_workflow_tests sevenzip_desktop)
+        target_compile_definitions(toolbar_archive_workflow_tests PRIVATE
+            "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
+        add_dependencies(toolbar_archive_workflow_tests operation_host)
         add_test(NAME toolbar_archive_workflow COMMAND toolbar_archive_workflow_tests -silent)
         set_tests_properties(toolbar_archive_workflow PROPERTIES TIMEOUT 120
             RESOURCE_LOCK "sevenzip_native_ui;sevenzip_ui_artifacts" ENVIRONMENT
@@ -4541,8 +4559,11 @@ endif()
 # consumer tests using the same platform/fonts/style as the Windows application.
 if(BUILD_TESTING AND WIN32)
     if(TEST toolbar_archive_workflow)
+        get_property(sevenzip_toolbar_environment TEST toolbar_archive_workflow PROPERTY ENVIRONMENT)
+        list(FILTER sevenzip_toolbar_environment EXCLUDE REGEX "^QT_QPA_PLATFORM=")
+        list(APPEND sevenzip_toolbar_environment "QT_QPA_PLATFORM=windows")
         set_property(TEST toolbar_archive_workflow PROPERTY ENVIRONMENT
-            "QT_QPA_PLATFORM=windows;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/toolbar-archive-workflow.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+            "${sevenzip_toolbar_environment}")
     endif()
     foreach(sevenzip_native_ui_test IN ITEMS
             native_parent_publication native_drop_publication native_rename_2 native_rename_301 native_external_2 native_external_301 native_nested_stream native_nested_memory native_nested_disk

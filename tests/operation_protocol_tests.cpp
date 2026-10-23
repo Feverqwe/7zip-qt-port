@@ -116,6 +116,23 @@ class OperationProtocolTests final : public QObject {
         job.Paths = {root.filePath("archive.zip") + QChar::Null + "hidden"};
         QVERIFY(!EncodeOperationMessage(job, frame, error));
     }
+    void extractionRequiresAbsoluteDestinationAndSupportedZone() {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+        QtOperationMessage job;
+        job.Type = Kind::Job;
+        job.Operation = QtOperationMessage::Command::Extract;
+        job.Paths = {root.filePath("archive.zip")};
+        job.Destination = "relative output";
+        QByteArray frame;
+        QString error;
+        QVERIFY(!EncodeOperationMessage(job, frame, error));
+        job.Destination = root.filePath("output");
+        job.WriteZone = 3;
+        QVERIFY(!EncodeOperationMessage(job, frame, error));
+        job.WriteZone = quint32(-1);
+        QVERIFY(EncodeOperationMessage(job, frame, error));
+    }
 };
 
 QTEST_GUILESS_MAIN(OperationProtocolTests)

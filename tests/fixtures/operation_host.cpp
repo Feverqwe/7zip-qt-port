@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivebackend.h"
 #include "archiveenginelocation.h"
+#include "operation_dialogs.h"
 #include "qtguicommand.h"
 #include "qtoperationendpoint.h"
 #include <QApplication>
@@ -39,6 +40,21 @@ class Diagnostics final : public QObject {
     }
 };
 
+bool WaitForBarrier(const QString &path) {
+    if (path.isEmpty())
+        return true;
+    QEventLoop wait;
+    QTimer poll;
+    QObject::connect(&poll, &QTimer::timeout, &wait, [&] {
+        if (QFileInfo::exists(path))
+            wait.quit();
+    });
+    poll.start(10);
+    QTimer::singleShot(15000, &wait, &QEventLoop::quit);
+    wait.exec();
+    return QFileInfo::exists(path);
+}
+
 // Fixture-only synchronization around the production endpoint and native GUI
 // dispatcher. No test environment switches enter the installed executable.
 int main(int argc, char **argv) {
@@ -52,31 +68,29 @@ int main(int argc, char **argv) {
     Diagnostics diagnostics;
     application.installEventFilter(&diagnostics);
     QTimer dialogs;
-    if (qEnvironmentVariableIsSet("SEVENZIP_OPERATION_CANCEL_PASSWORD")) {
-        QObject::connect(&dialogs, &QTimer::timeout, &application, [] {
-            for (auto *widget : QApplication::topLevelWidgets())
-                if (widget->isVisible() && widget->objectName() == "passwordDialog")
-                    if (auto *dialog = qobject_cast<QDialog *>(widget))
-                        dialog->reject();
-        });
+    QObject::connect(&dialogs, &QTimer::timeout, &application, [&] {
+        dialogs.stop();
+        DriveOperationDialogs();
         dialogs.start(10);
-    }
-    const int result =
-        RunGUIOperationEndpoint(application, arguments[2], [&](const QtGUICommandSource &command) {
-            if (!barrier.isEmpty()) {
-                QEventLoop wait;
-                QTimer poll;
-                QObject::connect(&poll, &QTimer::timeout, &wait, [&] {
-                    if (QFileInfo::exists(barrier))
-                        wait.quit();
-                });
-                poll.start(10);
-                QTimer::singleShot(15000, &wait, &QEventLoop::quit);
-                wait.exec();
-                if (!QFileInfo::exists(barrier))
-                    return 101;
-            }
-            return RunSevenzipGUICommand(application, command);
+    });
+    dialogs.start(10);
+    const int result = RunGUIOperationEndpoint(
+        application, arguments[2],
+        [&](const QtGUICommandSource &command, const QtGUIOutputSink &outputReady) {
+            if (!WaitForBarrier(barrier))
+                return 101;
+            return RunSevenzipGUICommand(application, command, [&](const QString &directory) {
+                outputReady(directory);
+                const QString gate = qEnvironmentVariable("SEVENZIP_OPERATION_OUTPUT_BARRIER");
+                if (!gate.isEmpty()) {
+                    QSaveFile ready(gate + ".ready");
+                    if (ready.open(QIODevice::WriteOnly)) {
+                        ready.write("ready");
+                        ready.commit();
+                    }
+                    WaitForBarrier(gate);
+                }
+            });
         });
     if (!report.isEmpty()) {
         QSaveFile detail(report + ".diagnostic");

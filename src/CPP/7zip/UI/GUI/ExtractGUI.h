@@ -8,6 +8,7 @@
 #include "../Common/Extract.h"
 
 #include "../FileManager/ExtractCallback.h"
+#include <functional>
 
 /*
   RESULT can be S_OK, even if there are errors!!!
@@ -32,6 +33,6 @@ HRESULT ExtractGUI(
 #endif
     bool showDialog, bool &messageWasDisplayed, CExtractCallbackImp *extractCallback,
     IQtArchiveOpenService *qtOpenService, IQtProgressServices *progressServices,
-    QWidget *hwndParent = nullptr);
+    QWidget *hwndParent = nullptr, const std::function<void()> &outputReady = {});
 
 #endif

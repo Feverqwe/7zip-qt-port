@@ -257,6 +257,10 @@ class MainWindow : public QMainWindow {
     void extractArchives();
     void runArchiveBatchCommand(bool test);
     HRESULT launchGuiArchiveTest(const UStringVector &paths, bool hashMode);
+    HRESULT launchGuiArchiveExtract(const UStringVector &paths, const UString &folder,
+                                    bool showDialog, bool elimDup, UInt32 writeZone);
+    HRESULT observeGuiArchiveOperation(QtOperationLauncher *operation, const QString &error);
+    void refreshGuiOutputPanel(unsigned index, const QStringList &directories);
     void createDialog();
     QStringList selectedFilesystemPaths();
     void transferFiles(const QStringList &sources, const QString &destination, bool move,

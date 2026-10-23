@@ -1,3 +1,6 @@
+#include "Common/MyTypes.h"
+
+#include "7zip/UI/Explorer/ContextMenuFlags.h"
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "7zip/UI/GUI/ExtractDialogRes.h"
@@ -7,26 +10,34 @@
 #include "archivecodeccatalog.h"
 #include "copydialog.h"
 #include "extractdialog.h"
+#include "fixtures/operation_kill.h"
 #include "fixtures/operation_temp_cleanup.h"
 #include "fixtures/panel_keys.h"
+#include "fixtures/scoped_environment.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
 #include "qtoperationlauncher.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
+#include <QJsonDocument>
 #include <QScopeGuard>
 #include <QTreeWidget>
-#ifdef Q_OS_WIN
-#include <windows.h>
-#else
-#include <csignal>
-#endif
 
 namespace {
 using namespace SourceExtractFixture;
 QString FixtureTemplate() {
     return QDir(QFileInfo(QDir::tempPath()).canonicalFilePath()).filePath("toolbar-XXXXXX");
+}
+QAction *FindShellVerb(QMenu &menu, const QString &verb) {
+    for (auto *item : menu.actions()) {
+        if (item->property("shellVerb").toString() == verb)
+            return item;
+        if (item->menu())
+            if (auto *found = FindShellVerb(*item->menu(), verb))
+                return found;
+    }
+    return nullptr;
 }
 class GuiTestBackend final : public ArchiveBackend {
   public:
@@ -34,6 +45,39 @@ class GuiTestBackend final : public ArchiveBackend {
     QList<QStringList> Selections;
     bool CrashNext = false;
     bool Killed = false;
+    bool CancelExtract = false;
+    QString ExtractDestination;
+    QString ExtractDialogReport;
+    QString ExtractDialogTag;
+    QString OutputBarrier;
+    QList<QtOperationMessage> ExtractJobs;
+    QtOperationLauncher *startGuiExtract(const QStringList &archives, const QString &destination,
+                                         bool showDialog, bool elimDup, quint32 writeZone,
+                                         QString &error) override {
+        QtOperationMessage job;
+        job.Type = QtOperationMessage::Kind::Job;
+        job.Operation = QtOperationMessage::Command::Extract;
+        job.Paths = archives;
+        job.Destination = destination;
+        job.ShowDialog = showDialog;
+        job.ElimDup = elimDup;
+        job.WriteZone = writeZone;
+        job.YesToAll = true;
+        ScopedTestEnvironment decision("SEVENZIP_OPERATION_EXTRACT_DECISION",
+                                       CancelExtract ? "cancel" : "accept");
+        ScopedTestEnvironment output("SEVENZIP_OPERATION_DESTINATION", ExtractDestination);
+        ScopedTestEnvironment report("SEVENZIP_OPERATION_DIALOG_REPORT", ExtractDialogReport);
+        ScopedTestEnvironment tag("SEVENZIP_OPERATION_DIALOG_TAG", ExtractDialogTag);
+        ScopedTestEnvironment barrier("SEVENZIP_OPERATION_OUTPUT_BARRIER", OutputBarrier);
+        auto *operation =
+            QtOperationLauncher::Launch(QStringLiteral(SEVENZIP_OPERATION_HOST), job, error);
+        if (operation) {
+            ExtractJobs.append(job);
+            connect(operation, &QtOperationLauncher::finished, this,
+                    [this](const QtOperationResult &result) { Results.append(result); });
+        }
+        return operation;
+    }
     QtOperationLauncher *startGuiTest(const QStringList &archives, QString &error) override {
         QtOperationMessage job;
         job.Type = QtOperationMessage::Kind::Job;
@@ -44,18 +88,8 @@ class GuiTestBackend final : public ArchiveBackend {
         if (operation) {
             if (CrashNext) {
                 CrashNext = false;
-                connect(operation, &QtOperationLauncher::accepted, operation, [this, operation] {
-#ifdef Q_OS_WIN
-                    HANDLE child =
-                        OpenProcess(PROCESS_TERMINATE, FALSE, DWORD(operation->processId()));
-                    if (child) {
-                        Killed = TerminateProcess(child, 0xc0000005u);
-                        CloseHandle(child);
-                    }
-#else
-                    Killed = ::kill(pid_t(operation->processId()), SIGKILL) == 0;
-#endif
-                });
+                connect(operation, &QtOperationLauncher::accepted, operation,
+                        [this, operation] { Killed = KillOperationProbe(operation->processId()); });
             }
             Selections.append(archives);
             connect(operation, &QtOperationLauncher::finished, this,
@@ -221,26 +255,19 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         source->setFocus();
         CMyComPtr<IFolderFolder> provider = source->sourcePanel->GetFolder();
         QStringList errors, successes;
+        backend.ExtractDestination = output;
         QTimer driver;
-        dialogs_.connectResponder(driver, &window, [&] {
-            if (auto *dialog = dynamic_cast<ExtractDialog *>(dialogs_.activeDialog())) {
-                dialog->findChild<QCheckBox *>("extractNameEnable")->setChecked(false);
-                dialog->findChild<QComboBox *>("extractDestination")->setEditText(output);
-                dialog->accept();
-            }
-            dismissResults(dialogs_, errors, successes);
-        });
+        dialogs_.connectResponder(driver, &window,
+                                  [&] { dismissResults(dialogs_, errors, successes); });
         driver.start(1);
         for (const char *command : {"extractArchiveAction", "testArchiveAction"}) {
             errors.clear();
             successes.clear();
             QVERIFY(action(window, command)->isEnabled());
             action(window, command)->trigger();
-            if (qstrcmp(command, "testArchiveAction") == 0) {
-                QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 1, 30000);
-                QCOMPARE(backend.Results.last().Status, QtOperationResult::Outcome::Failure);
-            } else
-                QVERIFY(!errors.isEmpty());
+            QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(),
+                                      qstrcmp(command, "testArchiveAction") == 0 ? 2 : 1, 30000);
+            QCOMPARE(backend.Results.last().Status, QtOperationResult::Outcome::Failure);
             QVERIFY(successes.isEmpty());
             QCOMPARE(source->sourcePanel->GetFolder(), provider.Interface());
             QCOMPARE(source->selectionModel()->selectedRows().size(), 1);
@@ -311,6 +338,163 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         QCOMPARE(peer->selectionModel()->selectedRows().size(), 1);
         QVERIFY(source->sourcePanel->ShouldProcessNotifications());
     }
+    void filesystemShellCommandsUseIndependentOperations_data() {
+        QTest::addColumn<QString>("verb");
+        for (const QString &verb :
+             {QString("Test"), QString("Extract"), QString("ExtractHere"), QString("ExtractTo")})
+            QTest::newRow(qPrintable(verb)) << verb;
+    }
+    void filesystemShellCommandsUseIndependentOperations() {
+        QFETCH(QString, verb);
+        QTemporaryDir fixture(FixtureTemplate());
+        QVERIFY(fixture.isValid());
+        const auto input = fixture.filePath("archives");
+        QVERIFY(QDir().mkpath(input));
+        const auto archive = makeArchive(input, "context command bytes");
+        QVERIFY(!archive.isEmpty());
+        QVERIFY(QFile::remove(QDir(input).filePath(kName)));
+        const auto before = readFile(archive);
+        CContextMenuInfo context;
+        context.Load(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        context.Flags = NContextMenuFlags::kTest | NContextMenuFlags::kExtract |
+                        NContextMenuFlags::kExtractHere | NContextMenuFlags::kExtractTo;
+        context.Flags_Def = true;
+        context.Cascaded.SetTrueTrue();
+        context.Save(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        GuiTestBackend backend;
+        QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
+        backend.ExtractDestination = fixture.filePath("edited output");
+        MainWindow window(&backend);
+        window.show();
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        auto *source = openPanel(window, 0, input);
+        QTRY_COMPARE(source->rowCount(), 2);
+        int selected = -1;
+        for (int row = 0; row < source->rowCount(); ++row)
+            if (source->item(row, 0)->text() == "input.zip")
+                selected = row;
+        QVERIFY(selected >= 0);
+        source->selectRow(selected);
+        source->setFocus();
+        auto *menu = window.findChild<QMenu *>("fileMenu");
+        QVERIFY(QMetaObject::invokeMethod(menu, "aboutToShow", Qt::DirectConnection));
+        auto *command = FindShellVerb(*menu, "SevenZip" + verb);
+        QVERIFY(command && command->isEnabled());
+        QStringList errors, successes;
+        QTimer responder;
+        dialogs_.connectResponder(responder, &window, [&] {
+            if (auto *dialog = dynamic_cast<ExtractDialog *>(dialogs_.activeDialog())) {
+                errors << "Unexpected extraction dialog in the manager process";
+                dialog->reject();
+            }
+            dismissResults(dialogs_, errors, successes);
+        });
+        responder.start(5);
+        command->trigger();
+        QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
+        QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 1, 20000);
+        QCOMPARE(backend.Results.last().Status, QtOperationResult::Outcome::Success);
+        if (verb == "Test") {
+            QCOMPARE(backend.Selections.size(), 1);
+            QCOMPARE(QFileInfo(backend.Selections.first().first()).canonicalFilePath(),
+                     QFileInfo(archive).canonicalFilePath());
+        } else {
+            QCOMPARE(backend.ExtractJobs.size(), 1);
+            QCOMPARE(backend.ExtractJobs.first().ShowDialog, verb == "Extract");
+            const auto output = verb == "Extract"       ? backend.ExtractDestination
+                                : verb == "ExtractHere" ? input
+                                                        : QDir(input).filePath("input");
+            QCOMPARE(readFile(QDir(output).filePath(kName)), QByteArray("context command bytes"));
+        }
+        QCOMPARE(readFile(archive), before);
+        QVERIFY(action(window, "refreshAction")->isEnabled());
+    }
+    void extractionRefreshUsesCurrentLocation_data() {
+        QTest::addColumn<bool>("navigate");
+        QTest::newRow("navigation while child runs") << true;
+        QTest::newRow("defer behind another source modal") << false;
+    }
+    void extractionRefreshUsesCurrentLocation() {
+        QFETCH(bool, navigate);
+        QTemporaryDir fixture(FixtureTemplate());
+        QVERIFY(fixture.isValid());
+        const auto input = fixture.filePath("input");
+        QVERIFY(QDir().mkpath(input));
+        const auto archive = makeArchive(input, "refresh output");
+        QVERIFY(!archive.isEmpty());
+        const auto output = fixture.filePath("output");
+        QVERIFY(QDir().mkpath(output));
+        const auto unrelated = fixture.filePath("unrelated");
+        QVERIFY(writeFile(QDir(unrelated).filePath("selected.txt"), "retained selection"));
+        GuiTestBackend backend;
+        QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
+        backend.ExtractDestination = output;
+        backend.OutputBarrier = fixture.filePath("output gate");
+        MainWindow window(&backend);
+        window.show();
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *source = openPanel(window, 0, input);
+        QTRY_COMPARE(source->rowCount(), 2); // The fixture input and its archive.
+        auto *peer = openPanel(window, 1, output);
+        QTRY_COMPARE(peer->rowCount(), 0);
+        peer->sourcePanel->Set_AutoRefresh_Mode(false);
+        source->setFocus();
+        int selected = -1;
+        for (int row = 0; row < source->rowCount(); ++row)
+            if (source->item(row, 0)->text() == "input.zip")
+                selected = row;
+        QVERIFY(selected >= 0);
+        source->selectRow(selected);
+        action(window, "extractArchiveAction")->trigger();
+        QTRY_VERIFY_WITH_TIMEOUT(QFileInfo::exists(backend.OutputBarrier + ".ready"), 15000);
+        if (navigate) {
+            peer = openPanel(window, 1, unrelated);
+            QTRY_COMPARE(peer->rowCount(), 1);
+            peer->selectRow(0);
+            peer->setFocus();
+            CMyComPtr<IFolderFolder> provider = peer->sourcePanel->GetFolder();
+            QVERIFY(writeFile(backend.OutputBarrier, "continue"));
+            QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 1, 15000);
+            QCOMPARE(backend.Results.last().Status, QtOperationResult::Outcome::Success);
+            QCOMPARE(peer->sourcePanel->GetFolder(), provider.Interface());
+            QCOMPARE(peer->rowCount(), 1);
+            QCOMPARE(peer->item(0, 0)->text(), QString("selected.txt"));
+            QCOMPARE(peer->selectionModel()->selectedRows().size(), 1);
+            QTRY_VERIFY(peer->hasFocus());
+        } else {
+            bool released = false, deferred = false;
+            QTimer driver;
+            dialogs_.connectResponder(driver, &window, [&] {
+                auto *dialog = dialogs_.activeDialog();
+                if (!dialog || dialog->objectName() != "IDD_LINK")
+                    return;
+                if (!released) {
+                    released = writeFile(backend.OutputBarrier, "continue");
+                } else if (backend.Results.size() == 1) {
+                    deferred = peer->rowCount() == 0;
+                    dialog->reject();
+                }
+            });
+            driver.start(5);
+            QTimer::singleShot(25000, &window, [&window] {
+                if (auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget()))
+                    if (dialog->objectName() == "IDD_LINK")
+                        dialog->reject();
+            });
+            QVERIFY(action(window, "linkAction")->isEnabled());
+            action(window, "linkAction")->trigger();
+            driver.stop();
+            QVERIFY(released);
+            QVERIFY(deferred);
+            QCOMPARE(backend.Results.size(), 1);
+            QCOMPARE(backend.Results.last().Status, QtOperationResult::Outcome::Success);
+            QTRY_COMPARE(peer->rowCount(), 1);
+        }
+        QCOMPARE(readFile(QDir(output).filePath(kName)), QByteArray("refresh output"));
+    }
     void filesystemToolbarUsesSourceBatch_data() {
         QTest::addColumn<bool>("multiple");
         QTest::addColumn<unsigned>("pane");
@@ -360,42 +544,39 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
         CMyComPtr<IFolderFolder> provider = source->sourcePanel->GetFolder();
-        QString caption;
-        bool seen = false;
-        bool canceled = true;
         QStringList errors;
         QStringList successes;
         QTimer driver;
-        dialogs_.connectResponder(driver, &window, [&] {
-            if (auto *dialog = dynamic_cast<ExtractDialog *>(dialogs_.activeDialog())) {
-                seen = true;
-                caption = dialog->windowTitle();
-                if (canceled)
-                    dialog->reject();
-                else {
-                    dialog->findChild<QCheckBox *>("extractNameEnable")->setChecked(false);
-                    dialog->findChild<QComboBox *>("extractDestination")
-                        ->setEditText(multiple ? output + "/*/" : output);
-                    inspectDialog(*dialog, QString("toolbar-batch-%1-%2").arg(multiple).arg(pane));
-                    dialog->accept();
-                }
-            }
-            dismissResults(dialogs_, errors, successes);
-        });
+        dialogs_.connectResponder(driver, &window,
+                                  [&] { dismissResults(dialogs_, errors, successes); });
         driver.start(1);
+        backend.ExtractDestination = multiple ? output + "/*/" : output;
+        backend.ExtractDialogReport = fixture.filePath("extract-dialog.json");
+        backend.ExtractDialogTag = QString("toolbar-batch-%1-%2").arg(multiple).arg(pane);
+        backend.CancelExtract = true;
         source->setFocus();
         PanelKeys::command(source, Qt::Key_E, Qt::ControlModifier | Qt::ShiftModifier);
-        QVERIFY(seen);
+        QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 1, 30000);
+        QCOMPARE(backend.Results.last().Status, QtOperationResult::Outcome::Cancelled);
         QVERIFY(!QFileInfo::exists(output));
-        canceled = false;
-        seen = false;
+        backend.CancelExtract = false;
+        QVERIFY(QDir().mkpath(output));
+        auto *peer = openPanel(window, 1 - pane, output);
+        QTRY_COMPARE(peer->rowCount(), 0);
+        peer->sourcePanel->Set_AutoRefresh_Mode(false);
         source->setFocus();
         PanelKeys::command(source, Qt::Key_E, Qt::ControlModifier | Qt::ShiftModifier);
-        QVERIFY(seen);
-        QCOMPARE(caption.normalized(QString::NormalizationForm_C),
+        QVERIFY(action(window, "refreshAction")->isEnabled());
+        QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 2, 30000);
+        QCOMPARE(backend.Results.last().Status, QtOperationResult::Outcome::Success);
+        const auto dialogReport =
+            QJsonDocument::fromJson(readFile(backend.ExtractDialogReport)).object();
+        QCOMPARE(dialogReport.value("title").toString().normalized(QString::NormalizationForm_C),
                  (QtLangText(IDD_EXTRACT, "Extract") +
                   (multiple ? QString() : " : " + QDir::toNativeSeparators(first)))
                      .normalized(QString::NormalizationForm_C));
+        QTRY_COMPARE(peer->rowCount(), multiple ? 2 : 1);
+        QCOMPARE(backend.ExtractJobs.last().Paths.size(), multiple ? 2 : 1);
         QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
         QCOMPARE(
             readFile(QDir(output).filePath(multiple ? QStringLiteral("первый δ/") + name : name)),
@@ -406,7 +587,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         source->setFocus();
         PanelKeys::command(source, Qt::Key_T, Qt::ControlModifier | Qt::ShiftModifier);
         QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
-        QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 1, 30000);
+        QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 3, 30000);
         QCOMPARE(backend.Results.last().Status, QtOperationResult::Outcome::Success);
         QCOMPARE(backend.Selections.last().size(), multiple ? 2 : 1);
         driver.stop();

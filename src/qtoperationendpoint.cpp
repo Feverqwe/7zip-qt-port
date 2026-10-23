@@ -3,6 +3,7 @@
 #include "7zip/UI/Common/ExitCode.h"
 #include "CPP/7zip/UI/Common/CompressCall.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "Windows/FileName.h"
 #include "qtoperationprotocol.h"
 #include <QApplication>
 #include <QCoreApplication>
@@ -10,12 +11,13 @@
 #include <QTimer>
 
 namespace {
-void TestOptions(const QtOperationMessage &job, CArcCmdLineOptions &options) {
+void OperationOptions(const QtOperationMessage &job, CArcCmdLineOptions &options) {
     // Parse the source command defaults, without putting selection in argv or
     // recreating Parse1/Parse2's initialization/platform policy in Qt glue.
     CArcCmdLineParser parser;
     UStringVector defaults;
-    defaults.Add(L"t");
+    const bool extract = job.Operation == QtOperationMessage::Command::Extract;
+    defaults.Add(extract ? L"x" : L"t");
     defaults.Add(L"-an");
     UString memorySwitch;
     AddLagePagesSwitch(memorySwitch, FmSettingsPath());
@@ -26,6 +28,18 @@ void TestOptions(const QtOperationMessage &job, CArcCmdLineOptions &options) {
         defaults.Add(L"-y");
     parser.Parse1(defaults, options);
     parser.Parse2(options);
+    if (extract) {
+        options.ShowDialog = job.ShowDialog;
+        options.ExtractOptions.OutputDir = us2fs(job.Destination.toStdWString().c_str());
+#ifdef _WIN32
+        NWindows::NFile::NName::NormalizeDirSeparators(options.ExtractOptions.OutputDir);
+#endif
+        NWindows::NFile::NName::NormalizeDirPathPrefix(options.ExtractOptions.OutputDir);
+        if (job.ElimDup)
+            options.ExtractOptions.ElimDup.Val = options.ExtractOptions.ElimDup.Def = true;
+        if (job.WriteZone != quint32(-1))
+            options.ExtractOptions.ZoneMode = NExtract::NZoneIdMode::EEnum(job.WriteZone);
+    }
     // CompressCall2's literal archive selection. Main2 retains enumeration,
     // errors, callbacks, dialogs and the original test/exit policy.
     options.arcCensor.CensorPaths.Clear();
@@ -113,12 +127,24 @@ int RunGUIOperationEndpoint(QApplication &application, const QString &channel,
             acknowledgement.Type = QtOperationMessage::Kind::Accepted;
             Send(socket, acknowledgement);
             QTimer::singleShot(0, &context, [&, job] {
+                QStringList changedDirectories;
                 const int code =
-                    run([&](CArcCmdLineOptions &options) { TestOptions(job, options); });
+                    run([&](CArcCmdLineOptions &options) { OperationOptions(job, options); },
+                        [&](const QString &directory) {
+                            if (!changedDirectories.contains(directory))
+                                changedDirectories.append(directory);
+                            if (socket.state() == QLocalSocket::ConnectedState) {
+                                QtOperationMessage update;
+                                update.Type = QtOperationMessage::Kind::Outputs;
+                                update.Result.ChangedDirectories = changedDirectories;
+                                Send(socket, update);
+                            }
+                        });
                 if (socket.state() == QLocalSocket::ConnectedState) {
                     QtOperationMessage result;
                     result.Type = QtOperationMessage::Kind::Result;
                     result.Result = Result(code);
+                    result.Result.ChangedDirectories = changedDirectories;
                     Send(socket, result);
                     if (socket.bytesToWrite())
                         socket.waitForBytesWritten(1000);

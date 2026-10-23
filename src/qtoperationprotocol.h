@@ -18,14 +18,21 @@ struct QtOperationResult {
     Outcome Status = Outcome::Failure;
     int ExitCode = 2;
     QString Error;
+    QStringList ChangedDirectories;
 };
 Q_DECLARE_METATYPE(QtOperationResult)
 
 struct QtOperationMessage {
-    enum class Kind { Ready, Job, Accepted, Result, Rejected };
+    enum class Kind { Ready, Job, Accepted, Outputs, Result, Rejected };
+    enum class Command { Test, Extract };
     Kind Type = Kind::Ready;
+    Command Operation = Command::Test;
     QStringList Paths;
     bool YesToAll = false;
+    QString Destination;
+    bool ShowDialog = true;
+    bool ElimDup = false;
+    quint32 WriteZone = quint32(-1);
     QtOperationResult Result;
 };
 

@@ -22,6 +22,7 @@ struct QtOperationLauncher::State {
     QTimer poll_, startup_;
     QElapsedTimer exited_;
     std::optional<QtOperationResult> result_;
+    QStringList changedDirectories_;
     bool sent_ = false;
     bool accepted_ = false;
     bool terminal_ = false;
@@ -178,6 +179,11 @@ void QtOperationLauncher::readMessages() {
             emit accepted();
             // A receiver may close the observer. It must not kill the child.
             return;
+        } else if (message.Type == QtOperationMessage::Kind::Outputs && state_->accepted_ &&
+                   !state_->result_) {
+            for (const auto &directory : message.Result.ChangedDirectories)
+                if (!state_->changedDirectories_.contains(directory))
+                    state_->changedDirectories_.append(directory);
         } else if (message.Type == QtOperationMessage::Kind::Result && state_->accepted_ &&
                    !state_->result_)
             state_->result_ = message.Result;
@@ -206,6 +212,13 @@ void QtOperationLauncher::observe() {
     const auto native = state_->process_.poll();
     if (native.Status == QtOperationProcess::State::Running)
         return;
+    // A native exit can precede the socket's queued final read/EOF. Drain
+    // announced output roots before publishing even a crash result.
+    if (!state_->exited_.isValid())
+        state_->exited_.start();
+    if (state_->socket_ && state_->socket_->state() == QLocalSocket::ConnectedState &&
+        state_->exited_.elapsed() < 1000)
+        return;
     using Outcome = QtOperationResult::Outcome;
     if (native.Status == QtOperationProcess::State::Crashed) {
         finish({Outcome::Crashed, int(native.Code),
@@ -219,8 +232,6 @@ void QtOperationLauncher::observe() {
     }
     // Native exit and local socket notification can be delivered in either
     // order. Allow buffered result/EOF notifications to reach the observer.
-    if (!state_->exited_.isValid())
-        state_->exited_.start();
     if (state_->result_) {
         auto result = *state_->result_;
         if (result.Status != Outcome::ProtocolFailed && native.Code != quint32(result.ExitCode))
@@ -238,6 +249,9 @@ void QtOperationLauncher::finish(QtOperationResult result) {
     if (state_->terminal_)
         return;
     state_->terminal_ = true;
+    for (const auto &directory : state_->changedDirectories_)
+        if (!result.ChangedDirectories.contains(directory))
+            result.ChangedDirectories.append(directory);
     state_->poll_.stop();
     state_->startup_.stop();
     state_->server_.close();

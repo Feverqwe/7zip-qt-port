@@ -236,6 +236,7 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
         QFile::remove(settings);
         SavePanelPath(1, ToUString(other), settings);
         CContextMenuInfo ci;
+        ci.Load(settings);
         ci.Flags = NContextMenuFlags::kCompressTo7z;
         ci.Flags_Def = true;
         ci.Cascaded.SetTrueTrue();
@@ -307,6 +308,7 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
         QFile::remove(settings);
         SaveRegLang(ToUString(language), settings);
         CContextMenuInfo ci;
+        ci.Load(settings);
         ci.Flags = NContextMenuFlags::kOpen | NContextMenuFlags::kOpenAs |
                    NContextMenuFlags::kExtract | NContextMenuFlags::kTest |
                    NContextMenuFlags::kCompress;
@@ -459,6 +461,7 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
         QFile::remove(settings);
         SaveRegLang(UString("-"), settings);
         CContextMenuInfo ci;
+        ci.Load(settings);
         ci.Flags =
             NContextMenuFlags::kOpen | NContextMenuFlags::kOpenAs | NContextMenuFlags::kCompress;
         ci.Flags_Def = true;

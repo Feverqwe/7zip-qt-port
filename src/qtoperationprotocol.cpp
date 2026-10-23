@@ -32,6 +32,8 @@ QString KindName(QtOperationMessage::Kind type) {
         return QStringLiteral("job");
     case QtOperationMessage::Kind::Accepted:
         return QStringLiteral("accepted");
+    case QtOperationMessage::Kind::Outputs:
+        return QStringLiteral("outputs");
     case QtOperationMessage::Kind::Result:
         return QStringLiteral("result");
     case QtOperationMessage::Kind::Rejected:
@@ -65,12 +67,28 @@ bool Decode(const QJsonObject &object, QtOperationMessage &message) {
             type == "ready" ? QtOperationMessage::Kind::Ready : QtOperationMessage::Kind::Accepted;
     } else if (type == "job") {
         QSet<QString> fields{"command", "paths"};
+        const bool extract = object.value("command") == "extract";
+        if (extract) {
+            fields.unite({"destination", "showDialog", "elimDup", "writeZone"});
+            const auto zone = object.value("writeZone");
+            const double value = zone.toDouble(-1);
+            if (!object.value("destination").isString() ||
+                !PathIsRepresentable(object.value("destination").toString()) ||
+                !object.value("showDialog").isBool() || !object.value("elimDup").isBool() ||
+                !(value == 0 || value == 1 || value == 2 || value == double(quint32(-1))))
+                return false;
+            message.Operation = QtOperationMessage::Command::Extract;
+            message.Destination = object.value("destination").toString();
+            message.ShowDialog = object.value("showDialog").toBool();
+            message.ElimDup = object.value("elimDup").toBool();
+            message.WriteZone = quint32(value);
+        }
         if (object.contains("yesToAll")) {
             fields.insert("yesToAll");
             if (!object.value("yesToAll").isBool())
                 return false;
         }
-        if (!ExactFields(object, fields) || object.value("command") != "test" ||
+        if (!ExactFields(object, fields) || (!extract && object.value("command") != "test") ||
             !object.value("paths").isArray())
             return false;
         const auto paths = object.value("paths").toArray();
@@ -83,9 +101,26 @@ bool Decode(const QJsonObject &object, QtOperationMessage &message) {
                 return false;
             message.Paths.append(path.toString());
         }
-    } else if (type == "result") {
-        if (!ExactFields(object, {"outcome", "exitCode"}))
+    } else if (type == "result" || type == "outputs") {
+        const bool outputs = type == "outputs";
+        QSet<QString> fields =
+            outputs ? QSet<QString>{"changedDirectories"} : QSet<QString>{"outcome", "exitCode"};
+        if (object.contains("changedDirectories")) {
+            fields.insert("changedDirectories");
+            if (!object.value("changedDirectories").isArray())
+                return false;
+            for (const auto &path : object.value("changedDirectories").toArray()) {
+                if (!path.isString() || !PathIsRepresentable(path.toString()))
+                    return false;
+                message.Result.ChangedDirectories.append(path.toString());
+            }
+        }
+        if (!ExactFields(object, fields))
             return false;
+        if (outputs) {
+            message.Type = QtOperationMessage::Kind::Outputs;
+            return !message.Result.ChangedDirectories.isEmpty();
+        }
         message.Type = QtOperationMessage::Kind::Result;
         const QString status = object.value("outcome").toString();
         bool found = false;
@@ -122,12 +157,25 @@ bool Decode(const QJsonObject &object, QtOperationMessage &message) {
 bool EncodeOperationMessage(const QtOperationMessage &message, QByteArray &frame, QString &error) {
     QJsonObject object{{"version", int(kVersion)}, {"type", KindName(message.Type)}};
     if (message.Type == QtOperationMessage::Kind::Job) {
-        object.insert("command", "test");
+        object.insert("command", message.Operation == QtOperationMessage::Command::Extract
+                                     ? "extract"
+                                     : "test");
+        if (message.Operation == QtOperationMessage::Command::Extract) {
+            object.insert("destination", message.Destination);
+            object.insert("showDialog", message.ShowDialog);
+            object.insert("elimDup", message.ElimDup);
+            object.insert("writeZone", double(message.WriteZone));
+        }
         object.insert("paths", QJsonArray::fromStringList(message.Paths));
         object.insert("yesToAll", message.YesToAll);
-    } else if (message.Type == QtOperationMessage::Kind::Result) {
-        object.insert("outcome", OutcomeName(message.Result.Status));
-        object.insert("exitCode", message.Result.ExitCode);
+    } else if (message.Type == QtOperationMessage::Kind::Result ||
+               message.Type == QtOperationMessage::Kind::Outputs) {
+        if (message.Type == QtOperationMessage::Kind::Result) {
+            object.insert("outcome", OutcomeName(message.Result.Status));
+            object.insert("exitCode", message.Result.ExitCode);
+        }
+        object.insert("changedDirectories",
+                      QJsonArray::fromStringList(message.Result.ChangedDirectories));
     } else if (message.Type == QtOperationMessage::Kind::Rejected)
         object.insert("error", message.Result.Error);
     QtOperationMessage verified;

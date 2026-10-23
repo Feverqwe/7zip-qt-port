@@ -612,3 +612,89 @@ by the existing Qt deployment script. No installed Linux/Windows payload, native
 physical-input dialog comparison, slow matrix or full gate is claimed here.
 Task-owned timeout fixtures and inactive crash deployment images were cleaned;
 active/unrelated data and compiler/build caches were preserved.
+
+### Standalone filesystem Extract: source comparison
+
+Compared complete upstream/port `CPanel::ExtractArchives`, Common
+`CompressCall.cpp`/`CompressCall2.cpp` extraction/group callers, GUI `Main2`
+extraction branch and all `ExtractGUI.cpp` bodies against the revision above.
+Reviewed `CExtractOptionsBase`, Parse2 output/overwrite/zone/NT defaults and
+Common/Extract output-name substitution, with the existing callback/path/recovery
+audit supplying the unchanged native decoder boundary. The panel owns selection,
+default output folder, batch wildcard and context WriteZone; its retained-parent
+branch remains OnCopy. The source GUI owns parameter edits, passwords, overwrite,
+progress, callback errors and partial output. No source-visible decoder gap was
+found for the selected ordinary-file scenario.
+
+The remaining integration gaps are the filesystem service dispatch, structured
+extraction parameters, child-owned GUI and reporting of the actual output root
+after source dialog edits. `Main2` copies initial options into a local extraction
+object; reporting the initial job destination would be incorrect. The existing
+QtShell extraction service sees the final typed options and already owns a
+dynamic output-root path policy. Use that boundary for completion metadata rather
+than parsing dialog text or duplicating archive-name substitution. The manager
+must refresh current affected filesystem panels after partial/error/cancel too,
+without restoring old navigation. This section records source scope before
+implementation; it is not runtime acceptance.
+
+The same review includes the source Explorer ContextMenu extraction/test switch
+and the File Manager's Qt shell-menu service owner. ContextMenu already supplies
+literal filesystem paths, output folder, dialog choice, ElimDup and WriteZone.
+Its ordinary filesystem Test/Extract/ExtractHere/ExtractTo consumers use the same
+launcher; retained-parent/live-provider cases retain the direct service and
+hash-file testing remains with the later checksum scenario.
+
+Implementation preserves those source bodies and adds one optional notification
+immediately before the source extraction worker starts, after successful parameter
+confirmation and output normalization. The existing QtShell output policy supplies
+its current root; archive-name substitution remains solely in Common/Extract.
+The child reports that root over the local channel before writing and repeats it
+in the final result. The observer drains queued data/EOF before publishing a native
+exit or crash, retaining announced roots even without a final result. Source
+callbacks and exit policy still decide success, errors and cancellation; a partial
+file is never evidence of successful verification.
+
+Structured Extract fields cover destination, dialog choice, ElimDup and WriteZone;
+the source parser initializes all other defaults. Literal archive paths use the
+same censor seam as Test. Manager launch/result glue is separated from archive
+commands; both toolbar and source context verbs use it. Deferred refresh checks
+the current filesystem provider and path, including ancestor directories, rather
+than restoring a captured panel binding. It also works with auto-refresh disabled
+and waits behind another active source call/scan. Retained archive/device/nested
+flows remain direct; no temp input is newly borrowed from the parent.
+
+Behavior checks exercise actual native-only 7zG extraction with an unavailable
+console, edited/cancelled parameter dialogs, overwrite choices, correct/incorrect/
+cancelled password prompts, completed entries retained after cancellation, CRC
+failure with readable and unverified output, extraction after parent exit, unsafe
+member bounds, and crash metadata while parent event delivery is deliberately
+withheld. Manager checks cover both panes, single/batch defaults, all filesystem
+context extraction/test verbs, navigation during work, and deferred refresh behind
+the source Link modal. Existing title/geometry evidence now comes from that same
+dialog in the child fixture; source-service and shell CLI regressions remain.
+
+Validation found two fixture defects rather than weakening production behavior:
+context settings were saved before the source Load initialized WriteZone, and
+UTF-8 bytes passed through the Windows environment code page corrupted a child
+dialog's destination. The tests now use source initialization and a Unicode OS
+environment setter on Windows. Reported actual output roots established the
+encoding error. The Windows toolbar plugin override also preserves the existing
+per-suite registry/startup environment, so forced-exit cleanup retains ownership
+proof instead of falling back to a shared registry.
+
+On 2026-10-24 macOS built the app and selected targets; eight focused suites passed
+together (37.41 s): operation extraction/launcher/protocol, toolbar archive workflow,
+shell menu window, shell archive services, source extract advanced and Unix GUI
+entry. The final Windows focused verify passed four suites after target builds
+(`20261023T225045Z-f3765084`): operation extraction/launcher/protocol and toolbar
+archive workflow, on the interactive desktop for native toolbar/child dialogs.
+The Windows checks are required by path/WriteZone adaptation and the native test
+environment; Linux-specific process/loading code was not changed and its runners
+were not repeated. Installed three-platform acceptance remains pending for the
+whole goal, as do Create/Update and checksum/benchmark migration. No full or slow
+gate, rendered parity or physical-input acceptance is claimed by these checks.
+After the final fixture environment adjustment, its two direct macOS suites
+passed again (18.73 s). Disposable timeout/diagnostic fixtures and inactive
+registered crash images were removed; no incremental trees or compiler caches
+were reset. The Windows host storage check showed no VHDX growth. Older guest
+temporary directories without proven task ownership were preserved.
