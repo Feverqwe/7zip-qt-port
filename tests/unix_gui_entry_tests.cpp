@@ -1,5 +1,6 @@
 #include "source_extract_fixture.h"
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QtTest>
 
 class UnixGuiEntryTests final : public QObject {
@@ -9,16 +10,20 @@ class UnixGuiEntryTests final : public QObject {
         QTest::addColumn<QString>("command");
         QTest::addColumn<bool>("excluded");
         QTest::addColumn<bool>("broken");
-        QTest::newRow("create") << QString("a") << false << false;
-        QTest::newRow("test") << QString("t") << false << false;
-        QTest::newRow("extract") << QString("x") << false << false;
-        QTest::newRow("excluded-handler") << QString("x") << true << false;
-        QTest::newRow("broken-archive") << QString("t") << false << true;
+        QTest::addColumn<bool>("moduleOnly");
+        QTest::newRow("create") << QString("a") << false << false << false;
+        QTest::newRow("test") << QString("t") << false << false << false;
+        QTest::newRow("extract") << QString("x") << false << false << false;
+        QTest::newRow("excluded-handler") << QString("x") << true << false << false;
+        QTest::newRow("broken-archive") << QString("t") << false << true << false;
+        QTest::newRow("test-without-console") << QString("t") << false << false << true;
+        QTest::newRow("damaged-without-console") << QString("t") << false << true << true;
     }
     void sourceDispatch() {
         QFETCH(QString, command);
         QFETCH(bool, excluded);
         QFETCH(bool, broken);
+        QFETCH(bool, moduleOnly);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QByteArray bytes("Unix source GUI entry payload");
@@ -42,6 +47,20 @@ class UnixGuiEntryTests final : public QObject {
         else
             arguments << "--" << archive;
         QProcess helper;
+        if (moduleOnly) {
+#ifdef SEVENZIP_CODEC_MODULE
+            const QString deployment = fixture.filePath("module-only deployment");
+            QVERIFY(QDir().mkpath(deployment));
+            const QString module = QStringLiteral(SEVENZIP_CODEC_MODULE);
+            QVERIFY(QFile::copy(module, QDir(deployment).filePath(QFileInfo(module).fileName())));
+            auto environment = QProcessEnvironment::systemEnvironment();
+            environment.insert("SEVENZIP_ENGINE_PATH",
+                               QDir(deployment).filePath("unavailable console"));
+            helper.setProcessEnvironment(environment);
+#else
+            QSKIP("The native module is not configured for this build");
+#endif
+        }
         helper.setWorkingDirectory(fixture.path());
         helper.start(QString::fromUtf8(SEVENZIP_NATIVE_GUI), arguments);
         QVERIFY(helper.waitForStarted(5000));

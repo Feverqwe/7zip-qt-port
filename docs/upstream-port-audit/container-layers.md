@@ -458,3 +458,74 @@ loading. Under the user's runner rule Linux/Windows were not rerun; native NTFS
 security/ADS cases remain unverified for this iteration. No slow suite, full gate
 or visual acceptance was run. Incremental build trees/caches were retained and
 diagnostic logging/temporary fixtures removed.
+
+### Return to standalone 7zG operations: source boundary review
+
+On 2026-10-24 the requested direction changed from migrating every backend CLI
+operation to restoring the upstream File Manager/7zG division. Completed native
+reads and destination extraction remain the engine foundation. The new scope
+is standalone test, extract, create/update, checksum and benchmark; live archive
+folders, device inputs and parent-update chains retain their direct source path.
+This is a requested boundary, not a claim that process isolation is implemented.
+
+Reviewed against <https://github.com/ip7z/7zip.git>,
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`: Common `CompressCall.cpp`
+(`Call7zGui`, `CreateMap`, archive grouping/test/extract/create/hash/benchmark),
+`CompressCall2.cpp` in-process counterparts, FileManager `CPanel::TestArchives`,
+GUI `Main2` and exception/exit policy, `ExtractGUI`/`CThreadExtracting`,
+`UpdateGUI`/`CThreadUpdating` and their callbacks/services. Original source module
+boundaries and the existing baselines remain authoritative.
+
+The current `main.cpp` selects the GUI entry by the `7zG` executable name;
+`qtguimain.cpp` owns a separate QApplication workflow, native discovery and
+QtShellArchiveServices without a manager window. It disables quit-on-last-modal
+to preserve sequential source dialogs. CMake creates the GUI alias next to the
+application; packaging creates Unix aliases and signs the macOS bundle. This
+existing entry can be reused; a lighter executable is not a prerequisite.
+
+For test, GUI `Main2` retains source enumeration, native types, callbacks,
+ExtractGUI and exit-code handling. QtShellArchiveServices passes to original
+ExtractGUI with a retained native opener. Its selected read path does not need
+another engine migration. GUI update likewise reaches the existing native
+`updateSourceArchive` overload and original UpdateArchive, rather than the
+separate legacy staged CLI mutation API. These are distinct consumers; do not
+route the GUI back through the legacy process API during extraction into 7zG.
+
+The manager's filesystem Test still calls the typed in-process CompressCall2
+workflow through `runArchiveBatchCommand`; its modal scope holds manager state.
+The source archive-folder branch instead uses CopyTo/testMode over live indices
+and must remain direct. The existing virtual context-menu Test operation is a
+dispatch boundary, but the panel currently calls the global typed overload.
+This is the first consumer seam to connect to the standalone launcher.
+
+The upstream Windows sender owns a UTF-16 selection mapping/event and waits for
+mapping acknowledgement or process exit. That proves source selection transfer
+and startup ownership, not the requested portable versioned channel or a final
+structured result. The current GUI dispatcher returns source process exit codes;
+it has no manager-job ACK/result channel. Its public shell CLI and mapping parser
+must remain compatible. Structured jobs should enter the same source dispatcher,
+not recreate test/extract/update workflows or parse progress-dialog text.
+
+Source-visible work before accepting the first integrated Test scenario:
+versioned local job/ACK/result transport, native child launch/observation whose
+owner does not terminate accepted work when the manager closes, separate launch,
+cancel, warning/error and crash handling, and manager consumer/result binding.
+Original Windows CProcess closes its handle without killing the child; the
+portable adapter must preserve that lifetime while observing exit. A socket
+disconnect alone cannot prove that a child crashed and must not cancel its work.
+No corresponding portable process/result implementation exists in the reviewed
+upstream modules; this is the narrow Qt/OS service adaptation to implement.
+
+Baseline runtime evidence: the current standalone GUI entry builds and its
+existing create/test/extract/excluded-format/broken-input scenarios pass on macOS.
+The regression is extended to run actual 7zG tests against a module-only private
+deployment and an explicitly unavailable console, for healthy and broken ZIP
+inputs with Unicode, spaces and quotes. Existing tests used an available console
+and could not detect a regression that wrapped test operations in 7zz again.
+This establishes the reusable native entry, not manager IPC/lifetime acceptance
+or installed/cross-platform packaging. No runtime/OS implementation changed in
+this review. `unix_gui_entry_tests` and its app dependency built incrementally;
+the expanded `unix_gui_entry` suite passed on macOS (5.61 s), with the prepared
+official runtime on PATH for reference-fixture creation. Private deployments
+cleaned up automatically and the task-owned registry is empty. Runners, slow
+suites and a full gate were not run.

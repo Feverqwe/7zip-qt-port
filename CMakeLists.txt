@@ -4298,6 +4298,10 @@ if(BUILD_TESTING)
             target_link_libraries(unix_gui_entry_tests PRIVATE sevenzip_common Qt6::Test)
             target_compile_definitions(unix_gui_entry_tests PRIVATE
                 "SEVENZIP_NATIVE_GUI=\"$<TARGET_FILE_DIR:sevenzip_desktop>/7zG\"")
+            if(SEVENZIP_CODEC_MODULE)
+                target_compile_definitions(unix_gui_entry_tests PRIVATE
+                    "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+            endif()
             add_dependencies(unix_gui_entry_tests sevenzip_desktop)
             add_test(NAME unix_gui_entry COMMAND unix_gui_entry_tests -silent)
             set_tests_properties(unix_gui_entry PROPERTIES TIMEOUT 180 ENVIRONMENT
