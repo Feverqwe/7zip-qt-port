@@ -106,11 +106,10 @@ void QtArchiveFileResource::AttachReopenService(ArchiveBackend &backend, const Q
             return E_FAIL;
         const QString path = EnginePath;
         auto *openCallback = dynamic_cast<COpenCallbackImp *>(callback);
-        CMyComPtr<IProgress> nativeProgressCallback;
-        if (callback)
-            callback->QueryInterface(IID_IProgress, (void **)&nativeProgressCallback);
-        CNativeOpenProgress nativeProgress(nativeProgressCallback,
-                                           openCallback ? openCallback->Callback : nullptr);
+        // Original COpenCallbackImp does not publish IProgress. Its archive
+        // callback owns ReOpenCallback progress and crypto delegation instead.
+        CNativeOpenProgress nativeProgress(nullptr, openCallback ? openCallback->Callback : nullptr,
+                                           callback);
         std::shared_ptr<ArchiveNativeOpen> nativeOpen;
         COpenOptions options;
         CObjectVector<COpenType> types;

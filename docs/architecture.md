@@ -102,16 +102,18 @@ directly, retaining an immutable deployment image. It does not require a console
 executable; usable external format providers can supply a deployment without
 the main module, with the original loader's warning preserved.
 
-With a loaded native catalog, file navigation uses the retained official reader
-and its item indexes. Standalone listing and archive testing run official
-Open/Extract in a joined Qt worker, with operation-scoped password, pause and
+File navigation acquires native providers before binding an input, retaining
+the official reader and its item indexes. Standalone listing and archive testing
+run official Open/Extract in a joined Qt worker, with operation-scoped password, pause and
 cancel controls. A failed or cancelled listing does not publish a usable
 snapshot. Open warnings and item/block errors remain separate diagnostics.
-Single-entry extraction with a loaded catalog uses the same joined worker and
-an exclusive private output stream. It preserves literal member selection and
+Single-entry extraction uses the same joined worker and an exclusive private
+output stream. It preserves literal member selection and
 typed partial-data results before the source caller handles final publication.
-The CLI transport remains available to consumers without a native catalog and
-to operations that have not yet migrated.
+When no catalog is available, the read worker loads a retained deployment before
+opening the archive. Missing providers produce a native failure. Read operations
+never start the console; the CLI transport remains for destination extraction
+and write operations that have not yet migrated.
 
 Seekable archive items can back nested readers directly. Each reader generation
 retains its codec image, input and parents; independent cursors serialize access

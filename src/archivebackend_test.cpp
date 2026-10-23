@@ -7,15 +7,9 @@
 #include <QFileInfo>
 #include <QPointer>
 
-bool ArchiveBackend::startNativeTest(const QString &archive, const QString &password) {
-    return startNativeRead(Job::Test, archive, password);
-}
-
-bool ArchiveBackend::startNativeRead(Job job, const QString &archive, const QString &password,
+void ArchiveBackend::startNativeRead(Job job, const QString &archive, const QString &password,
                                      const QString &format) {
     const auto catalog = codecCatalog();
-    if (!catalog || catalog->result() != S_OK)
-        return false;
     QtArchiveReadOperation::Work work;
     if (job == Job::List) {
         nativeListing_ = std::make_shared<NativeArchiveListing>();
@@ -34,7 +28,7 @@ bool ArchiveBackend::startNativeRead(Job job, const QString &archive, const QStr
         job == Job::List            ? QtArchiveReadOperation::Kind::List
         : job == Job::SourceExtract ? QtArchiveReadOperation::Kind::ExtractEntry
                                     : QtArchiveReadOperation::Kind::Test,
-        format);
+        format, configuredEngine_);
     if (job == Job::SourceExtract)
         readOperation_->Output = {sourceExtractEntry_, createTemporary_, sourceExtractAltStream_};
     const quint64 generation = ++readGeneration_;
@@ -61,7 +55,6 @@ bool ArchiveBackend::startNativeRead(Job job, const QString &archive, const QStr
     lastResult_ = E_FAIL;
     job_ = job;
     startWorkerPhase(*readOperation_);
-    return true;
 }
 
 void ArchiveBackend::finishReadOperation() {
@@ -82,6 +75,20 @@ void ArchiveBackend::finishReadOperation() {
     job_ = Job::None;
     const QPointer<ArchiveBackend> owner(this);
     QStringList diagnostics;
+    if (result != E_ABORT && operation->catalog() && operation->catalog()->result() == S_OK &&
+        !codecCatalog()) {
+        std::atomic_store(&codecCatalog_, operation->catalog());
+        const QString engine = operation->catalog()->runtimeEngine();
+        if (!engine.isEmpty())
+            process_->setProgram(engine);
+    }
+    if (result != E_ABORT && !operation->CatalogDiagnostic.isEmpty()) {
+        emit outputReceived(operation->CatalogDiagnostic);
+        if (!owner)
+            return;
+        if (operation->catalog()->result() != S_OK)
+            diagnostics.append(operation->CatalogDiagnostic);
+    }
     if (result != E_ABORT) {
         for (const auto &error : operation->OpenErrors) {
             QStringList detail;

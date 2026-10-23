@@ -37,10 +37,6 @@ std::shared_ptr<QProcess> ArchiveBackend::makeProcess(const QString &executable)
         if (process_.get() == transport)
             consumeOutput(transport->readAll());
     });
-    connect(transport, &QProcess::readyReadStandardError, this, [this, transport] {
-        if (process_.get() == transport && job_ == Job::SourceExtract)
-            consumeOutput(transport->readAllStandardError());
-    });
     connect(transport, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
             [this, transport](int code, QProcess::ExitStatus status) {
                 if (process_.get() == transport)
@@ -56,11 +52,9 @@ std::shared_ptr<QProcess> ArchiveBackend::makeProcess(const QString &executable)
                     job_ == Job::Rename || job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd ||
                     job_ == Job::SourceUpdate || job_ == Job::SourcePlanDelete ||
                     job_ == Job::SourcePlanFiles || job_ == Job::SourcePlanDirectories ||
-                    job_ == Job::SourcePlanRename || job_ == Job::SourceMutation ||
-                    job_ == Job::SourceExtract)
+                    job_ == Job::SourcePlanRename || job_ == Job::SourceMutation)
                     QFile::remove(createTemporary_);
                 job_ = Job::None;
-                sourceExtractSelection_.reset();
                 extractQueue_.clear();
                 pendingPassword_.clear();
                 createStages_.clear();
@@ -90,14 +84,11 @@ void ArchiveBackend::start(Job job, const QStringList &arguments, const QString 
     job_ = job;
     lastResult_ = E_FAIL;
     output_.clear();
-    listingOutput_.clear();
     pendingOutput_.clear();
     cancelled_ = false;
     passwordPrompted_ = false;
     process_->setWorkingDirectory(workingDirectory);
-    process_->setProcessChannelMode(job == Job::SourceExtract ? QProcess::SeparateChannels
-                                                              : QProcess::MergedChannels);
-    process_->setStandardOutputFile(job == Job::SourceExtract ? createTemporary_ : QString());
+    process_->setProcessChannelMode(QProcess::MergedChannels);
     QStringList processArguments = arguments;
     processArguments.insert(1, "-sccUTF-8");
     if (IsLargePageSupported()) {
@@ -161,10 +152,6 @@ void ArchiveBackend::consumeLine(const QByteArray &line) {
 }
 
 void ArchiveBackend::consumeOutput(const QByteArray &chunk, bool flush) {
-    // Metadata must retain spaces, blank/multiline values and fragmented UTF-8.
-    // The existing trimmed/redacted progress journal is a separate presentation.
-    if (job_ == Job::List)
-        listingOutput_ += chunk;
     pendingOutput_ += chunk;
     const bool askPassword = !passwordPrompted_ && pendingPassword_.isEmpty() &&
                              (pendingOutput_.contains("Enter password:") ||

@@ -1,4 +1,5 @@
 #pragma once
+#include "7zip/PropID.h"
 #include "Common/MyTypes.h"
 #include "Common/MyWindows.h"
 #include <QTemporaryDir>
@@ -10,7 +11,7 @@ class NativePropertyFailureRuntime {
     QString engine() const;
     QString module() const;
     bool createArchive(const QString &path, int count) const;
-    bool arm(UInt32 index, HRESULT result, UInt32 itemCount = 0);
+    bool arm(UInt32 index, HRESULT result, UInt32 itemCount = 0, PROPID property = kpidAttrib);
     bool forceDisk(bool enabled);
     bool enableWriter();
     bool armWriter(HRESULT result, bool hold = true);

@@ -69,20 +69,6 @@ HRESULT ValidateNativeUpdatePaths(UInt32 count, IArchiveUpdateCallback *callback
 }
 } // namespace
 
-void ArchiveBackend::assignDefaultEntryNames(const QString &format) {
-    CArc arc;
-    arc.Path = archive_.toStdWString().c_str();
-    const auto catalog = codecCatalog();
-    const int index = catalog && catalog->result() == S_OK ? catalog->formatIndex(format) : -1;
-    if (index >= 0)
-        arc.SetDefaultName(catalog->nativeCodecs(), index);
-    else
-        arc.DefaultName = GetDefaultName2(ExtractFileNameFromPath(arc.Path), UString(), UString());
-    for (ArchiveEntry &entry : entries_)
-        if (entry.path.isEmpty() && !entry.directory)
-            entry.path = QString::fromWCharArray(arc.DefaultName.Ptr());
-}
-
 ArchiveBackend *ArchiveBackend::createIndependentBackend(QObject *parent) const {
     auto *backend = new ArchiveBackend(parent, configuredEngine_);
     // A new File Manager window owns its process/operation state. Only the
@@ -104,8 +90,8 @@ HRESULT ArchiveBackend::openNativeArchive(const std::shared_ptr<const ArchiveCod
                                           std::shared_ptr<ArchiveNativeOpen> &reader,
                                           const COpenOptions *options) {
     reader.reset();
-    // Standalone callers and missing-module discovery retain the existing
-    // process-only read fallback. A valid module uses the source opener.
+    // A typed metadata service can supply a folder without a retained reader.
+    // Backend reads themselves acquire native providers in the joined worker.
     if (!catalog || catalog->result() != S_OK)
         return S_OK;
     auto opened = std::make_shared<ArchiveNativeOpen>(catalog);

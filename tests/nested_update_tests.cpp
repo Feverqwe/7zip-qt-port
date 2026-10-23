@@ -3,6 +3,8 @@
 #include "archivebackend.h"
 #include "fixtures/progress_dialog.h"
 #include "fixtures/widget_dialogs.h"
+#include "native_archive_fixture.h"
+#include "native_property_failure_runtime.h"
 #include "qtarchivefoldermanager.h"
 #include "source_extract_fixture.h"
 #include <QApplication>
@@ -14,25 +16,17 @@
 
 using namespace SourceExtractFixture;
 
-class NestedUpdateBackend final : public ArchiveBackend {
-  public:
-    bool FailUpdate = false;
-    bool UpdateStarted = false;
-    void updateSourceFile(const QString &archive, const QString &entry, const QString &root,
-                          const QString &output, const QString &format,
-                          const QString &password) override {
-        UpdateStarted = true;
-        if (FailUpdate)
-            emit finished(false, QStringLiteral("Fixture nested update failed."));
-        else
-            ArchiveBackend::updateSourceFile(archive, entry, root, output, format, password);
-    }
-};
-
 class NestedUpdateTests final : public QObject {
     Q_OBJECT
     WidgetDialogFixture widgetDialogs_;
+    NativePropertyFailureRuntime runtime_;
   private slots:
+    void initTestCase() {
+        QVERIFY(runtime_.prepare(QString::fromUtf8(SEVENZIP_EXTERNAL_RUNTIME),
+                                 QString::fromUtf8(SEVENZIP_EXTERNAL_FORMAT_FIXTURE)));
+        QVERIFY(runtime_.enableWriter());
+    }
+    void init() { QVERIFY(runtime_.clear()); }
     void changedNestedArchiveReturnsThroughNativeUpdate_data() {
         QTest::addColumn<int>("outcome");
         QTest::newRow("success") << 0;
@@ -45,7 +39,8 @@ class NestedUpdateTests final : public QObject {
         QVERIFY(inner.isValid() && outer.isValid() && changed.isValid() && extracted.isValid() &&
                 temporary.isValid());
         const QString innerArchive = makeArchive(inner.path(), "original inner contents");
-        const QString outerArchive = makeArchive(outer.path(), readFile(innerArchive));
+        const QString outerArchive = outer.filePath("outer.fixture7z");
+        QVERIFY(NativeArchiveFixture::Write(outerArchive, {{kName, readFile(innerArchive)}}));
         const QString changedArchive =
             makeArchive(changed.path(), "updated inner contents and size");
         QVERIFY(!innerArchive.isEmpty() && !outerArchive.isEmpty() && !changedArchive.isEmpty());
@@ -54,7 +49,7 @@ class NestedUpdateTests final : public QObject {
         const QString temporaryFile = temporary.filePath(QStringLiteral("密碼 с пробелом.bin"));
         QVERIFY(writeFile(temporaryFile, readFile(innerArchive)));
 
-        NestedUpdateBackend backend;
+        ArchiveBackend backend(nullptr, runtime_.engine());
         CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
         CPanel panel;
         panel.AttachFolderManager(manager, outer.filePath("settings.ini"));
@@ -72,16 +67,16 @@ class NestedUpdateTests final : public QObject {
                  S_OK);
         QCOMPARE(panel.GetParentFolders().Size(), 2u);
         QVERIFY(writeFile(temporaryFile, replacement));
-        backend.FailUpdate = outcome == 1;
-        connect(&backend, &ArchiveBackend::engineStarted, &backend, [&] {
-            if (outcome == 2 && backend.UpdateStarted)
-                backend.cancel();
-        });
+        if (outcome)
+            QVERIFY(runtime_.armWriter(outcome == 1 ? E_FAIL : E_ABORT, outcome == 2));
+        bool cancelled = false;
         int prompts = 0, errors = 0;
         QTimer responder;
         widgetDialogs_.connectResponder(responder, this, [&] {
             if (auto *box = qobject_cast<QMessageBox *>(widgetDialogs_.activeDialog())) {
-                if (box->objectName() == "modifiedArchiveQuestion") {
+                if (box->objectName() == "progressCancelQuestion") {
+                    box->button(QMessageBox::Yes)->click();
+                } else if (box->objectName() == "modifiedArchiveQuestion") {
                     ++prompts;
                     box->button(QMessageBox::Yes)->click();
                 } else {
@@ -94,13 +89,19 @@ class NestedUpdateTests final : public QObject {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
                 if (TestProgressDialog::IsCloseButton(close))
                     close->click();
+                else if (close && outcome == 2 && !cancelled &&
+                         !runtime_.writerReceipts().isEmpty()) {
+                    cancelled = true;
+                    close->click();
+                }
             }
         });
         responder.start(1);
         panel.OpenParentFolder();
         responder.stop();
         QCOMPARE(prompts, 1);
-        QVERIFY(backend.UpdateStarted);
+        QVERIFY(!runtime_.writerReceipts().isEmpty());
+        QCOMPARE(cancelled, outcome == 2);
         QVERIFY(!backend.busy());
         QCOMPARE(panel.GetParentFolders().Size(), 1u);
         QCOMPARE(QDir::fromNativeSeparators(ToQString(GetFolderPath(panel.GetFolder()))),

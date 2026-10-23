@@ -5,47 +5,29 @@
 #include "external_editor_fixture.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
+#include "native_property_failure_runtime.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
 #include <QTreeWidget>
 
 using namespace ExternalEditorFixture;
 
-class ChainBackend final : public ArchiveBackend {
-  public:
-    int Updates = 0;
-    int FailAt = 0;
-    int CancelAt = 0;
-    QStringList UpdatePaths;
-    QStringList OpenPaths;
-    void openFolder(const QString &archive, const QString &format,
-                    const QString &password = {}) override {
-        OpenPaths.append(archive);
-        ArchiveBackend::openFolder(archive, format, password);
-    }
-    ChainBackend() {
-        connect(this, &ArchiveBackend::engineStarted, this, [&] {
-            if (Updates && Updates == CancelAt)
-                cancel();
-        });
-    }
-    void updateSourceFile(const QString &archive, const QString &entry, const QString &root,
-                          const QString &output, const QString &format,
-                          const QString &password) override {
-        ++Updates;
-        UpdatePaths.append(archive);
-        if (Updates == FailAt)
-            emit finished(false, QStringLiteral("Controlled nested chain update failure."));
-        else
-            ArchiveBackend::updateSourceFile(archive, entry, root, output, format, password);
-    }
-};
-
 class NestedEditChainTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
     WidgetDialogFixture widgetDialogs_;
+    NativePropertyFailureRuntime runtime_, readOnlyRuntime_;
   private slots:
-    void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void initTestCase() {
+        for (auto *runtime : {&runtime_, &readOnlyRuntime_})
+            QVERIFY(runtime->prepare(QString::fromUtf8(SEVENZIP_EXTERNAL_RUNTIME),
+                                     QString::fromUtf8(SEVENZIP_EXTERNAL_FORMAT_FIXTURE)));
+        QVERIFY(runtime_.enableWriter());
+    }
+    void init() {
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        QVERIFY(runtime_.clear());
+        QVERIFY(readOnlyRuntime_.clear());
+    }
     void nativeEditorUpdatesParentChain_data() {
         QTest::addColumn<int>("outcome");
         QTest::newRow("success") << 0;
@@ -63,33 +45,46 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         const QString source = fixture.filePath("source");
         QVERIFY(QDir().mkpath(source));
         const QString name = QStringLiteral("изменить файл.txt");
-        const QString innerName = QStringLiteral("внутренний архив.7z");
+        const QString innerName = QStringLiteral("внутренний архив.") +
+                                  (outcome == 1 || outcome == 3 ? "fixture7z" : "7z");
         const QString inner = fixture.filePath(innerName);
-        const QString outer = fixture.filePath("внешний архив.zip");
+        const QString outer = fixture.filePath(
+            outcome == 2 || outcome == 4 ? "внешний архив.fixture7z" : "внешний архив.zip");
         const QString innerPassword = outcome == 7 ? QStringLiteral("inner 密碼 space") : QString();
         const QString outerPassword =
             outcome == 7 ? QStringLiteral("outer password space") : QString();
         QVERIFY(write(QDir(source).filePath(name), "original"));
         QVERIFY(createArchive(source, inner, name, "7z", innerPassword));
-        QVERIFY(createArchive(fixture.path(), outer, innerName, "zip", outerPassword));
+        QVERIFY(createArchive(fixture.path(), outer, innerName,
+                              outcome == 2 || outcome == 4 ? "7z" : "zip", outerPassword));
         const QByteArray originalOuter = read(outer);
         const QString control = fixture.filePath("editor control");
         const auto stop = qScopeGuard([&] { write(control + ".exit", "exit"); });
         configure(control);
-        ChainBackend backend;
-        backend.FailAt = outcome == 1 ? 1 : (outcome == 2 ? 2 : 0);
-        backend.CancelAt = outcome == 3 ? 1 : (outcome == 4 ? 2 : 0);
+        ArchiveBackend backend(nullptr, runtime_.engine());
+        if (outcome >= 1 && outcome <= 4)
+            QVERIFY(runtime_.armWriter(outcome <= 2 ? E_FAIL : E_ABORT, outcome >= 3));
+        bool writerCancelled = false;
         MainWindow window(&backend);
         window.resize(outcome == 6 ? QSize(640, 400) : QSize(980, 620));
         window.show();
         bool editPrompt = false, parentPrompt = false, error = false, promptGeometry = true;
         int passwords = 0;
+        bool cleaningUp = false;
         QString openingMessage;
+        QString editedOutput, nestedSpool;
         QTimer responder;
         widgetDialogs_.connectResponder(responder, this, [&] {
             auto *modal = widgetDialogs_.activeDialog();
-            if (auto *password = dynamic_cast<CPasswordDialog *>(modal)) {
+            if (auto *question = qobject_cast<QMessageBox *>(modal);
+                question && question->objectName() == "progressCancelQuestion") {
+                question->button(QMessageBox::Yes)->click();
+            } else if (auto *password = dynamic_cast<CPasswordDialog *>(modal)) {
                 ++passwords;
+                if (cleaningUp) {
+                    password->reject();
+                    return;
+                }
                 password->findChild<QLineEdit *>("passwordEdit")
                     ->setText(passwords == 1 ? outerPassword : innerPassword);
                 password->accept();
@@ -98,6 +93,10 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
                     editPrompt = true;
                     box->button(QMessageBox::Yes)->click();
                 } else if (box->objectName() == "modifiedArchiveQuestion") {
+                    if (cleaningUp) {
+                        box->button(QMessageBox::No)->click();
+                        return;
+                    }
                     parentPrompt = true;
                     promptGeometry &= UiInspection::writeReport(
                         *box, outcome == 6 ? "nested-parent-prompt-compact"
@@ -117,7 +116,7 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
                         box->button(outcome == 5 ? QMessageBox::No : QMessageBox::Yes)->click();
                 } else {
                     error = true;
-                    openingMessage = box->text();
+                    openingMessage += box->text() + '\n';
                     box->accept();
                 }
             } else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
@@ -131,10 +130,24 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
                         if (widgetDialogs_.activeDialog() == progress)
                             close->click();
                     });
+                } else if (close && outcome >= 3 && outcome <= 4 && !writerCancelled &&
+                           !runtime_.writerReceipts().isEmpty()) {
+                    writerCancelled = true;
+                    close->click();
                 }
             }
         });
         responder.start(1);
+        const auto closeWindow = qScopeGuard([&] {
+            cleaningUp = true;
+            responder.start(1);
+            window.close();
+            for (const auto &path : {editedOutput, nestedSpool})
+                if (!path.isEmpty() && QFile::exists(path)) {
+                    QFile::remove(path);
+                    QDir().rmdir(QFileInfo(path).absolutePath());
+                }
+        });
         window.openArchive(outer);
         QTRY_COMPARE(table(window)->rowCount(), 1);
         QTRY_COMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
@@ -153,6 +166,7 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         action(window, "editFileAction")->trigger();
         QTRY_VERIFY(QFileInfo(control + ".ready").size() > 0);
         const QString temporary = QString::fromUtf8(read(control + ".ready"));
+        editedOutput = temporary;
         QCOMPARE(read(temporary), QByteArray("original"));
         QVERIFY(write(control, "change"));
         QVERIFY(write(control + ".exit", "exit"));
@@ -163,8 +177,12 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
             QTRY_VERIFY(error);
             QCOMPARE(read(temporary), modified);
         } else
-            QTRY_VERIFY(!QFileInfo(temporary).exists());
+            QTRY_VERIFY2(!QFileInfo(temporary).exists(), qPrintable(openingMessage));
         QCOMPARE(read(outer), originalOuter);
+        nestedSpool = ToQString(fs2us(static_cast<FileTable *>(table(window))
+                                          ->sourcePanel->GetParentFolders()
+                                          .Back()
+                                          .FilePath));
         action(window, "upAction")->trigger();
         QTRY_COMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
                      innerName);
@@ -180,7 +198,10 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
                                                                    : "nested-parent-owner-normal"));
         }
         const bool outerFailed = outcome == 2 || outcome == 4;
-        QCOMPARE(backend.Updates, innerFailed || outcome == 5 || outcome == 6 ? 1 : 2);
+        if (outcome >= 1 && outcome <= 4) {
+            QVERIFY(!runtime_.writerReceipts().isEmpty());
+            QCOMPARE(writerCancelled, outcome >= 3);
+        }
         if (outcome == 0 || outcome == 7) {
             const QString updatedInner = fixture.filePath("updated.7z");
             QVERIFY(write(updatedInner, contents(outer, innerName, outerPassword)));
@@ -188,23 +209,18 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
             QCOMPARE(error, false);
         } else
             QCOMPARE(read(outer), originalOuter);
-        if (outerFailed)
-            QVERIFY(error);
-        const QString materializedInner = backend.UpdatePaths.front();
         if (outerFailed) {
-            QVERIFY(QFileInfo(materializedInner).isFile());
-            QCOMPARE(contents(materializedInner, name, innerPassword), modified);
-            QVERIFY(QDir(QFileInfo(materializedInner).absolutePath()).removeRecursively());
-        } else
-            QVERIFY(!QFileInfo(materializedInner).exists());
+            QVERIFY(error);
+            QCOMPARE(contents(nestedSpool, name, innerPassword), modified);
+        }
         if (innerFailed)
             QVERIFY(QDir(QFileInfo(temporary).absolutePath()).removeRecursively());
         responder.stop();
     }
     void readOnlyLevelPreventsChainWrites_data() {
         QTest::addColumn<bool>("parentReadOnly");
-        QTest::newRow("readonly-parent-tar") << true;
-        QTest::newRow("readonly-child-tar") << false;
+        QTest::newRow("reader-only-parent") << true;
+        QTest::newRow("reader-only-child") << false;
     }
     void readOnlyLevelPreventsChainWrites() {
         QFETCH(bool, parentReadOnly);
@@ -212,11 +228,11 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         const QString source = fixture.filePath("source");
         QVERIFY(QDir().mkpath(source));
         const QString name = QStringLiteral("read only файл.txt");
-        const QString innerFormat = parentReadOnly ? "7z" : "tar";
-        const QString outerFormat = parentReadOnly ? "tar" : "zip";
-        const QString innerName = "inner." + innerFormat;
+        const QString innerFormat = "7z";
+        const QString outerFormat = parentReadOnly ? "7z" : "zip";
+        const QString innerName = parentReadOnly ? "inner.7z" : "inner.fixture7z";
         const QString inner = fixture.filePath(innerName);
-        const QString outer = fixture.filePath("outer." + outerFormat);
+        const QString outer = fixture.filePath(parentReadOnly ? "outer.fixture7z" : "outer.zip");
         QVERIFY(write(QDir(source).filePath(name), "original"));
         QVERIFY(createArchive(source, inner, name, innerFormat));
         QVERIFY(createArchive(fixture.path(), outer, innerName, outerFormat));
@@ -224,7 +240,7 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         const QString control = fixture.filePath("editor");
         const auto stop = qScopeGuard([&] { write(control + ".exit", "exit"); });
         configure(control);
-        ChainBackend backend;
+        ArchiveBackend backend(nullptr, readOnlyRuntime_.engine());
         MainWindow window(&backend);
         window.show();
         bool error = false;
@@ -246,8 +262,6 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         action(window, "openInsideAction")->trigger();
         QTRY_COMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
                      name);
-        const QString materialized = backend.OpenPaths.back();
-        QVERIFY(QFileInfo(materialized).isFile());
         table(window)->selectRow(0);
         for (const char *id : {"toolbarAddAction", "deleteAction", "renameAction",
                                "createFolderAction", "moveAction"})
@@ -260,9 +274,7 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(write(control + ".exit", "exit"));
         QTRY_VERIFY(error);
         QCOMPARE(read(temporary), modified);
-        QCOMPARE(backend.Updates, 0);
         action(window, "upAction")->trigger();
-        QVERIFY(!QFileInfo(materialized).exists());
         QCOMPARE(read(outer), originalOuter);
         QVERIFY(QDir(QFileInfo(temporary).absolutePath()).removeRecursively());
         responder.stop();
@@ -282,7 +294,7 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(createArchive(fixture.path(), inner, "file.txt", "7z", "dummy 密碼"));
         QVERIFY(createArchive(fixture.path(), outer, innerName));
         const QByteArray original = read(outer);
-        ChainBackend backend;
+        ArchiveBackend backend;
         MainWindow window(&backend);
         window.show();
         bool prompted = false;
@@ -322,9 +334,6 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         QCOMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
                  innerName);
         QVERIFY(window.findChild<QLineEdit *>("archivePath")->text().endsWith("outer.zip"));
-        QVERIFY(backend.OpenPaths.size() > 1);
-        QVERIFY(!QFileInfo(backend.OpenPaths.back()).exists());
-        QCOMPARE(backend.Updates, 0);
         QCOMPARE(read(outer), original);
         responder.stop();
     }

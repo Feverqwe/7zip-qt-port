@@ -6,38 +6,22 @@
 #include "copydialog.h"
 #include "fixtures/signal_wait_support.h"
 #include "layout_inspection.h"
+#include "native_property_failure_runtime.h"
 #include "qtfilemanagerstartup.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
 
-class ReopenFailureBackend final : public ArchiveBackend {
-  public:
-    QString Target;
-    bool Armed = false, Fail = false, ReopenStarted = false;
-    void openFolder(const QString &archive, const QString &format,
-                    const QString &password) override {
-        if (Armed && QDir::cleanPath(QDir::fromNativeSeparators(archive)) ==
-                         QDir::cleanPath(QDir::fromNativeSeparators(Target))) {
-            ReopenStarted = true;
-            if (Fail) {
-                emit finished(false, QStringLiteral("Controlled rollback reopen failure."));
-                return;
-            }
-        }
-        ArchiveBackend::openFolder(archive, format, password);
-    }
-};
-
 class InterarchiveRecoveryTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
     QString engine_;
-    quint32 version_ = 0;
+    NativePropertyFailureRuntime runtime_;
     QTemporaryDir seeds_;
 
-    void createArchive(const QString &path, const QString &root, const QStringList &names) {
+    void createArchive(const QString &path, const QString &root, const QStringList &names,
+                       const QString &format = "zip") {
         QProcess process;
         process.setWorkingDirectory(root);
-        process.start(engine_, QStringList{"a", "--", path} + names);
+        process.start(engine_, QStringList{"a", "-t" + format, "--", path} + names);
         QVERIFY(process.waitForFinished(10000));
         QCOMPARE(process.exitCode(), 0);
     }
@@ -63,7 +47,7 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
         for (const QString &name : {added, control, marked, focused})
             QVERIFY(SourceExtractFixture::writeFile(seeds_.filePath(name), name.toUtf8()));
         createArchive(seeds_.filePath("source.zip"), seeds_.path(), {added, control});
-        createArchive(seeds_.filePath("target.zip"), seeds_.path(), {marked, focused});
+        createArchive(seeds_.filePath("target.zip"), seeds_.path(), {marked, focused}, "7z");
         for (int count : {1, 301}) {
             const QString home =
                 seeds_.filePath(QStringLiteral("fallback directory %1 文件").arg(count));
@@ -72,11 +56,9 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
                 QVERIFY(SourceExtractFixture::writeFile(QDir(home).filePath(QString::number(i)),
                                                         QByteArray("fallback")));
         }
-#ifdef SEVENZIP_CODEC_MODULE
-        ArchiveCodecCatalog catalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
-        QCOMPARE(catalog.result(), S_OK);
-        version_ = catalog.version();
-#endif
+        QVERIFY(runtime_.prepare(QString::fromUtf8(SEVENZIP_EXTERNAL_RUNTIME),
+                                 QString::fromUtf8(SEVENZIP_EXTERNAL_FORMAT_FIXTURE)));
+        QVERIFY(runtime_.enableWriter());
     }
     void rollbackFailureAndRetry_data() {
         QTest::addColumn<unsigned>("pane");
@@ -132,26 +114,20 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
         const QString home =
             seeds_.filePath(QStringLiteral("fallback directory %1 文件").arg(fallbackCount));
         const QString sourceArchive = fixture.filePath("source archive.zip");
-        const QString targetArchive = fixture.filePath("target archive.zip");
+        const QString targetArchive = fixture.filePath("target archive.fixture7z");
         QVERIFY(QFile::copy(seeds_.filePath("source.zip"), sourceArchive));
         QVERIFY(QFile::copy(seeds_.filePath("target.zip"), targetArchive));
         const QByteArray sourceBefore = SourceExtractFixture::readFile(sourceArchive);
         const QByteArray targetBefore = SourceExtractFixture::readFile(targetArchive);
-        ReopenFailureBackend backend;
-        backend.Target = targetArchive;
-        backend.Fail = route.endsWith("reopen-failure");
-#ifdef SEVENZIP_CODEC_MODULE
-        if (route.startsWith("native-"))
-            QCOMPARE(backend.loadCodecCatalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), version_),
-                     S_OK);
-#endif
-        bool cancelled = false;
-        connect(&backend, &ArchiveBackend::engineStarted, &backend, [&] {
-            if (route.endsWith("reopen-cancel") && backend.ReopenStarted && !cancelled) {
-                cancelled = true;
-                backend.cancel();
-            }
-        });
+        QVERIFY(runtime_.clear());
+        const auto clearFault = qScopeGuard([&] { runtime_.clear(); });
+        ArchiveBackend backend(nullptr, runtime_.engine());
+        if (route.startsWith("native-")) {
+            QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
+            QVERIFY(backend.discoverCodecCatalog(runtime_.module()));
+            QTRY_COMPARE(ready.size(), 1);
+            QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
+        }
         CWindowInfo windowInfo{};
         windowInfo.rect.right = 980;
         windowInfo.rect.bottom = 620;
@@ -250,13 +226,14 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
                         // Quiesce this private native fixture before replacing
                         // its read-shared Windows file with a sentinel directory.
                         auto *folder = dynamic_cast<CAgentFolder *>(destination.GetFolder());
-                        const bool released =
-                            route != "native-restore" || (folder && folder->CloseArchive() == S_OK);
+                        const bool released = folder && folder->CloseArchive() == S_OK;
                         replaced = released && QFile::remove(targetArchive) &&
                                    QDir().mkdir(targetArchive) &&
                                    SourceExtractFixture::writeFile(sentinel, QByteArray("keep"));
-                    } else
-                        backend.Armed = true;
+                    } else {
+                        QVERIFY(runtime_.arm(0, route.endsWith("reopen-cancel") ? E_ABORT : E_FAIL,
+                                             2, kpidPath));
+                    }
                     box->button(QMessageBox::No)->click();
                 } else {
                     errors << box->text();
@@ -274,6 +251,8 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
         QVERIFY(refused);
         QVERIFY(committed);
         QCOMPARE(replaced, restoreFailure);
+        const QByteArray receipts = runtime_.receipts();
+        const bool cancelled = receipts.contains(QByteArray::number(UInt32(E_ABORT)));
         QCOMPARE(cancelled, route.endsWith("reopen-cancel"));
         QVERIFY(SignalWaitSupport::waitForCount(*target->model(), fallbackCount));
         QCOMPARE(target->rowCount(), fallbackCount);
@@ -284,7 +263,7 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
             QVERIFY(errors.last().contains(russian ? QStringLiteral("откатить") : "roll back"));
             QCOMPARE(SourceExtractFixture::readFile(sentinel), QByteArray("keep"));
         } else {
-            QVERIFY(backend.ReopenStarted);
+            QVERIFY(!receipts.isEmpty());
             QCOMPARE(SourceExtractFixture::readFile(targetArchive), targetBefore);
         }
         QVERIFY(destination.GetFolder() != targetProvider.Interface());
@@ -298,7 +277,7 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
         QVERIFY(sourceUi->isAncestorOf(window.focusWidget()));
         for (const QString &phase : {QString("failed"), QString("recovered")}) {
             if (phase == "recovered") {
-                backend.Armed = false;
+                QVERIFY(runtime_.clear());
                 if (restoreFailure) {
                     QVERIFY(QDir().rename(targetArchive, fixture.filePath("preserved directory")));
                     QVERIFY(SourceExtractFixture::writeFile(targetArchive, targetBefore));

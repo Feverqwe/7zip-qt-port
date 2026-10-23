@@ -64,6 +64,7 @@ From the repository root:
 
 ```sh
 ./scripts/doctor.sh
+python3 scripts/prepare-runtime.py
 ./scripts/check.sh
 ```
 
@@ -83,7 +84,9 @@ To build a Release package without test executables:
 On macOS, the resulting application is `dist/Sevenzip.app`.
 Intermediate build files remain in `build/`.
 
-Put `7zz` on `PATH`; standard Homebrew locations are also checked on macOS.
+Put `7zz` on `PATH` for reference tools and fixtures. The application needs the
+prepared official native runtime for reading archives; standalone `7zz` alone
+is insufficient.
 See the [development guide](docs/development.md) for platform dependencies,
 codec and self-extracting runtime preparation, engine selection and focused
 build commands. Local builds and tests do not require access to the maintainer's

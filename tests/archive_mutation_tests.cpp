@@ -1,4 +1,5 @@
 #include "archive_backend_test_support.h"
+#include "native_archive_fixture.h"
 #include <memory>
 
 class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport {
@@ -13,25 +14,31 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
     void destroyedActiveBackend() {
         QFETCH(bool, creating);
         QTemporaryDir temp;
-        QVERIFY(temp.isValid());
         const QString source = temp.filePath(QStringLiteral("имя с пробелом.txt"));
         writeFile(source, "original");
         const QString archive = temp.filePath("unfinished.7z");
-        qputenv("SEVENZIP_TEST_HELPER", creating ? "createpartial" : "cancel");
+        if (!creating)
+            QVERIFY(NativeArchiveFixture::Write(archive, {{"entry.txt"}}, "7z", "password"));
+        qputenv("SEVENZIP_TEST_HELPER", "createpartial");
+        const auto restore = qScopeGuard([] { qunsetenv("SEVENZIP_TEST_HELPER"); });
         auto backend =
-            std::make_unique<ArchiveBackend>(nullptr, QCoreApplication::applicationFilePath());
+            creating
+                ? std::make_unique<ArchiveBackend>(nullptr, QCoreApplication::applicationFilePath())
+                : std::make_unique<ArchiveBackend>();
         QSignalSpy output(backend.get(), &ArchiveBackend::outputReceived);
+        QSignalSpy passwords(backend.get(), &ArchiveBackend::passwordRequired);
         QSignalSpy finished(backend.get(), &ArchiveBackend::finished);
-        if (creating)
+        if (creating) {
             backend->create(archive, {source});
-        else
+            QTRY_VERIFY(!output.isEmpty());
+        } else {
             backend->list(archive);
-        QTRY_VERIFY_WITH_TIMEOUT(!output.isEmpty(), 3000);
-        qunsetenv("SEVENZIP_TEST_HELPER");
+            QTRY_COMPARE(passwords.size(), 1);
+        }
         QVERIFY(backend->busy());
         backend.reset();
         QVERIFY(finished.isEmpty());
-        QVERIFY(!QFileInfo::exists(archive));
+        QCOMPARE(QFileInfo::exists(archive), !creating);
         QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
         QFile original(source);
         QVERIFY(original.open(QIODevice::ReadOnly));
@@ -123,12 +130,10 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
         QVERIFY(edit.isValid());
         writeFile(edit.filePath("original.txt"), "changed");
 
-        qputenv("SEVENZIP_TEST_HELPER", "listing");
-        qputenv("SEVENZIP_TEST_LISTING", "Path = original.txt\nSize = 8\n\n");
         ArchiveBackend helper(nullptr, QCoreApplication::applicationFilePath());
+        QCOMPARE(NativeArchiveFixture::Attach(helper), S_OK);
         helper.list(archive);
         await(helper, true);
-        qunsetenv("SEVENZIP_TEST_LISTING");
         qputenv("SEVENZIP_TEST_HELPER", "createpartial");
         QSignalSpy output(&helper, &ArchiveBackend::outputReceived);
         QSignalSpy result(&helper, &ArchiveBackend::finished);
@@ -287,9 +292,8 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
 
         const QString vanishing = temp.filePath("vanishing-7zz");
         QVERIFY(QFile::copy(QCoreApplication::applicationFilePath(), vanishing));
-        qputenv("SEVENZIP_TEST_HELPER", "listing");
-        qputenv("SEVENZIP_TEST_LISTING", "Path = original.txt\nSize = 8\n\n");
         ArchiveBackend missing(nullptr, vanishing);
+        QCOMPARE(NativeArchiveFixture::Attach(missing), S_OK);
         missing.list(archive);
         await(missing, true);
         QVERIFY(QFile::remove(vanishing));
@@ -300,9 +304,9 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
         QVERIFY(!missing.busy());
 
         ArchiveBackend helper(nullptr, QCoreApplication::applicationFilePath());
+        QCOMPARE(NativeArchiveFixture::Attach(helper), S_OK);
         helper.list(archive);
         await(helper, true);
-        qunsetenv("SEVENZIP_TEST_LISTING");
         qputenv("SEVENZIP_TEST_HELPER", "createpartial");
         QSignalSpy output(&helper, &ArchiveBackend::outputReceived);
         QSignalSpy result(&helper, &ArchiveBackend::finished);
@@ -447,9 +451,8 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
 
         const QString vanishingProgram = temp.filePath("vanishing-7zz");
         QVERIFY(QFile::copy(QCoreApplication::applicationFilePath(), vanishingProgram));
-        qputenv("SEVENZIP_TEST_HELPER", "listing");
-        qputenv("SEVENZIP_TEST_LISTING", "Path = original.txt\nSize = 8\n\n");
         ArchiveBackend launchFailure(nullptr, vanishingProgram);
+        QCOMPARE(NativeArchiveFixture::Attach(launchFailure), S_OK);
         launchFailure.list(archive);
         await(launchFailure, true);
         QVERIFY(QFile::remove(vanishingProgram));
@@ -460,9 +463,9 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
         QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
 
         ArchiveBackend helper(nullptr, QCoreApplication::applicationFilePath());
+        QCOMPARE(NativeArchiveFixture::Attach(helper), S_OK);
         helper.list(archive);
         await(helper, true);
-        qunsetenv("SEVENZIP_TEST_LISTING");
         qputenv("SEVENZIP_TEST_HELPER", "createfail");
         helper.add(archive, {next});
         await(helper, false);
@@ -539,45 +542,41 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
         QSignalSpy progress(&backend, &ArchiveBackend::progress);
         QSignalSpy output(&backend, &ArchiveBackend::outputReceived);
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.list("fake.7z");
+        QTemporaryDir fixture;
+        const QString source = fixture.filePath("source.txt");
+        writeFile(source, "payload");
+        backend.create(fixture.filePath("fake.7z"), {source});
         QVERIFY(finished.wait(30000));
         qunsetenv("SEVENZIP_TEST_HELPER");
         QVERIFY(!finished.takeFirst().at(0).toBool());
         QVERIFY(!backend.busy());
-        QCOMPARE(progress.size(), 1);
-        QCOMPARE(progress.at(0).at(0).toInt(), 42);
-        QCOMPARE(progress.at(0).at(1).toString(), QStringLiteral("папка/имя с пробелом.txt"));
+        bool observed = false;
+        for (const auto &sample : progress)
+            if (sample[0].toInt() == 42 &&
+                sample[1].toString() == QStringLiteral("папка/имя с пробелом.txt"))
+                observed = true;
+        QVERIFY(observed);
         QCOMPARE(output.size(), 2);
         QCOMPARE(output.at(1).at(0).toString(), QStringLiteral("ERROR: incomplete tail"));
     }
     void largeListingStaysResponsive() {
-        qputenv("SEVENZIP_TEST_HELPER", "large");
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QTemporaryDir fixture;
+        const QString archive = fixture.filePath("large.7z");
+        QList<NativeArchiveFixture::Item> items;
+        for (int i = 0; i < 3000; ++i)
+            items.append({QString("file%1.txt").arg(i)});
+        QVERIFY(NativeArchiveFixture::Write(archive, items));
+        ArchiveBackend backend;
         QSignalSpy entries(&backend, &ArchiveBackend::entriesReady);
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         bool timerRan = false;
-        backend.list("large.7z");
-        QTimer::singleShot(10, &backend, [&] { timerRan = true; });
+        backend.list(archive);
+        QTimer::singleShot(0, &backend, [&] { timerRan = true; });
         QVERIFY(finished.wait(30000));
-        qunsetenv("SEVENZIP_TEST_HELPER");
         QVERIFY(timerRan);
         QVERIFY(finished.takeFirst().at(0).toBool());
         QCOMPARE(entries.size(), 1);
         QCOMPARE(qvariant_cast<QList<ArchiveEntry>>(entries.at(0).at(0)).size(), 3000);
-    }
-    void cancelledPartialOutput() {
-        qputenv("SEVENZIP_TEST_HELPER", "cancel");
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
-        QSignalSpy output(&backend, &ArchiveBackend::outputReceived);
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.list("cancel.7z");
-        QTRY_VERIFY_WITH_TIMEOUT(!output.isEmpty(), 3000);
-        backend.cancel();
-        QVERIFY(finished.wait(30000));
-        qunsetenv("SEVENZIP_TEST_HELPER");
-        QVERIFY(!finished.takeFirst().at(0).toBool());
-        QVERIFY(!backend.busy());
-        QVERIFY(output.at(0).at(0).toString().contains("started"));
     }
 };
 

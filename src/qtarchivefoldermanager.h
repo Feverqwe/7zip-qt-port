@@ -1,4 +1,4 @@
-// Typed 7zz transport for the source FileFolderPluginOpen worker.
+// Native and typed metadata services for the source FileFolderPluginOpen worker.
 #pragma once
 #include "7zip/UI/FileManager/IFolder.h"
 #include "Common/MyCom.h"

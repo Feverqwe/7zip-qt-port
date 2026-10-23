@@ -21,6 +21,10 @@ class NativeArchiveTestTests final : public ArchiveReaderFixture {
 
   private slots:
     void initTestCase() { InitializeRuntime(); }
+    void init() {
+        manager_.Release();
+        backend_ = std::make_unique<ArchiveBackend>(nullptr, engine_);
+    }
     void successfulTestUsesOfficialHandler_data() {
         QTest::addColumn<QString>("format");
         QTest::addColumn<bool>("listed");

@@ -3,16 +3,15 @@
 
 class NativeSourceExtractTests final : public ArchiveReaderFixture {
     Q_OBJECT
+    QTemporaryDir deployment_;
     const QString name_ = QStringLiteral("данные 空 with spaces.txt");
     const QByteArray payload_ =
         (QByteArray::fromHex("62696e61727900") + "Enter password:\n50% secret\xff").repeated(100);
 
     std::unique_ptr<ArchiveBackend> Service() {
 #ifdef SEVENZIP_CODEC_MODULE
-        auto service = std::make_unique<ArchiveBackend>(nullptr, "missing-cli-engine");
-        if (service->loadCodecCatalog(QStringLiteral(SEVENZIP_CODEC_MODULE),
-                                      backend_->codecCatalog()->version()) != S_OK)
-            return {};
+        auto service =
+            std::make_unique<ArchiveBackend>(nullptr, deployment_.filePath("missing console"));
         return service;
 #else
         return {};
@@ -33,7 +32,14 @@ class NativeSourceExtractTests final : public ArchiveReaderFixture {
     }
 
   private slots:
-    void initTestCase() { InitializeRuntime(); }
+    void initTestCase() {
+        InitializeRuntime();
+#ifdef SEVENZIP_CODEC_MODULE
+        QVERIFY(deployment_.isValid());
+        const QString module = QStringLiteral(SEVENZIP_CODEC_MODULE);
+        QVERIFY(QFile::copy(module, deployment_.filePath(QFileInfo(module).fileName())));
+#endif
+    }
     void selectedBytesWithoutCli_data() {
         QTest::addColumn<QString>("format");
         for (const QString &format : {"zip", "7z", "gzip", "bzip2", "xz"})
@@ -70,11 +76,15 @@ class NativeSourceExtractTests final : public ArchiveReaderFixture {
     }
     void checksumFailureRetainsUnverifiedBytes_data() {
         QTest::addColumn<QString>("format");
-        QTest::newRow("zip") << QString("zip");
-        QTest::newRow("7z") << QString("7z");
+        QTest::addColumn<bool>("explicitType");
+        for (const QString &format : {"zip", "7z"})
+            for (bool explicitType : {false, true})
+                QTest::newRow(qPrintable(format + (explicitType ? " explicit" : " automatic")))
+                    << format << explicitType;
     }
     void checksumFailureRetainsUnverifiedBytes() {
         QFETCH(QString, format);
+        QFETCH(bool, explicitType);
         QTemporaryDir directory;
         const QString archive = Archive(directory, format);
         QVERIFY(!archive.isEmpty());
@@ -87,7 +97,7 @@ class NativeSourceExtractTests final : public ArchiveReaderFixture {
         QVERIFY(service);
         QSignalSpy done(service.get(), &ArchiveBackend::finished);
         const QString output = directory.filePath("unverified.bin");
-        service->extractSourceEntry(archive, name_, output, format, {});
+        service->extractSourceEntry(archive, name_, output, explicitType ? format : QString(), {});
         QTRY_COMPARE(done.size(), 1);
         QVERIFY(!done[0][0].toBool());
         QCOMPARE(service->lastResult(), S_FALSE);

@@ -34,6 +34,7 @@
 
 class ControlledBackend : public ArchiveBackend {
   public:
+    bool discoverCodecCatalog(const QString & = {}) override { return false; }
     ControlledBackend() : ArchiveBackend(nullptr, "/missing/7zz") {
         connect(this, &ArchiveBackend::infoReady, this,
                 [this](const ArchiveInfo &) { listedInfoReported_ = true; });

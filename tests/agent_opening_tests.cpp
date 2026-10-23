@@ -4,6 +4,7 @@
 #include "Windows/PropVariant.h"
 #include "archive_backend_test_support.h"
 #include "archivecodeccatalog.h"
+#include "native_archive_fixture.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivefoldermanager.h"
 #include <QScopeGuard>
@@ -130,6 +131,72 @@ class AgentOpeningTests final : public QObject, protected ArchiveBackendTestSupp
     }
 
   private slots:
+    void readCancellationJoinsInitialCodecLoading_data() {
+        QTest::addColumn<bool>("destroy");
+        QTest::newRow("cancel and retry") << false;
+        QTest::newRow("destroy") << true;
+    }
+    void readCancellationJoinsInitialCodecLoading() {
+        QFETCH(bool, destroy);
+        QTemporaryDir deployment;
+        QTemporaryDir files;
+        const auto catalog = NativeArchiveFixture::Catalog();
+        QCOMPARE(catalog->result(), S_OK);
+        const QString original =
+            QString::fromWCharArray(fs2us(catalog->nativeCodecs().Libs[0].Path));
+        const QString module = deployment.filePath(QFileInfo(original).fileName());
+        QVERIFY(QFile::copy(QString::fromUtf8(SLOW_CODEC_FIXTURE), module));
+        const QString entered = files.filePath(QStringLiteral("начало 空"));
+        const QString finished = files.filePath(QStringLiteral("конец 空"));
+        const QByteArray oldDelay = qgetenv("SEVENZIP_SLOW_CODEC_DELAY");
+        const QByteArray oldEntered = qgetenv("SEVENZIP_SLOW_CODEC_ENTERED");
+        const QByteArray oldFinished = qgetenv("SEVENZIP_SLOW_CODEC_FINISHED");
+        const auto restore = qScopeGuard([&] {
+            for (const auto &pair : {qMakePair("SEVENZIP_SLOW_CODEC_DELAY", oldDelay),
+                                     qMakePair("SEVENZIP_SLOW_CODEC_ENTERED", oldEntered),
+                                     qMakePair("SEVENZIP_SLOW_CODEC_FINISHED", oldFinished)}) {
+                if (pair.second.isNull())
+                    qunsetenv(pair.first);
+                else
+                    qputenv(pair.first, pair.second);
+            }
+        });
+        qputenv("SEVENZIP_SLOW_CODEC_DELAY", "600");
+        qputenv("SEVENZIP_SLOW_CODEC_ENTERED", entered.toUtf8().toBase64());
+        qputenv("SEVENZIP_SLOW_CODEC_FINISHED", finished.toUtf8().toBase64());
+        const QString archive = files.filePath("input.zip");
+        QVERIFY(NativeArchiveFixture::Write(archive, {{QStringLiteral("имя 空.txt")}}, "zip"));
+        auto backend =
+            std::make_unique<ArchiveBackend>(nullptr, deployment.filePath("absent console"));
+        QSignalSpy done(backend.get(), &ArchiveBackend::finished);
+        QSignalSpy entries(backend.get(), &ArchiveBackend::entriesReady);
+        backend->list(archive);
+        QTRY_VERIFY(QFileInfo::exists(entered));
+        QVERIFY(!QFileInfo::exists(finished));
+        QVERIFY(backend->busy());
+        if (destroy) {
+            backend.reset();
+            QVERIFY(done.isEmpty());
+        } else {
+            backend->cancelAndWait();
+            QCOMPARE(done.size(), 1);
+            QCOMPARE(backend->lastResult(), E_ABORT);
+            QVERIFY(entries.isEmpty());
+            QVERIFY(!backend->codecCatalog());
+        }
+        QVERIFY(QFileInfo::exists(finished));
+        if (!destroy) {
+            QVERIFY(QFile::remove(module));
+            QVERIFY(QFile::copy(original, module));
+            done.clear();
+            backend->list(archive);
+            QTRY_COMPARE(done.size(), 1);
+            QVERIFY2(done[0][0].toBool(), qPrintable(done[0][1].toString()));
+            QCOMPARE(entries.size(), 1);
+            QCOMPARE(qvariant_cast<QList<ArchiveEntry>>(entries[0][0]).first().path,
+                     QStringLiteral("имя 空.txt"));
+        }
+    }
     void initTestCase() {
         engine_ = QStandardPaths::findExecutable("7zz");
         QVERIFY2(!engine_.isEmpty(), "Official fixture engine is required");
@@ -157,10 +224,17 @@ class AgentOpeningTests final : public QObject, protected ArchiveBackendTestSupp
         });
         COpeningBackend backend(engine_);
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
-        const QString slow =
-            temporary.filePath(QFileInfo(QString::fromUtf8(SLOW_CODEC_FIXTURE)).fileName());
+        const auto catalog = NativeArchiveFixture::Catalog();
+        QCOMPARE(catalog->result(), S_OK);
+        const QString original =
+            QString::fromWCharArray(fs2us(catalog->nativeCodecs().Libs[0].Path));
+        const QString module = temporary.filePath(QFileInfo(original).fileName());
+        QVERIFY(QFile::copy(original, module));
+        QVERIFY(QDir(temporary.path()).mkdir("Codecs"));
+        const QString slow = temporary.filePath(
+            "Codecs/" + QFileInfo(QString::fromUtf8(SLOW_CODEC_FIXTURE)).fileName());
         QVERIFY(QFile::copy(QString::fromUtf8(SLOW_CODEC_FIXTURE), slow));
-        QVERIFY(backend.discoverCodecCatalog(slow));
+        QVERIFY(backend.discoverCodecCatalog(module));
         CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
         CMyComPtr<IFolderFolder> folder;
         auto *observer = new CBindingProgress;
@@ -180,7 +254,7 @@ class AgentOpeningTests final : public QObject, protected ArchiveBackendTestSupp
         UInt32 count = 0;
         QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
         QCOMPARE(count, UInt32(1));
-        QCOMPARE(backend.Listings, 1u);
+        QCOMPARE(backend.Listings, 0u);
     }
     void proxyProgressAndCancellation_data() {
         QTest::addColumn<bool>("cancel");
@@ -202,7 +276,7 @@ class AgentOpeningTests final : public QObject, protected ArchiveBackendTestSupp
         progressSpec->CancelBinding = cancel;
         CMyComPtr<IFolderFolder> folder;
         QCOMPARE(open(backend, manager, path, nullptr, &folder, progress), cancel ? E_ABORT : S_OK);
-        QCOMPARE(backend.Listings, 1u);
+        QCOMPARE(backend.Listings, 0u);
         QVERIFY(progressSpec->BindingTotals.load() > 0);
         QCOMPARE(bool(folder), !cancel);
         if (!cancel) {

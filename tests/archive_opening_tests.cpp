@@ -10,6 +10,7 @@
 #include "archive_backend_test_support.h"
 #include "archivecodeccatalog.h"
 #include "archiveinputlayer.h"
+#include "native_archive_fixture.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivefoldermanager.h"
 #include "qtarchiveproperties.h"
@@ -59,15 +60,6 @@ class CReadBudgetInput final : public IInStream, public CMyUnknownImp {
         if (YieldOnSeek)
             std::this_thread::yield();
         return result;
-    }
-};
-class CRecordingBackend final : public ArchiveBackend {
-  public:
-    explicit CRecordingBackend(const QString &engine) : ArchiveBackend(nullptr, engine) {}
-    QString OpenedPath;
-    void openFolder(const QString &path, const QString &format, const QString &password) override {
-        OpenedPath = path;
-        ArchiveBackend::openFolder(path, format, password);
     }
 };
 } // namespace
@@ -252,7 +244,6 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
                                               UString("zip"), nullptr),
                  HRESULT(S_OK));
         QVERIFY(opening.Folder);
-        QCOMPARE(backend.lastResult(), HRESULT(S_OK));
         QCOMPARE(opening.Folder->LoadItems(), HRESULT(S_OK));
         UInt32 count = 0;
         QCOMPARE(opening.Folder->GetNumberOfItems(&count), HRESULT(S_OK));
@@ -412,7 +403,7 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
         first.Release();
         QVERIFY(released);
     }
-    void memoryStreamSpoolLifetime() {
+    void memoryStreamRetainsBoundFolderAfterCallerRelease() {
         const QString engine = QStandardPaths::findExecutable("7zz");
         QVERIFY2(!engine.isEmpty(), "official 7zz fixture engine is required");
         QTemporaryDir temp;
@@ -433,24 +424,25 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
         buffer->Buf.CopyFrom(reinterpret_cast<const Byte *>(bytes.constData()),
                              size_t(bytes.size()));
         buffer->Init();
-        CRecordingBackend backend(engine);
+        ArchiveBackend backend(nullptr, engine);
         CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
         CFfpOpen opening(manager);
         QCOMPARE(opening.OpenFileFolderPlugin(stream, FString("virtual-name.zip"), UString("zip"),
                                               nullptr),
                  HRESULT(S_OK));
-        QVERIFY(!backend.OpenedPath.isEmpty());
-        QVERIFY(backend.OpenedPath != archive);
-        QVERIFY(QFileInfo::exists(backend.OpenedPath));
         CMyComPtr<IFolderFolder> child;
         QCOMPARE(opening.Folder->BindToFolder(L"inside", &child), HRESULT(S_OK));
         QVERIFY(child);
         opening.Folder.Release();
         stream.Release();
-        // Every bound source folder retains CAgent and its private spool.
-        QVERIFY(QFileInfo::exists(backend.OpenedPath));
+        QCOMPARE(child->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(child->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(1));
+        NWindows::NCOM::CPropVariant name;
+        QCOMPARE(child->GetProperty(0, kpidName, &name), S_OK);
+        QCOMPARE(QString::fromWCharArray(name.bstrVal), QString("file.txt"));
         child.Release();
-        QVERIFY(!QFileInfo::exists(backend.OpenedPath));
         const QByteArray invalid("not an archive");
         buffer = new CBufferInStream;
         stream = buffer;
@@ -461,7 +453,6 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
         QCOMPARE(bad.OpenFileFolderPlugin(stream, FString("bad.zip"), UString(), nullptr),
                  HRESULT(S_FALSE));
         QVERIFY(!bad.Folder);
-        QVERIFY(!QFileInfo::exists(backend.OpenedPath));
         QVERIFY(!backend.busy());
     }
     void passwordCallback() {
@@ -470,9 +461,10 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         const QString archive = temp.filePath("fixture.7z");
-        writeFile(archive, "fixture transport input");
-        qputenv("SEVENZIP_TEST_HELPER", empty ? "open-password-empty" : "open-password");
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QVERIFY(NativeArchiveFixture::Write(
+            archive, {{QStringLiteral("папка/имя с пробелом.txt"), "abc"}}, "7z",
+            empty ? QStringLiteral("") : QStringLiteral("fixture пароль")));
+        ArchiveBackend backend;
         CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
         CFfpOpen opening(manager);
         bool observed = false;
@@ -494,7 +486,6 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
         QCOMPARE(opening.OpenFileFolderPlugin(nullptr, us2fs(archive.toStdWString().c_str()),
                                               UString(), nullptr),
                  HRESULT(accept ? S_OK : E_ABORT));
-        qunsetenv("SEVENZIP_TEST_HELPER");
         QVERIFY(observed);
         QCOMPARE(bool(opening.Folder), accept);
         if (accept) {
@@ -503,43 +494,6 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
                      empty ? QString() : QStringLiteral("fixture пароль"));
         }
         QVERIFY(!backend.busy());
-    }
-    void cancelWaitsForOwnedEngine() {
-        QTemporaryDir temp;
-        QVERIFY(temp.isValid());
-        const QString archive = temp.filePath("fixture.7z");
-        writeFile(archive, "fixture transport input");
-        qputenv("SEVENZIP_TEST_HELPER", "wait");
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
-        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
-        CFfpOpen opening(manager);
-        bool requested = false, confirmed = false;
-        QTimer responder;
-        responder.setInterval(5);
-        connect(&responder, &QTimer::timeout, this, [&] {
-            auto *dialog = dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget());
-            if (dialog && backend.busy() && !requested) {
-                requested = true;
-                QTimer::singleShot(5, this, [&] {
-                    auto *question = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
-                    if (question) {
-                        confirmed = true;
-                        question->button(QMessageBox::Yes)->click();
-                    }
-                });
-                dialog->findChild<QPushButton *>("IDCANCEL")->click();
-            }
-        });
-        responder.start();
-        QCOMPARE(opening.OpenFileFolderPlugin(nullptr, us2fs(archive.toStdWString().c_str()),
-                                              UString(), nullptr),
-                 HRESULT(E_ABORT));
-        qunsetenv("SEVENZIP_TEST_HELPER");
-        QVERIFY(requested);
-        QVERIFY(confirmed);
-        QVERIFY(!opening.Folder);
-        QVERIFY(!backend.busy());
-        QCOMPARE(backend.lastResult(), HRESULT(E_ABORT));
     }
     void failedStartIsNotNotArchive() {
         QTemporaryDir temp;
@@ -557,28 +511,5 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
     }
 };
 
-int main(int argc, char **argv) {
-    const QByteArray mode = qgetenv("SEVENZIP_TEST_HELPER");
-    if (mode.startsWith("open-password")) {
-        QCoreApplication app(argc, argv);
-        writeOutput("Enter password:");
-        char input[256];
-        if (!std::fgets(input, sizeof(input), stdin))
-            return 2;
-        const QByteArray expected = mode == "open-password-empty"
-                                        ? QByteArray()
-                                        : QStringLiteral("fixture пароль").toUtf8();
-        if (QByteArray(input).trimmed() != expected)
-            return 2;
-        writeOutput("Type = 7z\n----------\nPath = папка/имя с пробелом.txt\nSize = 3\n\n");
-        return 0;
-    }
-    if (!mode.isEmpty()) {
-        QObject unused;
-        return backendTestMain(argc, argv, &unused);
-    }
-    QApplication app(argc, argv);
-    ArchiveOpeningTests tests;
-    return QTest::qExec(&tests, argc, argv);
-}
+QTEST_MAIN(ArchiveOpeningTests)
 #include "archive_opening_tests.moc"

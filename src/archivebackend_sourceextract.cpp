@@ -2,7 +2,6 @@
 #include "archivereadpolicy.h"
 #include "qtarchivereadoperation.h"
 #include "qtlanguageservices.h"
-#include "qtownedtempdir.h"
 #include <QFile>
 #include <QFileInfo>
 
@@ -22,43 +21,15 @@ void ArchiveBackend::finishSourceExtractOperation(const QtArchiveReadOperation &
                                   : flags & kpv_ErrorFlags_DataAfterEnd ? kDataAfterEnd
                                                                         : kHeadersError;
     }
-    const bool partial = (lastResult_ == E_FAIL || lastResult_ == S_FALSE) &&
-                         sourceExtractRecovery_ && operation.OutputCreated &&
-                         operation.OutputClosed && sourceExtractOperation_ > kOK;
+    const bool recovery = sourceExtractRecovery_ || IsArchiveRecoveryFormat(operation.OpenedFormat);
+    const bool partial = (lastResult_ == E_FAIL || lastResult_ == S_FALSE) && recovery &&
+                         operation.OutputCreated && operation.OutputClosed &&
+                         sourceExtractOperation_ > kOK;
     if (partial)
         lastResult_ = S_FALSE;
     if (operation.OutputCreated && lastResult_ != S_OK &&
         (!partial || QFileInfo(createTemporary_).size() <= 0))
         QFile::remove(createTemporary_);
-}
-
-Int32 ArchiveBackend::sourceExtractErrorOperation() const {
-    using namespace NArchive::NExtract::NOperationResult;
-    Int32 result = output_.contains("Open Errors:") ? kHeadersError : kDataError;
-    // Reverse the official Console/ExtractCallbackConsole error labels.
-    const struct {
-        const char *text;
-        Int32 result;
-    } errors[] = {{"CRC Failed", kCRCError},
-                  {"Data Error", kDataError},
-                  {"Unsupported Method", kUnsupportedMethod},
-                  {"Unavailable data", kUnavailable},
-                  {"Unexpected end of data", kUnexpectedEnd},
-                  {"There are some data after the end of the payload data", kDataAfterEnd},
-                  {"Is not archive", kIsNotArc},
-                  {"Headers Error", kHeadersError},
-                  {"Wrong password", kWrongPassword}};
-    for (QString line : output_.split('\n')) {
-        // Console progress can share the physical line with this error.
-        const auto errorStart = line.indexOf("ERROR: ");
-        if (errorStart < 0)
-            continue;
-        line = line.mid(errorStart);
-        for (const auto &error : errors)
-            if (line.startsWith(QStringLiteral("ERROR: ") + error.text))
-                result = error.result;
-    }
-    return result;
 }
 
 void ArchiveBackend::extractSourceEntry(const QString &archive, const QString &entry,
@@ -86,36 +57,5 @@ void ArchiveBackend::extractSourceEntry(const QString &archive, const QString &e
         sourceExtractRecovery_ =
             IsArchiveRecoveryFormat(listedSourceArchives_.value(archive_).Format);
     pendingPassword_ = password;
-    if (startNativeRead(Job::SourceExtract, archive_, password, format))
-        return;
-    QStringList arguments{"x", "-y", "-so", "-bso0", "-bse2", "-bsp2", "-spd", "-ssc"};
-    // Explicitly choose one payload: ordinary files must not implicitly include ADS.
-    arguments.append(isAltStream ? "-sns" : "-sns-");
-    if (!format.isEmpty())
-        arguments.append("-t" + format);
-    sourceExtractSelection_.reset();
-    QString selection = entry;
-#ifdef Q_OS_MACOS
-    // QProcess encodes arguments as filesystem names (NFD on macOS). Archive
-    // item names are not filesystem arguments: retain their exact UTF-8 bytes.
-    if (QFile::encodeName(entry) != entry.toUtf8()) {
-        sourceExtractSelection_ = std::make_unique<QtOwnedTempDir>();
-        QFile list(sourceExtractSelection_->filePath("selection.txt"));
-        const QByteArray bytes = entry.toUtf8() + '\n';
-        if (entry.contains('\n') || entry.contains('\r') || !sourceExtractSelection_->isValid() ||
-            !list.open(QIODevice::WriteOnly) || list.write(bytes) != bytes.size()) {
-            sourceExtractSelection_.reset();
-            emit finished(
-                false, QCoreApplication::translate("archivebackend_sourceextract",
-                                                   "Cannot prepare exact archive item selection."));
-            return;
-        }
-        arguments.append({"-scsUTF-8", "-i@" + list.fileName()});
-        selection.clear();
-    }
-#endif
-    arguments.append({"--", archive_});
-    if (!selection.isEmpty())
-        arguments.append(selection);
-    start(Job::SourceExtract, arguments);
+    startNativeRead(Job::SourceExtract, archive_, password, format);
 }

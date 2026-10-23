@@ -239,7 +239,7 @@ class CGlobalOnlyArchive final : public IInArchive,
         return archive_->GetNumberOfItems(count);
     }
     Z7_COM7F_IMF(GetProperty(UInt32 index, PROPID property, PROPVARIANT *value)) override {
-        if (property == kpidAttrib && !propertyControl_.empty()) {
+        if (!propertyControl_.empty()) {
             std::ifstream control(propertyControl_);
             UInt64 faultProcess = 0;
             UInt32 faultIndex = 0, result = 0;
@@ -247,6 +247,10 @@ class CGlobalOnlyArchive final : public IInArchive,
                 faultProcess == CurrentProcess() && index == faultIndex) {
                 UInt32 expectedCount = 0, actualCount = 0;
                 control >> expectedCount; // Older controls omit the optional count filter.
+                UInt32 requestedProperty = kpidAttrib;
+                control >> requestedProperty;
+                if (property != requestedProperty)
+                    return archive_->GetProperty(index, property, value);
                 if (expectedCount && (archive_->GetNumberOfItems(&actualCount) != S_OK ||
                                       actualCount != expectedCount))
                     return archive_->GetProperty(index, property, value);

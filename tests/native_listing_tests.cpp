@@ -18,6 +18,10 @@ class NativeListingTests final : public ArchiveReaderFixture {
 
   private slots:
     void initTestCase() { InitializeRuntime(); }
+    void init() {
+        manager_.Release();
+        backend_ = std::make_unique<ArchiveBackend>(nullptr, engine_);
+    }
     void metadataMatchesOfficialListing_data() {
         QTest::addColumn<QString>("format");
         for (const QString &format : {"zip", "7z", "gzip", "bzip2", "xz"})

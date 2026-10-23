@@ -38,7 +38,7 @@ class QtArchiveReadOperation final : public QThread {
     };
     QtArchiveReadOperation(QString path, QString password,
                            std::shared_ptr<const ArchiveCodecCatalog> catalog, Work work,
-                           Kind kind = Kind::Test, QString format = {});
+                           Kind kind = Kind::Test, QString format = {}, QString engine = {});
     void cancel();
     void setPaused(bool paused);
     void providePassword(const QString &password);
@@ -46,6 +46,9 @@ class QtArchiveReadOperation final : public QThread {
     HRESULT password(BSTR *value);
     void report(quint64 completed, quint64 total, const QString &path);
     HRESULT Result = E_FAIL;
+    QString CatalogDiagnostic;
+    QString OpenedFormat;
+    std::shared_ptr<const ArchiveCodecCatalog> catalog() const { return catalog_; }
     QList<ItemError> Errors;
     QList<OpenError> OpenErrors;
     SourceOutput Output;
@@ -64,6 +67,7 @@ class QtArchiveReadOperation final : public QThread {
     Work work_;
     const Kind kind_;
     const QString format_;
+    const QString engine_;
     QtWorkerProgress progress_;
     QMutex passwordMutex_;
     QWaitCondition passwordReady_;

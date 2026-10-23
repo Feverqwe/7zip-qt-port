@@ -73,19 +73,20 @@ bool NativePropertyFailureRuntime::createArchive(const QString &path, int count)
            create.exitCode() == 0;
 }
 
-bool NativePropertyFailureRuntime::arm(UInt32 index, HRESULT result, UInt32 itemCount) {
+bool NativePropertyFailureRuntime::arm(UInt32 index, HRESULT result, UInt32 itemCount,
+                                       PROPID property) {
     QFile::remove(control_ + ".hit");
     QFile::remove(control_ + ".open");
     return SourceExtractFixture::writeFile(
         control_, QByteArray::number(QCoreApplication::applicationPid()) + ' ' +
                       QByteArray::number(index) + ' ' + QByteArray::number(quint32(result)) + ' ' +
-                      QByteArray::number(itemCount));
+                      QByteArray::number(itemCount) + ' ' + QByteArray::number(UInt32(property)));
 }
 
 bool NativePropertyFailureRuntime::clear() {
     for (const QString &path :
-         {control_, diskControl_, diskControl_ + ".hit", control_ + ".extract", control_ + ".open",
-          writerControl_, writerControl_ + ".hit"})
+         {control_, control_ + ".hit", diskControl_, diskControl_ + ".hit", control_ + ".extract",
+          control_ + ".open", writerControl_, writerControl_ + ".hit"})
         if (QFile::exists(path) && !QFile::remove(path))
             return false;
     return true;

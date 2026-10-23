@@ -24,6 +24,9 @@ class ArchiveCodecProbe final : public QObject {
     void Complete(ArchiveCodecProbeResult result);
 
   public:
+    // Blocking native loading for joined workers; never call on the GUI thread.
+    static std::shared_ptr<const ArchiveCodecCatalog> LoadCatalog(const QString &engine,
+                                                                  const QString &module = {});
     explicit ArchiveCodecProbe(QObject *parent = nullptr);
     ~ArchiveCodecProbe() override;
     // Reject active or failed startup without publishing a partial operation.

@@ -79,22 +79,13 @@ bool ArchiveBackend::failProcessJob(Job completed, int exitCode, QProcess::ExitS
             completed == Job::ReplaceAdd || completed == Job::SourceUpdate ||
             completed == Job::SourcePlanDelete || completed == Job::SourcePlanFiles ||
             completed == Job::SourcePlanDirectories || completed == Job::SourceMutation ||
-            completed == Job::SourcePlanRename || completed == Job::SourceExtract)
+            completed == Job::SourcePlanRename)
             QFile::remove(createTemporary_);
         emit finished(
             false, QCoreApplication::translate("archivebackend_completion", "Operation canceled."));
         return true;
     }
     if (status != QProcess::NormalExit || exitCode != 0) {
-        if (completed == Job::List)
-            lastResult_ = listingFailureResult(exitCode, status);
-        const bool partialStream = completed == Job::SourceExtract && sourceExtractRecovery_ &&
-                                   status == QProcess::NormalExit &&
-                                   (exitCode == 1 || exitCode == 2);
-        if (partialStream) {
-            lastResult_ = S_FALSE;
-            sourceExtractOperation_ = sourceExtractErrorOperation();
-        }
         extractPassword_.clear();
         createStages_.clear();
         createPassword_.clear();
@@ -105,9 +96,7 @@ bool ArchiveBackend::failProcessJob(Job completed, int exitCode, QProcess::ExitS
             completed == Job::ReplaceAdd || completed == Job::SourceUpdate ||
             completed == Job::SourcePlanDelete || completed == Job::SourcePlanFiles ||
             completed == Job::SourcePlanDirectories || completed == Job::SourceMutation ||
-            completed == Job::SourcePlanRename ||
-            (completed == Job::SourceExtract &&
-             (!partialStream || QFileInfo(createTemporary_).size() <= 0)))
+            completed == Job::SourcePlanRename)
             QFile::remove(createTemporary_);
         const bool wrongPassword =
             output_.contains(QStringLiteral("Wrong password"), Qt::CaseInsensitive);
@@ -135,21 +124,9 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     consumeOutput(transport->readAll(), true);
     if (!owner || process_ != transport || job_ != completed)
         return;
-    if (completed == Job::SourceExtract) {
-        consumeOutput(transport->readAllStandardError(), true);
-        if (!owner || process_ != transport || job_ != completed)
-            return;
-    }
     pendingPassword_.clear();
     job_ = Job::None;
-    if (completed == Job::SourceExtract)
-        sourceExtractSelection_.reset();
-    const QString limitations = !cancelled_ && completed == Job::List &&
-                                        status == QProcess::NormalExit &&
-                                        (exitCode == 0 || exitCode == 1 || exitCode == 2)
-                                    ? processListingLimitations()
-                                    : QString();
-    if (limitations.isEmpty() && failProcessJob(completed, exitCode, status))
+    if (failProcessJob(completed, exitCode, status))
         return;
     if (advanceProcessJob(completed))
         return;
@@ -177,24 +154,13 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
         !publishProcessMutation())
         return;
     lastResult_ = S_OK;
-    if (completed == Job::SourceExtract)
-        sourceExtractOperation_ = NArchive::NExtract::NOperationResult::kOK;
-    if (completed == Job::List) {
-        finishProcessListing(limitations);
-        if (!owner)
-            return;
-    }
     emit progress(100, QString());
     if (!owner)
         return;
     emit finished(
         true,
-        completed == Job::List
-            ? QCoreApplication::translate("archivebackend_completion", "Archive opened.")
-        : completed == Job::Extract
+        completed == Job::Extract
             ? QCoreApplication::translate("archivebackend_completion", "Extraction completed.")
-        : completed == Job::Test
-            ? QCoreApplication::translate("archivebackend_completion", "No errors found.")
         : completed == Job::Hash
             ? QCoreApplication::translate("archivebackend_completion", "Checksums calculated.")
         : completed == Job::Create

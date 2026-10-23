@@ -4,6 +4,7 @@
 #include "Common/StringConvert.h"
 #include "archive_backend_test_support.h"
 #include "dot_path_cpio_fixture.h"
+#include "native_archive_fixture.h"
 #include "qtmemorylockservices.h"
 #include <QScopeGuard>
 
@@ -27,20 +28,18 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString archive = fixture.filePath(QStringLiteral("архив с пробелом.zip"));
-        writeFile(archive, "unchanged archive fixture");
-        qputenv("SEVENZIP_TEST_HELPER", "listing");
-        qputenv("SEVENZIP_TEST_LISTING", "Type = zip\n----------\nPath = a.txt\nSize = 1\n\n");
-        const auto restore = qScopeGuard([] {
-            qunsetenv("SEVENZIP_TEST_HELPER");
-            qunsetenv("SEVENZIP_TEST_LISTING");
-        });
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QVERIFY(NativeArchiveFixture::Write(archive, {{"a.txt"}}, "zip"));
+        QFile saved(archive);
+        QVERIFY(saved.open(QIODevice::ReadOnly));
+        const QByteArray before = saved.readAll();
+        saved.close();
+        ArchiveBackend backend;
         backend.list(archive);
         await(backend, true);
         QCOMPARE(backend.lastResult(), S_OK);
         if (cancelled) {
-            const auto cancellation = connect(&backend, &ArchiveBackend::engineStarted, &backend,
-                                              &ArchiveBackend::cancel);
+            const auto cancellation =
+                connect(&backend, &ArchiveBackend::phaseStarted, &backend, &ArchiveBackend::cancel);
             backend.testSourceArchive(archive, {});
             await(backend, false);
             disconnect(cancellation);
@@ -68,57 +67,51 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QVERIFY(!backend.busy());
         QFile original(archive);
         QVERIFY(original.open(QIODevice::ReadOnly));
-        QCOMPARE(original.readAll(), QByteArray("unchanged archive fixture"));
+        QCOMPARE(original.readAll(), before);
     }
     void nativePathListingFailure_data() {
-        QTest::addColumn<QString>("error");
+        QTest::addColumn<QString>("kind");
         QTest::addColumn<HRESULT>("result");
-        QTest::newRow("not-archive") << "ERROR: %1 : Cannot open the file as archive\n" << S_FALSE;
-        QTest::newRow("wrong-password")
-            << "ERROR: %1 : Cannot open encrypted archive. Wrong password?\n"
-            << S_FALSE;
-        QTest::newRow("specific-type")
-            << "ERROR: %1 : %1\nOpen ERROR: Cannot open the file as [zip] archive\n"
-            << S_FALSE;
-        QTest::newRow("io-failure") << "ERROR: %1 : opening : fixture I/O error\n" << E_FAIL;
+        QTest::newRow("not-archive") << "bytes" << S_FALSE;
+        QTest::newRow("specific-type") << "type" << S_FALSE;
+        QTest::newRow("io-failure") << "missing" << HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
     }
     void nativePathListingFailure() {
-        QFETCH(QString, error);
+        QFETCH(QString, kind);
         QFETCH(HRESULT, result);
         QTemporaryDir fixture;
-        QVERIFY(fixture.isValid());
         const QString archive = fixture.filePath(QStringLiteral("не архив 空 with spaces.bin"));
-        writeFile(archive, "ordinary bytes");
-        qputenv("SEVENZIP_TEST_HELPER", "listing-failure");
-        qputenv("SEVENZIP_TEST_LISTING", error.arg(QDir::toNativeSeparators(archive)).toUtf8());
-        const auto restore = qScopeGuard([] {
-            qunsetenv("SEVENZIP_TEST_HELPER");
-            qunsetenv("SEVENZIP_TEST_LISTING");
-        });
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
-        backend.list(archive);
+        if (kind != "missing")
+            writeFile(archive, "ordinary bytes");
+        ArchiveBackend backend;
+        if (kind == "type")
+            backend.openFolder(archive, "zip", {});
+        else
+            backend.list(archive);
         await(backend, false);
         QCOMPARE(backend.lastResult(), result);
-        QFile source(archive);
-        QVERIFY(source.open(QIODevice::ReadOnly));
-        QCOMPARE(source.readAll(), QByteArray("ordinary bytes"));
+        if (kind != "missing") {
+            QFile source(archive);
+            QVERIFY(source.open(QIODevice::ReadOnly));
+            QCOMPARE(source.readAll(), QByteArray("ordinary bytes"));
+        }
     }
-    void windowsPasswordPromptThroughProcessPipe() {
+    void passwordCallbackWithoutConsole() {
         QTemporaryDir fixture;
         const QString archive = fixture.filePath("fixture.7z");
-        writeFile(archive, "local prompt fixture");
-        qputenv("SEVENZIP_TEST_HELPER", "windows-password-prompt");
-        const auto restore = qScopeGuard([] { qunsetenv("SEVENZIP_TEST_HELPER"); });
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QVERIFY(
+            NativeArchiveFixture::Write(archive, {{"payload.txt"}}, "7z", "fixture-only-password"));
+        ArchiveBackend backend;
         QSignalSpy prompt(&backend, &ArchiveBackend::passwordRequired);
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        QSignalSpy processes(&backend, &ArchiveBackend::engineStarted);
         connect(&backend, &ArchiveBackend::passwordRequired, &backend,
                 [&] { backend.providePassword("fixture-only-password"); });
         backend.list(archive);
-        QTRY_VERIFY_WITH_TIMEOUT(!prompt.isEmpty(), 3000);
-        QTRY_VERIFY_WITH_TIMEOUT(!finished.isEmpty(), 3000);
+        QTRY_COMPARE(finished.size(), 1);
         QCOMPARE(prompt.size(), 1);
-        QVERIFY(finished.first().first().toBool());
+        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QVERIFY(processes.isEmpty());
     }
     void alternateStreamOutputValidation_data() {
         QTest::addColumn<QString>("base");
@@ -140,17 +133,12 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QFETCH(bool, accepted);
         QTemporaryDir fixture;
         const QString entry = base + ':' + name;
-        qputenv("SEVENZIP_TEST_HELPER", "listing");
-        qputenv("SEVENZIP_TEST_LISTING", ("Path = " + entry + "\nSize = 1\nAlternate Stream = " +
-                                          (declared ? "+" : "-") + "\n\n")
-                                             .toUtf8());
-        const auto restore = qScopeGuard([] {
-            qunsetenv("SEVENZIP_TEST_HELPER");
-            qunsetenv("SEVENZIP_TEST_LISTING");
-        });
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
-        const QString archive = fixture.filePath("fixture.wim");
-        writeFile(archive, "local listing fixture");
+        ArchiveBackend backend;
+        const QString archive = fixture.filePath("fixture.7z");
+        const QList<NativeArchiveFixture::Item> items =
+            accepted ? QList<NativeArchiveFixture::Item>{{base, "base"}, {entry, "x", true}}
+                     : QList<NativeArchiveFixture::Item>{{entry, "x", declared}};
+        QVERIFY(NativeArchiveFixture::Write(archive, items, accepted ? "wim" : "7z"));
         backend.list(archive);
         await(backend, true);
         ExtractionOptions options;
@@ -173,23 +161,16 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QTemporaryDir fixture;
         const QString languageSettings = fixture.filePath("language.ini");
         const QString entry = QStringLiteral("../путь с пробелом 密碼.txt");
-        qputenv("SEVENZIP_TEST_HELPER", "listing");
-        qputenv("SEVENZIP_TEST_LISTING", ("Path = " + entry + "\nSize = 1\n\n").toUtf8());
         const auto restore = qScopeGuard([&] {
-            qunsetenv("SEVENZIP_TEST_LISTING");
-            qunsetenv("SEVENZIP_TEST_HELPER");
             SaveRegLang(UString("-"), languageSettings);
             ReloadLang(languageSettings);
         });
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        ArchiveBackend backend;
         const QString archive = fixture.filePath("fixture.zip");
-        writeFile(archive, "local listing fixture");
-        backend.list(archive);
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::Write(archive, {{entry}}, "zip"));
         for (const char *language : {"-", "ru", "-"}) {
             SaveRegLang(UString(language), languageSettings);
             ReloadLang(languageSettings);
-            qputenv("SEVENZIP_TEST_HELPER", "listing");
             QSignalSpy listed(&backend, &ArchiveBackend::finished);
             backend.list(archive);
             QVERIFY(listed.wait(30000));
@@ -217,15 +198,6 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
                          entry);
             QVERIFY(!backend.busy());
             QVERIFY(!QFileInfo::exists(fixture.filePath("путь с пробелом 密碼.txt")));
-            qputenv("SEVENZIP_TEST_HELPER", "fragment");
-            backend.list(archive);
-            QVERIFY(result.wait(30000));
-            const auto failed = result.takeFirst();
-            QVERIFY(!failed.at(0).toBool());
-            QVERIFY(failed.at(1).toString().startsWith(
-                QString(language) == "ru" ? QStringLiteral("7zz завершился с кодом 2. ")
-                                          : QString("7zz exited with code 2. ")));
-            QVERIFY(failed.at(1).toString().endsWith("ERROR: incomplete tail"));
         }
     }
     void creationUsesWorkingDirectoryAndRejectsUnavailablePath() {
@@ -286,13 +258,16 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         });
         ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
         QString requested;
-        connect(&backend, &ArchiveBackend::infoReady, this, [&](const ArchiveInfo &info) {
-            requested = info.properties.value("LargePagesRequested");
+        connect(&backend, &ArchiveBackend::outputReceived, this, [&](const QString &text) {
+            if (text.startsWith("LargePagesRequested = "))
+                requested = text.mid(QString("LargePagesRequested = ").size());
         });
         for (bool enable : {false, true, false}) {
             SaveLockMemoryEnable(enable, settings);
             QCOMPARE(ReadLockMemoryEnable(settings), enable);
-            backend.list(fixture.filePath("fixture.zip"));
+            const QString output = fixture.filePath("fixture.zip");
+            QFile::remove(output);
+            backend.create(output, {settings});
             await(backend, true);
             const QtMemoryLockServices memoryLock;
             QCOMPARE(requested, QString(IsLargePageSupported() && enable &&
@@ -442,7 +417,8 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QVERIFY(wrong.wait(30000));
         const auto failure = wrong.takeFirst();
         QVERIFY(!failure.at(0).toBool());
-        QVERIFY(failure.at(1).toString().contains(QStringLiteral("Wrong password")));
+        QVERIFY(!failure.at(1).toString().isEmpty());
+        QVERIFY(backend.lastResult() != S_OK);
         QVERIFY(!failure.at(1).toString().contains(fixturePassword));
         backend.test(archive, fixturePassword);
         await(backend, true);
@@ -546,23 +522,15 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
     }
     void testCancellation() {
         QTemporaryDir temp;
-        QVERIFY(temp.isValid());
-        qputenv("SEVENZIP_TEST_HELPER", "listing");
-        qputenv("SEVENZIP_TEST_LISTING", "Path = δ space.txt\nSize = 1\n\n");
-        writeFile(temp.path() + "/archive.7z", "test fixture");
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
-        backend.list(temp.path() + "/archive.7z");
+        const QString archive = temp.filePath("archive.7z");
+        QVERIFY(NativeArchiveFixture::Write(archive, {{"a.txt"}}));
+        ArchiveBackend backend;
+        backend.list(archive);
         await(backend, true);
-        qunsetenv("SEVENZIP_TEST_LISTING");
-        qputenv("SEVENZIP_TEST_HELPER", "cancel");
-        QSignalSpy output(&backend, &ArchiveBackend::outputReceived);
-        QSignalSpy result(&backend, &ArchiveBackend::finished);
-        backend.test(temp.path() + "/archive.7z");
-        QTRY_VERIFY_WITH_TIMEOUT(!output.isEmpty(), 3000);
-        backend.cancel();
-        QVERIFY(result.wait(30000));
-        qunsetenv("SEVENZIP_TEST_HELPER");
-        QVERIFY(!result.takeFirst().at(0).toBool());
+        connect(&backend, &ArchiveBackend::phaseStarted, &backend, &ArchiveBackend::cancel);
+        backend.test(archive);
+        await(backend, false);
+        QCOMPARE(backend.lastResult(), E_ABORT);
         QVERIFY(!backend.busy());
     }
     void invalidArchive() {
@@ -583,7 +551,8 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QTRY_VERIFY_WITH_TIMEOUT(!spy.isEmpty(), 30000);
         const auto result = spy.takeFirst();
         QVERIFY(!result.at(0).toBool());
-        QVERIFY(result.at(1).toString().contains("7zz"));
+        QVERIFY(!result.at(1).toString().isEmpty());
+        QCOMPARE(backend.lastResult(), E_FAIL);
     }
     void dotPathsInCpio_data() {
         QTest::addColumn<bool>("currentFolder");
@@ -635,14 +604,10 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QFETCH(QString, sourceFolder);
         QFETCH(bool, accepted);
         QTemporaryDir fixture;
-        qputenv("SEVENZIP_TEST_HELPER", "listing");
-        qputenv("SEVENZIP_TEST_LISTING", ("Path = " + entry + "\nSize = 1\n\n").toUtf8());
-        const auto restore = qScopeGuard([] {
-            qunsetenv("SEVENZIP_TEST_HELPER");
-            qunsetenv("SEVENZIP_TEST_LISTING");
-        });
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
-        backend.list(fixture.filePath("fixture.cpio"));
+        ArchiveBackend backend;
+        const QString archive = fixture.filePath("fixture.7z");
+        QVERIFY(NativeArchiveFixture::Write(archive, {{entry}}));
+        backend.list(archive);
         await(backend, true);
         ExtractionOptions options;
         options.pathMode = ExtractionOptions::PathMode::CurrentPaths;
@@ -683,50 +648,44 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QVERIFY(QDir(destination).entryList(QDir::Files | QDir::NoDotAndDotDot).isEmpty());
     }
     void unsafeListing_data() {
-        QTest::addColumn<QByteArray>("listing");
-        QTest::newRow("parent") << QByteArray("Path = ../escape.txt\nSize = 1\n\n");
-        QTest::newRow("dot-parent") << QByteArray("Path = ./../escape.txt\nSize = 1\n\n");
-        QTest::newRow("backslash parent")
-            << QByteArray("Path = folder\\..\\escape.txt\nSize = 1\n\n");
-        QTest::newRow("drive") << QByteArray("Path = C:\\escape.txt\nSize = 1\n\n");
-        QTest::newRow("link") << QByteArray(
-            "Path = link\nAttributes = A\nSymbolic Link = ../outside\n\n");
-        QTest::newRow("link before attributes")
-            << QByteArray("Path = link\nSymbolic Link = ../outside\nAttributes = A\n\n");
-        QTest::newRow("hard link") << QByteArray("Path = link\nHard Link = target\n\n");
-        QTest::newRow("empty symbolic link")
-            << QByteArray("Path = link\nSize = 0\nSymbolic Link = \nMode = lrwxrwxrwx\n\n");
-        QTest::newRow("empty symbolic link before attributes")
-            << QByteArray("Path = link\nMode = lrwxrwxrwx\nSymbolic Link = \nAttributes = A\n\n");
-        QTest::newRow("duplicate")
-            << QByteArray("Path = same.txt\nSize = 1\n\nPath = SAME.TXT\nSize = 1\n\n");
-        QTest::newRow("dot-duplicate")
-            << QByteArray("Path = ./same.txt\nSize = 1\n\nPath = same.txt\nSize = 1\n\n");
-        QTest::newRow("dot-file-parent")
-            << QByteArray("Path = ./parent\nSize = 1\n\nPath = parent/child\nSize = 1\n\n");
+        QTest::addColumn<QStringList>("names");
+        QTest::addColumn<QString>("link");
+        for (const QString &name : {"../escape.txt", "./../escape.txt", "folder\\..\\escape.txt",
+                                    "C:\\escape.txt", "CON.txt"})
+            QTest::newRow(qPrintable(name)) << QStringList{name} << QString();
+        QTest::newRow("symbolic link") << QStringList{"link"} << QString("../outside");
+        QTest::newRow("hard link") << QStringList{"link"} << QString("hard:target");
+        QTest::newRow("case duplicate") << QStringList{"same.txt", "SAME.TXT"} << QString();
+        QTest::newRow("dot duplicate") << QStringList{"./same.txt", "same.txt"} << QString();
+        QTest::newRow("file parent") << QStringList{"parent", "parent/child"} << QString();
+        QTest::newRow("dot file parent") << QStringList{"./parent", "parent/child"} << QString();
         QTest::newRow("unicode normalization")
-            << (QStringLiteral("Path = café.txt\n\nPath = cafe\u0301.txt\n\n").toLocal8Bit());
-        QTest::newRow("file parent")
-            << QByteArray("Path = parent\nSize = 1\n\nPath = parent/child\nSize = 1\n\n");
-        QTest::newRow("reserved") << QByteArray("Path = CON.txt\nSize = 1\n\n");
+            << QStringList{QStringLiteral("café.txt"), QStringLiteral("cafe\u0301.txt")}
+            << QString();
     }
     void unsafeListing() {
-        QFETCH(QByteArray, listing);
+        QFETCH(QStringList, names);
+        QFETCH(QString, link);
         QTemporaryDir temp;
-        QVERIFY(temp.isValid());
-        qputenv("SEVENZIP_TEST_HELPER", "listing");
-        qputenv("SEVENZIP_TEST_LISTING", listing);
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
-        const QString archive = temp.path() + "/fixture.zip";
+        QList<NativeArchiveFixture::Item> items;
+        for (const auto &name : names) {
+            NativeArchiveFixture::Item item{name};
+            if (link.startsWith("hard:"))
+                item.HardLink = link.mid(5);
+            else
+                item.SymLink = link;
+            items.append(item);
+        }
+        const QString archive = temp.filePath("fixture.tar");
+        QVERIFY(NativeArchiveFixture::Write(archive, items, "tar"));
+        ArchiveBackend backend;
         backend.list(archive);
         await(backend, true);
         QSignalSpy spy(&backend, &ArchiveBackend::finished);
-        backend.extract(archive, temp.path());
+        backend.extract(archive, temp.filePath("output"));
         QCOMPARE(spy.size(), 1);
         QVERIFY(!spy.takeFirst().at(0).toBool());
         QVERIFY(!backend.busy());
-        qunsetenv("SEVENZIP_TEST_LISTING");
-        qunsetenv("SEVENZIP_TEST_HELPER");
     }
     void unsafeDestination() {
         QTemporaryDir temp;

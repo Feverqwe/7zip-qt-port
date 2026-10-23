@@ -36,17 +36,18 @@ This setting does not change application language. If stored header dependencies
 appear damaged, collect diagnostics before proposing a cache/build-tree repair;
 follow [cache retention](../AGENTS.md#validation-scope).
 
-External codecs require the official dynamic console client, not standalone
-`7zz`. `./scripts/build-codec-runtime.sh [upstream-checkout] [artifact-directory]`
+Archive reading requires the official native runtime; standalone `7zz` alone
+does not supply its readers. `./scripts/build-codec-runtime.sh [upstream-checkout] [artifact-directory]`
 builds `UI/Console`, `Bundles/Format7zF` and `Bundles/Alone2` from the pinned source
 with the engine adaptations selected in the [baseline](upstream-baseline.json),
 into `build/codec-runtime` on macOS/Linux. It produces `7z`, `7zz`, `7z.so`,
 license and source/version/SHA records, and refuses unowned artifacts. The Debug
 app uses this prepared runtime when present; deployed builds look beside the app
 or in `Resources/7zip`. `SEVENZIP_ENGINE_PATH` explicitly selects an engine;
-a missing explicit path reports an error. Standalone `7zz` remains the fallback.
-Codecs/Formats discovery follows original LoadCodecs from the confirmed deployment;
-native modules must agree with the dynamic engine's reported libraries.
+a selected deployment can contain only modules for reading. Destination
+extraction and writes still require the console while their migration continues.
+Codecs/Formats discovery and ABI checks follow original LoadCodecs in the selected
+deployment, without executing or parsing console information output.
 The immutable codec image uses Qt's selected temporary directory to copy and
 load its module. That directory must permit writes and executable mappings.
 On Linux with a `noexec` default temporary filesystem, a process-scoped `TMPDIR`
@@ -260,6 +261,11 @@ The stable list is in [SlowTests.cmake](../cmake/SlowTests.cmake), based on
 suites observed above 30 seconds on macOS; other platforms may differ.
 Agents run these only on an explicit request for long tests or the exhaustive
 suite, following [AGENTS.md](../AGENTS.md#validation-and-ui-reference).
+
+`interarchive_recovery` is opt-in; its full rollback matrix exceeded the earlier
+120 s cap while obsolete process hooks were being migrated. The default
+`interarchive_recovery_native` subset covers native reopen failure, cancellation
+and failed restore. Acceptance of that subset does not accept the full matrix.
 
 `copy_archive_refresh` is also opt-in: its full native matrix has192 workflows.
 The corrected Cocoa fixture completed89 without row failures before the120s

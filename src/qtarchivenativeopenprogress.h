@@ -7,11 +7,13 @@
 class CNativeOpenProgress final : public IOpenCallbackUI, public IFscryptKeyUI {
     IProgress *_progress;
     IOpenCallbackUI *_source;
+    IArchiveOpenCallback *_open;
 
   public:
     QString Password;
-    CNativeOpenProgress(IProgress *progress, IOpenCallbackUI *source)
-        : _progress(progress), _source(source) {}
+    CNativeOpenProgress(IProgress *progress, IOpenCallbackUI *source,
+                        IArchiveOpenCallback *open = nullptr)
+        : _progress(progress), _source(source), _open(open) {}
     HRESULT Open_CheckBreak() override;
     HRESULT Open_SetTotal(const UInt64 *files, const UInt64 *bytes) override;
     HRESULT Open_SetCompleted(const UInt64 *files, const UInt64 *bytes) override;

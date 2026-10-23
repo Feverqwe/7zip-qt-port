@@ -39,8 +39,8 @@ successful one, and incomplete/cancelled listing snapshots are not published.
 Folder navigation keeps the native catalog/reader instead of reopening through
 CLI text listing. This retains distinct indexes for duplicate member names.
 The Console projection belongs only to `adapted`, not `runtime_adapted`:
-the official runtime retains its original console module. Existing CLI fallback
-remains for no-catalog consumers. Materialized nested editing remains enabled;
+the official runtime retains its original console module. No-catalog read
+consumers now acquire native providers as recorded below. Materialized nested editing remains enabled;
 automatic direct container chains retain their existing update boundary.
 
 Focused runtime acceptance on 2026-10-23: macOS passed native listing/test,
@@ -173,9 +173,9 @@ Source inspection on 2026-10-23 identifies the remaining production dispatch:
 | Operation | Current owner and remaining boundary |
 | --- | --- |
 | Catalog discovery | Native `LoadDll`/`LoadExternalModules`/`SetLibCodecs` supply providers and version metadata without executing the console. Deployment images retain provider lifetimes; optional console copying remains for unmigrated consumers. |
-| Listing and testing | `ArchiveBackend::startNativeRead` uses official Open/Extract with a catalog; no-catalog consumers still use CLI fallback and technical-listing parsing. |
+| Listing and testing | `ArchiveBackend::startNativeRead` uses official Open/Extract; its joined worker acquires native providers when no catalog was supplied. CLI dispatch and technical-listing parsers have been removed. |
 | Extraction to a destination | `ArchiveBackend::extract` still constructs CLI passes for selection and overwrite handling. Source Agent/GUI extraction already has native callbacks and path policy. |
-| Extraction of one source entry | With a catalog, the joined read worker now opens and extracts the selected native index into a private stream. The no-catalog CLI fallback remains. |
+| Extraction of one source entry | The joined read worker acquires native providers as needed and extracts the selected native index into a private stream. CLI dispatch, text error decoding and console selection files have been removed. |
 | Creation and public mutations | `archivebackend_creation.cpp` and `archivebackend_mutations.cpp` still dispatch creation stages, add, delete, rename and replace through the process transport. |
 | Source updates | `archivebackend_sourceupdate.cpp` and `archivebackend_sourceplan.cpp` still dispatch file/add, mutation and staged plan operations. Native `UpdateArchive` and Agent update interfaces exist and need their callers connected. |
 
@@ -185,8 +185,8 @@ editing/publication. The retained native reader path must remain independent of
 backend/window lifetime. Process completion owns continuations, temporary-file
 cleanup and publication; migrating dispatch must migrate these responsibilities
 together. Hashing and benchmark providers already use source/native workers.
-No-catalog consumers and the remaining operations must migrate before removing
-the shared CLI transport. Native discovery and retained runtime-image ownership
+The remaining destination extraction and write operations must migrate before
+removing the shared CLI transport. Native discovery and retained runtime-image ownership
 are now independent of console availability.
 
 ### Native extraction of one source entry
@@ -308,3 +308,84 @@ These runner checks cover DLL/so loading and the Windows registry boundary. Exis
 incremental trees and compiler caches were retained. Private fixtures clean up
 automatically; foreign runner artifacts were preserved. Host storage remained
 healthy, with no VHDX growth. No slow suite, full gate or visual check was run.
+
+### Native reads without a prepared catalog
+
+Baseline `da0aae61`. Recompared original `LoadGlobalCodecs`/`CAgent::Open` and
+`BindToRootFolder`, `ArchiveFolderOpen.cpp` factory/binding, `CCodecs::Load`,
+and Console `Main.cpp` load/list/test/extract dispatch at upstream
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`
+(<https://github.com/ip7z/7zip.git>), with current catalog, read worker,
+folder manager, file resource, reopen and source extraction consumers.
+Original Open/Extract, property enumeration, proxy binding and codec loading
+remain authoritative; no decoder, format parser or new detection algorithm
+was introduced. Existing source module baselines and licenses are unchanged.
+
+The shared native discovery body can now run inside the joined read worker.
+Standalone listing, testing and single-entry extraction always use that worker,
+including when no catalog was supplied. It checks pause/cancel around native
+loading and retains the immutable image until loading and opening have joined.
+Successful provider acquisition is published before result receivers can start
+another operation; cancelled acquisition is discarded. An explicit failed
+catalog is not silently replaced. Provider warnings and archive damage remain
+separate diagnostics. Automatic source extraction classifies recovery using
+the opened native format, preserving closed owned output and typed damage
+results without requiring a prior listing or an explicit type string.
+
+Agent opening requests discovery before selecting its direct stream or CopyTo
+boundary, preserving native streams and reader generations for callers that did
+not preload providers. The existing typed backend metadata bridge remains for
+alternate service implementations; ArchiveBackend's own reads always load the
+official native engine. Discovery is an overridable backend command like the
+other asynchronous operation commands, allowing alternate metadata services to
+own their provider availability without restoring console reads.
+
+Removed read CLI argument construction, technical-listing/header parsers,
+printed-error classification, redirected source output, exact-selection list
+files and their completion/cleanup branches. The process transport remains for
+destination extraction and writes. Its progress/error/password handling still
+has direct write consumers and is not removed in this iteration.
+
+Affected regressions use archives produced by official writers for literal
+unsafe names, Unicode/space names, alternate streams, passwords (including an
+empty defined password), lifecycle and cancellation. Process regressions target
+the remaining write transport. Binding cancellation uses source item-progress
+callbacks rather than a listing hook. Native rollback/retry and nested writer
+failure/cancel use the existing delegating format fixture; property-fault
+selection is extended to required opening properties. Reader-only fixtures
+replace the obsolete assumption that TAR cannot update. The full interarchive
+matrix is opt-in after its old process hooks produced a 120 s timeout; the
+default native subset covers reopen failure, cancellation and failed restore.
+
+Encrypted nested editing exposed a genuine native reopen adapter gap:
+`COpenCallbackImp` intentionally omits `IProgress` from QueryInterface. The Qt
+adapter's failed progress query also discarded its crypto service, producing
+`E_NOINTERFACE` after a protected update despite a correctly retained password.
+Compared complete original `CArchiveLink::ReOpen` and `COpenCallbackImp`
+progress/crypto delegation and the File Manager update/reopen callers at the
+revision above. `CNativeOpenProgress` now accepts the existing archive-open
+callback directly and delegates its file/byte progress, password and fscrypt-key
+requests through the original interfaces. The source QueryInterface contract
+and original callback bodies remain unchanged; no new password store or prompt
+policy is added. Callback lifetime is still scoped to the joined opening.
+
+Final macOS acceptance on 2026-10-23: the application and selected targets built;
+26 suites passed together (45.16 s): backend, mutation, opening, progress,
+native source extraction/listing/testing, Agent opening/lifecycle, source extract
+backend/contract, probe/catalog/external codecs/capabilities, native folder
+opening, retained layers, open options, nested navigation/editing/update,
+device folders, archive recovery, native parent publication, associated windows
+and the focused interarchive recovery subset. The nested editor suite passes
+15 cases, including separate protected inner/outer passwords and actual native
+writer failure/cancel. Reference extraction uses UTF-8 include files for its
+canonically unique fixture names so QProcess filesystem argument normalization
+does not misread native NFC renames; production selection remains literal.
+
+This iteration changes shared Qt scheduling and interface adaptation, without
+changing DLL/so search/loading or OS-specific services, so validation is macOS
+only under the user's runner rule. Linux/Windows were not rerun and are not
+accepted for this revision by earlier receipts. The full interarchive diagnostic
+hit its old 120 s cap before its obsolete hooks were replaced; only the native
+subset is accepted. No opt-in exhaustive matrix, full gate or visual comparison
+was run. Incremental builds and caches were preserved; obsolete task-owned
+timeout fixtures and the temporary stack sample were removed after diagnosis.

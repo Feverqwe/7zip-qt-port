@@ -69,14 +69,19 @@ ArchiveCodecProbeResult ArchiveCodecProbe::Discover(const QString &engine,
     ArchiveCodecProbeResult result;
     if (work->Stopped())
         return result;
-    const QString module = requestedModule.isEmpty() ? FindModule(engine) : requestedModule;
-    // CCodecs::LoadDll obtains ABI/version metadata through GetModuleProp;
-    // original directory loading and SetLibCodecs bind the retained providers.
-    result.catalog = std::make_shared<ArchiveCodecCatalog>(
-        module, 0, ArchiveCodecCatalog::Scope::Deployment, engine);
+    result.catalog = LoadCatalog(engine, requestedModule);
     result.result = result.catalog->result();
     result.error = result.catalog->error();
     return result;
+}
+
+std::shared_ptr<const ArchiveCodecCatalog>
+ArchiveCodecProbe::LoadCatalog(const QString &engine, const QString &requestedModule) {
+    const QString module = requestedModule.isEmpty() ? FindModule(engine) : requestedModule;
+    // CCodecs::LoadDll obtains ABI/version metadata through GetModuleProp;
+    // original directory loading and SetLibCodecs bind the retained providers.
+    return std::make_shared<ArchiveCodecCatalog>(module, 0, ArchiveCodecCatalog::Scope::Deployment,
+                                                 engine);
 }
 
 ArchiveCodecProbe::ArchiveCodecProbe(QObject *parent) : QObject(parent) {}

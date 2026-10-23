@@ -82,6 +82,8 @@ QtArchiveFolderManager::WaitForCodecCatalog(std::shared_ptr<const ArchiveCodecCa
                 QObject::disconnect(request->Connection);
                 request->Ready.release();
             };
+            if (!_backend.codecCatalog() && !_backend.busy())
+                _backend.discoverCodecCatalog();
             if (_backend.discoveringCodecs())
                 request->Connection =
                     connect(&_backend, &ArchiveBackend::codecCatalogReady, this, complete);
@@ -220,8 +222,8 @@ HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wc
     if (!resultFolder)
         return E_INVALIDARG;
     *resultFolder = nullptr;
-    // This adapter waits on the GUI process service. Only the source worker
-    // can call it; synchronous GUI calls would block the service event loop.
+    // Native discovery and the typed backend metadata service use the GUI
+    // owner. Only a source worker can wait without blocking that event loop.
     if (QThread::currentThread() == thread())
         return E_FAIL;
     if (!filePath || !*filePath)

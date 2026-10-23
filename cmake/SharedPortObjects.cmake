@@ -56,7 +56,6 @@ sevenzip_share_port_objects(sevenzip_archive_backend src/archivebackend.h
     src/archivebackend_compression.cpp
     src/archivebackend_creation.cpp
     src/archivebackend_hash.cpp
-    src/archivebackend_listing.cpp
     src/archivebackend_mutations.cpp
     src/archivebackend_preparation.cpp
     src/archivebackend_sourceextract.cpp

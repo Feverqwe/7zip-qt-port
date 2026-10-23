@@ -11,6 +11,8 @@
 #include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
 #include "archivebackend.h"
+#include "archivecodeccatalog.h"
+#include "archivecodecprobe.h"
 #include "archivenativeopen.h"
 #include <QDir>
 #include <QMutexLocker>
@@ -194,9 +196,9 @@ HRESULT ExtractEntry(QtArchiveReadOperation &operation,
 
 QtArchiveReadOperation::QtArchiveReadOperation(QString path, QString password,
                                                std::shared_ptr<const ArchiveCodecCatalog> catalog,
-                                               Work work, Kind kind, QString format)
+                                               Work work, Kind kind, QString format, QString engine)
     : catalog_(std::move(catalog)), path_(std::move(path)), work_(std::move(work)), kind_(kind),
-      format_(std::move(format)), password_(std::move(password)),
+      format_(std::move(format)), engine_(std::move(engine)), password_(std::move(password)),
       passwordDefined_(!password_.isEmpty()) {}
 
 void QtArchiveReadOperation::cancel() {
@@ -247,6 +249,20 @@ void QtArchiveReadOperation::run() {
         Result = checkpoint();
         if (Result != S_OK)
             return;
+        if (!catalog_) {
+            catalog_ = ArchiveCodecProbe::LoadCatalog(engine_);
+            CatalogDiagnostic = catalog_->error();
+        }
+        // Native entrypoints are not interruptible. Retain their image until
+        // loading returns, then honor stop/pause before opening any input.
+        Result = checkpoint();
+        if (Result != S_OK)
+            return;
+        Result = catalog_->result();
+        if (Result != S_OK) {
+            CatalogDiagnostic = catalog_->error();
+            return;
+        }
         auto *callback = new CTestCallback(*this);
         CMyComPtr<IArchiveExtractCallback> retained = callback;
         auto reader = std::make_shared<ArchiveNativeOpen>(catalog_);
@@ -259,6 +275,8 @@ void QtArchiveReadOperation::run() {
         }
         if (Result != S_OK)
             return;
+        OpenedFormat = QString::fromWCharArray(
+            reader->nativeCodecs().GetFormatNamePtr(reader->arc().FormatIndex));
         callback->Attach(&reader->arc());
         Result = kind_ == Kind::ExtractEntry ? ExtractEntry(*this, reader, *callback)
                                              : work_(reader, callback);

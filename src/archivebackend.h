@@ -112,7 +112,7 @@ class ArchiveBackend : public QObject {
         return std::atomic_load(&codecCatalog_);
     }
     ArchiveBackend *createIndependentBackend(QObject *parent = nullptr) const;
-    bool discoverCodecCatalog(const QString &module = {});
+    virtual bool discoverCodecCatalog(const QString &module = {});
     // GUI-thread state; opening workers request it through their manager.
     bool discoveringCodecs() const { return codecDiscoveryActive_; }
     void cancelCodecDiscovery();
@@ -304,16 +304,9 @@ class ArchiveBackend : public QObject {
     bool advanceProcessJob(Job completed);
     bool failProcessJob(Job completed, int exitCode, QProcess::ExitStatus status);
     bool publishProcessMutation();
-    void finishProcessListing(const QString &limitations = {});
-    QString processListingLimitations() const;
-    Int32 sourceExtractErrorOperation() const;
     void finishSourceExtractOperation(const QtArchiveReadOperation &operation);
     void consumeOutput(const QByteArray &chunk, bool flush = false);
     void consumeLine(const QByteArray &line);
-    static QList<ArchiveEntry> parseListing(const QString &output);
-    void assignDefaultEntryNames(const QString &format);
-    static QMap<QString, QString> parseArchiveHeaderProperties(const QString &header);
-    HRESULT listingFailureResult(int exitCode, QProcess::ExitStatus status) const;
     static bool safePath(const QString &path);
     bool prepareAskExtraction(const QString &outputDirectory, const QStringList &selected,
                               ExtractionOptions::PathMode pathMode, QStringList *replaceEntries,
@@ -346,7 +339,6 @@ class ArchiveBackend : public QObject {
 
     std::shared_ptr<QProcess> process_;
     QString configuredEngine_;
-    std::unique_ptr<QtOwnedTempDir> sourceExtractSelection_;
     std::shared_ptr<const ArchiveCodecCatalog> codecCatalog_;
     std::unique_ptr<ArchiveCodecProbe> codecProbe_;
     bool codecDiscoveryActive_ = false;
@@ -354,7 +346,6 @@ class ArchiveBackend : public QObject {
     CProcessPause processPause_;
     Job job_ = Job::None;
     QString output_;
-    QByteArray listingOutput_;
     QByteArray pendingOutput_;
     QString archive_;
     QString createTarget_;
@@ -396,8 +387,7 @@ class ArchiveBackend : public QObject {
     void reportWorkerProgress();
     void finishWorkerProgress();
     void finishHashOperation();
-    bool startNativeTest(const QString &archive, const QString &password);
-    bool startNativeRead(Job job, const QString &archive, const QString &password,
+    void startNativeRead(Job job, const QString &archive, const QString &password,
                          const QString &format = {});
     void finishReadOperation();
     static HRESULT validateNativeHashReads(const ArchiveNativeOpen &reader, const UInt32 *indices,

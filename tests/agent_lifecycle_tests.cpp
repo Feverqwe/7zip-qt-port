@@ -16,32 +16,29 @@ class CBindingCancellation final : public IProgress,
   public:
     std::atomic<bool> Cancel{false};
     std::atomic<unsigned> Totals{0};
-    Z7_COM7F_IMF(SetTotal(UInt64)) override {
+    bool ArmCancellation = true;
+    bool BindingObserved = false;
+    Z7_COM7F_IMF(SetTotal(UInt64 total)) override {
         ++Totals;
+        // This fixture has one item. Native opening reports byte totals;
+        // the source tree binding reports its item count through IProgress.
+        if (total == 1) {
+            BindingObserved = true;
+            Cancel.store(ArmCancellation);
+        }
         return Cancel.load() ? E_ABORT : S_OK;
     }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return Cancel.load() ? E_ABORT : S_OK; }
-    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override {
+    Z7_COM7F_IMF(SetTotal(const UInt64 *files, const UInt64 *bytes)) override {
         ++Totals;
+        if (files && *files == 1 && !bytes) {
+            BindingObserved = true;
+            Cancel.store(ArmCancellation);
+        }
         return Cancel.load() ? E_ABORT : S_OK;
     }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
         return Cancel.load() ? E_ABORT : S_OK;
-    }
-};
-class CBindingBackend final : public ArchiveBackend {
-  public:
-    CBindingCancellation &Progress;
-    bool ArmCancellation = true;
-    unsigned Listings = 0;
-    CBindingBackend(const QString &engine, CBindingCancellation &progress)
-        : ArchiveBackend(nullptr, engine), Progress(progress) {}
-    void openFolder(const QString &path, const QString &format, const QString &password) override {
-        ++Listings;
-        // Native opening has completed. Cancel specifically during the
-        // source proxy's subsequent root binding, after process listing.
-        Progress.Cancel.store(ArmCancellation);
-        ArchiveBackend::openFolder(path, format, password);
     }
 };
 } // namespace
@@ -305,7 +302,7 @@ class AgentLifecycleTests final : public QObject, protected ArchiveBackendTestSu
         file.close();
         auto *progressSpec = new CBindingCancellation;
         CMyComPtr<IProgress> progress = progressSpec;
-        CBindingBackend backend(engine_, *progressSpec);
+        ArchiveBackend backend(nullptr, engine_);
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog());
         QTRY_COMPARE(ready.size(), 1);
@@ -320,13 +317,13 @@ class AgentLifecycleTests final : public QObject, protected ArchiveBackendTestSu
         };
         QCOMPARE(run(backend, open), E_ABORT);
         QVERIFY(!folder);
-        QCOMPARE(backend.Listings, 1u);
+        QVERIFY(progressSpec->BindingObserved);
         QVERIFY(progressSpec->Totals.load() > 0);
-        backend.ArmCancellation = false;
+        progressSpec->ArmCancellation = false;
         progressSpec->Cancel.store(false);
         QCOMPARE(run(backend, open), S_OK);
         QVERIFY(folder);
-        QCOMPARE(backend.Listings, 2u);
+
         manager.Release();
         progress.Release();
         CMyComPtr<IFolderSetFlatMode> flat;

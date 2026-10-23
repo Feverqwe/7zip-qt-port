@@ -253,7 +253,7 @@ class SourceExtractBackendTests final : public QObject {
         const auto original = readFile(archive);
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        const auto cancellation = connect(&backend, &ArchiveBackend::engineStarted, &backend,
+        const auto cancellation = connect(&backend, &ArchiveBackend::phaseStarted, &backend,
                                           [&backend] { backend.cancel(); });
         const auto output = directory.filePath("cancelled.bin");
         backend.extractSourceEntry(archive, kName, output, "zip", {});
@@ -367,7 +367,6 @@ class SourceExtractBackendTests final : public QObject {
         }
         QVERIFY(volumes.size() > 1);
         ArchiveBackend backend;
-        QSignalSpy opened(&backend, &ArchiveBackend::entriesReady);
         QTimer dismissError;
         bool closeScheduled = false;
         connect(&dismissError, &QTimer::timeout, &backend, [&] {
@@ -393,7 +392,6 @@ class SourceExtractBackendTests final : public QObject {
         dismissError.stop();
         QCOMPARE(result.Result, S_OK);
         QVERIFY(result.CallbackOK);
-        QCOMPARE(opened.size(), 1);
         QCOMPARE(readFile(output.filePath(kName)), bytes);
         QVERIFY(!backend.busy());
     }

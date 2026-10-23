@@ -52,7 +52,7 @@ ArchiveBackend::~ArchiveBackend() {
          job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd || job_ == Job::SourceUpdate ||
          job_ == Job::SourcePlanDelete || job_ == Job::SourcePlanFiles ||
          job_ == Job::SourcePlanDirectories || job_ == Job::SourceMutation ||
-         job_ == Job::SourcePlanRename || job_ == Job::SourceExtract))
+         job_ == Job::SourcePlanRename))
         QFile::remove(createTemporary_);
 }
 
@@ -152,13 +152,7 @@ void ArchiveBackend::startListing(const QString &archive, const QString &passwor
     listed_ = false;
     encrypted_ = false;
     pendingPassword_ = password;
-    QStringList arguments{"l", "-slt", "-sns"};
-    if (startNativeRead(Job::List, archive_, password, format))
-        return;
-    if (!format.isEmpty())
-        arguments << QStringLiteral("-t") + format;
-    arguments << "--" << archive_;
-    start(Job::List, arguments);
+    startNativeRead(Job::List, archive_, password, format);
 }
 
 bool ArchiveBackend::prepareAskExtraction(const QString &outputDirectory,
@@ -386,9 +380,7 @@ void ArchiveBackend::test(const QString &archive, const QString &password) {
         return;
     }
     pendingPassword_ = password;
-    if (startNativeTest(archive_, password))
-        return;
-    start(Job::Test, {"t", "-bsp1", "-bb1", "--", archive_});
+    startNativeRead(Job::Test, archive_, password);
 }
 
 void ArchiveBackend::testSourceArchive(const QString &archive, const QString &password) {
@@ -406,9 +398,7 @@ void ArchiveBackend::testSourceArchive(const QString &archive, const QString &pa
     }
     archive_ = file.absoluteFilePath();
     pendingPassword_ = password;
-    if (startNativeTest(archive_, password))
-        return;
-    start(Job::Test, {"t", "-bsp1", "-bb1", "--", archive_});
+    startNativeRead(Job::Test, archive_, password);
 }
 
 void ArchiveBackend::hash(const QStringList &paths, const QString &method) {

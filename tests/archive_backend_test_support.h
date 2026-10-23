@@ -45,31 +45,17 @@ inline int backendTestMain(int argc, char **argv, QObject *tests) {
             writeOutput("ERROR: incomplete tail");
             return 2;
         }
-        if (mode == "large") {
-            for (int i = 0; i < 3000; ++i) {
-                writeOutput("Path = file" + QByteArray::number(i) + ".txt\nSize = 1\n\n");
-                if (i == 999)
-                    QThread::msleep(100);
-            }
-            return 0;
-        }
-        if (mode == "listing" || mode == "listing-failure") {
-            writeOutput(qgetenv("SEVENZIP_TEST_LISTING"));
-            return mode == "listing" ? 0 : 2;
-        }
-        if (mode == "windows-password-prompt") {
-            writeOutput("\nEnter password (will not be echoed):");
-            char password[128] = {};
-            if (!std::fgets(password, sizeof(password), stdin) ||
-                QByteArray(password).trimmed() != QByteArray("fixture-only-password"))
-                return 2;
-            writeOutput("\nType = 7z\n----------\nPath = payload.txt\nSize = 1\n\n");
-            return 0;
-        }
         if (mode == "memoryoption") {
+            const auto arguments = QCoreApplication::arguments();
+            const int separator = arguments.indexOf("--");
+            if (separator < 0 || separator + 1 >= arguments.size())
+                return 2;
+            QFile output(arguments[separator + 1]);
+            if (!output.open(QIODevice::WriteOnly))
+                return 2;
+            output.write("fixture");
             const bool requested = QCoreApplication::arguments().contains("-slp");
-            writeOutput("Type = zip\nPhysical Size = 1\nLargePagesRequested = " +
-                        QByteArray(requested ? "1" : "0") +
+            writeOutput("LargePagesRequested = " + QByteArray(requested ? "1" : "0") +
                         "\n----------\nPath = payload.txt\nSize = 1\n\n");
             return 0;
         }

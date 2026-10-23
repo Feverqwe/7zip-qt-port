@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QProcess>
 #include <QStandardPaths>
+#include <QTemporaryDir>
 #include <QTimer>
 #ifndef Q_OS_WIN
 #include <spawn.h>
@@ -40,11 +41,21 @@ bool createArchive(const QString &directory, const QString &archive, const QStri
     return process.waitForFinished(10000) && process.exitCode() == 0;
 }
 QByteArray contents(const QString &archive, const QString &name, const QString &password) {
+    QTemporaryDir selection;
+    const QString list = selection.filePath("members.txt");
+    // Filesystem-created fixtures can store NFD names, while native Rename
+    // preserves the entered NFC name. QProcess filename encoding must not
+    // change either reference selection; these fixtures use unique names.
+    QStringList names{name.normalized(QString::NormalizationForm_C),
+                      name.normalized(QString::NormalizationForm_D)};
+    names.removeDuplicates();
+    if (!selection.isValid() || !write(list, (names.join('\n') + '\n').toUtf8()))
+        return {};
     QProcess process;
-    QStringList arguments = {"x", "-so"};
+    QStringList arguments = {"x", "-so", "-spd", "-ssc", "-scsUTF-8", "-i@" + list};
     if (!password.isEmpty())
         arguments.append("-p" + password);
-    arguments.append({"--", archive, name});
+    arguments.append({"--", archive});
     process.start(executable(), arguments);
     return process.waitForFinished(10000) && process.exitCode() == 0
                ? process.readAllStandardOutput()

@@ -6,6 +6,7 @@
 #include "fixtures/progress_dialog.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
+#include "native_archive_fixture.h"
 #include "qtexternalprocess.h"
 #include <QApplication>
 #include <QDeadlineTimer>
@@ -156,7 +157,7 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
             QVERIFY(exited);
             pause = backend.setPaused(true);
         });
-        backend.testSourceArchive(archive, {});
+        backend.create(fixture.filePath("process-control.zip"), {archive});
         QTRY_COMPARE(finished.size(), 1);
         QVERIFY(exited);
         QCOMPARE(pause, S_OK);
@@ -177,13 +178,12 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         const QString archive = temp.filePath(QStringLiteral("fixture.7z"));
-        writeFile(archive, "test fixture");
-        qputenv("SEVENZIP_TEST_HELPER", "listing");
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
-        backend.list(archive);
-        await(backend, true);
-        qputenv("SEVENZIP_TEST_HELPER", empty ? "progress-password-empty" : "progress-password");
-        ArchiveProgressOperation operation(backend, [&] { backend.test(archive); });
+        QVERIFY(NativeArchiveFixture::Write(archive, {{"payload.txt"}}, "7z",
+                                            empty ? QStringLiteral("")
+                                                  : QStringLiteral("fixture пароль")));
+        ArchiveBackend backend;
+        ArchiveProgressOperation operation(backend,
+                                           [&] { backend.testSourceArchive(archive, {}); });
         bool observed = false;
         QTimer responder;
         responder.setInterval(5);
@@ -394,8 +394,8 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
         QVERIFY(original.open(QIODevice::ReadOnly));
         const QByteArray saved = original.readAll();
         original.close();
-        qputenv("SEVENZIP_TEST_HELPER", "listing");
         ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QCOMPARE(NativeArchiveFixture::Attach(backend), S_OK);
         backend.list(archive);
         await(backend, true);
         qputenv("SEVENZIP_TEST_HELPER", "createpartial");
@@ -441,6 +441,15 @@ int main(int argc, char **argv) {
     if (helperMode == "control-exit") {
         QCoreApplication app(argc, argv);
         const QDir fixture(qEnvironmentVariable("SEVENZIP_CONTROL_FIXTURE"));
+        const auto arguments = QCoreApplication::arguments();
+        const int separator = arguments.indexOf("--");
+        if (separator < 0 || separator + 1 >= arguments.size())
+            return 3;
+        QFile output(arguments[separator + 1]);
+        if (!output.open(QIODevice::WriteOnly))
+            return 3;
+        output.write("fixture");
+        output.close();
         QSaveFile pid(fixture.filePath("pid"));
         if (!pid.open(QIODevice::WriteOnly))
             return 3;
@@ -452,17 +461,6 @@ int main(int argc, char **argv) {
             QThread::msleep(1);
         return deadline.hasExpired() ? 3
                                      : qEnvironmentVariableIntValue("SEVENZIP_CONTROL_EXIT_CODE");
-    }
-    if (helperMode.startsWith("progress-password")) {
-        QCoreApplication app(argc, argv);
-        writeOutput("Enter password:");
-        char input[256];
-        if (!std::fgets(input, sizeof(input), stdin))
-            return 2;
-        const QByteArray expected = helperMode == "progress-password-empty"
-                                        ? QByteArray()
-                                        : QStringLiteral("fixture пароль").toUtf8();
-        return QByteArray(input).trimmed() == expected ? 0 : 2;
     }
     if (!qgetenv("SEVENZIP_TEST_HELPER").isEmpty()) {
         QObject unused;

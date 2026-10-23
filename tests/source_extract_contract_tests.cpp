@@ -143,7 +143,7 @@ class SourceExtractContractTests final : public QObject {
         CMyComPtr<IFolderFolder> metadata =
             new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
         ArchiveBackend backend;
-        connect(&backend, &ArchiveBackend::engineStarted, &backend,
+        connect(&backend, &ArchiveBackend::phaseStarted, &backend,
                 [&backend] { backend.cancel(); });
         CExtractContractWorker worker(backend, archive, metadata);
         QCOMPARE(worker.Create(L"Cancelled source item"), S_OK);
