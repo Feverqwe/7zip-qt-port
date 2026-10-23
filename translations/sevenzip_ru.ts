@@ -3862,6 +3862,14 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Некоторые каталоги FAT прочитаны не полностью. Часть файлов или имён может отсутствовать. Доступные файлы можно копировать.</translation>
         </message>
         <message>
+            <source>Some exFAT directories could not be read completely. Files or names may be missing. Readable files remain accessible.</source>
+            <translation>Некоторые каталоги exFAT прочитаны не полностью. Часть файлов или имён может отсутствовать. Доступные файлы можно копировать.</translation>
+        </message>
+        <message>
+            <source>The exFAT directory could not be read completely.</source>
+            <translation>Каталог exFAT прочитан не полностью.</translation>
+        </message>
+        <message>
             <source>Some SquashFS extended attributes are unavailable. Readable file data and attributes remain accessible.</source>
             <translation>Некоторые расширенные атрибуты SquashFS недоступны. Читаемые данные файлов и атрибуты можно копировать.</translation>
         </message>

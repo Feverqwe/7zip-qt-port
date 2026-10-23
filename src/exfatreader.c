@@ -149,14 +149,6 @@ void exfat_item_cursor(const struct exfat_item *item, struct exfat_cursor *c) {
 int exfat_next_item(struct exfat_volume *v, struct exfat_cursor *c, struct exfat_item *item) {
     if (c->position >= c->size)
         return 0;
-    if (!c->position && c->flags == ALLOC_FAT_CHAIN) {
-        struct exfat_chain chain;
-        unsigned int count;
-        exfat_chain_set(&chain, c->cluster, 0, c->flags);
-        if (exfat_count_num_clusters(&v->sb, &chain, &count) ||
-            count < exfat_bytes_to_cluster_round_up(&v->info, c->size))
-            return -EIO;
-    }
     struct inode inode = {0};
     inode.i_sb = &v->sb;
     inode.i_size = c->size;
@@ -171,7 +163,10 @@ int exfat_next_item(struct exfat_volume *v, struct exfat_cursor *c, struct exfat
     info.namebuf.lfn = (char *)name;
     info.namebuf.lfnbuf_len = sizeof(name);
     loff_t position = c->position;
+    v->sb.directory_error = false;
     int error = exfat_readdir(&inode, &position, &info);
+    if (v->sb.directory_error)
+        c->incomplete = 1;
     if (error)
         return error;
     if (!name[0])

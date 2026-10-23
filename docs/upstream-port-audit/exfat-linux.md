@@ -1,8 +1,8 @@
 # Linux exFAT read-only format module
 
 Current status handling includes [limited read-only access](#limited-read-only-status-2026-10-21)
-for dirty/media-failure volumes; the original clean-only TexFAT boundary below
-is retained as dated evidence.
+for dirty/media-failure volumes and [partial directory access](#partial-directory-access-2026-10-23).
+The original clean-only TexFAT boundary below is retained as dated evidence.
 
 The boot reader now uses the original shared Linux string scanner; source scope
 and validation are recorded with the [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
@@ -86,10 +86,12 @@ Explicit adaptations for untrusted image streams:
   block device; reject unsupported major revisions. Two-FAT/TexFAT reads are
   selected from the active allocation pair; status limitations are exposed as
   described in the current limited-read section below.
-- Preserve bounded FAT-chain counting before traversing root/child directories
-  or extracting FAT-chained files; reject ancestor directory aliases/cycles.
+- Preserve bounded root-chain bootstrap and FAT-chained file validation.
+  Child-directory enumeration uses the bounded original Linux walker and the
+  declared directory size; ancestor cycles remain incomplete directories.
 - Require complete filename/stream entry sets and matching entry-set checksums;
-  propagate malformed-set errors rather than silently omitting their files.
+  expose skipped malformed sets as directory limitations while retaining readable
+  independent entries.
 - Preserve UTF-16 names until the 7-Zip boundary and reject path components that
   could introduce traversal, separators or alternate streams during extraction.
 - Propagate open/extract cancellation and source/output I/O errors; clean failed
@@ -540,3 +542,81 @@ builds passed on all three platforms, remote receipt
 suites, physical devices, a new installed package, VoiceOver and native Windows/
 Linux appearance were not checked. This closes the selected status-policy scenario;
 the broader filesystem/format goal remains separate.
+
+## Partial directory access (2026-10-23)
+
+The expanded [read-only policy audit](read-only-access.md) found two adapter
+restrictions: a malformed entry set stopped the whole namespace, and a complete
+child FAT-chain precheck blocked a readable directory prefix. Compared the pinned
+Linux `fs/exfat/dir.c::exfat_readdir`, entry-set/name readers and their complete
+`exfat_find` consumers, `fatent.c::exfat_count_num_clusters`, and the chain helpers
+in `exfat_fs.h`. The four reference files match the existing baseline hashes.
+The Linux revision/repository above are unchanged; no new source snapshot or
+independent filesystem decoder is introduced.
+
+The original `exfat_readdir` continuation after a rejected entry set is restored.
+A per-cursor diagnostic records skipped records; allocation failure and caller
+cancellation remain fatal. Child enumeration uses that same demand-driven reader,
+bounded by the declared directory size and existing geometry/cluster checks.
+The extra whole-chain precheck is removed from child enumeration. Root bootstrap,
+entry-set checksums, path validation, the active FAT/bitmap choice and file-data
+mapping are preserved.
+
+The archive traversal retains independently readable siblings and known prefixes
+when a directory cannot be completed. A safe reference to an already encountered
+directory can be read through both names; references to an ancestor and traversal
+depth overflow become incomplete directories. The depth boundary follows the
+existing 7-Zip FAT traversal. Item errors and the volume limitation property
+describe incomplete directories. Copying such a directory reports DataError;
+copying a readable file preserves its own successful result. A skipped root entry
+also sets the standard archive header-error property. Whole-catalog extraction
+reports HeadersError through the original SDK extended callback, or S_FALSE for a
+consumer without it, after retaining extracted readable data. Source notices and
+the SDK archive ABI/dependencies are unchanged.
+
+Limited filesystem-image opens now use the retained native handler for metadata
+and extraction, as direct devices already do. The callback, consent, progress and
+path checks remain with their existing owners. This avoids losing an opened
+partial catalogue to a second failing CLI listing or ambiguous item mapping.
+Reopen follows the same path. Ordinary clean filesystem images retain their
+existing transport. The existing EN/RU limited-read alert, Cancel default and
+visible badge are reused; there is no additional permission mode or source write.
+
+ABI regressions replace the former whole-open refusals for damaged entry sets,
+invalid item metadata/names and a directory cycle. They check readable sibling
+bytes, skipped unsafe entries, partial child-chain data, isolated source I/O
+failure, incomplete-directory extraction, safe aliases and reusable opening state.
+The existing cancellation, output failure, clean/TexFAT and metadata checks remain.
+EN/RU UI cases cover root-entry corruption, child-chain failure and a cycle, with
+cancel/accept, healthy copy, errors for incomplete copy, persistent mode, fresh
+consent and unchanged source bytes.
+
+Source transfer for this directory scenario is complete. This is not closure of all exFAT
+recovery gates: damaged root-chain/bitmap bootstrap, short-source opening and the
+file-data whole-chain precheck still require separate source/reader review under
+the active policy goal. They are not declared unavoidable decoder limitations.
+
+Validation: **20/20 focused suites PASS on macOS, Linux and Windows**. The set
+contains exFAT ABI/backend, the new directory UI group, all existing limited-read
+filesystem UI consumers, native folder opening, archive recovery and device
+filesystem/folder consumers. macOS used Cocoa (352.52 s); Linux/Windows used
+offscreen (248.48/386.49 s), remote receipt `20261023T031240Z-84082e34`.
+The new UI group took 19.19 s on macOS and retains its normal timeout. Current
+EN/RU warning and normal/compact badge JSON were inspected, without clipping.
+
+The first directory UI attempt timed out because test automation tried closing
+the parent progress window while an error alert was modal above it. The helper
+now handles the active modal child first. The root extraction error is delivered
+through the SDK message callback; no timeout increase or decoder workaround was
+used. After the diagnosis and successful rerun, ten exact task-owned remnants of
+the earlier killed/sandbox runs were removed after an open-handle check. Active
+runs, unrelated fixtures, build trees, compiler caches and current reports remain.
+Full/slow suites, physical devices, native Windows/Linux appearance, VoiceOver and
+installed-package acceptance are not claimed.
+
+Incremental application builds also passed on macOS and both guests. The remote
+portable `sevenzip_desktop` target and updated plugin deployment passed in receipt
+`20261023T032226Z-e29d75b4`; the initial `Sevenzip` bundle target name applies only
+to macOS. The handler boundary was reviewed after this change: traversal,
+properties and extraction share one archive ABI owner, while disk decoding remains
+in C. Keeping that owner preserves the existing callback/error lifecycle.

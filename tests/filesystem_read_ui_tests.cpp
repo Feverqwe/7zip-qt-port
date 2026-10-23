@@ -129,6 +129,23 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
     void confirmsAndCopiesFlaggedVolumeRu_data() { flaggedVolumeData("ru"); }
     void confirmsLimitedExt_data() { flaggedVolumeData("en", true); }
     void confirmsLimitedExtRu_data() { flaggedVolumeData("ru", true); }
+    void confirmsPartialExfatDirectories_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("accept");
+        QTest::addColumn<QString>("kind");
+        for (const QString &language : {"en", "ru"})
+            for (bool accept : {false, true})
+                for (const QString &fault : {"entry-checksum", "child-chain", "directory-cycle"})
+                    QTest::newRow(
+                        qPrintable(language + '-' + fault + (accept ? "-accept" : "-cancel")))
+                        << language << accept << "exfat-" + fault;
+    }
+    void confirmsPartialExfatDirectories() {
+        QFETCH(QString, language);
+        QFETCH(bool, accept);
+        QFETCH(QString, kind);
+        confirmAndCopy(language, accept, kind);
+    }
 
     void confirmsPartialSquashfsIndexes_data() {
         QTest::addColumn<QString>("language");
@@ -380,6 +397,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
 
   private:
     void confirmAndCopy(const QString &language, bool accept, const QString &kind) {
+        const bool exfat = kind == "exfat" || kind.startsWith("exfat-");
         const bool ntfs = kind.startsWith("volume-") || kind.startsWith("reparse-") ||
                           kind.startsWith("ea-") || kind.startsWith("data-list-") ||
                           kind.startsWith("standard-") || kind.startsWith("dir-") ||
@@ -408,7 +426,15 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         QByteArray image = fixture.image;
         QString filename = fixture.fragmentedName;
         QByteArray payload = QByteArray(512, 'A') + QByteArray(188, 'B');
-        if (kind != "exfat") {
+        if (kind.startsWith("exfat-")) {
+            fixture.directoryFault(kind.mid(6));
+            image = fixture.image;
+            if (kind == "exfat-entry-checksum") {
+                filename = fixture.longName;
+                payload = "end";
+            }
+        }
+        if (!exfat) {
             QProcess generator;
             generator.start(
                 QStringLiteral(SEVENZIP_HFS_PYTHON),
@@ -495,6 +521,9 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         connect(&automation, &QTimer::timeout, &window, [&] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 if (widget->isVisible() && widget->objectName() == "progressDialog") {
+                    if (QApplication::activeModalWidget() &&
+                        QApplication::activeModalWidget() != widget)
+                        continue;
                     auto *close = widget->findChild<QPushButton *>("IDCANCEL");
                     if (TestProgressDialog::IsCloseButton(close)) {
                         const auto *messages =
@@ -590,7 +619,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                                   Q_ARG(int, 0)));
                 filename = fatFolder == "BROKEN" ? "PREFIX.TXT" : "GOOD.TXT";
             }
-            if (kind != "exfat" && !ntfs && !ext && !fat && !squashfs && !cramfs) {
+            if (!exfat && !ntfs && !ext && !fat && !squashfs && !cramfs) {
                 QTRY_VERIFY(Row(*table, "HfsFixture") >= 0);
                 const int row = Row(*table, "HfsFixture");
                 table->selectRow(row);
@@ -605,7 +634,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             const QString output = directory.filePath("copied");
             ExtractionOptions copyOptions;
             copyOptions.pathMode = ExtractionOptions::PathMode::CurrentPaths;
-            if (kind != "exfat" && !ntfs && !ext && !fat && !squashfs && !cramfs)
+            if (!exfat && !ntfs && !ext && !fat && !squashfs && !cramfs)
                 copyOptions.currentFolder = "HfsFixture";
             else if (fatDirectory)
                 copyOptions.currentFolder = fatFolder;
@@ -620,6 +649,22 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 qPrintable(
                     QDir(output).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).join('\n')));
             QCOMPARE(copied.readAll(), payload);
+            if (kind.startsWith("exfat-")) {
+                const QString partial = directory.filePath("partial");
+                if (kind != "exfat-entry-checksum") {
+                    QTRY_VERIFY(Row(*table, fixture.directoryName) >= 0);
+                    table->selectRow(Row(*table, fixture.directoryName));
+                }
+                copyingIncomplete = true;
+                window.extractTo(partial, kind != "exfat-entry-checksum", {}, copyOptions);
+                copyingIncomplete = false;
+                QVERIFY(incompleteCopyErrors > 0);
+                if (kind == "exfat-child-chain") {
+                    QFile prefix(partial + '/' + fixture.directoryName + '/' + fixture.nestedName);
+                    QVERIFY(prefix.open(QIODevice::ReadOnly));
+                    QCOMPARE(prefix.readAll(), QByteArray("tail") + QByteArray(1020, '\0'));
+                }
+            }
             if (fatFile) {
                 QTRY_VERIFY(Row(*table, "SECOND.BIN") >= 0);
                 table->selectRow(Row(*table, "SECOND.BIN"));

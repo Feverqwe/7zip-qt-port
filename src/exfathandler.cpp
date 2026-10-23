@@ -21,10 +21,13 @@ namespace {
 struct Item {
     UString path;
     exfat_item entry;
+    bool incomplete = false;
 };
 struct Pending {
     UString path;
     exfat_cursor cursor;
+    size_t index = size_t(-1);
+    std::vector<uint32_t> ancestors;
 };
 bool ItemName(const exfat_item &item, UString &name) {
     UString utf16;
@@ -63,9 +66,18 @@ class CHandler final : public IInArchive, public CMyUnknownImp {
     IArchiveExtractCallback *extractCallback_ = nullptr;
     HRESULT transportResult_ = S_OK;
     UInt64 completed_ = 0;
+    bool directoryLimitations_ = false;
+    bool rootIncomplete_ = false;
     static int Read(void *, uint64_t, void *, size_t);
     static int Poll(void *);
     HRESULT ReadTree();
+    void MarkDirectoryIncomplete(size_t index) {
+        directoryLimitations_ = true;
+        if (index == size_t(-1))
+            rootIncomplete_ = true;
+        else
+            items_[index].incomplete = true;
+    }
     HRESULT ExtractItem(UInt32, Int32, IArchiveExtractCallback *);
 };
 
@@ -94,31 +106,53 @@ int CHandler::Read(void *context, uint64_t offset, void *buffer, size_t size) {
 HRESULT CHandler::ReadTree() {
     Pending root;
     exfat_root_cursor(volume_.get(), &root.cursor);
+    root.ancestors.push_back(root.cursor.cluster);
     std::vector<Pending> pending{root};
-    std::set<uint32_t> directories{root.cursor.cluster};
     while (!pending.empty()) {
         Pending directory = pending.back();
         pending.pop_back();
         for (;;) {
             Item item;
+            const auto position = directory.cursor.position;
             const int result = exfat_next_item(volume_.get(), &directory.cursor, &item.entry);
-            if (result < 0)
-                return transportResult_ == S_OK ? S_FALSE : transportResult_;
+            if (directory.cursor.incomplete)
+                MarkDirectoryIncomplete(directory.index);
+            if (result < 0) {
+                if (transportResult_ == E_ABORT || transportResult_ == E_OUTOFMEMORY)
+                    return transportResult_;
+                if (result == -ENOMEM)
+                    return E_OUTOFMEMORY;
+                MarkDirectoryIncomplete(directory.index);
+                transportResult_ = S_OK;
+                if (directory.cursor.position > position)
+                    continue; // Linux established the next record boundary.
+                break;
+            }
             if (!result)
                 break;
             UString name;
-            if (!ItemName(item.entry, name))
-                return S_FALSE;
+            if (!ItemName(item.entry, name)) {
+                MarkDirectoryIncomplete(directory.index);
+                continue;
+            }
             item.path = directory.path;
             item.path += name;
             if ((item.entry.attributes & 0x10) && item.entry.size) {
-                if (!directories.insert(item.entry.cluster).second)
-                    return S_FALSE;
-                Pending child;
-                child.path = item.path;
-                child.path += L'/';
-                exfat_item_cursor(&item.entry, &child.cursor);
-                pending.push_back(child);
+                if (directory.ancestors.size() > 256 ||
+                    std::find(directory.ancestors.begin(), directory.ancestors.end(),
+                              item.entry.cluster) != directory.ancestors.end()) {
+                    item.incomplete = true;
+                    directoryLimitations_ = true;
+                } else {
+                    Pending child;
+                    child.path = item.path;
+                    child.path += L'/';
+                    child.index = items_.size();
+                    child.ancestors = directory.ancestors;
+                    child.ancestors.push_back(item.entry.cluster);
+                    exfat_item_cursor(&item.entry, &child.cursor);
+                    pending.push_back(std::move(child));
+                }
             }
             items_.push_back(item);
             if (Poll(this))
@@ -169,6 +203,8 @@ Z7_COM7F_IMF(CHandler::Close()) {
     extractCallback_ = nullptr;
     transportResult_ = S_OK;
     completed_ = 0;
+    directoryLimitations_ = false;
+    rootIncomplete_ = false;
     return S_OK;
 }
 
@@ -186,6 +222,10 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID id, PROPVARIANT *value))
     FILETIME time;
     const bool directory = (item.entry.attributes & 0x10) != 0;
     switch (id) {
+    case kpidError:
+        if (item.incomplete)
+            prop = "The exFAT directory could not be read completely.";
+        break;
     case kpidPath:
         prop = item.path;
         break;
@@ -227,7 +267,9 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID id, PROPVARIANT *value))
 Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID id, PROPVARIANT *value)) {
     COM_TRY_BEGIN
     NWindows::NCOM::CPropVariant prop;
-    if (id == kpidReadOnly && volume_)
+    if (id == kpidErrorFlags && rootIncomplete_)
+        prop = UInt32(kpv_ErrorFlags_HeadersError);
+    else if (id == kpidReadOnly && volume_)
         prop = true;
     else if (id == kpidPhySize && volume_)
         prop = UInt64(exfat_volume_size(volume_.get()));
@@ -246,6 +288,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID id, PROPVARIANT *value)) {
             if (!warning.IsEmpty())
                 warning += '\n';
             warning += "Medium has reported failures. Some data may be lost.";
+        }
+        if (directoryLimitations_) {
+            if (!warning.IsEmpty())
+                warning += '\n';
+            warning += "Some exFAT directories could not be read completely. Files or names may be "
+                       "missing. Readable files remain accessible.";
         }
         if (!warning.IsEmpty())
             prop = warning;
@@ -271,7 +319,8 @@ HRESULT CHandler::ExtractItem(UInt32 index, Int32 testMode, IArchiveExtractCallb
         return S_OK;
     }
     RINOK(callback->PrepareOperation(askMode))
-    Int32 operation = NExtract::NOperationResult::kOK;
+    Int32 operation =
+        item.incomplete ? NExtract::NOperationResult::kDataError : NExtract::NOperationResult::kOK;
     if (!directory) {
         exfat_cursor cursor;
         exfat_item_cursor(&item.entry, &cursor);
@@ -328,19 +377,27 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 count, Int32 testMo
     for (UInt32 i = 0; i < count && result == S_OK; ++i)
         result = ExtractItem(all ? i : indices[i], testMode, callback);
     extractCallback_ = nullptr;
+    if (result == S_OK && rootIncomplete_ &&
+        (all || (count && count == items_.size() &&
+                 std::set<UInt32>(indices, indices + count).size() == count))) {
+        CMyComPtr<IArchiveExtractCallbackMessage2> messages;
+        callback->QueryInterface(IID_IArchiveExtractCallbackMessage2, (void **)&messages);
+        if (messages)
+            return messages->ReportExtractResult(NEventIndexType::kNoIndex, 0,
+                                                 NExtract::NOperationResult::kHeadersError);
+        return S_FALSE;
+    }
     return result;
     COM_TRY_END
 }
 
-static const Byte kProps[] = {kpidPath,   kpidIsDir, kpidSize,  kpidPackSize,
-                              kpidAttrib, kpidCTime, kpidMTime, kpidATime};
-static const CStatProp kArcProps[] = {{nullptr, kpidReadOnly, VT_BOOL},
-                                      {nullptr, kpidPhySize, VT_UI8},
-                                      {nullptr, kpidVolumeName, VT_BSTR},
-                                      {nullptr, kpidFreeSpace, VT_UI8},
-                                      {nullptr, kpidClusterSize, VT_UI4},
-                                      {nullptr, kpidSectorSize, VT_UI4},
-                                      {"Read-only limitations", kpidReadLimitations, VT_BSTR}};
+static const Byte kProps[] = {kpidPath,  kpidIsDir, kpidSize,  kpidPackSize, kpidAttrib,
+                              kpidCTime, kpidMTime, kpidATime, kpidError};
+static const CStatProp kArcProps[] = {
+    {nullptr, kpidReadOnly, VT_BOOL},  {nullptr, kpidErrorFlags, VT_UI4},
+    {nullptr, kpidPhySize, VT_UI8},    {nullptr, kpidVolumeName, VT_BSTR},
+    {nullptr, kpidFreeSpace, VT_UI8},  {nullptr, kpidClusterSize, VT_UI4},
+    {nullptr, kpidSectorSize, VT_UI4}, {"Read-only limitations", kpidReadLimitations, VT_BSTR}};
 IMP_IInArchive_Props IMP_IInArchive_ArcProps_WITH_NAME static const Byte signature[] = {
     'E', 'X', 'F', 'A', 'T', ' ', ' ', ' '};
 REGISTER_ARC_I("exFAT", "exfat img", nullptr, 0xF0, signature, 3, 0, nullptr)

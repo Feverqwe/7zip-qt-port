@@ -24,12 +24,13 @@ class Input final : public IInStream, public CMyUnknownImp {
   public:
     bool *cancelOnRead = nullptr;
     UInt64 failureOffset = UINT64_MAX;
+    UInt64 failureEnd = UINT64_MAX;
     HRESULT failureResult = E_FAIL;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
             *processed = 0;
-        if (position_ >= failureOffset)
+        if (position_ >= failureOffset && position_ < failureEnd)
             return failureResult;
         const UInt64 remaining = position_ < UInt64(bytes_.size()) ? bytes_.size() - position_ : 0;
         size = UInt32(qMin<UInt64>(size, remaining));
@@ -481,9 +482,7 @@ class ExfatTests final : public QObject {
     }
     void malformedVolume_data() {
         QTest::addColumn<QString>("fault");
-        for (const auto *fault :
-             {"boot-checksum", "cluster-range", "root-cycle", "entry-checksum", "extent-range",
-              "name-length", "traversal-name", "truncated", "directory-cycle"})
+        for (const auto *fault : {"boot-checksum", "cluster-range", "root-cycle", "truncated"})
             QTest::newRow(fault) << QString::fromLatin1(fault);
     }
     void malformedVolume() {
@@ -497,32 +496,76 @@ class ExfatTests final : public QObject {
         }
         if (fault == "root-cycle")
             f.fat(10, 2);
-        if (fault == "entry-checksum")
-            f.image[f.rootOffset(2) + 4] ^= 1;
-        if (fault == "extent-range") {
-            f.set32(f.rootOffset(3) + 20, 10000);
-            f.refreshEntryChecksum(2);
-        }
-        if (fault == "name-length") {
-            f.image[f.rootOffset(3) + 3] = 1;
-            f.refreshEntryChecksum(2);
-        }
-        if (fault == "traversal-name") {
-            f.image[f.rootOffset(4) + 2] = '/';
-            f.refreshEntryChecksum(2);
-        }
         if (fault == "truncated")
             f.image.chop(200000);
-        if (fault == "directory-cycle") {
-            const int directory = 2 + (2 + (f.fragmentedName.size() + 14) / 15);
-            f.set32(f.rootOffset(directory + 1) + 20, 2);
-            f.refreshEntryChecksum(directory);
-        }
         QVERIFY(open(f.image) != S_OK);
         UInt32 count = 999;
         QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
         QCOMPARE(count, 0u);
         QCOMPARE(open(fixture_.image), S_OK); // Failed opens leave a reusable handler.
+    }
+    void partialDirectories_data() {
+        QTest::addColumn<QString>("fault");
+        for (const auto *fault :
+             {"entry-checksum", "extent-range", "name-length", "traversal-name", "directory-cycle",
+              "child-checksum", "child-chain", "child-io", "alias"})
+            QTest::newRow(fault) << QString::fromLatin1(fault);
+    }
+    void partialDirectories() {
+        QFETCH(QString, fault);
+        ExfatFixture fixture;
+        if (fault != "child-io")
+            fixture.directoryFault(fault);
+        auto *input = new Input(fixture.image);
+        if (fault == "child-io") {
+            input->failureOffset = fixture.clusterOffset(6);
+            input->failureEnd = fixture.clusterOffset(7);
+        }
+        CMyComPtr<IInStream> source = input;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        const bool root = fault == "entry-checksum" || fault == "extent-range" ||
+                          fault == "name-length" || fault == "traversal-name";
+        const QString healthyName = root ? fixture.longName : fixture.fragmentedName;
+        const QByteArray healthy =
+            root ? QByteArray("end") : QByteArray(512, 'A') + QByteArray(188, 'B');
+        const UInt32 index = indexOf(healthyName);
+        QVERIFY(index != UInt32(-1));
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(callback->output->bytes, healthy);
+        if (root) {
+            QVERIFY(indexOf(fixture.fragmentedName) == UInt32(-1));
+            QCOMPARE(archive_->Extract(nullptr, UInt32(-1), 1, callback), S_FALSE);
+        } else if (fault != "alias") {
+            const UInt32 directory = indexOf(fixture.directoryName);
+            QVERIFY(directory != UInt32(-1));
+            NWindows::NCOM::CPropVariant error;
+            QCOMPARE(archive_->GetProperty(directory, kpidError, &error), S_OK);
+            QCOMPARE(error.vt, VARTYPE(VT_BSTR));
+            QCOMPARE(archive_->Extract(&directory, 1, 1, callback), S_OK);
+            QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+            if (fault == "child-chain") {
+                const UInt32 prefix = indexOf(fixture.directoryName + '/' + fixture.nestedName);
+                QVERIFY(prefix != UInt32(-1));
+                callback->output->bytes.clear();
+                QCOMPARE(archive_->Extract(&prefix, 1, 0, callback), S_OK);
+                QCOMPARE(callback->output->bytes, QByteArray("tail") + QByteArray(1020, '\0'));
+            }
+        } else {
+            for (const QString &directory : {fixture.directoryName, QString("alias")}) {
+                const UInt32 child = indexOf(directory + '/' + fixture.nestedName);
+                QVERIFY(child != UInt32(-1));
+                callback->output->bytes.clear();
+                QCOMPARE(archive_->Extract(&child, 1, 0, callback), S_OK);
+                QCOMPARE(callback->output->bytes, QByteArray("tail") + QByteArray(1020, '\0'));
+            }
+        }
+        QCOMPARE(open(fixture_.image), S_OK);
+        NWindows::NCOM::CPropVariant flags;
+        QCOMPARE(archive_->GetArchiveProperty(kpidErrorFlags, &flags), S_OK);
+        QCOMPARE(flags.vt, VARTYPE(VT_EMPTY));
     }
     void dataFailureAndCancellation() {
         ExfatFixture broken;

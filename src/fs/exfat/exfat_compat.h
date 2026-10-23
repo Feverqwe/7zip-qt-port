@@ -69,6 +69,7 @@ struct super_block {
     void *context;
     int (*read)(void *, uint64_t, void *, size_t);
     int (*poll)(void *);
+    bool directory_error;
     char error[256];
 };
 struct buffer_head {

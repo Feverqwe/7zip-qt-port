@@ -78,9 +78,10 @@ HRESULT PrepareLimitedFilesystemRead(const CArchiveLink &link, COpenArchiveCallb
 HRESULT PrepareLimitedArchiveRead(const CArchiveLink &link, const CCodecs &codecs,
                                   CProgressDialog *dialog, IOpenCallbackUI *callback,
                                   const QString &accepted, QString &limitations,
-                                  bool &archiveWarning) {
+                                  bool &nativeMetadata) {
     RINOK(PrepareLimitedFilesystemRead(link, nullptr, {}, limitations))
-    archiveWarning = false;
+    bool archiveWarning = false;
+    nativeMetadata = !limitations.isEmpty();
     FOR_VECTOR(a, link.Arcs) {
         const CArc &arc = link.Arcs[a];
         if (arc.FormatIndex < 0)
@@ -91,6 +92,7 @@ HRESULT PrepareLimitedArchiveRead(const CArchiveLink &link, const CCodecs &codec
             !arc.ErrorInfo.IsThereErrorOrWarning())
             continue;
         archiveWarning = true;
+        nativeMetadata = true;
         const CArcErrorInfo &error = arc.ErrorInfo;
         QStringList detail;
         for (const UString &text : {GetOpenArcErrorMessage(error.GetErrorFlags()),

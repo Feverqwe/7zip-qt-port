@@ -73,6 +73,46 @@ void ExfatFixture::setNestedFile(const QString &name, const QByteArray &payload)
 void ExfatFixture::fat(unsigned cluster, unsigned next) {
     set32(FatSector * sectorSize + cluster * 4, next);
 }
+void ExfatFixture::directoryFault(const QString &fault) {
+    const int directory = 2 + (2 + (fragmentedName.size() + 14) / 15);
+    if (fault == "entry-checksum")
+        image[rootOffset(2) + 4] ^= 1;
+    else if (fault == "extent-range") {
+        set32(rootOffset(3) + 20, 10000);
+        refreshEntryChecksum(2);
+    } else if (fault == "name-length") {
+        image[rootOffset(3) + 3] = 1;
+        refreshEntryChecksum(2);
+    } else if (fault == "traversal-name") {
+        image[rootOffset(4) + 2] = '/';
+        refreshEntryChecksum(2);
+    } else if (fault == "directory-cycle") {
+        set32(rootOffset(directory + 1) + 20, 2);
+        refreshEntryChecksum(directory);
+    } else if (fault == "child-checksum") {
+        image[clusterOffset(6) + 4] ^= 1;
+    } else if (fault == "child-chain") {
+        image[rootOffset(directory + 1) + 1] = 1;
+        set64(rootOffset(directory + 1) + 8, 2 * sectorSize);
+        set64(rootOffset(directory + 1) + 24, 2 * sectorSize);
+        refreshEntryChecksum(directory);
+        fat(6, 0);
+        const int records = 2 + (nestedName.size() + 14) / 15;
+        std::fill_n(image.data() + clusterOffset(6) + records * 32, sectorSize - records * 32,
+                    char(0x80));
+    } else if (fault == "alias") {
+        fat(10, 11);
+        fat(11, 0xffffffff);
+        const int bitmap = clusterOffset(3) + 1;
+        image[bitmap] = char(quint8(image[bitmap]) | 2);
+        emptyDirectory(31, "alias", 6);
+        set64(rootOffset(32) + 8, sectorSize);
+        set64(rootOffset(32) + 24, sectorSize);
+        refreshEntryChecksum(31);
+    } else {
+        Q_ASSERT(false);
+    }
+}
 int ExfatFixture::rootOffset(int entry) const {
     const int perCluster = sectorSize / 32;
     const unsigned clusters[] = {2, 10, 11};

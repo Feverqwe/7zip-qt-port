@@ -18,4 +18,4 @@ HRESULT PrepareLimitedFilesystemRead(const CArchiveLink &link, COpenArchiveCallb
 HRESULT PrepareLimitedArchiveRead(const CArchiveLink &link, const CCodecs &codecs,
                                   CProgressDialog *dialog, IOpenCallbackUI *callback,
                                   const QString &accepted, QString &limitations,
-                                  bool &archiveWarning);
+                                  bool &nativeMetadata);

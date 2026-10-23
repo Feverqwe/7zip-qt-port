@@ -88,6 +88,7 @@ int exfat_readdir(struct inode *inode, loff_t *cpos, struct exfat_dir_entry *dir
 	dentries_per_clu = sbi->dentries_per_clu;
 	max_dentries = (unsigned int)min_t(u64, MAX_EXFAT_DENTRIES,
 			exfat_cluster_to_dentries(sbi, sbi->num_clusters));
+	max_dentries = min_t(u64, max_dentries, i_size_read(inode) >> DENTRY_SIZE_BITS);
 
 	clu_offset = exfat_dentries_to_cluster(sbi, dentry);
 	exfat_chain_dup(&clu, &dir);
@@ -132,7 +133,10 @@ int exfat_readdir(struct inode *inode, loff_t *cpos, struct exfat_dir_entry *dir
 				uni_name.name);
 			if (err) {
 				brelse(bh);
-				return err;
+				if (err == -ENOMEM)
+					return err;
+				sb->directory_error = true;
+				continue;
 			}
 			exfat_utf16_to_nls(sb, &uni_name,
 				(unsigned char *)dir_entry->namebuf.lfn,

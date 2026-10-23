@@ -32,6 +32,7 @@ struct exfat_cursor {
     uint32_t cluster, hint_cluster, hint_offset;
     uint64_t size;
     uint8_t flags;
+    uint8_t incomplete;
 };
 int exfat_open_volume(const struct exfat_source *, struct exfat_volume **);
 void exfat_close_volume(struct exfat_volume *);

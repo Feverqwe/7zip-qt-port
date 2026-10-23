@@ -274,17 +274,17 @@ HRESULT QtArchiveFolderManager::OpenLinkImpl(CArchiveLink &link, const COpenOpti
             return nativeResult;
     }
     QString limitations;
-    bool archiveWarning = false;
+    bool nativeMetadata = false;
     if (nativeOpen) {
         auto *consent = dynamic_cast<IQtArchiveReadConsent *>(progress);
         auto *dialog = ui ? &ui->ProgressDialog : consent ? consent->ReadConsentDialog() : nullptr;
         auto *readCallback = ui ? ui : consent ? consent->ReadConsentCallback() : nullptr;
         RINOK(PrepareLimitedArchiveRead(nativeOpen->archiveLink(), nativeOpen->nativeCodecs(),
-                                        dialog, readCallback, {}, limitations, archiveWarning))
+                                        dialog, readCallback, {}, limitations, nativeMetadata))
     }
     resource->SetFilesystemReadLimitations(limitations);
     resource->AttachNativeOpen(std::move(nativeOpen));
-    if (archiveWarning) {
+    if (nativeMetadata) {
         resource->UseNativeMetadata();
         resource->AttachReopenService(_backend, resource->TransportFormat());
         resource->AttachExtractService(_backend, resource->TransportFormat());
