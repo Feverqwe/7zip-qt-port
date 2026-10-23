@@ -54,7 +54,7 @@ the [text specifications](ui-layout-contracts.md) own observable layout contract
 
 Contextual forms opt into parent-window modality on macOS through the shared
 presentation adapter. Layout construction itself does not make windows modal.
-Operation progress keeps its existing application-wide blocking policy;
+Operation progress blocks its owning process;
 source synchronous dialog results and worker/callback ownership remain intact.
 
 Preferences are applied through the source Options/page owners. Cancel must
@@ -116,6 +116,16 @@ never start the console. Destination extraction uses original Common/Extract
 and ArchiveExtractCallback in the same worker, including overwrite decisions
 delivered to the GUI and a final bounded-output policy. The CLI transport remains
 for write operations that have not yet migrated.
+
+The File Manager's Test command for ordinary filesystem archives launches the
+bundled `7zG`. The child owns native discovery, source GUI dispatch, dialogs and
+execution; the manager remains available. A versioned local request/ACK/result
+channel carries literal selections and typed outcomes. Native process observation
+distinguishes a source result from a crash or missing result. An accepted job
+continues after the manager closes or the channel disconnects. Shell arguments
+still enter the original parser. Testing an open archive folder or a nested
+parent chain retains its direct source workflow; other operation commands have
+not yet moved to this process boundary.
 
 Seekable archive items can back nested readers directly. Each reader generation
 retains its codec image, input and parents; independent cursors serialize access

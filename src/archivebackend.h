@@ -22,6 +22,7 @@ class QtArchiveVolumeOutput;
 class QtArchiveCreationLifecycle;
 class QtArchiveHashOperation;
 class QtArchiveReadOperation;
+class QtOperationLauncher;
 class QtArchiveCopyPreparation;
 class ArchiveCodecCatalog;
 class ArchiveSfxModule;
@@ -174,6 +175,9 @@ class ArchiveBackend : public QObject {
                          const QStringList &selected = {}, const QString &password = {},
                          const ExtractionOptions &options = {});
     virtual void test(const QString &archive, const QString &password = {});
+    // Independent filesystem archives only. The observer belongs to the app;
+    // releasing this backend/window does not cancel an accepted GUI operation.
+    virtual QtOperationLauncher *startGuiTest(const QStringList &archives, QString &error);
     // The native source extraction callback already owns listed metadata for
     // this archive, independent of the backend's last UI listing.
     virtual void testSourceArchive(const QString &archive, const QString &password);

@@ -5,9 +5,17 @@
 #include "qtarchivedirectoryextract.h"
 #include "qtarchivereadoperation.h"
 #include "qtlanguageservices.h"
+#include "qtoperationlauncher.h"
 #include <QFileInfo>
 #include <QMetaMethod>
 #include <QPointer>
+
+QtOperationLauncher *ArchiveBackend::startGuiTest(const QStringList &archives, QString &error) {
+    QtOperationMessage job;
+    job.Type = QtOperationMessage::Kind::Job;
+    job.Paths = archives;
+    return QtOperationLauncher::Launch(QtOperationLauncher::GuiProgram(), job, error);
+}
 
 void ArchiveBackend::startNativeRead(
     Job job, const QString &archive, const QString &password, const QString &format,

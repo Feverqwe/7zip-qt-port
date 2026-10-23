@@ -7,17 +7,63 @@
 #include "archivecodeccatalog.h"
 #include "copydialog.h"
 #include "extractdialog.h"
+#include "fixtures/operation_temp_cleanup.h"
 #include "fixtures/panel_keys.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
+#include "qtoperationlauncher.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
 #include <QTreeWidget>
+#ifdef Q_OS_WIN
+#include <windows.h>
+#else
+#include <csignal>
+#endif
 
 namespace {
 using namespace SourceExtractFixture;
+QString FixtureTemplate() {
+    return QDir(QFileInfo(QDir::tempPath()).canonicalFilePath()).filePath("toolbar-XXXXXX");
+}
+class GuiTestBackend final : public ArchiveBackend {
+  public:
+    QList<QtOperationResult> Results;
+    QList<QStringList> Selections;
+    bool CrashNext = false;
+    bool Killed = false;
+    QtOperationLauncher *startGuiTest(const QStringList &archives, QString &error) override {
+        QtOperationMessage job;
+        job.Type = QtOperationMessage::Kind::Job;
+        job.Paths = archives;
+        job.YesToAll = !CrashNext;
+        auto *operation =
+            QtOperationLauncher::Launch(QStringLiteral(SEVENZIP_NATIVE_GUI), job, error);
+        if (operation) {
+            if (CrashNext) {
+                CrashNext = false;
+                connect(operation, &QtOperationLauncher::accepted, operation, [this, operation] {
+#ifdef Q_OS_WIN
+                    HANDLE child =
+                        OpenProcess(PROCESS_TERMINATE, FALSE, DWORD(operation->processId()));
+                    if (child) {
+                        Killed = TerminateProcess(child, 0xc0000005u);
+                        CloseHandle(child);
+                    }
+#else
+                    Killed = ::kill(pid_t(operation->processId()), SIGKILL) == 0;
+#endif
+                });
+            }
+            Selections.append(archives);
+            connect(operation, &QtOperationLauncher::finished, this,
+                    [this](const QtOperationResult &result) { Results.append(result); });
+        }
+        return operation;
+    }
+};
 bool makeArchive(const QString &directory, const QString &path, const QString &type,
                  const QString &name) {
     QProcess process;
@@ -72,6 +118,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
     }
 
   private slots:
+    void cleanup() { QVERIFY(CleanupOperationTestTemps()); }
     void initTestCase() {
         module_ = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
         ArchiveCodecCatalog catalog(module_, 0);
@@ -90,7 +137,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
     void repeatedArchiveTesting() {
         QFETCH(QString, format);
         QFETCH(bool, opened);
-        QTemporaryDir fixture;
+        QTemporaryDir fixture(FixtureTemplate());
         QVERIFY(fixture.isValid());
         const QString name = QStringLiteral("данные с пробелом.txt");
         const QByteArray payload = QByteArray("archive test payload\n").repeated(10000);
@@ -98,7 +145,8 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         const QString archive = fixture.filePath("archives/test." + format);
         QVERIFY(QDir().mkpath(QFileInfo(archive).absolutePath()));
         QVERIFY(makeArchive(fixture.path(), archive, format, name));
-        ArchiveBackend backend;
+        const auto before = readFile(archive);
+        GuiTestBackend backend;
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
         MainWindow window(&backend);
         window.show();
@@ -113,12 +161,34 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
                                   [&] { dismissResults(dialogs_, errors, successes); });
         driver.start(1);
         for (int attempt = 0; attempt < 3; ++attempt) {
+            const bool crash = !opened && attempt == 0;
+            backend.CrashNext = crash;
+            errors.clear();
             QVERIFY(action(window, "testArchiveAction")->isEnabled());
             source->setFocus();
             PanelKeys::command(source, Qt::Key_T, Qt::ControlModifier | Qt::ShiftModifier);
             QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
-            QCOMPARE(successes.size(), attempt + 1);
+            if (opened)
+                QCOMPARE(successes.size(), attempt + 1);
+            else {
+                QVERIFY(action(window, "refreshAction")->isEnabled());
+                QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), attempt + 1, 30000);
+                QCOMPARE(backend.Results.last().Status, crash
+                                                            ? QtOperationResult::Outcome::Crashed
+                                                            : QtOperationResult::Outcome::Success);
+                if (crash) {
+                    QVERIFY(backend.Killed);
+                    QTRY_VERIFY(!errors.isEmpty());
+                } else
+                    QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
+                QCOMPARE(backend.Selections.last().size(), 1);
+                QCOMPARE(QFileInfo(backend.Selections.last().first()).canonicalFilePath(),
+                         QFileInfo(archive).canonicalFilePath());
+            }
+            QCOMPARE(readFile(archive), before);
         }
+        if (opened)
+            QVERIFY(backend.Selections.isEmpty()); // Live folder testing stays in CopyTo.
     }
     void filesystemToolbarFailureRestoresSource_data() {
         QTest::addColumn<unsigned>("pane");
@@ -127,7 +197,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
     }
     void filesystemToolbarFailureRestoresSource() {
         QFETCH(unsigned, pane);
-        QTemporaryDir fixture;
+        QTemporaryDir fixture(FixtureTemplate());
         QVERIFY(fixture.isValid());
         const QString input = fixture.filePath("input");
         const QString archive = QDir(input).filePath(QStringLiteral("сломанный 空.zip"));
@@ -136,7 +206,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         const QString output = fixture.filePath("output");
         const QString sentinel = QDir(output).filePath("keep.txt");
         QVERIFY(writeFile(sentinel, "keep"));
-        ArchiveBackend backend;
+        GuiTestBackend backend;
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
         MainWindow window(&backend);
         window.show();
@@ -166,7 +236,11 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
             successes.clear();
             QVERIFY(action(window, command)->isEnabled());
             action(window, command)->trigger();
-            QVERIFY(!errors.isEmpty());
+            if (qstrcmp(command, "testArchiveAction") == 0) {
+                QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 1, 30000);
+                QCOMPARE(backend.Results.last().Status, QtOperationResult::Outcome::Failure);
+            } else
+                QVERIFY(!errors.isEmpty());
             QVERIFY(successes.isEmpty());
             QCOMPARE(source->sourcePanel->GetFolder(), provider.Interface());
             QCOMPARE(source->selectionModel()->selectedRows().size(), 1);
@@ -186,7 +260,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
     }
     void archiveToolbarUsesSourceCopyTo() {
         QFETCH(unsigned, pane);
-        QTemporaryDir fixture;
+        QTemporaryDir fixture(FixtureTemplate());
         QVERIFY(fixture.isValid());
         const QString name = QStringLiteral("данные δ.txt");
         const QByteArray payload("source toolbar bytes");
@@ -248,7 +322,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
     void filesystemToolbarUsesSourceBatch() {
         QFETCH(bool, multiple);
         QFETCH(unsigned, pane);
-        QTemporaryDir fixture;
+        QTemporaryDir fixture(FixtureTemplate());
         QVERIFY(fixture.isValid());
         const QString input = fixture.filePath("archives");
         QVERIFY(QDir().mkpath(input));
@@ -261,7 +335,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         QVERIFY(makeArchive(fixture.path(), second, "7z", name));
         const QByteArray firstBefore = readFile(first), secondBefore = readFile(second);
         const QString output = fixture.filePath("output δ");
-        ArchiveBackend backend;
+        GuiTestBackend backend;
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
         MainWindow window(&backend);
         window.show();
@@ -332,10 +406,9 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         source->setFocus();
         PanelKeys::command(source, Qt::Key_T, Qt::ControlModifier | Qt::ShiftModifier);
         QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
-        QCOMPARE(successes.size(), 1);
-        QVERIFY(successes[0].contains(QtLangText(IDS_MESSAGE_NO_ERRORS)));
-        QVERIFY(successes[0].contains(QtLangText(IDS_ARCHIVES_COLON) + ' ' +
-                                      QString::number(multiple ? 2 : 1)));
+        QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 1, 30000);
+        QCOMPARE(backend.Results.last().Status, QtOperationResult::Outcome::Success);
+        QCOMPARE(backend.Selections.last().size(), multiple ? 2 : 1);
         driver.stop();
         QCOMPARE(source->sourcePanel->GetFolder(), provider.Interface());
         QCOMPARE(readFile(first), firstBefore);

@@ -6824,4 +6824,97 @@ Application modules:
             <translation>Архив может быть повреждён или неполон. Доступные файлы можно скопировать, но часть файлов может отсутствовать или не читаться. Извлечённые данные могут быть неполными или не пройти проверку целостности. Исходный архив не будет изменён.</translation>
         </message>
     </context>
+    <context>
+        <name>QtOperation</name>
+        <message>
+            <location filename="../src/qtoperationprotocol.cpp" line="+135" />
+            <source>Invalid operation message.</source>
+            <translation>Некорректное сообщение операции.</translation>
+        </message>
+        <message>
+            <location line="+5" />
+            <source>Operation message is too large.</source>
+            <translation>Сообщение операции слишком велико.</translation>
+        </message>
+        <message>
+            <location line="+27" />
+            <source>Invalid operation frame size.</source>
+            <translation>Некорректный размер сообщения операции.</translation>
+        </message>
+        <message>
+            <location line="+10" />
+            <source>Unsupported or malformed operation message.</source>
+            <translation>Неподдерживаемое или повреждённое сообщение операции.</translation>
+        </message>
+        <message>
+            <location filename="../src/qtoperationprocess.cpp" line="+94" />
+            <source>An operation process is already running.</source>
+            <translation>Процесс операции уже запущен.</translation>
+        </message>
+        <message>
+            <location line="+11" />
+            <source>Invalid operation process or channel.</source>
+            <translation>Некорректный путь процесса или канал связи.</translation>
+        </message>
+        <message>
+            <location line="+7" />
+            <source>Cannot launch operation process (%1).</source>
+            <translation>Не удалось запустить процесс операции (%1).</translation>
+        </message>
+        <message>
+            <location line="+36" />
+            <source>Cannot observe operation process (%1).</source>
+            <translation>Не удалось получить состояние процесса операции (%1).</translation>
+        </message>
+        <message>
+            <location filename="../src/qtoperationlauncher.cpp" line="+39" />
+            <source>Operation startup acknowledgement was not received.</source>
+            <translation>Не получено подтверждение приёма задания.</translation>
+        </message>
+        <message>
+            <location line="+34" />
+            <source>GUI operations require the application owner thread.</source>
+            <translation>Операции GUI должны запускаться из главного потока приложения.</translation>
+        </message>
+        <message>
+            <location line="+16" />
+            <source>An operation observer cannot be reused.</source>
+            <translation>Нельзя повторно использовать наблюдатель операции.</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>Expected an operation job.</source>
+            <translation>Ожидалось задание операции.</translation>
+        </message>
+        <message>
+            <location line="+77" />
+            <source>Could not transfer the operation job.</source>
+            <translation>Не удалось передать задание операции.</translation>
+        </message>
+        <message>
+            <location line="+19" />
+            <source>Unexpected operation protocol message.</source>
+            <translation>Неожиданное сообщение протокола операции.</translation>
+        </message>
+        <message>
+            <location line="+23" />
+            <source>The operation process terminated unexpectedly.</source>
+            <translation>Процесс операции аварийно завершился.</translation>
+        </message>
+        <message>
+            <location line="+16" />
+            <source>Operation result and process exit disagree.</source>
+            <translation>Результат операции не совпадает с кодом завершения процесса.</translation>
+        </message>
+        <message>
+            <location line="+5" />
+            <source>Operation process exited without a complete result.</source>
+            <translation>Процесс операции завершился без передачи полного результата.</translation>
+        </message>
+        <message>
+            <location filename="../src/qtoperationendpoint.cpp" line="+99" />
+            <source>Expected one operation job.</source>
+            <translation>Ожидалось одно задание операции.</translation>
+        </message>
+    </context>
 </TS>

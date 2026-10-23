@@ -256,6 +256,7 @@ class MainWindow : public QMainWindow {
     void openNestedArchive(const QString &entry);
     void extractArchives();
     void runArchiveBatchCommand(bool test);
+    HRESULT launchGuiArchiveTest(const UStringVector &paths, bool hashMode);
     void createDialog();
     QStringList selectedFilesystemPaths();
     void transferFiles(const QStringList &sources, const QString &destination, bool move,

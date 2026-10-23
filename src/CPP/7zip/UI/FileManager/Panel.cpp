@@ -14,6 +14,7 @@
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "Windows/WinDefs.h"
+#include "qtcompresscallservices.h"
 #include "qtpanelkey.h"
 #include <QComboBox>
 #include <QEvent>
@@ -388,7 +389,7 @@ void CPanel::TestArchives(IQtCompressCallServices *services) {
         return;
     }
     if (services)
-        ::TestArchives(paths, false, *services);
+        services->TestArchives(paths, false);
     else
         MessageBox_Error_HRESULT(E_NOTIMPL);
 }

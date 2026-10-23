@@ -24,7 +24,7 @@ include_directories(src/CPP src/CPP/Common src/CPP/Windows src/CPP/7zip/Common s
 set_source_files_properties(src/CPP/7zip/Common/LimitedStreams.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Common")
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools)
+find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools Network)
 find_package(Threads REQUIRED)
 include(cmake/Exfat.cmake)
 include(cmake/Cramfs.cmake)
@@ -448,6 +448,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 add_library(sevenzip_filesystem STATIC
+    src/qtoperationprocess.cpp src/qtoperationprocess.h
+    src/qtoperationprotocol.cpp src/qtoperationprotocol.h
+    src/qtoperationendpoint.cpp src/qtoperationendpoint.h
+    src/qtoperationlauncher.cpp src/qtoperationlauncher.h
     src/archivesfxmodule.cpp src/archivesfxmodule.h
     src/qtarchivehashoperation.cpp src/qtarchivehashoperation.h
     src/qtarchivereadoperation.cpp src/qtarchivereadoperation.h
@@ -507,7 +511,7 @@ endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
 target_include_directories(sevenzip_filesystem PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
-target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common sevenzip_zip sevenzip_progress_sync)
+target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core Qt6::Network sevenzip_common sevenzip_zip sevenzip_progress_sync)
 target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_system_icons sevenzip_name_sort)
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/docs/upstream-baseline.json" sfx_baseline_json)
 string(JSON sfx_upstream_revision GET "${sfx_baseline_json}" revision)
@@ -661,6 +665,28 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/PackageInfo.json"
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(operation_process_tests tests/operation_process_tests.cpp)
+    target_include_directories(operation_process_tests PRIVATE src)
+    target_link_libraries(operation_process_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    add_test(NAME operation_process COMMAND operation_process_tests -silent)
+    set_tests_properties(operation_process PROPERTIES TIMEOUT 30)
+    qt_add_executable(operation_protocol_tests tests/operation_protocol_tests.cpp)
+    target_include_directories(operation_protocol_tests PRIVATE src)
+    target_link_libraries(operation_protocol_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    add_test(NAME operation_protocol COMMAND operation_protocol_tests -silent)
+    set_tests_properties(operation_protocol PROPERTIES TIMEOUT 30)
+    qt_add_executable(operation_launcher_tests tests/operation_launcher_tests.cpp)
+    target_include_directories(operation_launcher_tests PRIVATE src tests)
+    target_link_libraries(operation_launcher_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    target_compile_definitions(operation_launcher_tests PRIVATE
+        "SEVENZIP_NATIVE_GUI=\"$<TARGET_FILE_DIR:sevenzip_desktop>/7zG${CMAKE_EXECUTABLE_SUFFIX}\"")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(operation_launcher_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_dependencies(operation_launcher_tests sevenzip_desktop)
+    add_test(NAME operation_launcher COMMAND operation_launcher_tests -silent)
+    set_tests_properties(operation_launcher PROPERTIES TIMEOUT 90 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     add_executable(object_vector_lifetime_tests tests/object_vector_lifetime_tests.cpp)
     target_include_directories(object_vector_lifetime_tests PRIVATE src/CPP third_party/7zip/CPP)
     set_target_properties(object_vector_lifetime_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF)
@@ -1470,6 +1496,16 @@ if(BUILD_TESTING)
     set_tests_properties(source_extract_backend PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
     get_target_property(source_extract_advanced_sources source_extract_backend_tests SOURCES)
     list(REMOVE_ITEM source_extract_advanced_sources tests/source_extract_backend_tests.cpp)
+    qt_add_executable(operation_host tests/fixtures/operation_host.cpp
+        src/qtguimain.cpp ${source_extract_advanced_sources}
+        src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp
+        src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp
+        src/createarchivedialog_preferences.cpp)
+    target_include_directories(operation_host PRIVATE src)
+    target_link_libraries(operation_host PRIVATE sevenzip_location Qt6::Widgets)
+    target_compile_definitions(operation_launcher_tests PRIVATE
+        "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
+    add_dependencies(operation_launcher_tests operation_host)
     if(WIN32)
         qt_add_executable(native_mapi_host tests/fixtures/native_mapi_host.cpp
             tests/fixtures/native_mapi_loader.cpp
@@ -3468,7 +3504,9 @@ if(BUILD_TESTING)
         target_include_directories(toolbar_archive_workflow_tests PRIVATE src tests)
         target_link_libraries(toolbar_archive_workflow_tests PRIVATE ${options_window_libraries})
         target_compile_definitions(toolbar_archive_workflow_tests PRIVATE
-            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\""
+            "SEVENZIP_NATIVE_GUI=\"$<TARGET_FILE_DIR:sevenzip_desktop>/7zG${CMAKE_EXECUTABLE_SUFFIX}\"")
+        add_dependencies(toolbar_archive_workflow_tests sevenzip_desktop)
         add_test(NAME toolbar_archive_workflow COMMAND toolbar_archive_workflow_tests -silent)
         set_tests_properties(toolbar_archive_workflow PROPERTIES TIMEOUT 120
             RESOURCE_LOCK "sevenzip_native_ui;sevenzip_ui_artifacts" ENVIRONMENT

@@ -64,37 +64,42 @@ static void ThrowException_if_Error(HRESULT res) {
         throw CSystemException(res);
 }
 
-static int Main2(const QtGUIServiceFactory &factory) {
-    UStringVector commandStrings;
+static int Main2(const QtGUIServiceFactory &factory, const QtGUICommandSource &command) {
+    CArcCmdLineOptions options;
+    if (command) {
+        command(options);
+        g_DisableUserQuestions = options.YesToAll;
+    } else {
+        UStringVector commandStrings;
 #ifdef _WIN32
-    NCommandLineParser::SplitCommandLine(GetCommandLineW(), commandStrings);
+        NCommandLineParser::SplitCommandLine(GetCommandLineW(), commandStrings);
 #else
-    for (const QString &argument : QCoreApplication::arguments())
-        commandStrings.Add(UString(argument.toStdWString().c_str()));
+        for (const QString &argument : QCoreApplication::arguments())
+            commandStrings.Add(UString(argument.toStdWString().c_str()));
 #endif
 
 #ifndef UNDER_CE
-    if (commandStrings.Size() > 0)
-        commandStrings.Delete(0);
+        if (commandStrings.Size() > 0)
+            commandStrings.Delete(0);
 #endif
-    if (commandStrings.Size() == 0) {
-        const UString message =
-            QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Specify command"));
+        if (commandStrings.Size() == 0) {
+            const UString message =
+                QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Specify command"));
 #ifdef _WIN32
-        MessageBoxW(NULL, message, L"7-Zip", 0);
+            MessageBoxW(NULL, message, L"7-Zip", 0);
 #else
-        QMessageBox::information(nullptr, QStringLiteral("7-Zip"),
-                                 QString::fromWCharArray(message));
+            QMessageBox::information(nullptr, QStringLiteral("7-Zip"),
+                                     QString::fromWCharArray(message));
 #endif
-        return 0;
+            return 0;
+        }
+
+        CArcCmdLineParser parser;
+
+        parser.Parse1(commandStrings, options);
+        g_DisableUserQuestions = options.YesToAll;
+        parser.Parse2(options);
     }
-
-    CArcCmdLineOptions options;
-    CArcCmdLineParser parser;
-
-    parser.Parse1(commandStrings, options);
-    g_DisableUserQuestions = options.YesToAll;
-    parser.Parse2(options);
 
     QtShellArchiveServices &services = factory();
     CCodecs *codecs = &services.Codecs();
@@ -303,12 +308,12 @@ static int Main2(const QtGUIServiceFactory &factory) {
     return 0;
 }
 
-int SevenzipGUI(const QtGUIServiceFactory &factory) {
+int SevenzipGUI(const QtGUIServiceFactory &factory, const QtGUICommandSource &command) {
     try {
 #ifdef _WIN32
         My_SetDefaultDllDirectories();
 #endif
-        return Main2(factory);
+        return Main2(factory, command);
     } catch (const CNewException &) {
         return ShowMemErrorMessage();
     } catch (const CMessagePathException &e) {

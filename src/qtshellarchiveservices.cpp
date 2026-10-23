@@ -40,10 +40,10 @@ class COutputPolicy final : public IQtExtractPathPolicy {
 QtShellArchiveServices::QtShellArchiveServices(ArchiveBackend &backend, QWidget *parent,
                                                OpenSink open, CompressSink compress,
                                                ErrorSink error, ModalSink modal,
-                                               QString settingsPath)
+                                               QString settingsPath, TestSink test)
     : _backend(backend), _parent(parent), _catalog(backend.codecCatalog()), _open(std::move(open)),
       _compress(std::move(compress)), _modal(std::move(modal)),
-      _settingsPath(std::move(settingsPath)), _error(std::move(error)) {
+      _settingsPath(std::move(settingsPath)), _error(std::move(error)), _test(std::move(test)) {
     // Metadata alone supports source ParseOpenTypes. Native factories remain
     // with the retained immutable backend catalog, never copied/unloaded here.
     if (_catalog && _catalog->result() == S_OK)
@@ -130,7 +130,7 @@ void QtShellArchiveServices::ExtractArchives(const UStringVector &paths, const U
     _result = ::ExtractArchives(paths, folder, showDialog, elimDup, zone, *this);
 }
 void QtShellArchiveServices::TestArchives(const UStringVector &paths, bool hashMode) {
-    _result = ::TestArchives(paths, hashMode, *this);
+    _result = _test ? _test(paths, hashMode) : ::TestArchives(paths, hashMode, *this);
 }
 void QtShellArchiveServices::CompressFiles(const UString &folder, const UString &name,
                                            const UString &type, bool addExtension,

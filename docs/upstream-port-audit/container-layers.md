@@ -529,3 +529,86 @@ the expanded `unix_gui_entry` suite passed on macOS (5.61 s), with the prepared
 official runtime on PATH for reference-fixture creation. Private deployments
 cleaned up automatically and the task-owned registry is empty. Runners, slow
 suites and a full gate were not run.
+
+### Standalone filesystem Test
+
+Source comparison on 2026-10-24 against the same retrievable repository/revision
+above covers complete `Common/CompressCall.cpp` test/group launch and large-page
+switch handling, `Windows/ProcessUtils.cpp/.h` process ownership, GUI `Main2`
+parsing/enumeration/test/exit branches and `CPanel::TestArchives` with its live
+CopyTo caller. Rechecked changed bodies and direct consumers after implementation.
+Existing source baselines, notices and native decoder/callback modules remain
+unchanged. No archive algorithm is newly implemented.
+
+The filesystem panel dispatches through its existing services interface. The
+File Manager supplies an independent Test launcher only when there is no
+retained parent chain. The archive-folder CopyTo/testMode branch is unchanged;
+other source consumers keep the in-process services default. After launch the
+manager releases its synchronous command scope; an application-owned observer
+tracks the child independently of the backend/window.
+
+The narrow OS adapter reuses original Windows `CProcess::Create` and handle
+ownership, with wait/exit observation. POSIX uses spawn/waitpid, a separate
+session and closed inherited descriptors. Neither destructor kills accepted
+work. Windows exception exit codes and POSIX signals are distinguished from
+normal source results. A socket EOF alone means neither cancellation nor crash.
+The new versioned, bounded, framed local protocol supplies readiness, one literal
+job, acceptance and a typed result; its final code must agree with the native
+process exit. Windows uses a current-user named pipe; POSIX uses a private short
+directory under `/tmp` because a valid system TMPDIR can exceed sockaddr_un's
+path limit. There are no persisted job files or selected filenames in argv.
+
+The endpoint captures the complete selection before ACK and retains it after
+disconnect. It initializes options through original Parse1/Parse2 defaults and
+the source large-page setting, then supplies literal archive censor items to the
+same GUI dispatcher. Original enumeration, codec discovery, ExtractGUI, password
+and progress dialogs, callbacks, errors and exit policy remain authoritative.
+The shell command-line parser remains available. Each child owns its runtime and
+windows; this first scenario has ordinary read-only inputs and no parent-owned
+materialized spool to transfer. Other commands, write conflicts and complete
+three-platform installed-package acceptance remain subsequent parts of the goal.
+
+Behavior regressions exercise real 7zG success/failure without an available
+console, source password-dialog cancellation, kill/crash versus normal results,
+another successful job after a crash, and native completion after an ACK-owning
+parent exits. The lifetime fixture adds a test-only barrier around the production
+endpoint and the same native dispatcher, with no switches in the installed
+executable. Manager regressions verify repeated tests, recovery after a killed
+child, exact selected paths, two-panel state and preservation of the live-folder
+CopyTo route. Protocol checks cover fragmented/coalesced messages, large literal
+Unicode/space/quote selections and malformed input. Forced-exit fixtures reclaim
+only their inactive registered temporary images after identity revalidation.
+
+The first focused manager run exposed the long-TMPDIR socket limit; the short
+private socket directory fixes that actual integration failure. Existing toolbar
+fixtures now use canonical temporary roots to compare filesystem identity without
+depending on macOS `/var` versus `/private/var` spelling, and their remaining
+filesystem Test expectations now observe the independent child rather than a
+parent modal. No source-text assertions or implementation-presence tests were
+added. Runtime validation is recorded separately below.
+
+Focused validation on 2026-10-24: the app and selected targets built with existing
+incremental outputs/caches. macOS passed eight suites (`operation_process`,
+`operation_protocol`, `operation_launcher`, `toolbar_archive_workflow`,
+`unix_gui_entry`, `shell_archive_services`, `source_extract_backend`, `language`;
+11.47 s). The final fixture-only diagnostic change passed `operation_launcher`
+again (3.99 s). Linux and interactive Windows passed the four operation/toolbar
+suites through `verify.py --tests` (runner receipt
+`20261023T220951Z-8ca13976`); source transfer and target builds preceded those runs.
+Linux used offscreen widgets; Windows toolbar checks used its native desktop.
+This is functional/source acceptance, not rendered Windows/macOS/Linux parity.
+
+The first Windows lifetime run returned native failure code 2 after the parent
+had exited; the child did survive and publish its result. The exact native cause
+was not captured. Both isolated and original parallel retries passed, including
+the final combined run. The fixture now retains public codec-discovery/progress
+diagnostics in its failure report; no speculative engine change or enlarged
+timeout was made. A future recurrence still needs that diagnostic evidence.
+
+A private macOS runtime installation passed deployment and strict ad-hoc signature
+verification. Its actual installed 7zG passed the two native healthy/damaged IPC
+rows with the Cocoa platform (four QtTest checks, 1.08 s); Qt Network was deployed
+by the existing Qt deployment script. No installed Linux/Windows payload, native
+physical-input dialog comparison, slow matrix or full gate is claimed here.
+Task-owned timeout fixtures and inactive crash deployment images were cleaned;
+active/unrelated data and compiler/build caches were preserved.
