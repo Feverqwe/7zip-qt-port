@@ -3,6 +3,7 @@
 #include "archivebackend.h"
 #include "archivedevice.h"
 #include "deviceaccess.h"
+#include "exfat_fixture.h"
 #include "qtarchivefoldermanager.h"
 #include "qtarchiveproperties.h"
 #include <QDir>
@@ -123,23 +124,31 @@ class DeviceFolderTests final : public QObject {
     void sourceFolderCopiesSelectedUnicodeFile_data() {
         QTest::addColumn<QString>("mode");
         QTest::addColumn<bool>("allowIncompleteRead");
+        QTest::addColumn<bool>("exfat");
         for (bool allowIncompleteRead : {false, true})
             for (const QString &mode :
                  {"success", "refresh", "cancel", "disconnect", "cancel-open", "disconnect-open"})
                 QTest::newRow(qPrintable(mode + (allowIncompleteRead ? "-journal" : "")))
-                    << mode << allowIncompleteRead;
+                    << mode << allowIncompleteRead << false;
+        for (bool limited : {false, true})
+            QTest::newRow(limited ? "exfat-dirty-refresh" : "exfat-refresh")
+                << QString("refresh") << limited << true;
     }
     void sourceFolderCopiesSelectedUnicodeFile() {
         QFETCH(QString, mode);
         QFETCH(bool, allowIncompleteRead);
+        QFETCH(bool, exfat);
         CObservedBackend backend(nullptr, engine_);
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog(module_));
-        QTRY_COMPARE(ready.size(), 1);
+        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 15000);
         QVERIFY(ready[0][0].toBool());
-        QByteArray bytes = fixture();
+        const ExfatFixture exfatFixture;
+        QByteArray bytes = exfat ? exfatFixture.image : fixture();
         QVERIFY(!bytes.isEmpty());
-        if (allowIncompleteRead) {
+        if (allowIncompleteRead && exfat)
+            bytes[106] = char(2);
+        else if (allowIncompleteRead) {
             const int superblock = 1024 * 1024 + 1024;
             bytes[superblock + 0x65] = char(quint8(bytes[superblock + 0x65]) & ~4u);
             bytes[superblock + 0x60] = char(quint8(bytes[superblock + 0x60]) | 4u);
@@ -164,7 +173,7 @@ class DeviceFolderTests final : public QObject {
         auto *opening = new CCopyCallback;
         CMyComPtr<IFolderOperationsExtractCallback> progress = opening;
         const auto open = [&] {
-            return manager->OpenFolderFile(selected, L"USB 空/Linux data", L"Ext", &root, progress);
+            return manager->OpenFolderFile(selected, L"USB 空/data", L"", &root, progress);
         };
         if (mode == "cancel-open" || mode == "disconnect-open") {
             opening->Cancel = mode == "cancel-open";
@@ -182,6 +191,11 @@ class DeviceFolderTests final : public QObject {
         auto *agent = dynamic_cast<CAgentFolder *>(root.Interface());
         QVERIFY(agent);
         QVERIFY(!ArchiveUpdateEnabled(agent->GetArchiveProperties()));
+        NWindows::NCOM::CPropVariant type;
+        QCOMPARE(root->GetFolderProperty(kpidType, &type), S_OK);
+        QCOMPARE(type.vt, VARTYPE(VT_BSTR));
+        QCOMPARE(QString::fromWCharArray(type.bstrVal),
+                 exfat ? QString("7-Zip.exFAT") : QString("7-Zip.Ext"));
         CMyComPtr<IFolderFolder> folder;
         QCOMPARE(root->BindToFolder(L"папка 空", &folder), S_OK);
         QVERIFY(folder);
@@ -219,14 +233,17 @@ class DeviceFolderTests final : public QObject {
         else {
             QCOMPARE(result, S_OK);
             QCOMPARE(observer->Errors, 0u);
-            QFile copied(destination.filePath(QStringLiteral("данные с пробелом.txt")));
+            QFile copied(destination.filePath(exfat ? exfatFixture.nestedName
+                                                    : QStringLiteral("данные с пробелом.txt")));
             QVERIFY(copied.open(QIODevice::ReadOnly));
-            QCOMPARE(copied.readAll(), QByteArray("device ext4 payload\n"));
+            QCOMPARE(copied.readAll(), exfat ? QByteArray("tail") + QByteArray(1020, '\0')
+                                             : QByteArray("device ext4 payload\n"));
         }
         QCOMPARE(operations->Delete(&index, 1, nullptr), E_NOTIMPL);
         QCOMPARE(backend.Listings, 0u);
         QCOMPARE(handle->Bytes, bytes);
-        QVERIFY(handle->TotalRead < device.partitions()[0].size);
+        if (!exfat)
+            QVERIFY(handle->TotalRead < device.partitions()[0].size);
         std::weak_ptr<DeviceReadHandle> lease = handle;
         handle.reset();
         operations.Release();

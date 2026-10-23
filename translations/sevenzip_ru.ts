@@ -6485,8 +6485,8 @@ Application modules:
             <translation>Открыть устройство</translation>
         </message>
         <message>
-            <source>Read-only access to ext2/ext3/ext4. Copy files to another disk.</source>
-            <translation>Доступ к ext2/ext3/ext4 только для чтения. Копируйте файлы на другой диск.</translation>
+            <source>Read supported filesystems without modifying the device. Copy files to another disk.</source>
+            <translation>Чтение поддерживаемых файловых систем без изменения устройства. Копируйте файлы на другой диск.</translation>
         </message>
         <message>
             <source>Devices and partitions</source>
@@ -6541,8 +6541,8 @@ Application modules:
             <translation>Тип раздела</translation>
         </message>
         <message>
-            <source>Select an ext2/ext3/ext4 partition to open read only.</source>
-            <translation>Выберите раздел ext2/ext3/ext4 для открытия только на чтение.</translation>
+            <source>Select a partition to open read only.</source>
+            <translation>Выберите раздел для открытия только на чтение.</translation>
         </message>
         <message>
             <source>Could not list external devices.</source>

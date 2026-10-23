@@ -36,7 +36,7 @@ ExternalDevice Device(const QByteArray &bytes) {
             QStringLiteral("USB диск 空"),
             "fixture",
             quint64(bytes.size()),
-            4096,
+            512,
             false};
 }
 DeviceSelectionServices Services(const std::shared_ptr<CDeviceBytes> &bytes) {

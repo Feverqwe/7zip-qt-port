@@ -60,7 +60,7 @@ QString Text(IInArchive *archive, UInt32 index, PROPID id) {
     return QString::fromWCharArray(value.bstrVal);
 }
 
-HRESULT CheckFeatures(IInArchive *archive, bool allowIncompleteRead, QString *error) {
+HRESULT CheckFeatures(IInArchive *archive, bool ext, bool allowIncompleteRead, QString *error) {
     // The reader has already opened the filesystem. Incompatible features still
     // require decoding support; other readonly-compatible declarations can be
     // exposed with a per-opening choice. Disk parsing stays with the handler.
@@ -91,10 +91,10 @@ HRESULT CheckFeatures(IInArchive *archive, bool allowIncompleteRead, QString *er
             continue;
         }
         const QSet<QString> *allowed = nullptr;
-        if (label == QStringLiteral("Incompatible Features")) {
+        if (ext && label == QStringLiteral("Incompatible Features")) {
             allowed = &incompatible;
             checkedIncompatible = true;
-        } else if (label == QStringLiteral("Readonly-compatible Features")) {
+        } else if (ext && label == QStringLiteral("Readonly-compatible Features")) {
             allowed = &readOnly;
             checkedReadOnly = true;
         }
@@ -121,7 +121,7 @@ HRESULT CheckFeatures(IInArchive *archive, bool allowIncompleteRead, QString *er
                 unsupported.append(feature);
         }
     }
-    if (!checkedIncompatible || !checkedReadOnly) {
+    if (ext && (!checkedIncompatible || !checkedReadOnly)) {
         if (error)
             *error = QCoreApplication::translate(
                 "archivedevice", "Could not verify the filesystem features for direct reading.");
@@ -160,14 +160,31 @@ HRESULT OpenDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &c
         error->clear();
     if (!input || !catalog || catalog->result() != S_OK)
         return E_INVALIDARG;
-    RINOK(input->Seek(0, STREAM_SEEK_SET, nullptr))
-    std::shared_ptr<ArchiveNativeOpen> opened;
-    RINOK(Open(catalog, input, name, QStringLiteral("Ext"), callback, opened, options))
-    const auto *direct = dynamic_cast<DirectDeviceInput *>(input);
-    RINOK(
-        CheckFeatures(opened->arc().Archive, direct && direct->allowsIncompleteDeviceRead(), error))
-    reader = std::move(opened);
-    return S_OK;
+    // Only filesystem readers are candidates. General archive autodetection
+    // could accept a boot payload or descend into a different partition.
+    // UDF precedes ISO for media that publish both directory trees.
+    for (const QString &format :
+         {QStringLiteral("APFS"), QStringLiteral("Ext"), QStringLiteral("NTFS"),
+          QStringLiteral("exFAT"), QStringLiteral("HFS"), QStringLiteral("EROFS"),
+          QStringLiteral("SquashFS"), QStringLiteral("CramFS"), QStringLiteral("Udf"),
+          QStringLiteral("Iso"), QStringLiteral("FAT")}) {
+        if (catalog->formatIndex(format) < 0)
+            continue;
+        if (callback)
+            RINOK(callback->Open_CheckBreak())
+        RINOK(input->Seek(0, STREAM_SEEK_SET, nullptr))
+        std::shared_ptr<ArchiveNativeOpen> opened;
+        const HRESULT result = Open(catalog, input, name, format, callback, opened, options);
+        if (result == S_FALSE)
+            continue;
+        RINOK(result)
+        const auto *direct = dynamic_cast<DirectDeviceInput *>(input);
+        RINOK(CheckFeatures(opened->arc().Archive, format == QStringLiteral("Ext"),
+                            direct && direct->allowsIncompleteDeviceRead(), error))
+        reader = std::move(opened);
+        return S_OK;
+    }
+    return S_FALSE;
     COM_TRY_END
 }
 
@@ -190,7 +207,10 @@ HRESULT ArchiveDevice::inspect(IInStream *input, UInt64 size, const QString &nam
         RINOK(Limit(input, 0, size, &bounded))
     }
     QList<ArchiveDevicePartition> partitions;
-    for (const QString &format : {QStringLiteral("GPT"), QStringLiteral("MBR")}) {
+    for (const QString &format :
+         {QStringLiteral("GPT"), QStringLiteral("MBR"), QStringLiteral("APM")}) {
+        if (catalog_->formatIndex(format) < 0)
+            continue;
         if (callback)
             RINOK(callback->Open_CheckBreak())
         RINOK(bounded->Seek(0, STREAM_SEEK_SET, nullptr))
@@ -208,8 +228,10 @@ HRESULT ArchiveDevice::inspect(IInStream *input, UInt64 size, const QString &nam
             ArchiveDevicePartition partition;
             RINOK(Number(archive, index, kpidOffset, partition.offset))
             RINOK(Number(archive, index, kpidSize, partition.size))
-            if (!partition.size || partition.offset > size ||
-                partition.size > size - partition.offset)
+            // APM can retain zero-sized Apple_Void entries between real volumes.
+            if (!partition.size)
+                continue;
+            if (partition.offset > size || partition.size > size - partition.offset)
                 return E_FAIL;
             partition.name = Text(archive, index, kpidPath);
             partition.type = Text(archive, index, kpidFileSystem);
@@ -222,7 +244,7 @@ HRESULT ArchiveDevice::inspect(IInStream *input, UInt64 size, const QString &nam
         break;
     }
     // A device can contain a filesystem directly, without a partition table.
-    // Opening it as Ext below is the authority; no local superblock parser.
+    // The selected filesystem reader is the authority; no local superblock parser.
     if (partitions.isEmpty())
         partitions.append({name, QString(), 0, size});
     name_ = name;

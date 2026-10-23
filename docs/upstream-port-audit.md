@@ -94,7 +94,7 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
   — C read paths, четыре декодера, archive ABI и проверки приложения.
 
 - [Прямое чтение устройств](upstream-port-audit/direct-devices.md)
-  — потоковое открытие GPT/MBR/ext и границы первой версии.
+  — потоковое открытие файловых систем, GPT/MBR/APM и границы native access.
 
 - [COM server locks native shell DLL](upstream-port-audit/native-shell-server-lock.md)
   — запрет выгрузки модуля до освобождения всех LockServer-владельцев.

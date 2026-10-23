@@ -3,11 +3,7 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Adaptations: include owners, optional process-open service, shared default-name body.
 
-#ifdef QT_CORE_LIB
-#include "7zip/UI/Common/StdAfx.h"
-#else
 #include "StdAfx.h"
-#endif
 
 // #define SHOW_DEBUG_INFO
 

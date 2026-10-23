@@ -17,7 +17,7 @@ HRESULT QtArchiveFileResource::RefreshDeviceInput(ArchiveBackend &backend,
     AttachNativeOpen(std::move(opened));
     _nativeReadOnly = true;
     BindNativeItemOrder(nullptr);
-    Info.format = QStringLiteral("Ext");
+    Info.format = _nativeOpen->resolvedOpenType();
     Info.physicalSize = qint64(_nativeOpen->arc().FileSize);
     Info.offset = 0;
     SetArchiveMetadata(Info.physicalSize, 0);

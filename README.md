@@ -30,7 +30,7 @@ file copy, move, create, rename and delete operations, split/combine, properties
 external viewers, editors and diff tools, checksums, benchmarks and settings.
 
 File → Open device adds experimental read-only browsing and copying from external
-ext2/ext3/ext4 devices without a filesystem driver or full disk image.
+devices with supported filesystems without a filesystem driver or full disk image.
 See [direct device access](docs/direct-device-reading.md) for usage and limits.
 
 Archive creation and updates support compression settings, encryption, volumes

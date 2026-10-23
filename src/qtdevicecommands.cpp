@@ -16,7 +16,7 @@ void QtFileManagerCommands::OpenDevice() {
         CPanel::CDisableNotify notify(panel);
         CTempFileInfo temporary;
         COpenResult opened;
-        HRESULT result = panel.OpenAsArc(input, temporary, name, UString(L"Ext"), opened);
+        HRESULT result = panel.OpenAsArc(input, temporary, name, UString(), opened);
         if (result == kDeviceReadLimitationsRequired) {
             if (!ConfirmLimitedFilesystemRead(&w, ToQString(opened.ErrorMessage)))
                 return;
@@ -24,7 +24,7 @@ void QtFileManagerCommands::OpenDevice() {
             result = CreateDeviceInputAllowingIncompleteRead(input, &withoutReplay);
             if (result == S_OK) {
                 input = withoutReplay;
-                result = panel.OpenAsArc(input, temporary, name, UString(L"Ext"), opened);
+                result = panel.OpenAsArc(input, temporary, name, UString(), opened);
             }
         }
         if (result != S_OK && result != E_ABORT) {

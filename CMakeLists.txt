@@ -1691,7 +1691,7 @@ if(BUILD_TESTING)
     target_link_libraries(agent_opening_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME agent_opening COMMAND agent_opening_tests -silent)
     set_tests_properties(agent_opening PROPERTIES TIMEOUT 90)
-    qt_add_executable(device_folder_tests tests/device_folder_tests.cpp
+    qt_add_executable(device_folder_tests tests/device_folder_tests.cpp tests/exfat_fixture.cpp
         src/CPP/7zip/UI/GUI/CompressDialog.cpp src/archivebackend.cpp
         src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp)
     target_link_libraries(device_folder_tests PRIVATE sevenzip_location Qt6::Test)
@@ -1702,6 +1702,7 @@ if(BUILD_TESTING)
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
     endif()
     add_test(NAME device_folder COMMAND device_folder_tests -silent)
+    add_dependencies(device_folder_tests sevenzip_exfat_runtime)
     set_tests_properties(device_folder PROPERTIES TIMEOUT 30)
     qt_add_executable(agent_lifecycle_tests tests/agent_lifecycle_tests.cpp
         src/CPP/7zip/UI/GUI/CompressDialog.cpp src/archivebackend.cpp
@@ -3915,6 +3916,21 @@ if(BUILD_TESTING)
     add_test(NAME archive_device COMMAND archive_device_tests -silent)
     add_dependencies(archive_device_tests sevenzip_mbr_runtime)
     set_tests_properties(archive_device PROPERTIES TIMEOUT 30)
+    qt_add_executable(device_filesystem_tests tests/device_filesystem_tests.cpp tests/exfat_fixture.cpp)
+    target_include_directories(device_filesystem_tests PRIVATE src)
+    target_link_libraries(device_filesystem_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    target_compile_definitions(device_filesystem_tests PRIVATE
+        "DEVICE_PYTHON=\"${Python3_EXECUTABLE}\""
+        "DEVICE_GENERATOR=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/device_filesystem_fixture.py\"")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(device_filesystem_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_dependencies(device_filesystem_tests sevenzip_exfat_runtime sevenzip_erofs_runtime
+        sevenzip_fat_runtime sevenzip_ntfs_runtime sevenzip_hfs_runtime sevenzip_udf_runtime
+        sevenzip_iso_runtime sevenzip_squashfs_runtime sevenzip_cramfs_runtime sevenzip_mbr_runtime)
+    add_test(NAME device_filesystem COMMAND device_filesystem_tests -silent)
+    set_tests_properties(device_filesystem PROPERTIES TIMEOUT 60)
     qt_add_executable(native_archive_opening_tests tests/native_archive_opening_tests.cpp)
     target_include_directories(native_archive_opening_tests PRIVATE src)
     target_link_libraries(native_archive_opening_tests PRIVATE sevenzip_panel Qt6::Test)

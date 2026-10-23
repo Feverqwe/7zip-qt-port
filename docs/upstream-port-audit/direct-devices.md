@@ -1,5 +1,77 @@
 # Прямое read-only чтение устройств
 
+## Все поддерживаемые filesystem readers — 2026-10-23
+
+Область расширения: существующий device transport теперь перебирает filesystem
+handlers, реально зарегистрированные в выбранном codec catalog. Проверенный
+набор динамического runtime: APFS, Ext, NTFS, exFAT (включая TexFAT), HFS,
+EROFS, SquashFS, CramFS, Udf и Iso. FAT reader обслуживает FAT12/16/32,
+HFS — classic/HFS+/HFSX, Ext — ext2/3/4. Это интеграция имеющихся readers,
+а не добавление новых filesystem algorithms или обещание всех возможностей формата.
+APFS входит в этот scope независимо от отсутствия Linux counterpart.
+
+Источник SDK остаётся <https://github.com/ip7z/7zip.git>, полный commit
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`; смешанные baselines сохраняются
+в [manifest](../upstream-baseline.json). Для новой границы проверены
+`CPP/7zip/UI/Common/OpenArchive.cpp` (`CArchiveLink::Open`, `Open2`,
+`ParseOpenTypes`, `CArc::ReOpen`), source Agent opening и его Qt device consumer,
+`CPP/7zip/Archive/ApmHandler.cpp` (`Open`, `Open2`, `CItem`, `GetProperty`)
+и APFS stream boundary (`CHandler::Open`, `GetStream`, `CDatabase::GetStream2`,
+registration). Существующие переносы остальных readers и их зависимости —
+в [общем аудите форматов](filesystems-linux.md), без повторного inventory.
+
+Новые upstream-тела не копировались. Неизменённый APFS reader поставляется
+официальным runtime; GPL reader variants продолжают выбираться существующими
+format modules. Открытие передаёт один ограниченный seekable stream штатному
+handler, запрещает signature search со смещением и recursive descent, сохраняет
+ошибки/cancellation и retained catalog. UDF проверяется перед ISO для hybrid media.
+Обычный ZIP и другие архивы не становятся filesystem candidates.
+Обработка GPT/MBR сохранена; подключён APM с его штатными byte offsets/sizes,
+включая пропуск пустых Apple_Void записей. Служебные непустые разделы остаются
+видны и выбираются явно. Новые проверки не разбирают superblocks в Qt.
+
+Ext-specific feature gate применяется только к Ext. Общие reader-reported
+`Read-only limitations` сохраняют запрос согласия и отдельный immutable
+device lease; FAT/exFAT/NTFS не требуют несуществующих ext property descriptors.
+Согласие не отключает reader checks и не меняет исходный lease. Сохраняются
+native read-only handles, byte bounds, no replay/repair и mutation restrictions.
+Qt resource сохраняет фактически обнаруженный формат при открытии и refresh.
+Две ext-only подсказки заменены общими EN/RU текстами; структура chooser,
+native buttons и роли предупреждения не меняются. Страница Apple Writing
+потребовала JavaScript, поэтому HIG-ориентир — локальная выжимка от 2026-10-18;
+новая сертификация соответствия Apple не заявляется.
+
+Для MSVC восстановлен upstream unconditional `#include "StdAfx.h"` первым
+include в адаптированном `OpenArchive.cpp`. Условие перед precompiled header
+даёт C4654/C1020 при штатном `/Yu`; Qt использует уже имеющийся include path
+к portable Common/StdAfx. Изменений алгоритма открытия в этой правке нет.
+UI mock GPT приведён к 512-byte geometry самого sample вместо неверного 4Kn;
+отдельные device backend regressions продолжают проверять реальный 4Kn input.
+
+Новая focused suite читает точные payload bytes через aligned device stream
+для каждого нового filesystem family, FAT12/16/32, classic/HFS+ и TexFAT,
+на прямом томе и в MBR/APM. Проверяются выбор data partition, byte bounds,
+disconnect, cancellation, dirty FAT/exFAT/NTFS opt-in и неизменность исходного
+согласия. APFS sample создан нативно только из искусственных файлов; остальные
+cases переиспользуют существующие fixtures/generators. Это не physical-device
+проверка и не полный аудит всех APFS features. Расширенная приёмка Agent,
+вложенных архивов и native сценариев учитывается отдельно от этой suite.
+
+Проверки этой интеграции: `archive_device`, `device_filesystem`, `device_folder`,
+`device_ui`, `language` PASS на macOS arm64/Qt 6.12, Linux x64/Qt 6.12 и
+Windows x64/MSVC/Qt 6.12. Remote receipt `20261023T010718Z-bcde5114`:
+пять suites на каждом госте; актуальный runtime уже собран в предыдущем запуске,
+повтор использовал `--skip-runtime`. На macOS итоговые пять suites прошли за
+56,93 с; после добавления clean/dirty exFAT Agent refresh/copy cases повторён
+только `device_folder` (PASS, 11,61 с). Windows catalog loading требует ожидания
+15 с вместо недостаточных 5 с; факт обнаружения/результат по-прежнему обязателен.
+Общая local app также собрана. Incremental build trees и compiler caches сохранены.
+Native Cocoa JSON chooser просмотрены: EN/RU, 620×390/420×320, device/denied/
+partition states — видимые controls и labels помещаются. Гости используют
+offscreen Qt; native Windows/Linux appearance, новые physical-device сценарии,
+full и slow suites этой проверкой не подтверждены. Одноразовые raw APFS staging
+и seed удалены; сжатый generated fixture сохранён для регрессии.
+
 ## Источник и границы
 
 Источник: https://github.com/ip7z/7zip.git,
@@ -15,12 +87,12 @@
 upstream stream bounds, callback progress/cancellation и retained module lease.
 
 `ArchiveDevice` — локальная интеграция между разрешённым OS-потоком и этими
-модулями. Она передаёт проверенный размер, предлагает разделы из GPT/MBR,
+модулями. Она передаёт проверенный размер, предлагает разделы из GPT/MBR/APM,
 проверяет их попадание в границы устройства и открывает выбранный раздел
-штатным Ext-обработчиком. Автоматический recursive open отключён, чтобы
+штатным обработчиком поддерживаемой файловой системы. Автоматический recursive open отключён, чтобы
 пользователь мог выбрать раздел. Синтетические записи свободного места MBR
 исключаются по отсутствию FileSystem, которое upstream выдаёт только для
-реальных разделов. Источник без таблицы разделов передаётся Ext целиком.
+реальных разделов. Источник без таблицы разделов передаётся filesystem readers целиком.
 
 Agent и QtArchiveFileResource принимают отдельный прямой stream transport;
 обычные архивы продолжают использовать прежний file-only transport. Native I/O
@@ -30,7 +102,7 @@ Agent и QtArchiveFileResource принимают отдельный прямо�
 
 Реализована экспериментальная [первая версия](../direct-device-reading-plan.md).
 Подключены native access macOS/Linux/Windows, stream-level partition discovery,
-Ext-reader и пользовательский выбор устройства/раздела. Просмотр и копирование
+filesystem readers и пользовательский выбор устройства/раздела. Просмотр и копирование
 проверены на частных образцах. Автоматические проверки не используют реальные
 носители и системные запросы прав. Позднее пользователь сообщил об успешном
 получении доступа и чтении свойств реального раздела на macOS после включения

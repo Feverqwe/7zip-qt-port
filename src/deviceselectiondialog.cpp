@@ -49,8 +49,9 @@ DeviceSelectionDialog::DeviceSelectionDialog(std::shared_ptr<const ArchiveCodecC
     setWindowTitle(tr("Open device"));
     setWindowModality(Qt::WindowModal);
     auto *layout = new QVBoxLayout(this);
-    auto *description =
-        new QLabel(tr("Read-only access to ext2/ext3/ext4. Copy files to another disk."), this);
+    auto *description = new QLabel(
+        tr("Read supported filesystems without modifying the device. Copy files to another disk."),
+        this);
     description->setWordWrap(true);
     layout->addWidget(description);
     items_ = new QTreeWidget(this);
@@ -193,7 +194,7 @@ void DeviceSelectionDialog::showPartitions() {
     refresh_->hide();
     for (const auto &partition : source_->partitions())
         new QTreeWidgetItem(items_, {partition.name, Size(partition.size), partition.type});
-    message_->setText(tr("Select an ext2/ext3/ext4 partition to open read only."));
+    message_->setText(tr("Select a partition to open read only."));
     updateOpen();
 }
 

@@ -18,3 +18,10 @@ verify explicit partition selection and rejection of unsupported content.
 `ext4-timestamp.img.gz` contains a small gzip SQL sample under
 `.internal/twiMonBot/2024-05-07T02:00:02Z.sql.gz`. It reproduces copying a
 filename with colons through native device extraction and the panel commands.
+
+`apfs.img.zlib` is a 32 MiB raw APFS container generated on macOS with
+`hdiutil create -layout NONE -format UDRW -fs APFS -size 32m -srcfolder seed
+-volname DeviceFixture apfs.dmg`, then zlib-compressed. Its generated inputs
+are `данные 空.txt` (`APFS generated device payload` plus newline) and
+`nested/file with spaces.bin` (sixteen repetitions of bytes 0…255). No user
+files or physical media were used. UUIDs and timestamps may vary on regeneration.

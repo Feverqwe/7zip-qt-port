@@ -1,7 +1,8 @@
 # Read files directly from an external device
 
 File → Open device provides experimental read-only access to
-ext2/ext3/ext4 on an external disk. A filesystem driver and a full disk image
+the filesystems supported by the bundled engine on an external disk.
+A filesystem driver and a full disk image
 are not required. Ordinary mounted volumes and archive files remain available
 through the existing file manager.
 
@@ -30,8 +31,9 @@ Disk Access, then quit and reopen Sevenzip. Administrator authorization and
 macOS privacy permissions are separate; entering the password alone may not
 permit device access.
 
-The first version accepts GPT, MBR and filesystems stored directly on a device.
-Some ext features and layouts are unsupported. fscrypt files require
+The chooser accepts GPT, MBR, Apple partition maps and filesystems stored directly
+on a device. Filesystem feature and decoding limits are the same as for image
+files. fscrypt files require
 [explicit raw master keys](ext-encryption.md); the no-key view remains available.
 When the reader can open a filesystem with read-only-compatible limitations or
 unfinished recovery, Sevenzip lists those conditions and offers limited read-only
