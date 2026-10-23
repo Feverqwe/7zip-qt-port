@@ -1,14 +1,27 @@
 #include "7zip/UI/FileManager/IFolder.h"
 #include "Windows/PropVariant.h"
+#include "archivecodeccatalog.h"
 #include "archivenativeopen.h"
 #include "qtarchivefileresource.h"
 #include <QSet>
+
+void QtArchiveFileResource::UseNativeMetadata() {
+    _nativeMetadata = true;
+    BindNativeItemOrder(nullptr);
+    if (_nativeOpen) {
+        if (const auto *format = _nativeOpen->formatInfo())
+            Info.format = QString::fromWCharArray(format->Name.Ptr());
+        Info.physicalSize = qint64(_nativeOpen->arc().FileSize);
+        Info.offset = qint64(_nativeOpen->arc().GetGlobalOffset());
+        SetArchiveMetadata(Info.physicalSize, Info.offset);
+    }
+}
 
 void QtArchiveFileResource::BindNativeItemOrder(IFolderFolder *metadata) {
     _nativeItemOrder = false;
     if (!_nativeOpen)
         return;
-    if (HasDirectInput() && !metadata) {
+    if ((HasDirectInput() || UsesNativeMetadata()) && !metadata) {
         // Direct metadata comes from this exact retained handler, including
         // duplicate names; there is no independent CLI index mapping.
         _nativeItemOrder = true;

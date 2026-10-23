@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/Common/ExtractingFilePath.h"
+#include "CPP/7zip/UI/Common/OpenArchive.h"
 #include "Common/Wildcard.h"
 #include "archivebackend.h"
 #include "qtlanguageservices.h"
@@ -10,6 +11,26 @@
 #include <QRegularExpression>
 #include <QSet>
 #include <QUuid>
+
+namespace {
+HRESULT NativeExtractionEntries(const CArc &arc, QList<ArchiveEntry> &entries) {
+    UInt32 count = 0;
+    RINOK(arc.Archive->GetNumberOfItems(&count))
+    for (UInt32 i = 0; i < count; ++i) {
+        ArchiveEntry entry;
+        UString path;
+        RINOK(arc.GetItem_Path(i, path))
+        entry.path = QString::fromWCharArray(path.Ptr());
+        RINOK(Archive_IsItem_Dir(arc.Archive, i, entry.directory))
+        bool alt = false;
+        RINOK(Archive_IsItem_AltStream(arc.Archive, i, alt))
+        if (alt)
+            entry.properties.insert(QStringLiteral("Alternate Stream"), "+");
+        entries.append(entry);
+    }
+    return S_OK;
+}
+} // namespace
 
 bool ArchiveBackend::safePath(const QString &path) {
     QString normalized = QDir::fromNativeSeparators(path);
@@ -91,7 +112,17 @@ bool ArchiveBackend::validateExtractionStreamOutput(const QString &destination, 
 
 bool ArchiveBackend::validateExtraction(const QString &destination, const QStringList &selected,
                                         const ExtractionOptions &options, QString *error,
-                                        bool nativeSource, const QString &sourceFolder) const {
+                                        bool nativeSource, const QString &sourceFolder,
+                                        const CArc *nativeMetadata) const {
+    QList<ArchiveEntry> nativeEntries;
+    if (nativeMetadata) {
+        const HRESULT result = NativeExtractionEntries(*nativeMetadata, nativeEntries);
+        if (result != S_OK) {
+            *error = QCoreApplication::translate(
+                "mainwindow_archivecommands", "Source extraction is unavailable for this archive.");
+            return false;
+        }
+    }
     if (destination.trimmed().isEmpty()) {
         *error = QCoreApplication::translate("archivebackend_validation",
                                              "Specify a destination folder.");
@@ -141,7 +172,7 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
     currentFolder.replace('\\', '/');
     QString boundFolder = sourceFolder;
     boundFolder.replace('\\', '/');
-    for (const ArchiveEntry &entry : entries_) {
+    for (const ArchiveEntry &entry : nativeMetadata ? nativeEntries : entries_) {
         QString entryPath = entry.path;
         entryPath.replace('\\', '/');
         if (!selectedPaths.isEmpty() && !selectedPaths.contains(entryPath))

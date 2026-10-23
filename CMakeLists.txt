@@ -4011,6 +4011,21 @@ if(BUILD_TESTING)
     get_target_property(metadata_ui_sources ui_update_modes_tests SOURCES)
     list(REMOVE_ITEM metadata_ui_sources tests/ui_update_modes_tests.cpp)
     get_target_property(metadata_ui_libraries ui_update_modes_tests LINK_LIBRARIES)
+    qt_add_executable(archive_recovery_ui_tests tests/archive_recovery_ui_tests.cpp
+        tests/layout_inspection.cpp ${metadata_ui_sources})
+    target_include_directories(archive_recovery_ui_tests PRIVATE src tests)
+    target_link_libraries(archive_recovery_ui_tests PRIVATE ${metadata_ui_libraries})
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(archive_recovery_ui_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME archive_recovery_ui COMMAND archive_recovery_ui_tests -silent)
+    set_tests_properties(archive_recovery_ui PROPERTIES TIMEOUT 45 RESOURCE_LOCK sevenzip_ui_artifacts
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    if(APPLE)
+        set_property(TEST archive_recovery_ui PROPERTY ENVIRONMENT
+            "QT_QPA_PLATFORM=cocoa;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endif()
     qt_add_executable(filesystem_read_ui_tests tests/filesystem_read_ui_tests.cpp
         tests/exfat_fixture.cpp tests/layout_inspection.cpp ${metadata_ui_sources})
     target_include_directories(filesystem_read_ui_tests PRIVATE src tests)

@@ -22,7 +22,7 @@ struct IArchiveExtractCallback;
 struct ISequentialOutStream;
 struct IFolderFolder;
 struct IArchiveOpenCallback;
-struct CArc;
+class CArc;
 class CCodecs;
 class CWorkDirTempFile;
 class QtArchiveDeleteInputs;
@@ -51,6 +51,7 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     bool _nativeNested = false;
     bool _nativeReadOnly = false;
     bool _nativeItemOrder = false;
+    bool _nativeMetadata = false;
     bool _nativePropertiesExplicit = false;
     QString _filesystemReadLimitations;
     std::function<HRESULT(const wchar_t *const *, const PROPVARIANT *, UInt32)> _setProperties;
@@ -74,6 +75,8 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     }
     HRESULT CloseNativeOpen();
     void BindNativeItemOrder(IFolderFolder *metadata);
+    void UseNativeMetadata();
+    bool UsesNativeMetadata() const { return _nativeMetadata; }
     bool HasCommentService() const;
     bool HasNativeExtractService() const;
     bool HasNativeRarReader() const;

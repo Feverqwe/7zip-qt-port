@@ -1,5 +1,7 @@
 #include "qtfilesystemreadprompt.h"
+#include "CPP/7zip/UI/Common/LoadCodecs.h"
 #include "CPP/7zip/UI/Common/OpenArchive.h"
+#include "CPP/7zip/UI/FileManager/ExtractCallback.h"
 #include "CPP/7zip/UI/FileManager/OpenCallback.h"
 #include "Common/ComTry.h"
 #include "Windows/PropVariant.h"
@@ -69,6 +71,63 @@ HRESULT PrepareLimitedFilesystemRead(const CArchiveLink &link, COpenArchiveCallb
     RINOK(RunCallbackDialog(callback->ProgressDialog, [&] {
         return ConfirmLimitedFilesystemRead(&callback->ProgressDialog, limitations) ? S_OK
                                                                                     : E_ABORT;
+    }))
+    return callback->Open_CheckBreak();
+}
+
+HRESULT PrepareLimitedArchiveRead(const CArchiveLink &link, const CCodecs &codecs,
+                                  CProgressDialog *dialog, IOpenCallbackUI *callback,
+                                  const QString &accepted, QString &limitations,
+                                  bool &archiveWarning) {
+    RINOK(PrepareLimitedFilesystemRead(link, nullptr, {}, limitations))
+    archiveWarning = false;
+    FOR_VECTOR(a, link.Arcs) {
+        const CArc &arc = link.Arcs[a];
+        if (arc.FormatIndex < 0)
+            continue;
+        const QString format = QString::fromWCharArray(codecs.GetFormatNamePtr(arc.FormatIndex));
+        if (!QStringList{"7z", "zip", "rar", "rar5", "tar", "gzip", "bzip2", "xz", "zstd"}.contains(
+                format.toLower()) ||
+            !arc.ErrorInfo.IsThereErrorOrWarning())
+            continue;
+        archiveWarning = true;
+        const CArcErrorInfo &error = arc.ErrorInfo;
+        QStringList detail;
+        for (const UString &text : {GetOpenArcErrorMessage(error.GetErrorFlags()),
+                                    GetOpenArcErrorMessage(error.GetWarningFlags()),
+                                    error.ErrorMessage, error.WarningMessage})
+            if (!text.IsEmpty())
+                detail.append(QString::fromWCharArray(text.Ptr()));
+        if (!limitations.isEmpty())
+            limitations += '\n';
+        limitations += format + ": " + detail.join('\n');
+    }
+    if (!dialog || !callback || limitations.isEmpty() || limitations == accepted)
+        return S_OK;
+    RINOK(callback->Open_CheckBreak())
+    RINOK(RunCallbackDialog(*dialog, [&] {
+        if (!archiveWarning)
+            return ConfirmLimitedFilesystemRead(dialog, limitations) ? S_OK : E_ABORT;
+        QMessageBox warning(
+            QMessageBox::Warning,
+            QCoreApplication::translate("qtfilesystemreadprompt", "Open archive with limitations?"),
+            QCoreApplication::translate(
+                "qtfilesystemreadprompt",
+                "The archive may be damaged or incomplete. You can copy readable files, but some "
+                "files may be missing or unreadable. Extracted data may be incomplete or fail "
+                "integrity checks. Nothing will be written to the source archive."),
+            QMessageBox::Cancel, dialog);
+        warning.setObjectName("archiveReadLimitationsWarning");
+        warning.setTextFormat(Qt::PlainText);
+        warning.setInformativeText(limitations);
+        auto *open =
+            warning.addButton(QCoreApplication::translate("qtdevicecommands", "Open read-only"),
+                              QMessageBox::AcceptRole);
+        open->setObjectName("archiveOpenReadOnlyButton");
+        warning.setDefaultButton(QMessageBox::Cancel);
+        warning.setEscapeButton(QMessageBox::Cancel);
+        warning.exec();
+        return warning.clickedButton() == open ? S_OK : E_ABORT;
     }))
     return callback->Open_CheckBreak();
 }

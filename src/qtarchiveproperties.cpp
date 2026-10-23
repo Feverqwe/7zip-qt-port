@@ -191,7 +191,7 @@ Z7_COM7F_IMF(CFolderArchiveProperties::GetArchivePropertyInfo(UInt32 index, BSTR
 HRESULT CreateArchivePropertyTransport(IFolderFolder *properties, IInArchive **archive,
                                        IUnknown *engineResource) {
     const auto *resource = dynamic_cast<QtArchiveFileResource *>(engineResource);
-    if ((!properties && (!resource || !resource->HasDirectInput())) || !archive)
+    if ((!properties && (!resource || !resource->NativeItemProperties())) || !archive)
         return E_INVALIDARG;
     *archive = nullptr;
     if (!engineResource) {
@@ -207,7 +207,7 @@ HRESULT CreateArchivePropertyTransport(IFolderFolder *properties, IInArchive **a
 HRESULT CreateArchiveLinkTransport(CArchiveLink &link, IFolderFolder *properties,
                                    IUnknown *engineResource, const CCodecs *codecs) {
     const auto *resource = dynamic_cast<QtArchiveFileResource *>(engineResource);
-    if (!properties && (!resource || !resource->HasDirectInput()))
+    if (!properties && (!resource || !resource->NativeItemProperties()))
         return E_INVALIDARG;
     if (!link.Arcs.IsEmpty())
         return E_FAIL;

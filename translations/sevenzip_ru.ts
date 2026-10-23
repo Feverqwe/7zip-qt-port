@@ -6737,4 +6737,15 @@ Application modules:
             <translation>Ключ %1</translation>
         </message>
     </context>
+    <context>
+        <name>qtfilesystemreadprompt</name>
+        <message>
+            <source>Open archive with limitations?</source>
+            <translation>Открыть архив с ограничениями?</translation>
+        </message>
+        <message>
+            <source>The archive may be damaged or incomplete. You can copy readable files, but some files may be missing or unreadable. Extracted data may be incomplete or fail integrity checks. Nothing will be written to the source archive.</source>
+            <translation>Архив может быть повреждён или неполон. Доступные файлы можно скопировать, но часть файлов может отсутствовать или не читаться. Извлечённые данные могут быть неполными или не пройти проверку целостности. Исходный архив не будет изменён.</translation>
+        </message>
+    </context>
 </TS>

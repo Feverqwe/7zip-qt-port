@@ -145,7 +145,8 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
     auto *resource =
         folder ? dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource()) : nullptr;
     const bool sourceAvailable =
-        resource && (resource->HasDirectInput() || backend_->hasListedSourceArchive(archive_));
+        resource && (resource->HasDirectInput() || resource->UsesNativeMetadata() ||
+                     backend_->hasListedSourceArchive(archive_));
     if (options.pathMode == ExtractionOptions::PathMode::CurrentPaths &&
         (!resource || !resource->HasExtractService() || !sourceAvailable)) {
         if (options.currentFolder.isEmpty())
@@ -166,7 +167,8 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
     }
     if (!resource || !resource->HasExtractService() || !sourceAvailable)
         return false;
-    const bool scoped = onlySelected || !archiveFolder_.isEmpty() || resource->HasDirectInput();
+    const bool scoped = onlySelected || !archiveFolder_.isEmpty() || resource->HasDirectInput() ||
+                        resource->UsesNativeMetadata();
     CRecordVector<UInt32> indices;
     QStringList validationNames = names;
     if (scoped) {
@@ -189,14 +191,19 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
         QString validationError;
         const bool sourceLinks = resource->HasNativeExtractService();
         if (!backend_->validateExtraction(destination, validationNames, options, &validationError,
-                                          sourceLinks, archiveFolder_)) {
+                                          sourceLinks, archiveFolder_,
+                                          resource->UsesNativeMetadata()
+                                              ? resource->NativeArchiveLink()->GetArc()
+                                              : nullptr)) {
             QMessageBox::warning(this, QtLangText(IDS_PROGRESS_EXTRACTING), validationError);
             return true;
         }
         const QString output = QFileInfo(destination).absoluteFilePath();
         if (!QDir().mkpath(output) ||
-            !backend_->validateExtraction(output, validationNames, options, &validationError,
-                                          sourceLinks, archiveFolder_)) {
+            !backend_->validateExtraction(
+                output, validationNames, options, &validationError, sourceLinks, archiveFolder_,
+                resource->UsesNativeMetadata() ? resource->NativeArchiveLink()->GetArc()
+                                               : nullptr)) {
             QMessageBox::warning(
                 this, QtLangText(IDS_PROGRESS_EXTRACTING),
                 validationError.isEmpty()
@@ -206,7 +213,8 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
                     : validationError);
             return true;
         }
-        if (!onlySelected && archiveFolder_.isEmpty() && !resource->HasDirectInput()) {
+        if (!onlySelected && archiveFolder_.isEmpty() && !resource->HasDirectInput() &&
+            !resource->UsesNativeMetadata()) {
             previousState_ = state_;
             setState(State::Operating);
             operationName_ = QtLangText(IDS_PROGRESS_EXTRACTING);
@@ -318,7 +326,8 @@ void MainWindow::testArchive() {
         return;
     }
     if (resource && resource->HasExtractService() &&
-        (resource->HasDirectInput() || backend_->hasListedSourceArchive(archive_))) {
+        (resource->HasDirectInput() || resource->UsesNativeMetadata() ||
+         backend_->hasListedSourceArchive(archive_))) {
         previousState_ = state_;
         setState(State::Operating);
         operationName_ = QtLangText(IDS_PROGRESS_TESTING);

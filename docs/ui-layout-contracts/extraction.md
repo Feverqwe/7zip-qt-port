@@ -33,6 +33,16 @@ When NTFS reparse metadata cannot establish an entry's type, the warning explain
 that readable underlying DATA streams are exposed. Such entries identify this
 mode in their properties; unreadable known links remain file errors.
 
+For a priority archive that the official reader opens with damage/incompleteness
+diagnostics, ordinary opening asks whether to continue read-only. The alert
+explains missing/unreadable files, partial or unverified extracted data and an
+unchanged source. It includes the reader diagnostics, explicit Open read-only
+and Cancel actions; Return defaults to Cancel and Escape cancels. Acceptance
+belongs to the selected opening. The existing limited-access badge remains
+visible in normal/compact EN/RU layouts. File errors remain visible during
+copying or extracting readable entries. See the
+[policy audit](../upstream-port-audit/read-only-access.md) for checked scope.
+
 [Все UI-спецификации](../ui-layout-contracts.md). Разделы сохраняют исходные требования,
 якоря и границы датированных свидетельств. Новые результаты проверок —
 в [source audit](../upstream-port-audit.md).

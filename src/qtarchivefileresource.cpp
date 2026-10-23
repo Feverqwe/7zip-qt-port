@@ -46,6 +46,7 @@ HRESULT QtArchiveFileResource::CloseNativeOpen() {
 
 void QtArchiveFileResource::AttachNativeOpen(std::shared_ptr<ArchiveNativeOpen> reader) {
     _nativeItemOrder = false;
+    _nativeMetadata = false;
     _nativePropertiesExplicit = false;
     _nativeNested = reader && reader->hasNestedStream();
     _nativeReadOnly = reader && reader->arc().IsReadOnly;
@@ -72,7 +73,8 @@ bool QtArchiveFileResource::HasUpdateService() const {
     const bool preservesPrefix = HasNativeUpdateService() && _nativeOpen->arc().InStream &&
                                  _nativeOpen->arc().ArcStreamOffset != 0;
     return bool(_update) && (_offset == 0 || preservesPrefix) && !RequiresOuterOpen() &&
-           !_nativeReadOnly && (!_nativeOpen || NativeItemProperties());
+           !_nativeReadOnly && _filesystemReadLimitations.isEmpty() &&
+           (!_nativeOpen || NativeItemProperties());
 }
 
 HRESULT QtArchiveFileResource::ApplyOutputMTime(CWorkDirTempFile &file) const {
@@ -174,7 +176,7 @@ HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc, const CCodecs *codecs) co
             if (const CArcInfoEx *format = _nativeOpen->formatInfo())
                 arc.FormatIndex = codecs->FindFormatForArchiveType(format->Name);
         arc.DefaultName = native.DefaultName;
-        arc.IsReadOnly = _directInput || native.IsReadOnly;
+        arc.IsReadOnly = _directInput || native.IsReadOnly || !_filesystemReadLimitations.isEmpty();
         arc.FileSize = native.FileSize;
         arc.ArcStreamOffset = native.ArcStreamOffset;
         arc.InStream = native.InStream;

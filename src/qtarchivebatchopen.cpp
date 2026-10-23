@@ -10,18 +10,24 @@
 #include "Common/StringConvert.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivefoldermanager.h"
+#include "qtfilesystemreadprompt.h"
 #include <QDir>
 #include <QFileInfo>
 
 namespace {
 class CBatchOpenProgress final : public IProgress,
                                  public ICryptoGetTextPassword,
+                                 public IQtArchiveReadConsent,
                                  public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_2(IProgress, ICryptoGetTextPassword)
     IOpenCallbackUI *_callback;
+    CProgressDialog *_dialog;
 
   public:
-    explicit CBatchOpenProgress(IOpenCallbackUI *callback) : _callback(callback) {}
+    CBatchOpenProgress(IOpenCallbackUI *callback, CProgressDialog *dialog)
+        : _callback(callback), _dialog(dialog) {}
+    CProgressDialog *ReadConsentDialog() const override { return _dialog; }
+    IOpenCallbackUI *ReadConsentCallback() const override { return _callback; }
     Z7_COM7F_IMF(SetTotal(UInt64 total)) override {
         return _callback ? _callback->Open_SetTotal(nullptr, &total) : S_OK;
     }
@@ -48,7 +54,7 @@ HRESULT QtArchiveBatchOpen::Open(CArchiveLink &link, const COpenOptions &options
     COM_TRY_BEGIN
     if (options.stdInMode || options.stream || options.filePath.IsEmpty())
         return E_NOTIMPL;
-    CMyComPtr<IProgress> progress = new CBatchOpenProgress(callback);
+    CMyComPtr<IProgress> progress = new CBatchOpenProgress(callback, _dialog);
     CMyComPtr<IFolderFolder> folder;
     auto *manager = static_cast<QtArchiveFolderManager *>(_manager.Interface());
     const HRESULT result = manager->OpenArchive(
@@ -62,8 +68,9 @@ HRESULT QtArchiveBatchOpen::Open(CArchiveLink &link, const COpenOptions &options
         return E_FAIL;
     if (_extractOptions) {
         QString error;
-        if (!_backend.validateExtraction(_destination, {}, *_extractOptions, &error,
-                                         resource->HasNativeExtractService()))
+        if (!_backend.validateExtraction(
+                _destination, {}, *_extractOptions, &error, resource->HasNativeExtractService(), {},
+                resource->UsesNativeMetadata() ? resource->NativeArchiveLink()->GetArc() : nullptr))
             return E_INVALIDARG;
     }
     // Source OpenArchive applies COpenOptions properties to the native handler.
@@ -108,6 +115,7 @@ HRESULT QtArchiveBatchOpen::Open(CArchiveLink &link, const COpenOptions &options
 
 std::unique_ptr<IQtProgressTransport>
 QtArchiveBatchOpen::CreateProgressTransport(CProgressDialog &dialog) {
+    _dialog = &dialog;
     auto *services = dynamic_cast<IQtProgressServices *>(_manager.Interface());
     return services ? services->CreateProgressTransport(dialog) : nullptr;
 }

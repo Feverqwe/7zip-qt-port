@@ -39,6 +39,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Политика read-only и частичного доступа](upstream-port-audit/read-only-access.md)
+  — текущий аудит файловых систем и архивов, согласие, читаемые данные и результаты.
+
 - [ELF по Linux](upstream-port-audit/elf-linux.md)
 - [PE по Linux](upstream-port-audit/pe-linux.md)
 - [EFI capsules по Linux](upstream-port-audit/uefi-linux.md)

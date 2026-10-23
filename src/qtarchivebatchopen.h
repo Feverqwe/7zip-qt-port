@@ -17,6 +17,7 @@ class QtArchiveBatchOpen final : public IQtArchiveOpenService, public IQtProgres
     QString _destination;
     const ExtractionOptions *_extractOptions = nullptr;
     UString _openType;
+    CProgressDialog *_dialog = nullptr; // Borrowed until the joined extraction finishes.
 
   public:
     explicit QtArchiveBatchOpen(ArchiveBackend &backend);

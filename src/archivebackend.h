@@ -1,6 +1,7 @@
 #pragma once
 struct CExternalCodecs;
 struct CProperty;
+class CArc;
 
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "processpause.h"
@@ -221,7 +222,8 @@ class ArchiveBackend : public QObject {
     // plain console extraction must leave it empty.
     bool validateExtraction(const QString &destination, const QStringList &selected,
                             const ExtractionOptions &options, QString *error,
-                            bool nativeSource = false, const QString &sourceFolder = {}) const;
+                            bool nativeSource = false, const QString &sourceFolder = {},
+                            const CArc *nativeMetadata = nullptr) const;
     static bool validateExtractionOutput(const QString &destination, const QString &path,
                                          bool directory, QString *error);
     static bool validateExtractionStreamOutput(const QString &destination, const QString &path,
