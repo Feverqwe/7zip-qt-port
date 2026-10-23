@@ -13,7 +13,7 @@ class ArchiveCodecCatalog;
 class ArchiveNativeOpen;
 struct CArcErrorInfo;
 
-// Joined worker around official opening and a read-only metadata/test task.
+// Joined worker around official opening and read-only archive operations.
 class QtArchiveReadOperation final : public QThread {
   public:
     struct ItemError {
@@ -30,7 +30,12 @@ class QtArchiveReadOperation final : public QThread {
     };
     using Work = std::function<HRESULT(const std::shared_ptr<ArchiveNativeOpen> &,
                                        IArchiveExtractCallback *)>;
-    enum class Kind { Test, List };
+    enum class Kind { Test, List, ExtractEntry };
+    struct SourceOutput {
+        QString Entry;
+        QString Path;
+        bool AltStream = false;
+    };
     QtArchiveReadOperation(QString path, QString password,
                            std::shared_ptr<const ArchiveCodecCatalog> catalog, Work work,
                            Kind kind = Kind::Test, QString format = {});
@@ -43,6 +48,10 @@ class QtArchiveReadOperation final : public QThread {
     HRESULT Result = E_FAIL;
     QList<ItemError> Errors;
     QList<OpenError> OpenErrors;
+    SourceOutput Output;
+    bool OutputCreated = false;
+    bool OutputClosed = false;
+    Int32 OutputOperation = -1;
     std::function<void(quint64, quint64, const QString &)> Progress;
     std::function<void()> PasswordRequired;
 

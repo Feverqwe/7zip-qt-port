@@ -76,11 +76,15 @@ def check_inventory(data):
 
 
 def runtime_header_dependencies(snapshot, members, overlays):
-    """Supplement upstream make/nmake rules for adapted header consumers."""
+    """Supplement upstream rules for adapted headers and module-version consumers."""
     sources = {name for name in members if pathlib.PurePosixPath(name).suffix in
                (".c", ".cpp", ".h", ".hpp", ".inl")}
     headers = {name for name in overlays if pathlib.PurePosixPath(name).suffix in
                (".h", ".hpp", ".inl")}
+    # GetModuleProp is the native ABI/version boundary, including when a
+    # retained runtime snapshot moves between original upstream baselines.
+    # Upstream's DllExports2 object rule does not list this header.
+    headers.update({"C/7zVersion.h"} & sources)
     reverse = {}
     pattern = re.compile(r'^\s*#\s*include\s*["<]([^">]+)[">]', re.MULTILINE)
     for name in sources:

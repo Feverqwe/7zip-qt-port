@@ -1,9 +1,36 @@
 #include "archivebackend.h"
 #include "archivereadpolicy.h"
+#include "qtarchivereadoperation.h"
 #include "qtlanguageservices.h"
 #include "qtownedtempdir.h"
 #include <QFile>
 #include <QFileInfo>
+
+void ArchiveBackend::finishSourceExtractOperation(const QtArchiveReadOperation &operation) {
+    using namespace NArchive::NExtract::NOperationResult;
+    sourceExtractOperation_ = operation.OutputOperation;
+    if (sourceExtractOperation_ == kOK && !operation.Errors.isEmpty())
+        sourceExtractOperation_ = operation.Errors.last().Result;
+    if (sourceExtractOperation_ == kOK && !operation.OpenErrors.isEmpty()) {
+        // The source stream API must not publish bytes as verified when opening
+        // reported damage or trailing data. Preserve the CLI recovery contract
+        // using CArcErrorInfo flags instead of inferring it from printed labels.
+        UInt32 flags = 0;
+        for (const auto &error : operation.OpenErrors)
+            flags |= error.ErrorFlags | error.WarningFlags;
+        sourceExtractOperation_ = flags & kpv_ErrorFlags_UnexpectedEnd  ? kUnexpectedEnd
+                                  : flags & kpv_ErrorFlags_DataAfterEnd ? kDataAfterEnd
+                                                                        : kHeadersError;
+    }
+    const bool partial = (lastResult_ == E_FAIL || lastResult_ == S_FALSE) &&
+                         sourceExtractRecovery_ && operation.OutputCreated &&
+                         operation.OutputClosed && sourceExtractOperation_ > kOK;
+    if (partial)
+        lastResult_ = S_FALSE;
+    if (operation.OutputCreated && lastResult_ != S_OK &&
+        (!partial || QFileInfo(createTemporary_).size() <= 0))
+        QFile::remove(createTemporary_);
+}
 
 Int32 ArchiveBackend::sourceExtractErrorOperation() const {
     using namespace NArchive::NExtract::NOperationResult;
@@ -51,12 +78,16 @@ void ArchiveBackend::extractSourceEntry(const QString &archive, const QString &e
         return;
     }
     archive_ = QFileInfo(archive).absoluteFilePath();
+    sourceExtractEntry_ = entry;
+    sourceExtractAltStream_ = isAltStream;
     createTemporary_ = QFileInfo(output).absoluteFilePath();
     sourceExtractRecovery_ = IsArchiveRecoveryFormat(format);
     if (format.isEmpty() && hasListedSourceArchive(archive_))
         sourceExtractRecovery_ =
             IsArchiveRecoveryFormat(listedSourceArchives_.value(archive_).Format);
     pendingPassword_ = password;
+    if (startNativeRead(Job::SourceExtract, archive_, password, format))
+        return;
     QStringList arguments{"x", "-y", "-so", "-bso0", "-bse2", "-bsp2", "-spd", "-ssc"};
     // Explicitly choose one payload: ordinary files must not implicitly include ADS.
     arguments.append(isAltStream ? "-sns" : "-sns-");

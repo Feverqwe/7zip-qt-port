@@ -103,7 +103,7 @@ class ArchiveBackend : public QObject {
     ~ArchiveBackend() override;
     virtual bool busy() const;
     virtual HRESULT lastResult() const;
-    // Decoder operation result, or -1 when the process did not provide one.
+    // Item/block or opening diagnostic result, or -1 when no result is available.
     Int32 lastSourceExtractOperation() const { return sourceExtractOperation_; }
     // Explicit module/version boundary. The engine probe/discovery service
     // supplies its verified version; widgets consume immutable metadata only.
@@ -220,8 +220,8 @@ class ArchiveBackend : public QObject {
                                       const QString &format, SourceMutation operation,
                                       const QStringList &paths, const QString &sourceRoot,
                                       const QString &password = {});
-    // Binary stdout is isolated from progress/password/error text. Native
-    // callbacks own the final output stream and filesystem presentation.
+    // Extract one literal member into a private spool. Source callbacks own
+    // the final output stream and filesystem presentation.
     virtual void extractSourceEntry(const QString &archive, const QString &entry,
                                     const QString &output, const QString &format,
                                     const QString &password, bool isAltStream = false);
@@ -307,6 +307,7 @@ class ArchiveBackend : public QObject {
     void finishProcessListing(const QString &limitations = {});
     QString processListingLimitations() const;
     Int32 sourceExtractErrorOperation() const;
+    void finishSourceExtractOperation(const QtArchiveReadOperation &operation);
     void consumeOutput(const QByteArray &chunk, bool flush = false);
     void consumeLine(const QByteArray &line);
     static QList<ArchiveEntry> parseListing(const QString &output);
@@ -418,6 +419,8 @@ class ArchiveBackend : public QObject {
     bool encrypted_ = false;
     QString extractPassword_;
     bool sourceExtractRecovery_ = false;
+    QString sourceExtractEntry_;
+    bool sourceExtractAltStream_ = false;
     Int32 sourceExtractOperation_ = -1;
     QList<QStringList> extractQueue_;
     bool overwritePromptActive_ = false;

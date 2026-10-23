@@ -102,6 +102,9 @@ and its item indexes. Standalone listing and archive testing run official
 Open/Extract in a joined Qt worker, with operation-scoped password, pause and
 cancel controls. A failed or cancelled listing does not publish a usable
 snapshot. Open warnings and item/block errors remain separate diagnostics.
+Single-entry extraction with a loaded catalog uses the same joined worker and
+an exclusive private output stream. It preserves literal member selection and
+typed partial-data results before the source caller handles final publication.
 The CLI transport remains available to consumers without a native catalog and
 to operations that have not yet migrated.
 

@@ -161,3 +161,89 @@ caches were reused. The application target built on all three platforms; Linux
 and Windows build receipts are `20261023T185917Z-15d6ed62` and
 `20261023T190202Z-5f97b611`. Slow suites and a full gate were not run; no physical-device
 or rendered-pixel parity is implied.
+
+## Migration of remaining CLI operations
+
+The migration starts at master `8a824d45ea46f1ef5ae212ee04c389e32d4317eb`.
+This section extends the existing inventory; the selected native transfer above
+does not establish completion of all archive operations.
+
+Source inspection on 2026-10-23 identifies the remaining production dispatch:
+
+| Operation | Current owner and remaining boundary |
+| --- | --- |
+| Catalog discovery | `ArchiveCodecProbe` runs `i` to obtain the engine version and deployment libraries before native loading. |
+| Listing and testing | `ArchiveBackend::startNativeRead` uses official Open/Extract with a catalog; no-catalog consumers still use CLI fallback and technical-listing parsing. |
+| Extraction to a destination | `ArchiveBackend::extract` still constructs CLI passes for selection and overwrite handling. Source Agent/GUI extraction already has native callbacks and path policy. |
+| Extraction of one source entry | With a catalog, the joined read worker now opens and extracts the selected native index into a private stream. The no-catalog CLI fallback remains. |
+| Creation and public mutations | `archivebackend_creation.cpp` and `archivebackend_mutations.cpp` still dispatch creation stages, add, delete, rename and replace through the process transport. |
+| Source updates | `archivebackend_sourceupdate.cpp` and `archivebackend_sourceplan.cpp` still dispatch file/add, mutation and staged plan operations. Native `UpdateArchive` and Agent update interfaces exist and need their callers connected. |
+
+Direct consumers include file-only `QtArchiveFileResource` extraction/update,
+source batch extraction/opening, standalone backend APIs and materialized nested
+editing/publication. The retained native reader path must remain independent of
+backend/window lifetime. Process completion owns continuations, temporary-file
+cleanup and publication; migrating dispatch must migrate these responsibilities
+together. Hashing and benchmark providers already use source/native workers.
+Codec discovery, runtime-image ownership and no-catalog consumers must migrate
+before removing the shared CLI transport.
+
+### Native extraction of one source entry
+
+Upstream reference: <https://github.com/ip7z/7zip.git>,
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`:
+`CPP/7zip/UI/Client7z/Client7z.cpp` (`CArchiveExtractCallback::GetStream`,
+`PrepareOperation`, `SetOperationResult` and the `IInArchive::Extract` caller),
+`CPP/7zip/UI/Common/ArchiveExtractCallback.cpp` (item/block diagnostics and
+stream-output branch), `OpenArchive.cpp` (`CArc::GetItem_Path`),
+`CPP/7zip/UI/Agent/Agent.cpp` (`CAgentFolder::Extract`) and
+`CPP/7zip/Common/FileStreams.cpp/.h` (`COutFileStream`).
+
+The existing read worker retains original Open/Extract and callback error
+projection. The source file-stream/Extract/Close ownership is adapted to a
+single private spool; the stream is returned only for the selected index in
+extract mode, including when solid decoding requests skipped siblings. The
+source caller retains final filesystem presentation and metadata handling.
+The full Client7z filesystem extractor, console UI, directory construction,
+attributes and overwrite policy are omitted because this API writes one
+already selected private spool rather than a destination tree. Those features
+remain in the original source extraction workflow.
+
+The Qt boundary maps its exact name/ADS request to an actual native index;
+the Console wildcard/censor interface is unsuitable for this literal selection
+contract. Ambiguous duplicate names are rejected rather than concatenated;
+index-based retained-reader extraction remains available for those entries.
+Native `Create_NEW` protects an existing or raced output. Output created by the
+operation is closed before completion and removed on cancellation or failure;
+recovery-format item errors can retain unverified bytes with `S_FALSE` and the
+decoder operation result or typed opening diagnostic. No text label is decoded to infer native CRC
+or password failures, and partial output is never reported as complete success.
+
+Source comparison covers the selected callback, stream, opener and caller scope;
+format decoders and metadata/overwrite algorithms were not reimplemented.
+
+Validation also exposed a retained-runtime dependency gap: after restoring the
+pinned 26.04 header, Linux's older `DllExports2.o` still advertised 26.05 while
+the console advertised 26.04. Its upstream make rule omits `C/7zVersion.h`.
+The existing supplemental header-dependency generator now includes original
+module-version consumers as well as adapted-header consumers. A regression
+changes the upstream version baseline and executes the rebuilt consumer in the
+same build tree. This repairs dependency tracking without clearing build outputs
+or compiler caches, or forcing a cold build. The affected failed receipt is
+`20261023T192213Z-50356b84`; its Windows selected set passed.
+
+Runtime acceptance on 2026-10-23: macOS passed `native_source_extract`,
+`native_listing`, `native_archive_test`, `source_extract_backend` and
+`source_extract_contract` (4.78 s), plus `upstream_baseline` (7.30 s) and
+`runtime_cache` (0.22 s). Linux and Windows passed the same seven-suite set in
+`20261023T192554Z-cb0e1396`, with Windows running in its desktop session. The new
+extraction suite passes 23 cases including initialization/cleanup, with no skips;
+its backend has an unavailable CLI executable and a loaded official module.
+Cases cover bytes for ZIP/7z/gzip/bzip2/xz, literal Unicode/space/wildcard/newline
+names, duplicate rejection, solid siblings, decoder CRC and opening warnings,
+passwords during both opening and decoding, cancellation/join, retry and
+destruction while waiting for a password. Existing source consumers and native
+listing/testing remain covered. Incremental build trees and compiler caches were
+retained; disposable fixtures clean themselves up. No slow suite or full gate
+was run. This accepts the selected native extraction path, not completion of
+the remaining CLI operations listed above.

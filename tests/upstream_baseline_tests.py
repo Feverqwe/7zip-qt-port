@@ -146,12 +146,23 @@ class UpstreamBaselineTests(unittest.TestCase):
         self.assertEqual((snapshot / self.source).read_bytes(), expected)
 
     def test_runtime_rebuilds_transitive_adapted_header_consumers(self):
+        self.assert_runtime_rebuilds_header_consumers(
+            "CPP/7zip/Common/Model.h",
+            (("struct Model { char value; };\n", 1), ("struct Model { long long value; };\n", 8)),
+            "sizeof(Model)", adapted=True)
+
+    def test_runtime_rebuilds_native_version_after_baseline_change(self):
+        self.assert_runtime_rebuilds_header_consumers(
+            "C/7zVersion.h", (("#define MY_VER_MINOR 5\n", 5), ("#define MY_VER_MINOR 4\n", 4)),
+            "MY_VER_MINOR", adapted=False)
+
+    def assert_runtime_rebuilds_header_consumers(self, header, versions, expression, adapted):
         directory = "CPP/7zip/UI/Console"
-        header = "CPP/7zip/Common/Model.h"
+        include = "Model.h" if adapted else "../../../C/7zVersion.h"
         files = {
-            directory + "/Probe.cpp": '#include "../../Common/Bridge.h"\nint main() { return sizeof(Model); }\n',
-            "CPP/7zip/Common/Bridge.h": '#include "Model.h"\n',
-            header: "struct Model { char value; };\n",
+            directory + "/Probe.cpp": '#include "../../Common/Bridge.h"\nint main() { return ' + expression + '; }\n',
+            "CPP/7zip/Common/Bridge.h": '#include "' + include + '"\n',
+            header: versions[0][0],
         }
         windows = sys.platform == "win32"
         cache = shutil.which("ccache")
@@ -178,21 +189,28 @@ class UpstreamBaselineTests(unittest.TestCase):
         git(self.upstream, "commit", "-qm", "native dependency fixture")
         self.manifest["revision"] = git(self.upstream, "rev-parse", "HEAD")
         local = "src/" + header
-        (self.port / local).parent.mkdir(parents=True, exist_ok=True)
-        (self.port / local).write_text(files[header])
-        self.manifest["adapted"] = sorted([*self.manifest["adapted"], local])
-        self.manifest["runtime_adapted"] = [local]
+        if adapted:
+            (self.port / local).parent.mkdir(parents=True, exist_ok=True)
+            (self.port / local).write_text(files[header])
+            self.manifest["adapted"] = sorted([*self.manifest["adapted"], local])
+        self.manifest["runtime_adapted"] = [local] if adapted else []
         snapshot = pathlib.Path(self.temporary.name) / "runtime"
         environment = dict(os.environ)
         if sys.platform == "darwin":
             environment.setdefault("CCACHE_DIR", "/private/tmp/sevenzip-desktop-ccache")
         command = ["nmake", "/nologo", "/f", "sevenzip-runtime.mak"] if windows else [
             "make", "-f", "sevenzip-runtime.gcc.mak"]
-        for contents, expected in ((files[header], 1), ("struct Model { long long value; };\n", 8)):
+        for iteration, (contents, expected) in enumerate(versions):
             # Apple GNU make 3.81 and nmake compare whole-second timestamps.
-            if expected != 1:
+            if iteration:
                 time.sleep(1.1)
-            (self.port / local).write_text(contents)
+            if adapted:
+                (self.port / local).write_text(contents)
+            elif iteration:
+                (self.upstream / header).write_text(contents)
+                git(self.upstream, "add", ".")
+                git(self.upstream, "commit", "-qm", "change native version")
+                self.manifest["revision"] = git(self.upstream, "rev-parse", "HEAD")
             baseline.prepare_runtime_snapshot(self.manifest, snapshot, self.upstream)
             bundle = snapshot / directory
             (bundle / "objects").mkdir(exist_ok=True)

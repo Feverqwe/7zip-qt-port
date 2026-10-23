@@ -1539,7 +1539,7 @@ if(BUILD_TESTING)
     add_test(NAME archive_layer_lifetime COMMAND archive_layer_lifetime_tests -silent)
     set_tests_properties(archive_layer_lifetime PROPERTIES TIMEOUT 45
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
-    foreach(native_read_suite IN ITEMS native_archive_test native_listing)
+    foreach(native_read_suite IN ITEMS native_archive_test native_listing native_source_extract)
         qt_add_executable(${native_read_suite}_tests tests/${native_read_suite}_tests.cpp
             ${source_extract_advanced_sources})
         target_include_directories(${native_read_suite}_tests PRIVATE src tests)

@@ -1,13 +1,18 @@
 // Callback item/block projection adapted from UI/Common/ArchiveExtractCallback.cpp,
 // b88c6bc09339de32f7d18bbab900686b244f42ba, Igor Pavlov, LGPL-2.1-or-later.
 // Test decoding remains in the official Open/Extract handlers; Qt owns the worker.
+// Single-entry file-stream ownership also follows UI/Client7z/Client7z.cpp,
+// 9128b80e3a471108678e2b3ec3c985861c8d7b0f, Igor Pavlov, LGPL-2.1-or-later.
 #include "qtarchivereadoperation.h"
+#include "7zip/Common/FileStreams.h"
 #include "7zip/IPassword.h"
 #include "CPP/7zip/UI/Common/ArchiveOpenCallback.h"
 #include "Common/ComTry.h"
 #include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
+#include "archivebackend.h"
 #include "archivenativeopen.h"
+#include <QDir>
 #include <QMutexLocker>
 
 namespace {
@@ -24,6 +29,9 @@ class CTestCallback final : public IArchiveExtractCallback,
     UInt64 total_ = 0;
     QString path_;
     bool encrypted_ = false;
+    UInt32 outputIndex_ = UInt32(-1);
+    UInt32 currentIndex_ = UInt32(-1);
+    CMyComPtr<ISequentialOutStream> output_;
     QMutex stateMutex_;
     HRESULT ReadItem(UInt32 index, QString &path, bool &encrypted) {
         if (!archive_)
@@ -37,6 +45,10 @@ class CTestCallback final : public IArchiveExtractCallback,
   public:
     explicit CTestCallback(QtArchiveReadOperation &operation) : operation_(operation) {}
     void Attach(const CArc *archive) { archive_ = archive; }
+    void SetOutput(UInt32 index, ISequentialOutStream *output) {
+        outputIndex_ = index;
+        output_ = output;
+    }
     Z7_COM7F_IMF(SetTotal(UInt64 total)) override {
         {
             QMutexLocker lock(&stateMutex_);
@@ -56,21 +68,34 @@ class CTestCallback final : public IArchiveExtractCallback,
             operation_.report(*completed, total, path);
         return operation_.checkpoint();
     }
-    Z7_COM7F_IMF(GetStream(UInt32 index, ISequentialOutStream **stream, Int32)) override {
+    Z7_COM7F_IMF(GetStream(UInt32 index, ISequentialOutStream **stream, Int32 mode)) override {
         if (!stream || !archive_)
             return E_INVALIDARG;
-        *stream = nullptr; // Official test mode consumes data without publishing files.
+        *stream = nullptr;
         QString path;
         bool encrypted = false;
         RINOK(ReadItem(index, path, encrypted)) {
             QMutexLocker lock(&stateMutex_);
             path_ = path;
             encrypted_ = encrypted;
+            currentIndex_ = index;
         }
-        return operation_.checkpoint();
+        RINOK(operation_.checkpoint())
+        // Client7z::CArchiveExtractCallback::GetStream returns file output only
+        // in extract mode. A solid handler can also request skipped siblings.
+        if (index == outputIndex_ && mode == NArchive::NExtract::NAskMode::kExtract) {
+            CMyComPtr<ISequentialOutStream> output = output_;
+            *stream = output.Detach();
+        }
+        return S_OK;
     }
     Z7_COM7F_IMF(PrepareOperation(Int32)) override { return operation_.checkpoint(); }
     Z7_COM7F_IMF(SetOperationResult(Int32 result)) override {
+        {
+            QMutexLocker lock(&stateMutex_);
+            if (output_ && currentIndex_ == outputIndex_)
+                operation_.OutputOperation = result;
+        }
         // Extract's HRESULT alone does not account for CRC/partial item results.
         if (result != NArchive::NExtract::NOperationResult::kOK) {
             QMutexLocker lock(&stateMutex_);
@@ -89,6 +114,9 @@ class CTestCallback final : public IArchiveExtractCallback,
         if (result != NArchive::NExtract::NOperationResult::kOK) {
             QMutexLocker lock(&stateMutex_);
             operation_.Errors.append({path, result, encrypted});
+            if (output_ && indexType == NArchive::NEventIndexType::kInArcIndex &&
+                index == outputIndex_)
+                operation_.OutputOperation = result;
         }
         return operation_.checkpoint();
     }
@@ -117,6 +145,51 @@ class CTestCallback final : public IArchiveExtractCallback,
     HRESULT Open_Finished() override { return operation_.checkpoint(); }
     HRESULT Open_CryptoGetTextPassword(BSTR *value) override { return operation_.password(value); }
 };
+
+HRESULT ExtractEntry(QtArchiveReadOperation &operation,
+                     const std::shared_ptr<ArchiveNativeOpen> &reader, CTestCallback &callback) {
+    const CArc &arc = reader->arc();
+    UInt32 count;
+    RINOK(arc.Archive->GetNumberOfItems(&count))
+    UInt32 selected = UInt32(-1);
+    const auto entry = QDir::fromNativeSeparators(operation.Output.Entry);
+    for (UInt32 index = 0; index < count; ++index) {
+        RINOK(operation.checkpoint())
+        UString path;
+        RINOK(arc.GetItem_Path(index, path))
+        if (QDir::fromNativeSeparators(QString::fromWCharArray(path.Ptr(), path.Len())) != entry)
+            continue;
+        bool directory = false, alternate = false;
+        RINOK(Archive_IsItem_Dir(arc.Archive, index, directory))
+        RINOK(Archive_IsItem_AltStream(arc.Archive, index, alternate))
+        if (directory || alternate != operation.Output.AltStream)
+            continue;
+        // A name-only public request cannot disambiguate duplicate members.
+        if (selected != UInt32(-1))
+            return E_INVALIDARG;
+        selected = index;
+    }
+    if (selected == UInt32(-1))
+        return E_INVALIDARG;
+    // Client7z's output-stream/Extract/Close ownership, restricted to one index.
+    // This API writes a private spool: metadata and final path policy belong to
+    // the source caller. Create_NEW also protects against a raced destination.
+    CMyComPtr2<ISequentialOutStream, COutFileStream> output;
+    output.Create_if_Empty();
+    if (!output->Create_NEW(us2fs(operation.Output.Path.toStdWString().c_str())))
+        return GetLastError_noZero_HRESULT();
+    operation.OutputCreated = true;
+    callback.SetOutput(selected, output.Interface());
+    const HRESULT result = ArchiveBackend::extractNativeArchive(reader, &selected, 1, 0, &callback);
+    callback.SetOutput(UInt32(-1), nullptr);
+    const HRESULT closed = output->Close();
+    operation.OutputClosed = closed == S_OK;
+    if (result != S_OK)
+        return result;
+    if (closed != S_OK)
+        return closed;
+    return operation.OutputOperation == NArchive::NExtract::NOperationResult::kOK ? S_OK : E_FAIL;
+}
 } // namespace
 
 QtArchiveReadOperation::QtArchiveReadOperation(QString path, QString password,
@@ -187,9 +260,10 @@ void QtArchiveReadOperation::run() {
         if (Result != S_OK)
             return;
         callback->Attach(&reader->arc());
-        Result = work_(reader, callback);
+        Result = kind_ == Kind::ExtractEntry ? ExtractEntry(*this, reader, *callback)
+                                             : work_(reader, callback);
         callback->Attach(nullptr);
-        if (Result == S_OK && (!Errors.isEmpty() || (kind_ == Kind::Test && !OpenErrors.isEmpty())))
+        if (Result == S_OK && (!Errors.isEmpty() || (kind_ != Kind::List && !OpenErrors.isEmpty())))
             Result = E_FAIL;
     } catch (...) {
         Result = E_OUTOFMEMORY;

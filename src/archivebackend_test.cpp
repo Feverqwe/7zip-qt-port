@@ -23,7 +23,7 @@ bool ArchiveBackend::startNativeRead(Job job, const QString &archive, const QStr
                                           IArchiveExtractCallback *callback) {
             return ReadNativeArchiveListing(*reader, *listing, callback);
         };
-    } else {
+    } else if (job == Job::Test) {
         work = [](const std::shared_ptr<ArchiveNativeOpen> &reader,
                   IArchiveExtractCallback *callback) {
             return ArchiveBackend::extractNativeArchive(reader, nullptr, UInt32(-1), 1, callback);
@@ -31,8 +31,12 @@ bool ArchiveBackend::startNativeRead(Job job, const QString &archive, const QStr
     }
     readOperation_ = std::make_unique<QtArchiveReadOperation>(
         archive, password, catalog, std::move(work),
-        job == Job::List ? QtArchiveReadOperation::Kind::List : QtArchiveReadOperation::Kind::Test,
+        job == Job::List            ? QtArchiveReadOperation::Kind::List
+        : job == Job::SourceExtract ? QtArchiveReadOperation::Kind::ExtractEntry
+                                    : QtArchiveReadOperation::Kind::Test,
         format);
+    if (job == Job::SourceExtract)
+        readOperation_->Output = {sourceExtractEntry_, createTemporary_, sourceExtractAltStream_};
     const quint64 generation = ++readGeneration_;
     const quint64 progressGeneration = beginWorkerProgress();
     readOperation_->Progress = [this, progressGeneration](quint64 completed, quint64 total,
@@ -68,8 +72,11 @@ void ArchiveBackend::finishReadOperation() {
     auto operation = std::move(readOperation_);
     auto listing = std::move(nativeListing_);
     const bool listingJob = job_ == Job::List;
+    const bool sourceExtractJob = job_ == Job::SourceExtract;
     const QString path = archive_;
     lastResult_ = cancelled_ ? E_ABORT : operation->Result;
+    if (sourceExtractJob)
+        finishSourceExtractOperation(*operation);
     const HRESULT result = lastResult_;
     pendingPassword_.clear();
     job_ = Job::None;
@@ -137,6 +144,9 @@ void ArchiveBackend::finishReadOperation() {
         result == S_OK
             ? listingJob
                   ? QCoreApplication::translate("archivebackend_completion", "Archive opened.")
+              : sourceExtractJob
+                  ? QCoreApplication::translate("archivebackend_completion",
+                                                "Extraction completed.")
                   : QCoreApplication::translate("archivebackend_completion", "No errors found.")
         : result == E_ABORT ? QCoreApplication::translate("archivebackend", "Operation canceled.")
                             : diagnostics.join('\n'));
