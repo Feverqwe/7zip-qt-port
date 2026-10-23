@@ -5,6 +5,7 @@
 #include "Common/MyCom.h"
 #include "Common/MyString.h"
 #include "Common/StringToInt.h"
+#include "fscryptkeyrequest.h"
 #include <algorithm>
 #include <array>
 #include <cerrno>
@@ -43,10 +44,15 @@ HRESULT CExtCryptKeys::Read(IArchiveOpenCallback *callback) {
         return S_OK;
     CMyComPtr<ICryptoGetTextPassword> crypto;
     callback->QueryInterface(IID_ICryptoGetTextPassword, (void **)&crypto);
-    if (!crypto)
-        return S_OK;
     CMyComBSTR_Wipe text;
-    RINOK(crypto->CryptoGetTextPassword(&text))
+    CMyComPtr<IFscryptKeyRequest> request;
+    callback->QueryInterface(IID_IFscryptKeyRequest, (void **)&request);
+    if (request) {
+        RINOK(request->GetFscryptKeys(&text))
+    } else if (crypto) {
+        RINOK(crypto->CryptoGetTextPassword(&text))
+    } else
+        return S_OK;
     const wchar_t *input = text;
     const size_t length = SysStringLen(const_cast<BSTR>(input));
     if (!length)

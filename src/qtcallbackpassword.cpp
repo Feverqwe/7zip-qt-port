@@ -1,8 +1,25 @@
 #include "qtcallbackpassword.h"
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "fscryptkeydialog.h"
 #include <QMetaObject>
 #include <QThread>
+
+bool AskCallbackFilesystemKeys(CProgressDialog &parent, UString &keys) {
+    bool accepted = false;
+    const auto show = [&] {
+        FscryptKeyDialog dialog(&parent);
+        if (dialog.exec() == QDialog::Accepted) {
+            keys = dialog.keyDescription().toStdWString().c_str();
+            accepted = true;
+        }
+    };
+    if (QThread::currentThread() == parent.thread())
+        show();
+    else
+        QMetaObject::invokeMethod(&parent, show, Qt::BlockingQueuedConnection);
+    return accepted;
+}
 
 bool AskCallbackPassword(CProgressDialog &parent, UString &password) {
     bool showPassword = false;

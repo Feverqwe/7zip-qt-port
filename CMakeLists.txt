@@ -20,7 +20,7 @@ include(CTest)
 
 # Relocated source headers must also resolve from unchanged upstream headers
 # spelling MyVector.h, ../Common/MyVector.h or ../../Common/MyVector.h.
-include_directories(src/CPP src/CPP/Common src/CPP/Windows src/CPP/7zip/Common)
+include_directories(src/CPP src/CPP/Common src/CPP/Windows src/CPP/7zip/Common src/CPP/7zip/UI/Common)
 set_source_files_properties(src/CPP/7zip/Common/LimitedStreams.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Common")
 
@@ -346,6 +346,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/GUI/ExtractDialog.cpp src/CPP/7zip/UI/GUI/ExtractDialog.h
     src/CPP/7zip/UI/FileManager/UpdateCallback100.cpp src/CPP/7zip/UI/FileManager/UpdateCallback100.h
     src/qtcallbackpassword.cpp src/qtcallbackpassword.h
+    src/fscryptkeydialog.cpp src/fscryptkeydialog.h
     src/qtprogresscontrols.cpp src/qtprogresscontrols.h
     src/qtdialogunits.cpp src/qtdialogunits.h
     src/qtdialoglayout.cpp src/qtdialoglayout.h
@@ -478,7 +479,7 @@ add_library(sevenzip_filesystem STATIC
     src/archivebackend_device.cpp
     src/deviceinput.cpp src/deviceaccess.h
     src/archivecodecprobe.cpp src/archivecodecprobe.h
-    third_party/7zip/CPP/7zip/UI/Common/ArchiveOpenCallback.cpp
+    src/CPP/7zip/UI/Common/ArchiveOpenCallback.cpp
     third_party/7zip/CPP/7zip/UI/Common/SetProperties.cpp
     third_party/7zip/CPP/7zip/Common/FilePathAutoRename.cpp
     src/CPP/7zip/UI/FileManager/FSFolder.cpp
@@ -4094,6 +4095,24 @@ if(BUILD_TESTING)
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
     endif()
     add_test(NAME device_ui COMMAND device_ui_tests -silent)
+    qt_add_executable(fscrypt_key_ui_tests tests/fscrypt_key_ui_tests.cpp tests/layout_inspection.cpp tests/fixtures/widget_dialogs.cpp ${metadata_ui_sources})
+    target_include_directories(fscrypt_key_ui_tests PRIVATE src tests)
+    target_link_libraries(fscrypt_key_ui_tests PRIVATE ${metadata_ui_libraries})
+    target_compile_definitions(fscrypt_key_ui_tests PRIVATE
+        "FSCRYPT_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/fscrypt\""
+        "FSCRYPT_MODULE=\"$<TARGET_FILE:sevenzip_ext>\"")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(fscrypt_key_ui_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_dependencies(fscrypt_key_ui_tests sevenzip_ext_runtime)
+    add_test(NAME fscrypt_key_ui COMMAND fscrypt_key_ui_tests -silent)
+    set_tests_properties(fscrypt_key_ui PROPERTIES TIMEOUT 90 RESOURCE_LOCK sevenzip_ui_artifacts
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/fscrypt-key-ui.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    if(APPLE)
+        set_property(TEST fscrypt_key_ui PROPERTY ENVIRONMENT
+            "QT_QPA_PLATFORM=cocoa;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/fscrypt-key-ui.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endif()
     foreach(ext_consumer archive_device_tests device_folder_tests device_ui_tests)
         add_dependencies(${ext_consumer} sevenzip_ext_runtime)
     endforeach()

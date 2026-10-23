@@ -278,6 +278,26 @@ See `docs/7zfm-parity.md` for
 behavioral limitations. The tests check these relationships rather than hardcoded
 pixel coordinates or native button ordering.
 
+## Filesystem encryption keys
+
+The fscrypt prompt is a local Qt presentation adaptation for the existing ext
+reader; upstream 7zFM's generic password resource has no filesystem-key form.
+Ordinary encrypted archives keep the password dialog described below.
+
+The key dialog explains raw master keys and the no-key view. Each key has a
+version selector and masked hexadecimal master-key field; v1 also shows its
+descriptor. Add/remove supports multiple keys in a scrollable area; adding a
+key focuses and reveals its editor. Show keys changes visibility without
+changing the input. Open is available only for valid hexadecimal entries and
+unique v1 descriptors. Field labels, explanatory and error text wrap in EN/RU;
+the native footer provides Open, Cancel and Browse without keys.
+
+Open returns the keys for the current opening. Browse without keys explicitly
+selects the reader's no-key view, even if the draft contains invalid input.
+Cancel/Escape discards the draft. Ordinary archive passwords do not select this
+dialog; images and direct devices use the same typed fscrypt request. Refresh
+retains the accepted choice. Editable key values remain absent from widget JSON.
+
 ## Archive password prompt
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

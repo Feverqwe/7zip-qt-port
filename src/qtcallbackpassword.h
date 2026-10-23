@@ -4,3 +4,4 @@
 class CProgressDialog;
 bool AskCallbackPassword(CProgressDialog &parent, UString &password);
 bool AskCallbackPassword(CProgressDialog &parent, UString &password, bool &showPassword);
+bool AskCallbackFilesystemKeys(CProgressDialog &parent, UString &keys);

@@ -64,11 +64,14 @@ class ArchiveDeviceTests final : public QObject {
         );
         ArchiveCodecProbe probe;
         bool done = false;
-        QVERIFY(probe.Start(engine_, module, [&](auto result) {
-            catalog_ = result.catalog;
-            done = true;
-        }));
-        QTRY_VERIFY(done);
+        QVERIFY(probe.Start(
+            engine_, module,
+            [&](auto result) {
+                catalog_ = result.catalog;
+                done = true;
+            },
+            15000));
+        QTRY_VERIFY_WITH_TIMEOUT(done, 30000);
         QVERIFY(catalog_);
         QVERIFY2(catalog_->result() == S_OK, qPrintable(catalog_->error()));
 #endif

@@ -3290,3 +3290,63 @@ translated combined reasons fit at 420×279 (EN) and 420×366 (RU); other guest
 UI checks do not establish native visual parity. The application was rebuilt.
 No new physical-device or native-kernel mount acceptance is claimed by this
 policy check. The larger Linux-reference review remains active.
+
+## Structured fscrypt key UI — 2026-10-23
+
+The opening UI now asks for fscrypt master keys in a dedicated Qt dialog:
+v1/v2, masked hex input, v1 descriptor, multiple keys, inline syntax
+validation and an explicit no-key choice. The reader's key parsing, policy,
+KDF, decryption and no-key algorithms are unchanged. User workflow and limits
+remain in [encrypted ext files](../ext-encryption.md); geometry/interaction
+requirements are in [the UI contract](../ui-layout-contracts/extraction.md#filesystem-encryption-keys).
+
+Source: <https://github.com/ip7z/7zip.git>,
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`. Reviewed `UI/FileManager/PasswordDialog`
+bodies/resources and opening callers, `UI/Common/ArchiveOpenCallback.{cpp,h}`
+(`COpenCallbackImp`, `ReOpenCallback`, password/QI/lifetime forwarding) and
+`OpenArchive.cpp` (`CArchiveOpenCallback_Offset`, `CArchiveLink::Open2/ReOpen`).
+The original password resource has only generic text entry, so it cannot
+represent a filesystem-key form. All existing callback/volume bodies are
+retained in their original module; includes are adapted and formatting is
+accounted for separately. ArchiveOpenCallback ownership moves from unchanged
+third_party sources to `src/CPP/7zip/UI/Common`; the baseline inventory records
+the move without adding another implementation. The official runtime continues
+to use its original callback module; no Qt headers are added to its snapshot.
+
+A local optional COM interface distinguishes key acquisition from ordinary
+archive passwords. The Qt opening adapters and offset-search wrapper forward
+it; the native reader falls back to the original password callback for CLI and
+other SDK callers. The reader receives the existing explicit key description.
+The opening callback retains the accepted choice through existing refresh
+password state, without saving keys in settings. Cancellation returns E_ABORT.
+The new dialog, GUI-thread bridge and local interface have no usable upstream
+counterpart; they adapt presentation and input acquisition only.
+
+Behavior regressions use the existing native-generated encrypted ext fixture,
+with synthetic v1/v2 keys. Image and direct-device scenarios cover typed prompt
+selection, decrypted names, no-key names, cancellation, refresh and unchanged
+source bytes; direct-device copying checks the decrypted file hash. Dialog checks
+cover malformed hex, duplicate v1 descriptors,
+multiple key removal, masked/shown text, Return/Escape and EN/RU normal/compact
+v1/v2/error states. Key editor values are excluded from widget reports.
+
+The Windows image-copy check exposed an existing boundary: the native fixture's
+POSIX filename contains a colon and the image-copy validation rejects it before
+extraction. Direct-device extraction of that same name passes with the upstream
+Windows filename conversion. This iteration preserves path validation and does
+not claim Windows image-copy acceptance for such names. The UI suite uses image
+opening/name/refresh checks and direct-device payload extraction separately.
+
+Source comparison retains the original callback bodies after include/format
+normalization; the baseline verifier passes (418 exact, 263 adapted, 12 local).
+The application and affected targets build on macOS, Linux and Windows. The
+seven macOS suites `fscrypt_key_ui`, `archive_device`, `password_dialog`,
+`native_folder_opening`, `native_archive_opening`, `language` and
+`application_starts` pass (14.30 seconds). Linux and Windows pass the final
+three-suite UI/device/startup batch (`20261023T021120Z-ef555970`); the remaining
+four consumers passed in `20261023T014513Z-b53f3bdc`. Earlier Windows discovery
+attempts reached deadlines; the device-test fixture now allows 15 seconds, with
+no production discovery timing change. Native Cocoa EN/RU JSON checks normal
+and compact v1/v2/error geometry. Guest offscreen checks do not establish native
+Windows/Linux visual parity. Physical encrypted media, OS authorization and
+VoiceOver have not been checked in this iteration; no slow suites were run.

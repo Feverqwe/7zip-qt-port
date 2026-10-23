@@ -55,6 +55,23 @@ HRESULT COpenArchiveCallback::Open_CheckBreak() { return ProgressDialog.Sync.Che
 HRESULT COpenArchiveCallback::Open_Finished() { return ProgressDialog.Sync.CheckStop(); }
 
 #ifndef Z7_NO_CRYPTO
+HRESULT COpenArchiveCallback::Open_FscryptKeys(BSTR *keys) {
+    PasswordWasAsked = true;
+    if (!FilesystemKeysDefined && PasswordIsDefined && Password.IsPrefixedBy(L"fscrypt:")) {
+        FilesystemKeys.SetFrom(Password.Ptr(), Password.Len());
+        FilesystemKeysDefined = true;
+    }
+    if (!FilesystemKeysDefined) {
+        ProgressDialog.WaitCreating();
+        if (!AskCallbackFilesystemKeys(ProgressDialog, FilesystemKeys))
+            return E_ABORT;
+        FilesystemKeysDefined = true;
+    }
+    Password = FilesystemKeys;
+    PasswordIsDefined = true;
+    return StringToBstr(FilesystemKeys, keys);
+}
+
 HRESULT COpenArchiveCallback::Open_CryptoGetTextPassword(BSTR *password)
 // Z7_COM7F_IMF(COpenArchiveCallback::CryptoGetTextPassword(BSTR *password))
 {

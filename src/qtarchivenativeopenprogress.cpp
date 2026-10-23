@@ -13,6 +13,21 @@ HRESULT CNativeOpenProgress::Open_SetCompleted(const UInt64 *files, const UInt64
                    : (_progress ? _progress->SetCompleted(bytes) : S_OK);
 }
 HRESULT CNativeOpenProgress::Open_Finished() { return Open_CheckBreak(); }
+HRESULT CNativeOpenProgress::Open_FscryptKeys(BSTR *keys) {
+    HRESULT result;
+    if (auto *request = dynamic_cast<IFscryptKeyUI *>(_source))
+        result = request->Open_FscryptKeys(keys);
+    else {
+        CMyComPtr<IFscryptKeyRequest> cryptoRequest;
+        if (_progress)
+            _progress->QueryInterface(IID_IFscryptKeyRequest, (void **)&cryptoRequest);
+        result =
+            cryptoRequest ? cryptoRequest->GetFscryptKeys(keys) : Open_CryptoGetTextPassword(keys);
+    }
+    if (result == S_OK)
+        Password = QString::fromWCharArray(*keys);
+    return result;
+}
 HRESULT CNativeOpenProgress::Open_CryptoGetTextPassword(BSTR *password) {
     HRESULT result;
     if (_source)

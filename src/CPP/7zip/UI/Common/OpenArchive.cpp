@@ -1086,12 +1086,18 @@ class CArchiveOpenCallback_Offset Z7_final : public IArchiveOpenCallback,
                                              public IArchiveOpenVolumeCallback,
 #ifndef Z7_NO_CRYPTO
                                              public ICryptoGetTextPassword,
+#ifdef QT_CORE_LIB
+                                             public IFscryptKeyRequest,
+#endif
 #endif
                                              public CMyUnknownImp {
     Z7_COM_QI_BEGIN2(IArchiveOpenCallback)
     Z7_COM_QI_ENTRY(IArchiveOpenVolumeCallback)
 #ifndef Z7_NO_CRYPTO
     Z7_COM_QI_ENTRY(ICryptoGetTextPassword)
+#ifdef QT_CORE_LIB
+    Z7_COM_QI_ENTRY(IFscryptKeyRequest)
+#endif
 #endif
     Z7_COM_QI_END
     Z7_COM_ADDREF_RELEASE
@@ -1100,6 +1106,9 @@ class CArchiveOpenCallback_Offset Z7_final : public IArchiveOpenCallback,
     Z7_IFACE_COM7_IMP(IArchiveOpenVolumeCallback)
 #ifndef Z7_NO_CRYPTO
     Z7_IFACE_COM7_IMP(ICryptoGetTextPassword)
+#ifdef QT_CORE_LIB
+    Z7_COM7F_IMP(GetFscryptKeys(BSTR *keys))
+#endif
 #endif
 
   public:
@@ -1114,6 +1123,16 @@ class CArchiveOpenCallback_Offset Z7_final : public IArchiveOpenCallback,
 };
 
 #ifndef Z7_NO_CRYPTO
+#ifdef QT_CORE_LIB
+Z7_COM7F_IMF(CArchiveOpenCallback_Offset::GetFscryptKeys(BSTR *keys)) {
+    COM_TRY_BEGIN
+    CMyComPtr<IFscryptKeyRequest> request;
+    if (Callback)
+        Callback->QueryInterface(IID_IFscryptKeyRequest, (void **)&request);
+    return request ? request->GetFscryptKeys(keys) : CryptoGetTextPassword(keys);
+    COM_TRY_END
+}
+#endif
 Z7_COM7F_IMF(CArchiveOpenCallback_Offset::CryptoGetTextPassword(BSTR *password)) {
     COM_TRY_BEGIN
     if (GetTextPassword)

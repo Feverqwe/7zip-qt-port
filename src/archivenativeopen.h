@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CPP/7zip/UI/Common/OpenArchive.h"
+#include "fscryptkeyrequest.h"
 #include <QString>
 #include <memory>
 
@@ -8,7 +9,7 @@ class ArchiveCodecCatalog;
 
 // A source reader and its exact codec-index owner form one lifetime unit.
 // The catalog is destroyed after all handler/volume/stream references.
-class ArchiveNativeOpen final : private IOpenCallbackUI {
+class ArchiveNativeOpen final : public IOpenCallbackUI, public IFscryptKeyUI {
     std::shared_ptr<const ArchiveCodecCatalog> catalog_;
     IOpenCallbackUI *callback_ = nullptr;
     QString transportType_;
@@ -18,6 +19,7 @@ class ArchiveNativeOpen final : private IOpenCallbackUI {
     HRESULT Open_SetCompleted(const UInt64 *files, const UInt64 *bytes) override;
     HRESULT Open_Finished() override;
     HRESULT Open_CryptoGetTextPassword(BSTR *password) override;
+    HRESULT Open_FscryptKeys(BSTR *keys) override;
 
   public:
     explicit ArchiveNativeOpen(std::shared_ptr<const ArchiveCodecCatalog> catalog)

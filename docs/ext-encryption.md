@@ -5,7 +5,19 @@ and through direct device access. This requires the filesystem's raw master key.
 A login password, fscrypt protector password or LUKS password is not a raw key.
 Sevenzip does not unwrap hardware keys or unlock LUKS containers.
 
-When asked for a password, enter an explicit key description:
+When opening an encrypted ext image or device, Sevenzip shows **Open encrypted
+filesystem**. Select the key version and paste the master key as hexadecimal
+bytes. For v1, also enter its key descriptor. Spaces in pasted hexadecimal text
+are accepted. **Add another key** supports filesystems using several keys;
+**Show keys** makes the entered values visible. Invalid lengths or characters
+are explained before opening.
+
+Choose **Browse without keys** to view the accessible contents without
+decrypting encrypted files, or Cancel to leave the current panel unchanged.
+Keys are kept for the current opening and refresh; they are not saved in
+settings. Reopen the filesystem to use different keys.
+
+The bundled command-line engine accepts explicit key descriptions:
 
 - `fscrypt:v2:<master-key-hex>` for a v2 key.
 - `fscrypt:v1:<descriptor-hex>:<master-key-hex>` for a v1 key. The descriptor is
@@ -22,6 +34,9 @@ no-key representation; encrypted regular files cannot be read. With a matching
 key, Copy and Extract use the decrypted contents. fscrypt v1 does not authenticate
 master keys; a readable result alone does not verify that a supplied v1 key is
 correct.
+
+On Windows, copying names containing `:` from filesystem images is currently
+unavailable. Copying these files directly from a device remains available.
 
 For the bundled command-line engine, the same text is the value of `-p`.
 For example, listing without keys is:

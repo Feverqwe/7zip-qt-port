@@ -6670,4 +6670,71 @@ Application modules:
             <translation>Открыть устройство</translation>
         </message>
     </context>
+    <context>
+        <name>FscryptKeyDialog</name>
+        <message>
+            <source>Open encrypted filesystem</source>
+            <translation>Открыть зашифрованную файловую систему</translation>
+        </message>
+        <message>
+            <source>Browse without keys</source>
+            <translation>Просмотреть без ключей</translation>
+        </message>
+        <message>
+            <source>This ext filesystem uses fscrypt encryption. Enter raw master keys from its administrator or key backup. A login password or disk-encryption password cannot be used here.</source>
+            <translation>Эта файловая система ext зашифрована с помощью fscrypt. Введите мастер-ключи, полученные у администратора или из резервной копии ключей. Пароль входа в систему или шифрования диска здесь не подойдёт.</translation>
+        </message>
+        <message>
+            <source>You can browse without keys, but encrypted names will be hidden and encrypted files cannot be copied.</source>
+            <translation>Без ключей можно просматривать содержимое, но зашифрованные имена будут скрыты, а зашифрованные файлы нельзя будет скопировать.</translation>
+        </message>
+        <message>
+            <source>Add another key</source>
+            <translation>Добавить ещё ключ</translation>
+        </message>
+        <message>
+            <source>Show keys</source>
+            <translation>Показать ключи</translation>
+        </message>
+        <message>
+            <source>Key version:</source>
+            <translation>Версия ключа:</translation>
+        </message>
+        <message>
+            <source>32–128 hexadecimal characters</source>
+            <translation>32–128 шестнадцатеричных символов</translation>
+        </message>
+        <message>
+            <source>Master key (hex):</source>
+            <translation>Мастер-ключ (hex):</translation>
+        </message>
+        <message>
+            <source>16 hexadecimal characters</source>
+            <translation>16 шестнадцатеричных символов</translation>
+        </message>
+        <message>
+            <source>Key descriptor (hex):</source>
+            <translation>Дескриптор ключа (hex):</translation>
+        </message>
+        <message>
+            <source>Remove key</source>
+            <translation>Удалить ключ</translation>
+        </message>
+        <message>
+            <source>Key %1: enter 32–128 hexadecimal characters (16–64 bytes). Spaces are allowed.</source>
+            <translation>Ключ %1: введите 32–128 шестнадцатеричных символов (16–64 байта). Пробелы допустимы.</translation>
+        </message>
+        <message>
+            <source>Key %1: the v1 descriptor must contain 16 hexadecimal characters.</source>
+            <translation>Ключ %1: дескриптор v1 должен содержать 16 шестнадцатеричных символов.</translation>
+        </message>
+        <message>
+            <source>Key %1: this v1 descriptor is already used by another key.</source>
+            <translation>Ключ %1: этот дескриптор v1 уже указан для другого ключа.</translation>
+        </message>
+        <message>
+            <source>Key %1</source>
+            <translation>Ключ %1</translation>
+        </message>
+    </context>
 </TS>

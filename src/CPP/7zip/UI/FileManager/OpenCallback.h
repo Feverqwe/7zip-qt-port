@@ -5,6 +5,7 @@
 #define ZIP7_INC_OPEN_CALLBACK_H
 
 #include "7zip/UI/Common/ArchiveOpenCallback.h"
+#include "fscryptkeyrequest.h"
 
 #ifdef Z7_SFX
 #include "ProgressDialog.h"
@@ -21,12 +22,16 @@ class COpenArchiveCallback Z7_final :
     public ICryptoGetTextPassword,
     public CMyUnknownImp
     */
-    public IOpenCallbackUI {
+    public IOpenCallbackUI,
+    public IFscryptKeyUI {
     // NWindows::NSynchronization::CCriticalSection _criticalSection;
   public:
     bool PasswordIsDefined;
     bool PasswordWasAsked;
     UString Password;
+    UString_Wipe FilesystemKeys;
+    bool FilesystemKeysDefined = false;
+    HRESULT Open_FscryptKeys(BSTR *keys) override;
     QString DeviceOpenError;
     QPointer<QWidget> ParentWindow;
     QString SettingsPath;

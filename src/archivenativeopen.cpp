@@ -65,6 +65,12 @@ HRESULT ArchiveNativeOpen::Open_CryptoGetTextPassword(BSTR *password) {
     return callback_ ? callback_->Open_CryptoGetTextPassword(password) : E_ABORT;
 }
 
+HRESULT ArchiveNativeOpen::Open_FscryptKeys(BSTR *keys) {
+    if (auto *request = dynamic_cast<IFscryptKeyUI *>(callback_))
+        return request->Open_FscryptKeys(keys);
+    return Open_CryptoGetTextPassword(keys);
+}
+
 HRESULT ArchiveNativeOpen::Close() {
     const HRESULT result = link_.IsOpen ? link_.Close() : S_OK;
     link_.Release();
