@@ -835,3 +835,46 @@ and 21 pinned FAT hashes passed. Task-owned fixture cleanup passed on both guest
 `20261021T140045Z-69a2ec5f`; the disposable helper was removed. Existing build
 trees/cache were retained. No maximum-boundary runtime, full/slow suite,
 installation, native-device or physical-media acceptance is claimed.
+
+### Incomplete root results — 2026-10-23
+
+The expanded read-only policy audit compared the complete original 7-Zip
+`FatHandler.cpp` database clearing, root/child directory readers, `Open`, archive
+properties and `Extract`, and the current GPL reader consumers. The existing
+7-Zip revision/source and Linux baseline above are unchanged. The original FAT
+handler had no partial-root workflow; its per-item result cannot describe a
+missing portion of the root, since the root has no item. Compared the original
+`IArchive.h::IArchiveExtractCallbackMessage2` contract, `7zExtract.cpp` callers and
+the Qt extraction callback error/progress consumers before adapting this boundary.
+
+The GPL variant now retains the root's incomplete state separately from child
+directory errors. It exposes the standard HeadersError property, copies readable
+items, then reports HeadersError for whole-catalog extraction through the SDK
+message callback; a consumer without it receives S_FALSE. Both the all-items
+sentinel and a complete explicit index selection use this result. Selecting a
+healthy file remains successful. Callback failure/cancellation is propagated.
+An incomplete root with no readable entries fails opening with a concrete
+diagnostic instead of publishing an apparently empty successful filesystem.
+Reopening/closing clears these diagnostics. The SDK variant's existing strict
+directory behavior and all decoding/chain bounds remain unchanged.
+
+Behavior regressions check exact healthy bytes, partial-root flags, whole-catalog
+and selected-file results, both callback interfaces, cancellation and reuse.
+EN/RU UI cases reuse limited-read consent and verify copied healthy data alongside
+the full-extraction error. The existing bitmap/chain/path guards and read-only
+source policy remain in force. No repair, journal operation or source write was
+introduced.
+
+The five focused suites passed on macOS Cocoa (14.01 s), Linux and Windows:
+`fat_directory`, `filesystem_fat_directory_ui`, `device_filesystem`, `device_folder`
+and `native_folder_opening`; guest receipt `20261023T035946Z-1c9343a8`. Initial
+fixture construction incorrectly filled the buffer before the generator added its
+end marker; the fixture now replaces only the final padding after serialization.
+Current EN/RU badge/alert geometry and unchanged source bytes remain covered by
+the UI helper. No slow/maximum-size suites, physical-device or native Windows/
+Linux appearance acceptance was run. Existing incremental outputs and compiler
+caches were retained; no obsolete task-owned fixture remained after the runs.
+Application builds passed on macOS and both guests; remote receipt
+`20261023T040059Z-2ba9ba26`. The final comparison keeps original FAT extraction
+ordering and progress/stream ownership, with the added root result confined to
+the GPL partial-read variant.

@@ -24,6 +24,7 @@
 #include "7zip/Compress/CopyCoder.h"
 
 #include "7zip/Archive/Common/ItemNameUtils.h"
+#include <set>
 
 #define Get16(p) GetUi16(p)
 #define Get32(p) GetUi32(p)
@@ -399,6 +400,7 @@ struct CDatabase {
     UInt32 Vol_MTime;
     bool SourceTruncated = false;
     bool DirectoryLimitations = false;
+    bool RootDirectoryIncomplete = false;
     bool FileLimitations = false;
     bool TableLimitations = false;
     bool CrossLinkedFiles = false;
@@ -425,6 +427,8 @@ struct CDatabase {
         DirectoryLimitations = true;
         if (parent >= 0)
             Items[(unsigned)parent].DirectoryIncomplete = true;
+        else
+            RootDirectoryIncomplete = true;
     }
 
     UInt64 GetHeadersSize() const {
@@ -442,6 +446,7 @@ HRESULT CDatabase::SeekToSector(UInt32 sector) {
 void CDatabase::Clear() {
     SourceTruncated = false;
     DirectoryLimitations = false;
+    RootDirectoryIncomplete = false;
     FileLimitations = false;
     TableLimitations = false;
     CrossLinkedFiles = false;
@@ -1009,6 +1014,7 @@ Z7_class_CHandler_final:
 {
     Z7_IFACES_IMP_UNK_3(IInArchive, IArchiveGetRawProps, IInArchiveGetStream)
     HRESULT GetFileStream(UInt32 index, ISequentialInStream **stream, IInStream *source);
+    bool RootUnavailable = false;
 };
 // clang-format on
 
@@ -1139,6 +1145,14 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
     COM_TRY_BEGIN
     NWindows::NCOM::CPropVariant prop;
     switch (propID) {
+    case kpidErrorFlags:
+        if (RootDirectoryIncomplete || RootUnavailable)
+            prop = UInt32(kpv_ErrorFlags_HeadersError);
+        break;
+    case kpidError:
+        if (RootUnavailable)
+            prop = "The FAT root directory could not be read. No readable entries were found.";
+        break;
     case kpidReadOnly:
         prop = true;
         break;
@@ -1349,10 +1363,17 @@ Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallb
     {
         OpenCallback = callback;
         InStream = stream;
+        RootUnavailable = false;
         HRESULT res;
         try
         {
             res = CDatabase::Open();
+            if (res == S_OK && RootDirectoryIncomplete && Items.IsEmpty())
+            {
+                Close();
+                RootUnavailable = true;
+                return S_FALSE;
+            }
             if (res == S_OK)
                 return S_OK;
         }
@@ -1370,17 +1391,31 @@ Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallb
 
 Z7_COM7F_IMF(CHandler::Close()) {
     ClearAndClose();
+    RootUnavailable = false;
     return S_OK;
 }
 
 Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 testMode,
                                IArchiveExtractCallback *extractCallback)) {
     COM_TRY_BEGIN
+    const bool all = numItems == UInt32(-1);
+    const auto finish = [&]() -> HRESULT {
+        if (!RootDirectoryIncomplete ||
+            !(all || (numItems && numItems == Items.Size() &&
+                      std::set<UInt32>(indices, indices + numItems).size() == numItems)))
+            return S_OK;
+        CMyComPtr<IArchiveExtractCallbackMessage2> messages;
+        extractCallback->QueryInterface(IID_IArchiveExtractCallbackMessage2, (void **)&messages);
+        if (messages)
+            return messages->ReportExtractResult(NEventIndexType::kNoIndex, 0,
+                                                 NExtract::NOperationResult::kHeadersError);
+        return S_FALSE;
+    };
     if (numItems == (UInt32)(Int32)-1) {
         indices = NULL;
         numItems = Items.Size();
         if (numItems == 0)
-            return S_OK;
+            return finish();
     } else {
         if (numItems == 0)
             return S_OK;
@@ -1467,7 +1502,7 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
         }
         RINOK(extractCallback->SetOperationResult(res))
     }
-    return S_OK;
+    return finish();
     COM_TRY_END
 }
 

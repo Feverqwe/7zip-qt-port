@@ -2,7 +2,7 @@
 from fat_fixture import Volume, PAYLOAD, LONG_NAME, entry, long_entries
 
 MODES = ('control', 'free', 'range', 'bad', 'cycle', 'start', 'eoc', 'alias',
-         'iochild', 'ioroot', 'prefix', 'eodprefix')
+         'iochild', 'ioroot', 'prefix', 'eodprefix', 'root', 'emptyroot')
 
 
 def directory_volume(kind):
@@ -65,14 +65,24 @@ def directory_volume(kind):
                 v.data[target+16*32:target+v.cluster_size] = bytes(v.cluster_size-16*32)
                 files.pop(late_name)
         v.fault_offset = target + 512
+    if mode in ('root', 'emptyroot'):
+        if bits != 32:
+            raise ValueError('root chain requires FAT32')
+        v.set_fat(2, 0)
+        if mode == 'emptyroot':
+            v.records.clear()
+            files.clear()
     v.write_directory()
+    if mode in ('root', 'emptyroot'):
+        start = v.root + len(v.records) * 32
+        v.data[start:v.root+v.cluster_size] = (bytes([0xe5]) + bytes(31)) * ((v.root+v.cluster_size-start)//32)
     if mode == 'alias':
         for name, data in list(files.items()):
             if name.startswith('BROKEN/'):
                 files['ALIAS/' + name[len('BROKEN/'):]] = data
     v.expected_files = files
     v.incomplete_dirs = ['BROKEN'] if mode in ('free','range','bad','cycle','start','eoc','iochild','prefix') else []
-    if mode == 'ioroot':v.directory_limited = True
+    if mode in ('ioroot', 'root', 'emptyroot'):v.directory_limited = True
     else:v.directory_limited = bool(v.incomplete_dirs)
     if mode == 'eodprefix':v.directory_limited = False
     return v

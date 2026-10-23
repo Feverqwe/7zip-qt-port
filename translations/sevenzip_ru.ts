@@ -3866,6 +3866,10 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Некоторые каталоги exFAT прочитаны не полностью. Часть файлов или имён может отсутствовать. Доступные файлы можно копировать.</translation>
         </message>
         <message>
+            <source>The FAT root directory could not be read. No readable entries were found.</source>
+            <translation>Корневой каталог FAT не удалось прочитать. Доступных записей не найдено.</translation>
+        </message>
+        <message>
             <source>The exFAT source is shorter than the declared volume. Some files may be incomplete or unreadable.</source>
             <translation>Источник exFAT короче заявленного размера тома. Некоторые файлы могут быть неполными или недоступными для чтения.</translation>
         </message>

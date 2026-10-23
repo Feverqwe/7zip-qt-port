@@ -11,6 +11,34 @@
 
 using namespace FatTestSupport;
 
+class RootExtract final : public IArchiveExtractCallback,
+                          public IArchiveExtractCallbackMessage2,
+                          public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_2(IArchiveExtractCallback, IArchiveExtractCallbackMessage2)
+  public:
+    CMyComPtr2<IArchiveExtractCallback, Extract> items;
+    int reports = 0;
+    UInt32 indexType = UINT32_MAX;
+    Int32 error = -1;
+    HRESULT reportResult = S_OK;
+    RootExtract() { items.Create_if_Empty(); }
+    Z7_COM7F_IMF(SetTotal(UInt64 size)) override { return items->SetTotal(size); }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *size)) override { return items->SetCompleted(size); }
+    Z7_COM7F_IMF(GetStream(UInt32 index, ISequentialOutStream **stream, Int32 mode)) override {
+        return items->GetStream(index, stream, mode);
+    }
+    Z7_COM7F_IMF(PrepareOperation(Int32 mode)) override { return items->PrepareOperation(mode); }
+    Z7_COM7F_IMF(SetOperationResult(Int32 result)) override {
+        return items->SetOperationResult(result);
+    }
+    Z7_COM7F_IMF(ReportExtractResult(UInt32 type, UInt32, Int32 result)) override {
+        ++reports;
+        indexType = type;
+        error = result;
+        return reportResult;
+    }
+};
+
 class DirectoryCallback final : public IArchiveOpenCallback, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
   public:
@@ -180,6 +208,66 @@ class FatDirectoryTests final : public QObject {
             QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
             QCOMPARE(count, UInt32(0));
         }
+    }
+    void incompleteRootExtraction() {
+        fixture("root32");
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        verifyFiles();
+        verifyLimitations(true);
+        NWindows::NCOM::CPropVariant flags;
+        QCOMPARE(archive_->GetArchiveProperty(kpidErrorFlags, &flags), S_OK);
+        QCOMPARE(flags.vt, VARTYPE(VT_UI4));
+        QVERIFY(flags.ulVal & kpv_ErrorFlags_HeadersError);
+        UInt32 count;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QVector<UInt32> indices;
+        for (UInt32 i = 0; i < count; ++i)
+            indices.append(i);
+        for (bool explicitIndices : {false, true}) {
+            const auto selected = explicitIndices ? indices.constData() : nullptr;
+            const auto size = explicitIndices ? count : UInt32(-1);
+            CMyComPtr2<IArchiveExtractCallback, Extract> plain;
+            plain.Create_if_Empty();
+            QCOMPARE(archive_->Extract(selected, size, 1, plain), S_FALSE);
+            QCOMPARE(plain->results.size(), qsizetype(count));
+            for (Int32 result : plain->results)
+                QCOMPARE(result, Int32(NArchive::NExtract::NOperationResult::kOK));
+            CMyComPtr2<IArchiveExtractCallback, RootExtract> messages;
+            messages.Create_if_Empty();
+            QCOMPARE(archive_->Extract(selected, size, 1, messages), S_OK);
+            QCOMPARE(messages->reports, 1);
+            QCOMPARE(messages->indexType, UInt32(NArchive::NEventIndexType::kNoIndex));
+            QCOMPARE(messages->error, Int32(NArchive::NExtract::NOperationResult::kHeadersError));
+            messages->reportResult = E_ABORT;
+            QCOMPARE(archive_->Extract(selected, size, 1, messages), E_ABORT);
+        }
+        fixture("control32");
+        input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QCOMPARE(archive_->GetArchiveProperty(kpidErrorFlags, &flags), S_OK);
+        QCOMPARE(flags.vt, VARTYPE(VT_EMPTY));
+        CMyComPtr2<IArchiveExtractCallback, Extract> plain;
+        plain.Create_if_Empty();
+        QCOMPARE(archive_->Extract(nullptr, UInt32(-1), 1, plain), S_OK);
+    }
+    void unavailableRootDoesNotOpenAsEmpty() {
+        fixture("emptyroot32");
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_FALSE);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        NWindows::NCOM::CPropVariant error;
+        QCOMPARE(archive_->GetArchiveProperty(kpidError, &error), S_OK);
+        QCOMPARE(error.vt, VARTYPE(VT_BSTR));
+        QVERIFY(::SysStringLen(error.bstrVal));
+        fixture("control32");
+        input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        verifyFiles();
+        QCOMPARE(archive_->GetArchiveProperty(kpidError, &error), S_OK);
+        QCOMPARE(error.vt, VARTYPE(VT_EMPTY));
     }
     void seekFailuresAndReopening() {
         fixture("iochild32");

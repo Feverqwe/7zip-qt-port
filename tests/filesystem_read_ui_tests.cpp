@@ -313,7 +313,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         QTest::addColumn<QString>("kind");
         QTest::addColumn<bool>("accept");
         for (const QString &language : {"en", "ru"}) {
-            for (const QString &kind : {"fat-directory-free32", "fat-directory-start12"})
+            for (const QString &kind :
+                 {"fat-directory-free32", "fat-directory-start12", "fat-directory-root32"})
                 QTest::newRow(qPrintable(language + '-' + kind)) << language << kind << true;
             QTest::newRow(qPrintable(language + "-cancel-directory"))
                 << language << QString("fat-directory-free32") << false;
@@ -692,6 +693,24 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                     QVERIFY(prefix.open(QIODevice::ReadOnly));
                     QCOMPARE(prefix.readAll(), QByteArray("tail") + QByteArray(1020, '\0'));
                 }
+            }
+            if (kind == "fat-directory-root32") {
+                window.findChild<QAction *>("upAction")->trigger();
+                QTRY_VERIFY(Row(*table, fatFolder) >= 0);
+                ExtractionOptions allOptions = copyOptions;
+                allOptions.currentFolder.clear();
+                copyingIncomplete = true;
+                const QString partial = directory.filePath("partial-root");
+                window.extractTo(partial, false, {}, allOptions);
+                copyingIncomplete = false;
+                QVERIFY(incompleteCopyErrors > 0);
+                QFile healthy(partial + "/GOOD/GOOD.TXT");
+                QVERIFY(healthy.open(QIODevice::ReadOnly));
+                QCOMPARE(healthy.readAll(), payload);
+                table->selectRow(Row(*table, fatFolder));
+                QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
+                                                  Q_ARG(int, Row(*table, fatFolder)),
+                                                  Q_ARG(int, 0)));
             }
             if (fatFile) {
                 QTRY_VERIFY(Row(*table, "SECOND.BIN") >= 0);
