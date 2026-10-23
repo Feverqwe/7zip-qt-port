@@ -138,7 +138,11 @@ class NtfsRecordTests final : public QObject, protected Fixture {
         QCOMPARE(count, UInt32(0));
         loadFixture("record-boot-total");
         input = new Input(bytes_);
-        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_FALSE);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QString limitations;
+        QVERIFY(readLimitations(limitations));
+        QVERIFY(limitations.contains("backup MFT record"));
+        check(stream("alpha"), "alpha", 0, 200000);
     }
     void boundedSources_data() {
         QTest::addColumn<QString>("kind");

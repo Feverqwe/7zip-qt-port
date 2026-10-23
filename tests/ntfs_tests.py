@@ -131,9 +131,6 @@ class NtfsTests(unittest.TestCase):
             with self.subTest(kind=kind):
                 image, files = volume(kind)
                 listing = self.run_image("7z", image, "l")
-                if kind == "record-boot-total":
-                    self.assertNotEqual(listing.returncode, 0)
-                    continue
                 self.assertEqual(listing.returncode, 0, listing.stderr)
                 self.assertEqual(b"NTFS MFT records" in listing.stdout, kind != "record-base")
                 for name, expected in files.items():
@@ -246,12 +243,35 @@ class NtfsTests(unittest.TestCase):
             for engine in ("7z", "7zz"):
                 with self.subTest(kind=kind, engine=engine):
                     result = self.run_image(engine, image, "x", "alpha")
-                    if kind.endswith("decoy"):
+                    if kind.endswith("decoy") or engine == "7z":
                         self.assertEqual(result.returncode, 0, result.stderr)
                         self.assertEqual(result.stdout, files["alpha"])
                     else:
                         self.assertNotEqual(result.returncode, 0)
                         self.assertEqual(result.stdout, b"")
+
+    def test_bootstrap_recovery_preserves_readable_files(self):
+        from ntfs_recovery_fixture import CASES, FATAL
+        for kind in CASES:
+            if kind.endswith("-io"):
+                continue  # Range-specific read errors use the archive ABI input fixture.
+            with self.subTest(kind=kind):
+                image, files = volume(kind)
+                listing = self.run_image("7z", image, "l")
+                if kind in FATAL:
+                    self.assertNotEqual(listing.returncode, 0)
+                    continue
+                self.assertEqual(listing.returncode, 0, listing.stderr)
+                self.assertEqual(b"Read-only limitations" in listing.stdout,
+                                 kind != "recovery-primary-control")
+                for name, expected in files.items():
+                    result = self.run_image("7z", image, "x", name, case_sensitive=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, expected)
+        image, _ = volume("recovery-list-partial")
+        result = self.run_image("7z", image)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn(b"Headers Error", result.stdout + result.stderr)
 
     def test_linux_ea_values_and_ads_namespaces(self):
         for kind in ("ea-xattrs", "ea-xattrs-fragmented", "ea-xattrs-extension", "ea-xattrs-collision"):

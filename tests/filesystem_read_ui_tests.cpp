@@ -129,6 +129,111 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
     void confirmsAndCopiesFlaggedVolumeRu_data() { flaggedVolumeData("ru"); }
     void confirmsLimitedExt_data() { flaggedVolumeData("en", true); }
     void confirmsLimitedExtRu_data() { flaggedVolumeData("ru", true); }
+    void confirmsNtfsRecovery_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("accept");
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<bool>("copyAll");
+        for (const QString &language : {"en", "ru"}) {
+            for (bool accept : {false, true})
+                for (const QString &kind : {"recovery-mirror-header", "recovery-mirror-address",
+                                            "recovery-list-partial", "recovery-attribute-tail"})
+                    QTest::newRow(
+                        qPrintable(language + '-' + kind + (accept ? "-accept" : "-cancel")))
+                        << language << accept << kind << false;
+            QTest::newRow(qPrintable(language + "-partial-whole-copy"))
+                << language << true << QString("recovery-list-partial") << true;
+        }
+    }
+    void confirmsNtfsRecovery() {
+        QFETCH(QString, language);
+        QFETCH(bool, accept);
+        QFETCH(QString, kind);
+        QFETCH(bool, copyAll);
+        confirmAndCopy(language, accept, kind, copyAll);
+    }
+    void explainsNtfsFailure_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QString>("kind");
+        for (const QString &language : {"en", "ru"})
+            for (const QString &kind :
+                 {"recovery-both-bad", "recovery-both-addresses", "recovery-only-inactive"})
+                QTest::newRow(qPrintable(language + '-' + kind)) << language << kind;
+    }
+    void explainsNtfsFailure() {
+        QFETCH(QString, language);
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
+                    qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const QString path = directory.filePath("образ NTFS 空.ntfs");
+        QFile source(path);
+        QVERIFY(source.open(QIODevice::WriteOnly));
+        QCOMPARE(source.write(bytes_), qint64(bytes_.size()));
+        source.close();
+        ArchiveBackend backend(nullptr, engine_);
+        QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
+        QVERIFY(backend.discoverCodecCatalog(module_));
+        QTRY_COMPARE(ready.size(), 1);
+        QVERIFY(ready[0][0].toBool());
+        MainWindow window(&backend);
+        window.openPath(directory.path());
+        window.show();
+        const char *reason =
+            kind == "recovery-both-addresses"
+                ? "The NTFS boot sectors do not provide usable volume geometry."
+            : kind == "recovery-only-inactive"
+                ? "No readable NTFS MFT records were found in the selected mode."
+                : "The NTFS MFT bootstrap or mapping could not be read or validated.";
+        const QString expected = QCoreApplication::translate("SevenZipDiagnostics", reason);
+        QString shown;
+        bool geometry = true, consent = false;
+        QPointer<QMessageBox> handled;
+        QTimer automation;
+        connect(&automation, &QTimer::timeout, &window, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (widget->isVisible() && widget->objectName() == "progressDialog") {
+                    if (QApplication::activeModalWidget() &&
+                        QApplication::activeModalWidget() != widget)
+                        continue;
+                    auto *close = widget->findChild<QPushButton *>("IDCANCEL");
+                    if (TestProgressDialog::IsCloseButton(close))
+                        close->click();
+                }
+                auto *message = qobject_cast<QMessageBox *>(widget);
+                if (!message || !message->isVisible() || message == handled)
+                    continue;
+                handled = message;
+                consent |= message->objectName() == "filesystemReadLimitationsWarning";
+                shown += message->text() + message->informativeText() + message->detailedText();
+                message->layout()->activate();
+                for (auto *label : message->findChildren<QLabel *>())
+                    if (label->isVisible())
+                        geometry &= UiInspection::fullyVisible(*label, *message) &&
+                                    UiInspection::labelFits(*label);
+                message->setProperty("uiInspection_language", language);
+                message->setProperty("uiInspection_state", kind);
+                geometry &= UiInspection::writeReport(*message, "filesystem-failure-" + language +
+                                                                    '-' + kind);
+                message->reject();
+                return;
+            }
+        });
+        automation.start(10);
+        window.openArchive(path);
+        automation.stop();
+        QVERIFY2(shown.contains(expected), qPrintable(shown));
+        QVERIFY(!consent);
+        QVERIFY(geometry);
+        QVERIFY(!window.findChild<QLabel *>("deviceReadOnlyLabel")->isVisible());
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        QVERIFY(table);
+        QTRY_VERIFY(Row(*table, "образ NTFS 空.ntfs") >= 0);
+        QVERIFY(source.open(QIODevice::ReadOnly));
+        QCOMPARE(source.readAll(), bytes_);
+    }
     void confirmsPartialExfatDirectories_data() {
         QTest::addColumn<QString>("language");
         QTest::addColumn<bool>("accept");
@@ -433,16 +538,17 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
     }
 
   private:
-    void confirmAndCopy(const QString &language, bool accept, const QString &kind) {
+    void confirmAndCopy(const QString &language, bool accept, const QString &kind,
+                        bool copyAll = false) {
         const bool exfat = kind == "exfat" || kind.startsWith("exfat-");
         const bool exfatRecovery = kind.startsWith("exfat-recovery-");
         const bool exfatDirectory = kind.startsWith("exfat-") && !exfatRecovery;
         const bool exfatFile = kind.startsWith("exfat-recovery-file-");
-        const bool ntfs = kind.startsWith("volume-") || kind.startsWith("reparse-") ||
-                          kind.startsWith("ea-") || kind.startsWith("data-list-") ||
-                          kind.startsWith("standard-") || kind.startsWith("dir-") ||
-                          kind.startsWith("record-") || kind.startsWith("security-") ||
-                          kind.startsWith("source-");
+        const bool ntfs = kind.startsWith("recovery-") || kind.startsWith("volume-") ||
+                          kind.startsWith("reparse-") || kind.startsWith("ea-") ||
+                          kind.startsWith("data-list-") || kind.startsWith("standard-") ||
+                          kind.startsWith("dir-") || kind.startsWith("record-") ||
+                          kind.startsWith("security-") || kind.startsWith("source-");
         const bool ext = kind.startsWith("ext-");
         const bool extRecovery = kind.startsWith("ext-recovery-");
         const bool fat = kind.startsWith("fat-");
@@ -459,7 +565,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         const bool fatFile = kind.startsWith("fat-file-");
         const bool copyDiagnostic =
             kind == "cramfs-table" || fatFile || exfatFile || squashFragment || lateBlocklist ||
-            kind == "squashfs-directory-reference" || kind == "ext-directory";
+            kind == "squashfs-directory-reference" || kind == "ext-directory" ||
+            (copyAll && kind == "recovery-list-partial");
         const QString fatFolder = kind == "fat-directory-free32" ? "BROKEN" : "GOOD";
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -691,7 +798,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             else if (fatDirectory)
                 copyOptions.currentFolder = fatFolder;
             copyingIncomplete = copyDiagnostic;
-            window.extractTo(output, true, {}, copyOptions);
+            window.extractTo(output, !copyAll, {}, copyOptions);
             copyingIncomplete = false;
             QCOMPARE(incompleteCopyErrors, copyDiagnostic ? 1 : 0);
             QVERIFY2(unexpectedErrors.isEmpty(), qPrintable(unexpectedErrors.join('\n')));

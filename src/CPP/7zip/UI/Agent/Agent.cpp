@@ -1141,6 +1141,10 @@ Z7_COM7F_IMF(CAgent::GetArcProp(UInt32 level, PROPID propID, PROPVARIANT *value)
         return E_INVALIDARG;
     if (level == (UInt32)link.Arcs.Size()) {
         switch (propID) {
+        case kpidError:
+            if (!link.NonOpen_ErrorInfo.ErrorMessage.IsEmpty())
+                prop = link.NonOpen_ErrorInfo.ErrorMessage;
+            break;
         case kpidPath:
             if (!link.NonOpen_ArcPath.IsEmpty())
                 prop = link.NonOpen_ArcPath;

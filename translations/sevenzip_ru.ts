@@ -4074,6 +4074,26 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Запись MFT NTFS недоступна или не проверена.</translation>
         </message>
         <message>
+            <source>NTFS is being read using a backup MFT record. The primary bootstrap record is unavailable or incomplete.</source>
+            <translation>NTFS читается с помощью резервной записи MFT. Первичная запись для открытия таблицы недоступна или неполна.</translation>
+        </message>
+        <message>
+            <source>The declared NTFS MFT mirror is outside the volume. The primary table remains readable.</source>
+            <translation>Резервная копия MFT NTFS указана за пределами тома. Первичная таблица остаётся доступной для чтения.</translation>
+        </message>
+        <message>
+            <source>The NTFS boot sectors do not provide usable volume geometry.</source>
+            <translation>По загрузочным секторам NTFS не удалось определить допустимую геометрию тома.</translation>
+        </message>
+        <message>
+            <source>The NTFS MFT bootstrap or mapping could not be read or validated.</source>
+            <translation>Не удалось прочитать или проверить начальную запись MFT NTFS либо карту расположения таблицы.</translation>
+        </message>
+        <message>
+            <source>No readable NTFS MFT records were found in the selected mode.</source>
+            <translation>В выбранном режиме не найдено доступных для чтения записей MFT NTFS.</translation>
+        </message>
+        <message>
             <source>Some NTFS security descriptors are unavailable or unverified. Permissions may be missing. Readable file data remains accessible.</source>
             <translation>Некоторые дескрипторы безопасности NTFS недоступны или не проверены. Сведения о правах доступа могут отсутствовать. Данные читаемых файлов остаются доступны.</translation>
         </message>

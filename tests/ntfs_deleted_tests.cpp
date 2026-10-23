@@ -29,6 +29,41 @@ class NtfsDeletedTests final : public QObject, protected Fixture {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void inactiveTableRemainsReadableInExplicitRecoveryMode() {
+        loadFixture("recovery-only-inactive");
+        showDeleted(false);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_FALSE);
+        showDeleted(true);
+        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QString limitations;
+        QVERIFY(readLimitations(limitations));
+        QVERIFY(limitations.contains("Deleted NTFS records"));
+        UInt32 count = 0, selected = UINT32_MAX;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        for (UInt32 i = 0; i < count; ++i) {
+            NWindows::NCOM::CPropVariant inode;
+            QCOMPARE(archive_->GetProperty(i, kpidINode, &inode), S_OK);
+            if (inode.vt == VT_UI4 && inode.ulVal == 64)
+                selected = i;
+        }
+        QVERIFY(selected != UINT32_MAX);
+        NWindows::NCOM::CPropVariant deleted;
+        QCOMPARE(archive_->GetProperty(selected, kpidIsDeleted, &deleted), S_OK);
+        QCOMPARE(deleted.vt, VARTYPE(VT_BOOL));
+        QCOMPARE(deleted.boolVal, VARIANT_TRUE);
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<ISequentialInStream> sequential;
+        QCOMPARE(provider->GetStream(selected, &sequential), S_OK);
+        CMyComPtr<IInStream> file;
+        QCOMPARE(sequential->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&file)), S_OK);
+        check(file, "alpha", 0, 200000);
+        showDeleted(false);
+    }
     void recoveryIsOptional_data() {
         QTest::addColumn<QString>("kind");
         QTest::addColumn<bool>("show");

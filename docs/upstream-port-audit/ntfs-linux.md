@@ -2038,3 +2038,120 @@ source scope приведена в начале документа. Она не 
 системы и общие форматы goal и не заменяет перечисленные runtime boundaries.
 VFS/page cache, mount services, запись/journal replay и EFS key service не
 переносятся в archive handler; Linux сам не расшифровывает EFS при чтении.
+
+## Partial bootstrap and incomplete catalog results — 2026-10-23
+
+This policy review supersedes the earlier unconditional failure for an unusable
+primary MFT bootstrap. References remain Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`
+(<https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git>) and 7-Zip
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`
+(<https://github.com/ip7z/7zip.git>). Existing source roots, baseline units and
+notices remain in place; no new format module or revision was imported.
+
+Compared the original SDK `CHeader::Parse`, `CDatabase::Open`, MFT attribute-list
+loader, record parser, stream/extraction and property consumers with Linux
+`fs/ntfs3/super.c::ntfs_init_from_boot`/mount callers,
+`inode.c::ntfs_read_mft`, `record.c::mi_read`/attribute enumeration,
+`attrib.c::attr_load_runs_vcn` and the MFT-copy branch of
+`fsntfs.c::ntfs_loadlog_and_replay`. The last function retries the MFT inode
+using the mirror location when the primary fails. That branch establishes a
+usable read mode; the existing C++ archive boundary supplies candidate selection
+through its own original SDK bootstrap body. The kernel C function is not
+translated into C++ or imported with its log replay, state mutation,
+synchronization and write services. There is no reusable upstream archive helper
+for partial-candidate orchestration; the narrow adapter retains the existing
+parser, attribute selection and bounded stream. All C decoder bodies remain C.
+
+The original bootstrap body is extracted within the GPL handler and applied to
+both bounded locations. A complete candidate is preferred to an incomplete one.
+An invalid location is never sought/read; one unusable address cannot suppress
+the other valid copy. Unavailable mirror metadata is reported without discarding
+the readable primary. An inactive but structurally readable bootstrap remains
+explicitly unverified, matching the reference recovery branch's distinction
+from an ordinary active-inode lookup. Base-record/type, record framing, unnamed
+DATA selection, mapping bounds and decoder restrictions remain active. No ADS
+is substituted for MFT DATA. When both locations or their usable mappings are
+unavailable, opening still fails for that concrete reason.
+
+The existing validated-segment reader also exposes available MFT ranges when
+the attribute list or an independent continuation is unavailable. Missing ranges
+remain errors rather than sparse zeros or an inferred contiguous layout. Fixed
+record slots, bounded retries, independent records and original I30/MFT recovery
+projection are retained. Invalid framing is not salvaged as a valid record;
+an accepted frame may retain its existing checked attribute prefix. No new
+runlist, fixup, directory or compression decoder is introduced. Rejected mapping
+segments are not reconstructed, and the mirror is not merged into or written
+over the primary table.
+
+An ordinary primary boot-sector I/O failure can use the existing validated
+backup-boot path. This is a narrow immutable archive adaptation: Linux's boot
+reader only retries a structurally invalid primary, whereas the archive source
+can expose independently readable byte ranges. E_ABORT, allocation failures and
+open-callback failures remain hard failures for both boot/MFT candidate paths.
+The list loader reports callback HRESULT separately so a callback's E_FAIL or
+S_FALSE cannot be mistaken for metadata damage and retried away.
+
+Known missing/corrupt catalog records and a fractional final record now retain
+an incomplete-catalog indication. Whole-copy/Test completion reports HeadersError
+through the original Message2 interface, or S_FALSE for a callback lacking it;
+explicit unique full-index selections have the same behavior as the all-items
+sentinel. Successful selected files keep their own bytes and kOK results.
+Private-buffer fixup/record-number mismatches with otherwise readable records
+remain unverified reads, distinct from a known missing catalog. Known inactive
+records excluded from deleted recovery do not alone imply missing active files.
+Report/output/cancellation failures still propagate. All functional reader
+changes are in the GPL variant; SDK-only standalone gates remain unchanged.
+Explicitly enabling the existing deleted-reader property also permits validated
+inactive records when no active record remains; ordinary active-only opening
+does not silently enable deleted recovery.
+
+Failed-open reasons now survive handler cleanup and describe unusable boot
+geometry, bootstrap/mapping or the absence of readable records in the selected
+mode. Cancellation and callback failures do not acquire a corruption diagnosis.
+Compared complete upstream/current `CAgent::GetArcProp`, `CFfpOpen`,
+`GetFolderLevels`/`GetFolderError`, `CPanel::OpenAsArc` and their callers. The
+original error formatter requested `kpidError`, but the non-open Agent branch
+omitted the saved `CArcErrorInfo::ErrorMessage`; the Qt window then discarded
+`COpenResult::ErrorMessage` during its filesystem fallback. Narrow presentation
+changes connect those existing owners. No additional diagnostic parser or
+fallback archive is created. Failed inputs remain closed, with EN/RU reasons
+visible through the ordinary public opening workflow.
+
+The existing EN/RU per-opening consent and persistent limited-mode badge consume
+the new mirror diagnostics. Fresh opening/refresh re-evaluates the source; no
+consent bypasses bounds, paths, encryption or missing decoding. Regressions cover
+both candidate locations, malformed/absent/named DATA, ordinary range I/O errors,
+partial lists/records, exact independent file bytes, callback failures, source
+immutability, reuse and Message2/fallback completion. Native UI also checks full
+copy of a partial MFT alongside successful selected-file copy.
+
+Final macOS validation passed thirteen core/opening/metadata suites (29.79 s)
+and six native Cocoa UI suites (183.43 s). Linux passed the same nineteen suites,
+receipt `20261023T062748Z-e354a1a1`. Windows passed eighteen in
+`20261023T062750Z-1e33d9d8` and the stream suite separately in
+`20261023T063530Z-b01c7929` (54.17 s, original timeout retained).
+The initial Linux build was killed during concurrent compilation before tests;
+one build job resolved that run without clearing outputs or compiler caches.
+The earlier Windows fourteen-suite batch reached the stream suite's 60 s limit
+(`20261023T055504Z-2349a2ae`). Seven MFT regressions are now owned by the focused
+recovery suite, preserving their full-content assertions; no case was dropped
+to hide the timeout and no timeout was raised.
+
+The last cleanup refinement retains static failure text without allocation
+while clearing partial state. Its three affected recovery/failure-UI/startup
+suites passed on macOS (8.35 s), Linux and Windows, receipt
+`20261023T064504Z-1b23ae0c`. These runs also built the application incrementally;
+application smoke tests passed on all three OSes. Current Cocoa JSON confirms
+consent text/buttons at 420×201–292 (EN) and 420×262–353 (RU), refusal reasons
+at 420×207 / 420×223 and normal/compact badge visibility. Guest offscreen checks
+do not establish native Windows/Linux appearance. Baseline verification passed
+418 exact / 263 adapted / 12 local paths. Removed the inactive Windows timeout
+fixture `runner-tmp/ntfs_stream_tests-eNmSaq` (18.5 MiB) after locking its owned
+workspace, checking processes/executable hashes and matching the source image
+exactly to the deterministic sparse fixture. No current-task fixture roots
+remained on any platform; older unrelated macOS UI artifacts were preserved.
+Run receipts contain only small logs/metadata. No
+compiler cache, incremental tree, active run or unrelated artifact was removed.
+Full/slow suites, installed packages, physical media and native-kernel recovery
+mounts were not checked by this iteration.

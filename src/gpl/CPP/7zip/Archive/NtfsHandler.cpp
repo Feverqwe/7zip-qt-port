@@ -42,6 +42,7 @@
 #include <cerrno>
 #include <memory>
 #include <new>
+#include <set>
 
 #ifdef SHOW_DEBUG_INFO
 #define PRF(x) x
@@ -117,6 +118,7 @@ struct CHeader {
     UInt64 NumSectors;
     UInt64 NumClusters;
     UInt64 MftCluster;
+    UInt64 Mft2Cluster;
     UInt64 SerialNumber;
     // UInt16 SectorsPerTrack;
     // UInt16 NumHeads;
@@ -124,6 +126,10 @@ struct CHeader {
     UInt64 GetPhySize_Clusters() const { return NumClusters << ClusterSizeLog; }
     UInt64 GetPhySize_Max() const { return (NumSectors + 1) << SectorSizeLog; }
     UInt32 ClusterSize() const { return (UInt32)1 << ClusterSizeLog; }
+    bool IsMftLocationValid(UInt64 cluster) const {
+        return cluster < NumClusters && ((UInt64)1 << MftRecordSizeLog) <=
+                                            GetPhySize_Clusters() - (cluster << ClusterSizeLog);
+    }
     bool Parse(const Byte *p);
 };
 
@@ -170,9 +176,9 @@ bool CHeader::Parse(const Byte *const p) {
         return false;
     NumClusters = NumSectors >> sectorsPerClusterLog;
     G64(p + 0x30, MftCluster); // $MFT
-    if (NumClusters == 0 || MftCluster >= NumClusters || Get64(p + 0x38) >= NumClusters)
+    G64(p + 0x38, Mft2Cluster);
+    if (NumClusters == 0)
         return false;
-    // G64(p + 0x38, Mft2Cluster);
     G64(p + 0x48, SerialNumber); // $MFTMirr
     /*
       numClusters_per_MftRecord:
@@ -201,7 +207,8 @@ bool CHeader::Parse(const Byte *const p) {
         const unsigned indexLog = numClusters_per_IndexBlock <= 0x7f
                                       ? GetLog(numClusters_per_IndexBlock) + ClusterSizeLog
                                       : 0x100 - numClusters_per_IndexBlock;
-        return indexLog >= 9 && indexLog <= 12;
+        return indexLog >= 9 && indexLog <= 12 &&
+               (IsMftLocationValid(MftCluster) || IsMftLocationValid(Mft2Cluster));
     }
 }
 
@@ -1787,10 +1794,15 @@ struct CDatabase {
     bool DataLimitations = false;
     bool MetadataLimitations = false;
     bool MftLimitations = false;
+    bool CatalogIncomplete = false;
+    bool MftFromMirror = false;
+    bool MftMirrorInvalid = false;
     bool SourceTruncated = false;
     bool BootFromBackup = false;
     bool BootCopyUnverified = false;
     bool DeletedItems = false;
+    // Static diagnostics survive cleanup without allocating in a failure path.
+    const char *OpenError = nullptr;
 
     CVolumeInfo VolumeInfo;
     CObjectVector<UString2> VirtFolderNames;
@@ -1853,7 +1865,9 @@ struct CDatabase {
     }
 
     HRESULT ParseSecuritySDS(ISequentialInStream *stream, const size_t size);
-    HRESULT LoadMftAttributes(CMftRec &rec);
+    HRESULT LoadMftAttributes(CMftRec &rec, UInt64 bootstrapCluster, HRESULT &callbackResult);
+    HRESULT LoadMftBootstrap(UInt64 cluster, CMftRec &rec, IInStream **stream, bool &incomplete,
+                             HRESULT &callbackResult);
     const CAttr *FindListedMetadataAttribute(UInt32 baseIndex, UInt32 type,
                                              const sevenzip_ntfs_list_entry &entry,
                                              bool allowUnverifiedReference = false) const;
@@ -1913,10 +1927,14 @@ void CDatabase::Clear() {
     DataLimitations = false;
     MetadataLimitations = false;
     MftLimitations = false;
+    CatalogIncomplete = false;
+    MftFromMirror = false;
+    MftMirrorInvalid = false;
     SourceTruncated = false;
     BootFromBackup = false;
     BootCopyUnverified = false;
     DeletedItems = false;
+    OpenError = nullptr;
     PhySize = 0;
 }
 
@@ -2899,7 +2917,8 @@ HRESULT CDatabase::SelectActiveDataAttributes() {
 
 // NTFS3 ntfs_read_mft/ni_enum_attr_ex: extend the currently readable MFT mapping
 // through list entries before opening the complete MFT as a regular stream.
-HRESULT CDatabase::LoadMftAttributes(CMftRec &rec) {
+HRESULT CDatabase::LoadMftAttributes(CMftRec &rec, UInt64 bootstrapCluster,
+                                     HRESULT &callbackResult) {
     if (rec.AttrListAttrs.IsEmpty())
         return S_OK;
     if (rec.AttrListAttrs.Size() != 1 || !rec.AttrListAttrs[0].NameValid ||
@@ -2972,7 +2991,7 @@ HRESULT CDatabase::LoadMftAttributes(CMftRec &rec) {
                 // NTFS3 seeds the first three contiguous MFT records at bootstrap.
                 if (number >= 3)
                     return S_FALSE;
-                const UInt64 physical = (Header.MftCluster << Header.ClusterSizeLog) + offset;
+                const UInt64 physical = (bootstrapCluster << Header.ClusterSizeLog) + offset;
                 if (physical > Header.GetPhySize_Clusters() ||
                     recSize > Header.GetPhySize_Clusters() - physical)
                     return S_FALSE;
@@ -3015,7 +3034,8 @@ HRESULT CDatabase::LoadMftAttributes(CMftRec &rec) {
             return S_FALSE;
         if (OpenCallback) {
             const UInt64 completed = cursor;
-            RINOK(OpenCallback->SetCompleted(NULL, &completed))
+            callbackResult = OpenCallback->SetCompleted(NULL, &completed);
+            RINOK(callbackResult)
         }
     }
     if (!dataFound)
@@ -3101,6 +3121,7 @@ struct CDirectoryRead {
                 unavailable.DataAttrs.Add(UnavailableDataAttribute(UString2()));
                 unavailable.ParseDataNames();
                 db.MftLimitations = true;
+                db.CatalogIncomplete = true;
             }
             if (index >= db.Recs.Size() || !db.Recs[(unsigned)index].Is_Magic_FILE() ||
                 !db.Recs[(unsigned)index].InUse() ||
@@ -3753,6 +3774,51 @@ HRESULT CDatabase::ReadEaMetadata(CMftRec &rec, UInt32 limit) {
     return S_OK;
 }
 
+HRESULT CDatabase::LoadMftBootstrap(UInt64 cluster, CMftRec &rec, IInStream **stream,
+                                    bool &incomplete, HRESULT &callbackResult) {
+    *stream = NULL;
+    incomplete = false;
+    callbackResult = S_OK;
+    const size_t recSize = (size_t)1 << Header.MftRecordSizeLog;
+    if (!Header.IsMftLocationValid(cluster))
+        return S_FALSE;
+    RINOK(SeekToCluster(cluster))
+    RINOK(ReadStream_FALSE(InStream, ByteBuf, recSize))
+    const bool parsed =
+        rec.ParseRec(ByteBuf, 9, (unsigned)(recSize >> 9), 0, ReparseDataVector, NULL);
+    if ((!parsed && !rec.FrameValidated) || !rec.Is_Magic_FILE() || rec.IsDir() ||
+        !rec.BaseMftRef.IsBaseItself())
+        return S_FALSE;
+    // Like ntfs_read_mft, bootstrap only from unnamed DATA, never ADS.
+    for (unsigned i = rec.DataAttrs.Size(); i;) {
+        const CAttr &attr = rec.DataAttrs[--i];
+        if (!attr.NameValid || !attr.Name.IsEmpty())
+            rec.DataAttrs.Delete(i);
+    }
+    rec.ParseDataNames();
+    if (rec.DataAttrs.IsEmpty() || !rec.DataAttrs[0].NonResident)
+        return S_FALSE;
+    const HRESULT listResult = LoadMftAttributes(rec, cluster, callbackResult);
+    RINOK(callbackResult)
+    if (listResult == E_ABORT || listResult == E_OUTOFMEMORY)
+        return listResult;
+    incomplete = !parsed || !rec.InUse() || listResult != S_OK;
+    if (!incomplete) {
+        const HRESULT result =
+            rec.GetStream(InStream, 0, Header.ClusterSizeLog, Header.NumClusters, stream);
+        if (result == S_OK)
+            return *stream ? S_OK : S_FALSE;
+        if (result == E_ABORT || result == E_OUTOFMEMORY)
+            return result;
+        incomplete = true;
+    }
+    // Reuse the existing bounded segment reader. Missing mappings stay
+    // unavailable; no contiguous source layout or sparse data is inferred.
+    rec.ParseDataNames();
+    rec.DataAttrs[0].Partial = true;
+    return rec.GetStream(InStream, 0, Header.ClusterSizeLog, Header.NumClusters, stream);
+}
+
 HRESULT CDatabase::Open() {
     Clear();
     /* NTFS layout:
@@ -3763,8 +3829,8 @@ HRESULT CDatabase::Open() {
         - the file with only main part
         - full file (as raw data on partition), including the copy
           of first sector (boot sector) at the end of data
-       We don't support the case, when only the copy of boot sector
-       at the end was detected as NTFS signature.
+       The immutable archive adapter can use a validated backup boot sector
+       and readable MFT copy; format detection is owned by the archive opener.
     */
     const size_t kBufSize = (size_t)1 << MyMax(15, k_MftRecordSizeLog_MAX);
     ByteBuf.Alloc(kBufSize);
@@ -3772,9 +3838,14 @@ HRESULT CDatabase::Open() {
         return E_OUTOFMEMORY;
     {
         const unsigned kHeaderSize = 512;
-        RINOK(InStream_SeekSet(InStream, 0))
-        RINOK(ReadStream_FALSE(InStream, ByteBuf, kHeaderSize))
-        const bool primaryValid = Header.Parse(ByteBuf);
+        HRESULT primaryResult = InStream_SeekSet(InStream, 0);
+        if (primaryResult == S_OK)
+            primaryResult = ReadStream_FALSE(InStream, ByteBuf, kHeaderSize);
+        if (primaryResult == E_ABORT || primaryResult == E_OUTOFMEMORY)
+            return primaryResult;
+        if (primaryResult == S_OK && memcmp(ByteBuf + 3, k_Signature, 8) == 0)
+            OpenError = "The NTFS boot sectors do not provide usable volume geometry.";
+        const bool primaryValid = primaryResult == S_OK && Header.Parse(ByteBuf);
         UInt64 fileSize;
         RINOK(InStream_GetSize_SeekToEnd(InStream, fileSize))
         if (!primaryValid) {
@@ -3782,10 +3853,13 @@ HRESULT CDatabase::Open() {
                 return S_FALSE;
             RINOK(InStream_SeekSet(InStream, fileSize - kHeaderSize))
             RINOK(ReadStream_FALSE(InStream, ByteBuf, kHeaderSize))
+            if (memcmp(ByteBuf + 3, k_Signature, 8) == 0)
+                OpenError = "The NTFS boot sectors do not provide usable volume geometry.";
             if (!Header.Parse(ByteBuf))
                 return S_FALSE;
             BootFromBackup = true;
         }
+        MftMirrorInvalid = !Header.IsMftLocationValid(Header.Mft2Cluster);
         PhySize = Header.GetPhySize_Clusters();
         if (fileSize < PhySize) {
             SourceTruncated = true;
@@ -3806,48 +3880,59 @@ HRESULT CDatabase::Open() {
         }
     }
 
-    RINOK(SeekToCluster(Header.MftCluster))
     const size_t recSize = (size_t)1 << Header.MftRecordSizeLog;
-    // ByteBuf.Size() >= recSize
-    RINOK(ReadStream_FALSE(InStream, ByteBuf, recSize))
-    // if (Get32(ByteBuf + 0x1C) != recSize) return S_FALSE; // NTFRec::bytesAlloc
 
     {
         CMyComPtr<IInStream> mftStream;
         CMftRec mftRec;
         // MFT fixups use 512-byte sectors independently of boot-sector geometry.
         const unsigned numSectorsInRec = 1u << (Header.MftRecordSizeLog - 9);
-        {
-            if (!mftRec.ParseRec(ByteBuf, 9, numSectorsInRec, 0, ReparseDataVector, NULL))
-                return S_FALSE;
-            if (!mftRec.Is_Magic_FILE())
-                return S_FALSE;
-            // Like ntfs_read_mft, bootstrap only from unnamed DATA, never ADS.
-            for (unsigned i = mftRec.DataAttrs.Size(); i;) {
-                const CAttr &attr = mftRec.DataAttrs[--i];
-                if (!attr.NameValid || !attr.Name.IsEmpty())
-                    mftRec.DataAttrs.Delete(i);
+        bool incomplete = false;
+        HRESULT callbackResult = S_OK;
+        OpenError = "The NTFS MFT bootstrap or mapping could not be read or validated.";
+        HRESULT result =
+            LoadMftBootstrap(Header.MftCluster, mftRec, &mftStream, incomplete, callbackResult);
+        if (callbackResult != S_OK)
+            OpenError = nullptr;
+        RINOK(callbackResult)
+        if (result == E_ABORT || result == E_OUTOFMEMORY)
+            return result;
+        if ((result != S_OK || incomplete) && Header.Mft2Cluster != Header.MftCluster) {
+            CMftRec mirror;
+            CMyComPtr<IInStream> mirrorStream;
+            bool mirrorIncomplete = false;
+            const HRESULT mirrorResult = LoadMftBootstrap(Header.Mft2Cluster, mirror, &mirrorStream,
+                                                          mirrorIncomplete, callbackResult);
+            if (callbackResult != S_OK)
+                OpenError = nullptr;
+            RINOK(callbackResult)
+            if (mirrorResult == E_ABORT || mirrorResult == E_OUTOFMEMORY)
+                return mirrorResult;
+            if (mirrorResult == S_OK && (!mirrorIncomplete || result != S_OK)) {
+                mftRec = mirror;
+                mftStream = mirrorStream;
+                incomplete = mirrorIncomplete;
+                result = S_OK;
+                MftFromMirror = true;
             }
-            mftRec.ParseDataNames(); // it sorts DataAttrs[] by Name and fills
-                                     // DataAttrs[].NextAttrIndex values.
-            if (mftRec.DataAttrs.Size() == 0)
-                return S_FALSE;
-            if (mftRec.DataAttrs[0].NonResident == 0)
-                return S_FALSE;
-            RINOK(LoadMftAttributes(mftRec))
-            const int dataIndex = 0; // first stream in DataAttrs[]
-            RINOK(mftRec.GetStream(InStream, dataIndex, Header.ClusterSizeLog, Header.NumClusters,
-                                   &mftStream))
-            if (!mftStream)
-                return S_FALSE;
         }
+        RINOK(result)
+        if (!mftStream)
+            return S_FALSE;
+        CatalogIncomplete = incomplete;
+        MftLimitations = incomplete || MftFromMirror;
         const UInt64 mftSize = mftRec.DataAttrs[0].Size; // NonResident Size
         if ((mftSize >> 4) > Header.GetPhySize_Clusters())
             return S_FALSE;
+        if (mftSize & (recSize - 1)) {
+            MftLimitations = true;
+            CatalogIncomplete = true;
+        }
         {
             const UInt64 numFiles = mftSize >> Header.MftRecordSizeLog;
             if (numFiles > 1u << 30)
                 return S_FALSE;
+            OpenError = nullptr;
             if (OpenCallback)
                 RINOK(OpenCallback->SetTotal(&numFiles, &mftSize))
             Recs.ClearAndReserve((unsigned)numFiles);
@@ -3867,8 +3952,13 @@ HRESULT CDatabase::Open() {
                 if (readSize > rem)
                     readSize = (size_t)rem;
             }
-            if (readSize < recSize)
+            if (readSize < recSize) {
+                if (readSize) {
+                    MftLimitations = true;
+                    CatalogIncomplete = true;
+                }
                 break;
+            }
             const UInt64 blockStart = pos64;
             pos64 += readSize;
             HRESULT blockResult = InStream_SeekSet(mftStream, blockStart);
@@ -3900,6 +3990,7 @@ HRESULT CDatabase::Open() {
                         rec.MakeUnavailable();
                         Recs.Add(rec);
                         MftLimitations = true;
+                        CatalogIncomplete = true;
                         continue;
                     }
                 }
@@ -3910,6 +4001,7 @@ HRESULT CDatabase::Open() {
                     // case kRecIndex_Security: attrs = &SecurityAttrs; break;
                 }
                 if (!rec.ParseRec(p, 9, numSectorsInRec, recIndex, ReparseDataVector, volInfo)) {
+                    CatalogIncomplete |= !rec.FrameValidated || rec.InUse() || _showDeletedFiles;
                     if (!rec.FrameValidated)
                         rec.MakeUnavailable();
                     else {
@@ -3924,13 +4016,19 @@ HRESULT CDatabase::Open() {
                     }
                     MftLimitations = true;
                 }
-                readableRecord |= rec.Is_Magic_FILE() && rec.InUse();
+                readableRecord |= rec.Is_Magic_FILE() && (rec.InUse() || _showDeletedFiles);
+                if (rec.Magic == kMagic_BAAD || (recIndex == 0 && !rec.Is_Magic_FILE())) {
+                    MftLimitations = true;
+                    CatalogIncomplete = true;
+                }
                 MftLimitations |= rec.MftIncomplete;
                 Recs.Add(rec);
             }
         }
-        if (!readableRecord)
+        if (!readableRecord) {
+            OpenError = "No readable NTFS MFT records were found in the selected mode.";
             return firstReadFailure == S_OK ? S_FALSE : firstReadFailure;
+        }
     }
 
     /*
@@ -4537,6 +4635,14 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
     const CMftRec *volRec = (Recs.Size() > kRecIndex_Volume ? &Recs[kRecIndex_Volume] : NULL);
 
     switch (propID) {
+    case kpidErrorFlags:
+        if (OpenError)
+            prop = (UInt32)kpv_ErrorFlags_HeadersError;
+        break;
+    case kpidError:
+        if (OpenError)
+            prop = OpenError;
+        break;
     case kpidClusterSize:
         prop = Header.ClusterSize();
         break;
@@ -4603,6 +4709,18 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
             reasons +=
                 "Some NTFS MFT records are unavailable or unverified. Files or metadata may be "
                 "missing, incomplete or unreadable.";
+        }
+        if (MftFromMirror) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "NTFS is being read using a backup MFT record. The primary bootstrap "
+                       "record is unavailable or incomplete.";
+        }
+        if (MftMirrorInvalid) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "The declared NTFS MFT mirror is outside the volume. The primary table "
+                       "remains readable.";
         }
         if (!UnavailableSecurIds.IsEmpty()) {
             if (!reasons.IsEmpty())
@@ -4981,24 +5099,27 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
     COM_TRY_END
 }
 
-Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallback *callback)){
-    COM_TRY_BEGIN{OpenCallback = callback;
-InStream = stream;
-HRESULT res;
-try {
-    res = CDatabase::Open();
-    if (res == S_OK) {
-        OpenCallback = NULL;
-        return S_OK;
+Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallback *callback)) {
+    COM_TRY_BEGIN
+    OpenCallback = callback;
+    InStream = stream;
+    HRESULT res;
+    try {
+        res = CDatabase::Open();
+        if (res == S_OK) {
+            OpenCallback = NULL;
+            return S_OK;
+        }
+    } catch (...) {
+        Close();
+        throw;
     }
-} catch (...) {
+    const char *const error = OpenError;
     Close();
-    throw;
-}
-Close();
-return res;
-}
-COM_TRY_END
+    if (res != E_ABORT && res != E_OUTOFMEMORY)
+        OpenError = error;
+    return res;
+    COM_TRY_END
 }
 
 Z7_COM7F_IMF(CHandler::Close()) {
@@ -5010,10 +5131,23 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
                                IArchiveExtractCallback *extractCallback)) {
     COM_TRY_BEGIN
     const bool allFilesMode = (numItems == (UInt32)(Int32)-1);
+    const auto finish = [&]() -> HRESULT {
+        const UInt32 total = Items.Size() + VirtFolderNames.Size();
+        if (!CatalogIncomplete ||
+            !(allFilesMode || (numItems && numItems == total &&
+                               std::set<UInt32>(indices, indices + numItems).size() == numItems)))
+            return S_OK;
+        CMyComPtr<IArchiveExtractCallbackMessage2> messages;
+        extractCallback->QueryInterface(IID_IArchiveExtractCallbackMessage2, (void **)&messages);
+        if (messages)
+            return messages->ReportExtractResult(NEventIndexType::kNoIndex, 0,
+                                                 NExtract::NOperationResult::kHeadersError);
+        return S_FALSE;
+    };
     if (allFilesMode)
         numItems = Items.Size() + VirtFolderNames.Size();
     if (numItems == 0)
-        return S_OK;
+        return finish();
     UInt32 i;
     UInt64 totalSize = 0;
     for (i = 0; i < numItems; i++) {
@@ -5118,7 +5252,7 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
         outStream->ReleaseStream();
         RINOK(extractCallback->SetOperationResult(res))
     }
-    return S_OK;
+    return finish();
     COM_TRY_END
 }
 

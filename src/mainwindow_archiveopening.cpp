@@ -91,14 +91,17 @@ HRESULT MainWindow::openArchiveAs(const QString &path, const QString &type) {
         QScopedValueRollback<bool> source(sourceArchiveProgress_, true);
         COpenResult opened;
         result = panel.BindToPath(ToUString(file.absoluteFilePath()), ToUString(type), opened);
+        if (!opened.ArchiveIsOpened && !opened.ErrorMessage.IsEmpty())
+            message = ToQString(opened.ErrorMessage);
         // BindToPath can successfully bind the containing filesystem folder
         // after its archive probe returns S_FALSE. An archive-only request
         // must retain that refusal rather than report "Archive opened".
         if (result == S_OK && !opened.ArchiveIsOpened) {
             result = S_FALSE;
-            message = ToQString(MyFormatNew(opened.Encrypted ? IDS_CANT_OPEN_ENCRYPTED_ARCHIVE
-                                                             : IDS_CANT_OPEN_ARCHIVE,
-                                            ToUString(file.absoluteFilePath())));
+            if (message.isEmpty())
+                message = ToQString(MyFormatNew(opened.Encrypted ? IDS_CANT_OPEN_ENCRYPTED_ARCHIVE
+                                                                 : IDS_CANT_OPEN_ARCHIVE,
+                                                ToUString(file.absoluteFilePath())));
         }
     }
     disconnect(completion);

@@ -1176,22 +1176,6 @@ class NtfsStreamTests final : public QObject, protected Fixture {
                            ? NArchive::NExtract::NOperationResult::kUnsupportedMethod
                            : NArchive::NExtract::NOperationResult::kDataError));
     }
-    void corruptMetadataRejectsOpenAndReuses_data() {
-        QTest::addColumn<QString>("kind");
-        for (const char *kind :
-             {"mft-list-bad-sequence", "mft-list-bad-id", "mft-list-unmapped", "mft-list-bad-list",
-              "mft-list-named-only", "mft-list-nul-name", "mft-list-nul-extension"})
-            QTest::newRow(kind) << QString::fromLatin1(kind);
-    }
-    void corruptMetadataRejectsOpenAndReuses() {
-        QFETCH(QString, kind);
-        loadFixture(kind);
-        CMyComPtr<IInStream> input = new Input(bytes_);
-        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_FALSE);
-        loadFixture("base");
-        input = new Input(bytes_);
-        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
-    }
     void wofCorruptionDoesNotPublishPartialCachedOutput_data() {
         QTest::addColumn<QString>("kind");
         QTest::addColumn<int>("badOffset");

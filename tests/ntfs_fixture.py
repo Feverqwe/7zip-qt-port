@@ -94,6 +94,9 @@ def nonresident(original, entries, size, valid=None, flags=0, unit=0):
 
 
 def volume(kind="base"):
+    if kind.startswith("recovery-"):
+        from ntfs_recovery_fixture import volume as recovery_volume
+        return recovery_volume(kind)
     if kind.startswith("security-sds-map-"):
         from ntfs_security_sds_fixture import volume as security_sds_volume
         return security_sds_volume(kind)

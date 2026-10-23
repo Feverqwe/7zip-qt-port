@@ -133,6 +133,18 @@ UString QtArchiveDiagnosticText(const UString &source) {
             "be missing, incomplete or unreadable."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "The NTFS MFT record is unavailable or unverified."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "NTFS is being read using a backup MFT record. The primary bootstrap "
+                          "record is unavailable or incomplete."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The declared NTFS MFT mirror is outside the volume. The primary table "
+                          "remains readable."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The NTFS boot sectors do not provide usable volume geometry."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The NTFS MFT bootstrap or mapping could not be read or validated."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "No readable NTFS MFT records were found in the selected mode."),
         QT_TRANSLATE_NOOP(
             "SevenZipDiagnostics",
             "Some NTFS security descriptors are unavailable or unverified. Permissions "
