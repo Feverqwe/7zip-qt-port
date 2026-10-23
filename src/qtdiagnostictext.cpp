@@ -198,6 +198,22 @@ UString QtArchiveDiagnosticText(const UString &source) {
                           "be missing. Readable files remain accessible."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The ext directory could not be read completely."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The ext source is shorter than the declared volume. Some files may be "
+                          "incomplete or unreadable."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some ext group descriptors or allocation metadata are unavailable or "
+                          "unverified. Files "
+                          "may be missing, outdated or reused; free space is unknown."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The ext journal metadata could not be read. Files may be outdated or "
+                          "inconsistent; no journal replay was performed."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The ext root directory is incomplete or unavailable. Some original "
+                          "names and paths are missing."),
+        QT_TRANSLATE_NOOP(
+            "SevenZipDiagnostics",
+            "The ext root directory could not be read. No readable entries were found."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "Some ext file data is outside the reader's logical address range."),
         QT_TRANSLATE_NOOP(
             "SevenZipDiagnostics",

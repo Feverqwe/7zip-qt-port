@@ -60,6 +60,7 @@ struct ext4_sb_info {
     loff_t s_bitmap_maxbytes;
     u32 s_mount_state;
     void *s_group_desc;
+    u8 *s_archive_group_available;
     struct ext4_system_blocks *s_system_blks;
     const struct ext_block_services *block_services;
     struct journal_s *s_journal;
@@ -68,7 +69,7 @@ struct ext4_sb_info {
 struct fsverity_operations;
 struct ext4_extent_header;
 struct sevenzip_asymmetric_trust;
-struct super_block { unsigned int s_blocksize, s_blocksize_bits; struct ext4_sb_info info; const struct fsverity_operations *s_vop; loff_t s_maxbytes; int64_t s_time_min, s_time_max; unsigned int s_time_gran; u64 s_archive_bytes; };
+struct super_block { unsigned int s_blocksize, s_blocksize_bits; struct ext4_sb_info info; const struct fsverity_operations *s_vop; loff_t s_maxbytes; int64_t s_time_min, s_time_max; unsigned int s_time_gran; u64 s_archive_bytes; bool s_archive_partial, s_archive_merge_metadata; u32 s_archive_limitations; };
 struct ext4_inode_info { u32 i_csum_seed, i_inline_size, i_flags; u16 i_extra_isize, i_inline_off; unsigned long i_state_flags; u64 i_file_acl; __le32 i_data[EXT4_N_BLOCKS]; };
 struct inode {
     struct super_block *i_sb;
@@ -182,6 +183,8 @@ static inline ext4_group_t ext4_get_groups_count(struct super_block *sb) {
 }
 static inline struct ext4_group_desc *ext4_get_group_desc(struct super_block *sb, u32 group, void *bh) {
     (void)bh;
+    if (EXT4_SB(sb)->s_archive_group_available &&
+        !(EXT4_SB(sb)->s_archive_group_available[group] & EXT_GROUP_DESCRIPTOR)) return NULL;
     return (struct ext4_group_desc *)((u8 *)EXT4_SB(sb)->s_group_desc + (size_t)group * EXT4_DESC_SIZE(sb));
 }
 ext4_fsblk_t ext4_block_bitmap(struct super_block *, struct ext4_group_desc *);

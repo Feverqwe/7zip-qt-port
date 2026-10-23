@@ -75,13 +75,30 @@ void ext_linux_close(struct ext_volume *volume) {
     if (!volume) return;
     ext4_release_system_zone(&volume->sb);
     free(volume->sb.info.s_group_desc);
+    free(volume->sb.info.s_archive_group_available);
     free(volume);
 }
 
 int ext_linux_geometry_check(struct ext_volume *volume, uint64_t input_size)
 {
     volume->sb.s_archive_bytes = input_size;
-    return ext4_check_geometry(&volume->sb, &volume->raw);
+    volume->sb.s_archive_partial = true;
+    int error = ext4_check_geometry(&volume->sb, &volume->raw);
+    if (!error && ext4_blocks_count(&volume->raw) > (input_size >> volume->sb.s_blocksize_bits))
+        volume->sb.s_archive_limitations |= EXT_READ_SHORT_SOURCE;
+    return error;
+}
+
+uint32_t ext_linux_read_limitations(const struct ext_volume *volume)
+{
+    return volume->sb.s_archive_limitations;
+}
+
+uint8_t ext_linux_group_availability(const struct ext_volume *volume, uint32_t group)
+{
+    const struct ext4_sb_info *sbi = &volume->sb.info;
+    return group < sbi->s_groups_count && sbi->s_archive_group_available ?
+        sbi->s_archive_group_available[group] : 0;
 }
 
 uint64_t ext_linux_descriptor_block(struct ext_volume *volume, unsigned int number)

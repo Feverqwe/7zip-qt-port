@@ -987,7 +987,9 @@ class ExtStreamTests final : public QObject {
         CMyComPtr2<IArchiveExtractCallback, Extract> extract;
         extract.SetFromCls(new Extract);
         extract->separateFiles = true;
-        QCOMPARE(archive_->Extract(indices, 2, false, extract), S_OK);
+        // These are all remaining entries: report the missing inode while
+        // retaining successful results and bytes for the readable files.
+        QCOMPARE(archive_->Extract(indices, 2, false, extract), S_FALSE);
         QCOMPARE(extract->results, (QVector<Int32>{NArchive::NExtract::NOperationResult::kOK,
                                                    NArchive::NExtract::NOperationResult::kOK}));
         QCOMPARE(extract->files,
@@ -999,7 +1001,7 @@ class ExtStreamTests final : public QObject {
         QVERIFY(readLimitations().isEmpty());
         QVERIFY(fileIndex() != UInt32(-1));
     }
-    void mandatoryRootInodeAndInventoryCallbacksRemainFatal() {
+    void missingRootPreservesOrphansAndInventoryCallbacksRemainFatal() {
         const auto record = bundle("inode-inventory-control");
         CMyComPtr2<IInStream, Input> input;
         input.SetFromCls(new Input(image(record)));
@@ -1009,10 +1011,20 @@ class ExtStreamTests final : public QObject {
         for (HRESULT result : {E_FAIL, E_ABORT, E_OUTOFMEMORY}) {
             input->atResult = result;
             QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
-            QCOMPARE(archive_->Open(input, nullptr, nullptr), result == E_FAIL ? S_FALSE : result);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), result == E_FAIL ? S_OK : result);
             UInt32 count = 99;
             QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-            QCOMPARE(count, UInt32(0));
+            if (result == E_FAIL) {
+                QVERIFY(count > 0);
+                QVERIFY(!readLimitations().isEmpty());
+                CMyComPtr2<IArchiveExtractCallback, Extract> copy;
+                copy.Create_if_Empty();
+                copy->separateFiles = true;
+                QCOMPARE(archive_->Extract(nullptr, UInt32(-1), 0, copy), S_FALSE);
+                QVERIFY(copy->files.contains(
+                    QByteArray::fromHex(record["healthy"].toString().toLatin1())));
+            } else
+                QCOMPARE(count, UInt32(0));
         }
         input->failAt = UINT64_MAX;
         input->notifyAt = UInt64(record["inode_page_offset"].toDouble());
@@ -1108,7 +1120,7 @@ class ExtStreamTests final : public QObject {
             QVERIFY(fileIndex() != UInt32(-1));
         }
     }
-    void blockBitmapReadErrorsPreserveFailureAndReuse() {
+    void blockBitmapReadErrorsPreserveReadableFilesAndReuse() {
         const auto record = bundle("direct");
         CMyComPtr2<IInStream, Input> input;
         input.SetFromCls(new Input(image(record)));
@@ -1117,9 +1129,25 @@ class ExtStreamTests final : public QObject {
         for (HRESULT error : {E_FAIL, E_ABORT}) {
             input->atResult = error;
             QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
-            QCOMPARE(archive_->Open(input, nullptr, nullptr), error);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), error == E_FAIL ? S_OK : error);
             QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-            QCOMPARE(count, UInt32(0));
+            if (error == E_FAIL) {
+                QVERIFY(!readLimitations().isEmpty());
+                const UInt32 index = fileIndex();
+                QVERIFY(index != UInt32(-1));
+                CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+                callback.Create_if_Empty();
+                QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+                QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+                QCOMPARE(callback->output->bytes.size(), record["file_size"].toInt());
+                for (const auto &sample : record["samples"].toArray()) {
+                    const auto entry = sample.toObject();
+                    const auto bytes = QByteArray::fromHex(entry["bytes"].toString().toLatin1());
+                    QCOMPARE(callback->output->bytes.mid(entry["offset"].toInteger(), bytes.size()),
+                             bytes);
+                }
+            } else
+                QCOMPARE(count, UInt32(0));
         }
         input->failAt = UINT64_MAX;
         QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
@@ -1391,7 +1419,9 @@ class ExtStreamTests final : public QObject {
                 QVERIFY(selected != UInt32(-1));
                 CMyComPtr2<IArchiveExtractCallback, Extract> copy;
                 copy.Create_if_Empty();
-                QCOMPARE(archive_->Extract(&selected, 1, 0, copy), S_OK);
+                UInt32 itemCount = 0;
+                QCOMPARE(archive_->GetNumberOfItems(&itemCount), S_OK);
+                QCOMPARE(archive_->Extract(&selected, 1, 0, copy), itemCount == 1 ? S_FALSE : S_OK);
                 QCOMPARE(copy->result, Int32(NArchive::NExtract::NOperationResult::kOK));
                 QCOMPARE(copy->output->bytes, expected);
                 if (incompleteDirectory != UInt32(-1)) {
@@ -1509,7 +1539,7 @@ class ExtStreamTests final : public QObject {
                 QVERIFY(fileIndex("last-entry.bin") != UInt32(-1));
             CMyComPtr2<IArchiveExtractCallback, Extract> copy;
             copy.Create_if_Empty();
-            QCOMPARE(archive_->Extract(&index, 1, 0, copy), S_OK);
+            QCOMPARE(archive_->Extract(&index, 1, 0, copy), incomplete ? S_FALSE : S_OK);
             QCOMPARE(copy->results, QVector<Int32>({NArchive::NExtract::NOperationResult::kOK}));
             QCOMPARE(copy->output->bytes.size(), record["file_size"].toInt());
             for (const auto &value : record["samples"].toArray()) {
@@ -1569,10 +1599,21 @@ class ExtStreamTests final : public QObject {
             QVERIFY(!bytes.isEmpty());
             input.SetFromCls(new Input(bytes));
             input->failAt = UInt64(bytes.size());
-            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_FALSE);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
             QCOMPARE(input->faults, 0U);
             QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-            QCOMPARE(count, UInt32(0));
+            QVERIFY(count > 0);
+            const bool alias = QString::fromLatin1(layout).endsWith(":alias");
+            QCOMPARE(readLimitations().isEmpty(), alias);
+            const UInt32 file = fileIndex();
+            QVERIFY(file != UInt32(-1));
+            CMyComPtr2<IArchiveExtractCallback, Extract> copy;
+            copy.Create_if_Empty();
+            QCOMPARE(archive_->Extract(&file, 1, 0, copy), S_OK);
+            QCOMPARE(copy->result, Int32(alias ? NArchive::NExtract::NOperationResult::kDataError
+                                               : NArchive::NExtract::NOperationResult::kOK));
+            QCOMPARE(copy->output->bytes,
+                     alias ? QByteArray() : QByteArray("independent user file\n"));
         }
         for (const char *layout : {"journal-single", "journal-extent-depth5"}) {
             const auto record = bundle(layout);
@@ -1587,10 +1628,23 @@ class ExtStreamTests final : public QObject {
                     input->atResult = error;
                     input->faults = 0;
                     QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
-                    QCOMPARE(archive_->Open(input, nullptr, nullptr), error);
+                    const bool fatal = error == E_ABORT || error == E_OUTOFMEMORY;
+                    QCOMPARE(archive_->Open(input, nullptr, nullptr), fatal ? error : S_OK);
                     QVERIFY(input->faults > 0);
                     QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-                    QCOMPARE(count, UInt32(0));
+                    if (fatal)
+                        QCOMPARE(count, UInt32(0));
+                    else {
+                        QVERIFY(count > 0);
+                        QVERIFY(!readLimitations().isEmpty());
+                        const UInt32 file = fileIndex();
+                        QVERIFY(file != UInt32(-1));
+                        CMyComPtr2<IArchiveExtractCallback, Extract> copy;
+                        copy.Create_if_Empty();
+                        QCOMPARE(archive_->Extract(&file, 1, 0, copy), S_OK);
+                        QCOMPARE(copy->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+                        QCOMPARE(copy->output->bytes, QByteArray("independent user file\n"));
+                    }
                 }
             }
             input->failAt = input->seekFailAt = UINT64_MAX;
@@ -1612,9 +1666,21 @@ class ExtStreamTests final : public QObject {
         UInt32 count = 99;
         for (const char *layout : {"block-journal", "block-overlap"}) {
             CMyComPtr<IInStream> corrupt = new Input(image(bundle(layout)));
-            QCOMPARE(archive_->Open(corrupt, nullptr, nullptr), S_FALSE);
+            QCOMPARE(archive_->Open(corrupt, nullptr, nullptr), S_OK);
             QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-            QCOMPARE(count, UInt32(0));
+            QVERIFY(count > 0);
+            const bool overlap = QString::fromLatin1(layout) == "block-overlap";
+            QCOMPARE(readLimitations().isEmpty(), !overlap);
+            const UInt32 file = fileIndex();
+            QVERIFY(file != UInt32(-1));
+            CMyComPtr2<IArchiveExtractCallback, Extract> copy;
+            copy.Create_if_Empty();
+            QCOMPARE(archive_->Extract(&file, 1, 0, copy), S_OK);
+            QCOMPARE(copy->result,
+                     Int32(overlap ? NArchive::NExtract::NOperationResult::kOK
+                                   : NArchive::NExtract::NOperationResult::kDataError));
+            if (!overlap)
+                QVERIFY(copy->output->bytes.isEmpty());
         }
         CMyComPtr2<IInStream, Input> input;
         input.SetFromCls(new Input(image(bundle("block-journal-owner"))));

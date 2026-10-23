@@ -33,19 +33,36 @@ struct ext_node_info {
 /* All buffers remain owned by the caller except the returned opaque objects. */
 int ext_linux_open(const void *superblock, struct ext_volume **);
 int ext_linux_geometry_check(struct ext_volume *, uint64_t input_size);
+enum ext_group_availability {
+    EXT_GROUP_DESCRIPTOR = 1,
+    EXT_GROUP_BLOCK_BITMAP = 2,
+    EXT_GROUP_INODE_BITMAP = 4,
+    EXT_GROUP_INODE_TABLE = 8,
+    EXT_GROUP_CHECKSUM = 16,
+    EXT_GROUP_COMPLETE = 31
+};
+enum ext_read_limitations {
+    EXT_READ_SHORT_SOURCE = 1,
+    EXT_READ_GROUP_METADATA = 2,
+    EXT_READ_JOURNAL_METADATA = 4
+};
+uint32_t ext_linux_read_limitations(const struct ext_volume *);
+/* Copies descriptors and their availability; caller buffers are not retained. */
+int ext_linux_prepare_groups(struct ext_volume *, const void *descriptors,
+                              const uint8_t *available, uint32_t groups);
+uint8_t ext_linux_group_availability(const struct ext_volume *, uint32_t group);
 void ext_linux_close(struct ext_volume *);
 uint64_t ext_linux_descriptor_block(struct ext_volume *, unsigned int number);
 int ext_linux_group_check(struct ext_volume *, uint32_t group, const void *descriptor);
 int ext_linux_bitmap_check(struct ext_volume *, uint32_t group, const void *descriptor,
                            const void *bitmap, int inode_bitmap);
-/* Setup borrows callbacks only during the call and copies descriptors. */
+/* Zone setup borrows callbacks only during the call. */
 struct ext_block_services {
     void *context;
     int (*inode)(void *, uint32_t ino, void *, size_t);
     int (*map)(void *, uint32_t ino, uint32_t logical, uint32_t *count, uint64_t *physical);
 };
-int ext_linux_system_zone(struct ext_volume *, const void *descriptors, uint32_t groups,
-                          const struct ext_block_services *);
+int ext_linux_system_zone(struct ext_volume *, const struct ext_block_services *);
 int ext_linux_block_valid(struct ext_volume *, uint32_t ino, uint64_t start, uint32_t count);
 int ext_linux_blockrefs(struct ext_volume *, uint32_t ino, const void *refs, uint32_t count);
 struct ext_indirect_services {

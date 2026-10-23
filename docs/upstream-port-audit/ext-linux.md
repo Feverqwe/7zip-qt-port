@@ -3350,3 +3350,95 @@ no production discovery timing change. Native Cocoa EN/RU JSON checks normal
 and compact v1/v2/error geometry. Guest offscreen checks do not establish native
 Windows/Linux visual parity. Physical encrypted media, OS authorization and
 VoiceOver have not been checked in this iteration; no slow suites were run.
+
+## Partial bootstrap and readable data — 2026-10-23
+
+This policy iteration supersedes the earlier strict physical-size, group-bitmap
+and whole-open mapping acceptance described above. The reference remains Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`
+(<https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git>), together
+with 7-Zip `9128b80e3a471108678e2b3ec3c985861c8d7b0f`
+(<https://github.com/ip7z/7zip.git>). No new borrowed modules or revisions were
+introduced; existing baseline units and notices remain authoritative.
+
+Compared complete Linux `fs/ext4/super.c::ext4_check_descriptors` and geometry
+branches, `inode.c::__ext4_iget`, inode/block-bitmap readers and validators,
+`block_validity.c` zone construction and reserved-journal protection with the
+GPL `CPP/7zip/Archive/ExtHandler.cpp` header parsing, group/node enumeration,
+directory/orphan/xattr/encryption consumers and stream/extraction results.
+Linux permits descriptor checksum failure read-only; inode lookup does not
+require loading an allocation bitmap. Mount-time physical size and allocation
+initialization requirements are not equivalent to the availability of bounded
+archive reads. Linux initializes its free counters from group accounting;
+the SDK's superblock free-counter inequalities are not decoding prerequisites.
+
+The original C descriptor predicates still validate each bitmap/table address.
+The private archive adapter records unavailable components independently, keeps
+known geometry and refuses their invalid addresses. Missing descriptor pages
+can be retried at original record boundaries; groups with unreadable tables are
+omitted, while independently readable groups remain available. A bad descriptor
+checksum or unreadable/unverified inode bitmap cannot establish which slots are
+allocated: raw candidates still pass the existing Linux inode acceptance and
+checksum checks. Known non-root uninitialized groups retain their prior empty
+treatment. Allocation metadata/counter uncertainty suppresses free-space claims
+and is reported to the existing per-opening consent boundary.
+
+Original system-zone construction still protects known super/GDT, bitmap,
+inode-table and journal ranges. An overlapping metadata layout retries insertion
+through the original `add_system_zone`, retaining the union of known metadata;
+it does not introduce a second interval algorithm. Unreadable journal metadata
+retains already discovered protected ranges and produces a concrete warning.
+Callbacks, cancellation and allocation failures remain hard failures. No journal
+replay, orphan cleanup, source writes or metadata repair is imported. These are
+archive-boundary adaptations; Linux mount services still require their original
+fully initialized environment.
+
+Short physical sources are reported rather than refused before reading. Actual
+I/O length, logical mapping, source/path bounds and known system-zone checks
+remain active. The old eager whole-volume file-mapping refusal was removed;
+the existing stream and directory readers validate mappings when consumed,
+preserve supported readable prefixes and report affected files as errors.
+Missing root names reuse the engine's original orphan catalog rather than a
+replacement filesystem traversal. Root xattr access is guarded when its inode
+is absent. No readable root/catalog produces an explicit failed-open diagnostic.
+A readable empty root remains a valid empty catalog. Whole-catalog copying with
+known missing root/inode/group entries reports HeadersError through the original
+Message2 contract, or S_FALSE when that interface is unavailable. Readable item
+results/bytes remain distinct from this incomplete overall result.
+
+All functional reader changes are confined to the GPL ext variant and its
+existing C services; the SDK-only variant retains its independent original gates.
+There is no upstream archive implementation of per-component partial-open state
+or consent to copy, so the narrow adapter owns that state. No alternate inode,
+directory, extent, checksum or journal decoder was added. Backup-superblock
+search and reconstruction of unavailable descriptor contents remain unsupported;
+the reader exposes only what its selected primary metadata and existing parsers
+can actually read. Source-port scope is separate from runtime evidence below.
+
+Regressions cover independent groups, descriptor-record I/O faults, invalid
+addresses/checksums, allocation bitmaps/counters, root UNINIT, overlapping
+metadata, lost root names, journal mapping faults, short-source data prefixes,
+forbidden metadata aliases, source/output/callback failures, cancellation and
+handler reuse. Existing CLI assertions retain exact bytes and malicious-address
+checks; prior unconditional-refusal expectations are replaced by useful-read
+and incomplete-result assertions. EN/RU UI checks cover cancel/accept, immutable
+sources, copy results, repeated consent and normal/compact badge geometry.
+
+macOS passed seven focused reader/backend/device/language suites (8.67 s),
+the three affected native Cocoa EN/RU UI suites (96.57 s), the direct-device UI
+consumer and the final expanded recovery suite. Linux passed all eleven suites
+in `20261023T052230Z-4f0b16b9`. Windows passed ten in that batch; its CLI cycle
+test compared recovered paths using only POSIX separators. Normalizing the
+public listing paths retained the exact-byte assertions and passed the complete
+Windows CLI suite in `20261023T052653Z-a4649aff`; macOS also passed that rerun.
+The Linux-only child address-space check is skipped on the other two platforms.
+
+Native Cocoa reports confirm visible text/buttons for the new diagnostics at
+420×201–214 (EN) and 420×262–288 (RU), with normal/compact badges checked by the
+same UI flow. Guest offscreen checks do not establish native Windows/Linux
+appearance. Baseline verification passed: 418 exact, 263 adapted and 12 local
+paths. Temporary ext fixtures were absent after QTemporaryDir/TemporaryDirectory
+cleanup; incremental outputs and compiler caches were retained. Full/slow suites,
+physical media, native-kernel recovery mounts and installed packages were not
+checked in this iteration. Incremental application builds passed on macOS,
+Linux and Windows (guests: `20261023T052747Z-d55b2c82`).

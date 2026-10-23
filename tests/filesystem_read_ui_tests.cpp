@@ -164,6 +164,24 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         QFETCH(QString, kind);
         confirmAndCopy(language, accept, kind);
     }
+    void confirmsExtRecovery_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("accept");
+        QTest::addColumn<QString>("kind");
+        for (const QString &language : {"en", "ru"})
+            for (bool accept : {false, true})
+                for (const QString &fault :
+                     {"short-tail", "block-bitmap", "descriptor-checksum", "bitmap-address"})
+                    QTest::newRow(
+                        qPrintable(language + '-' + fault + (accept ? "-accept" : "-cancel")))
+                        << language << accept << "ext-recovery-" + fault;
+    }
+    void confirmsExtRecovery() {
+        QFETCH(QString, language);
+        QFETCH(bool, accept);
+        QFETCH(QString, kind);
+        confirmAndCopy(language, accept, kind);
+    }
 
     void confirmsPartialSquashfsIndexes_data() {
         QTest::addColumn<QString>("language");
@@ -426,6 +444,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                           kind.startsWith("record-") || kind.startsWith("security-") ||
                           kind.startsWith("source-");
         const bool ext = kind.startsWith("ext-");
+        const bool extRecovery = kind.startsWith("ext-recovery-");
         const bool fat = kind.startsWith("fat-");
         const bool squashfs = kind.startsWith("squashfs");
         const bool cramfs = kind.startsWith("cramfs-");
@@ -438,9 +457,9 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             kind == "squashfs-fragment-metadata-zero" || kind == "squashfs-metadata-combined";
         const bool fatDirectory = kind.startsWith("fat-directory-");
         const bool fatFile = kind.startsWith("fat-file-");
-        const bool copyDiagnostic = kind == "cramfs-table" || fatFile || exfatFile ||
-                                    squashFragment || lateBlocklist ||
-                                    kind == "squashfs-directory-reference";
+        const bool copyDiagnostic =
+            kind == "cramfs-table" || fatFile || exfatFile || squashFragment || lateBlocklist ||
+            kind == "squashfs-directory-reference" || kind == "ext-directory";
         const QString fatFolder = kind == "fat-directory-free32" ? "BROKEN" : "GOOD";
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -467,11 +486,13 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             QProcess generator;
             generator.start(
                 QStringLiteral(SEVENZIP_HFS_PYTHON),
-                fat   ? QStringList{QStringLiteral(SEVENZIP_FAT_FIXTURE),
-                                    fatDirectory ? "--directory=" + kind.mid(14)
-                                    : fatFile    ? "--file-chain=" + kind.mid(9)
-                                                 : "--readonly=" + kind.mid(4),
-                                    "--bundle"}
+                fat           ? QStringList{QStringLiteral(SEVENZIP_FAT_FIXTURE),
+                                            fatDirectory ? "--directory=" + kind.mid(14)
+                                            : fatFile    ? "--file-chain=" + kind.mid(9)
+                                                         : "--readonly=" + kind.mid(4),
+                                            "--bundle"}
+                : extRecovery ? QStringList{QStringLiteral(SEVENZIP_EXT_RECOVERY_FIXTURE),
+                                            kind.mid(QStringLiteral("ext-recovery-").size())}
                 : ext ? QStringList{QStringLiteral(SEVENZIP_EXT_FIXTURE),
                                     kind == "ext-xattrs"           ? "xattrs-bad-data"
                                     : kind == "ext-symlink"        ? "readlink-isolated-hole"
@@ -508,8 +529,10 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 filename = "healthy.bin";
             if (kind == "ext-indirect-range")
                 filename = "link";
-            if (ext && kind != "ext-xattrs" && kind != "ext-symlink" && kind != "ext-inode" &&
-                kind != "ext-indirect-range") {
+            if (extRecovery)
+                payload = QByteArray::fromHex(data["payload"].toString().toLatin1());
+            else if (ext && kind != "ext-xattrs" && kind != "ext-symlink" && kind != "ext-inode" &&
+                     kind != "ext-indirect-range") {
                 payload = QByteArray(data["file_size"].toInt(), '\0');
                 payload.replace(0, 4, "head");
                 payload.replace(payload.size() - 4, 4, "tail");

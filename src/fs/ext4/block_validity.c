@@ -154,6 +154,22 @@ static void ext4_destroy_system_zone(struct rcu_head *rcu)
 	kfree(system_blks);
 }
 
+static int add_archive_metadata_zone(struct super_block *sb,
+		struct ext4_system_blocks *system_blks, ext4_fsblk_t start,
+		unsigned int count)
+{
+	if (!sb->s_archive_merge_metadata)
+		return add_system_zone(system_blks, start, count, 0);
+	/* A damaged layout can alias metadata. Preserve the union of known
+	 * metadata blocks using the original insertion/merge implementation. */
+	for (unsigned int i = 0; i < count; ++i) {
+		int error = add_system_zone(system_blks, start + i, 1, 0);
+		if (error && error != -EFSCORRUPTED)
+			return error;
+	}
+	return 0;
+}
+
 /*
  * Build system zone rbtree which is used for block validity checking.
  *
@@ -181,32 +197,44 @@ int ext4_setup_system_zone(struct super_block *sb)
 
 		cond_resched();
 		if (meta_blks != 0) {
-			ret = add_system_zone(system_blks,
+			ret = add_archive_metadata_zone(sb, system_blks,
 					ext4_group_first_block_no(sb, i),
-					meta_blks, 0);
+					meta_blks);
 			if (ret)
 				goto err;
 		}
 		gdp = ext4_get_group_desc(sb, i, NULL);
-		ret = add_system_zone(system_blks,
-				ext4_block_bitmap(sb, gdp), 1, 0);
-		if (ret)
-			goto err;
-		ret = add_system_zone(system_blks,
-				ext4_inode_bitmap(sb, gdp), 1, 0);
-		if (ret)
-			goto err;
-		ret = add_system_zone(system_blks,
-				ext4_inode_table(sb, gdp),
-				sbi->s_itb_per_group, 0);
-		if (ret)
-			goto err;
+		if (!gdp)
+			continue;
+		unsigned int available = sbi->s_archive_group_available ?
+			sbi->s_archive_group_available[i] : EXT_GROUP_COMPLETE;
+		if (available & EXT_GROUP_BLOCK_BITMAP) {
+			ret = add_archive_metadata_zone(sb, system_blks,
+					ext4_block_bitmap(sb, gdp), 1);
+			if (ret)
+				goto err;
+		}
+		if (available & EXT_GROUP_INODE_BITMAP) {
+			ret = add_archive_metadata_zone(sb, system_blks,
+					ext4_inode_bitmap(sb, gdp), 1);
+			if (ret)
+				goto err;
+		}
+		if (available & EXT_GROUP_INODE_TABLE) {
+			ret = add_archive_metadata_zone(sb, system_blks,
+					ext4_inode_table(sb, gdp), sbi->s_itb_per_group);
+			if (ret)
+				goto err;
+		}
 	}
 	if (ext4_has_feature_journal(sb) && sbi->s_es->s_journal_inum) {
 		ret = ext4_protect_reserved_inode(sb, system_blks,
 				le32_to_cpu(sbi->s_es->s_journal_inum));
-		if (ret)
-			goto err;
+		if (ret) {
+			if (!sb->s_archive_partial || ret == -ENOMEM)
+				goto err;
+			sb->s_archive_limitations |= EXT_READ_JOURNAL_METADATA;
+		}
 	}
 
 	/*

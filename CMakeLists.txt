@@ -1208,6 +1208,19 @@ if(BUILD_TESTING)
     add_test(NAME ext_stream COMMAND ext_stream_tests -silent)
     add_dependencies(ext_stream_tests sevenzip_ext_runtime)
     set_tests_properties(ext_stream PROPERTIES TIMEOUT 45)
+    qt_add_executable(ext_recovery_tests tests/ext_recovery_tests.cpp)
+    target_include_directories(ext_recovery_tests PRIVATE src third_party/7zip/CPP)
+    target_link_libraries(ext_recovery_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    if(WIN32)
+        target_link_libraries(ext_recovery_tests PRIVATE oleaut32)
+    endif()
+    target_compile_definitions(ext_recovery_tests PRIVATE
+        "SEVENZIP_EXT_CORE=\"$<TARGET_FILE:sevenzip_ext>\""
+        "SEVENZIP_EXT_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_EXT_RECOVERY_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_recovery_fixture.py\"")
+    add_dependencies(ext_recovery_tests sevenzip_ext_runtime)
+    add_test(NAME ext_recovery COMMAND ext_recovery_tests -silent)
+    set_tests_properties(ext_recovery PROPERTIES TIMEOUT 45)
     qt_add_executable(ext_fscrypt_tests tests/ext_fscrypt_tests.cpp)
     target_include_directories(ext_fscrypt_tests PRIVATE src third_party/7zip/CPP)
     target_link_libraries(ext_fscrypt_tests PRIVATE sevenzip_filesystem Qt6::Test)
@@ -4056,6 +4069,7 @@ if(BUILD_TESTING)
         "SEVENZIP_EXT_MODULE=\"$<TARGET_FILE:sevenzip_ext>\""
         "SEVENZIP_EXT_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_fixture.py\""
         "SEVENZIP_HFS_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_EXT_RECOVERY_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_recovery_fixture.py\""
         "SEVENZIP_HFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/hfs_fixture.py\"")
     add_dependencies(filesystem_read_ui_tests sevenzip_exfat sevenzip_fat_runtime sevenzip_hfs_runtime sevenzip_ntfs_runtime sevenzip_ext_runtime sevenzip_squashfs_runtime sevenzip_cramfs_runtime)
     add_test(NAME filesystem_cramfs_read_ui COMMAND filesystem_read_ui_tests -silent confirmsLimitedCramfs)
@@ -4073,10 +4087,11 @@ if(BUILD_TESTING)
     add_test(NAME filesystem_fat_file_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialFatFile)
     add_test(NAME filesystem_exfat_directory_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialExfatDirectories)
     add_test(NAME filesystem_exfat_recovery_ui COMMAND filesystem_read_ui_tests -silent confirmsExfatRecovery)
-    set_tests_properties(filesystem_exfat_recovery_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
+    add_test(NAME filesystem_ext_recovery_ui COMMAND filesystem_read_ui_tests -silent confirmsExtRecovery)
+    set_tests_properties(filesystem_exfat_recovery_ui filesystem_ext_recovery_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     if(APPLE)
-        set_property(TEST filesystem_exfat_recovery_ui PROPERTY ENVIRONMENT
+        set_property(TEST filesystem_exfat_recovery_ui filesystem_ext_recovery_ui PROPERTY ENVIRONMENT
             "QT_QPA_PLATFORM=cocoa;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     endif()
     set_tests_properties(filesystem_exfat_directory_ui filesystem_cramfs_read_ui filesystem_squashfs_index_ui filesystem_squashfs_inode_ui filesystem_squashfs_directory_ui filesystem_squashfs_read_ui filesystem_read_ui filesystem_read_ui_ru filesystem_ext_read_ui filesystem_ext_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui filesystem_fat_file_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts

@@ -66,8 +66,9 @@ class ExtTests(unittest.TestCase):
     def limited_listing(self, volume, forbidden=(), listing=None):
         if listing is None:
             listing = self.run_image(volume, command="l", name=None)
-        self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+        self.assertIn(listing.returncode, (0, 1, 2), listing.stderr.decode(errors="replace"))
         self.assertIn(b"Read-only limitations = ", listing.stdout)
+        self.assertIn(b"----------\n", listing.stdout.replace(b"\r\n", b"\n"))
         records = listing.stdout.replace(b"\r\n", b"\n").split(b"----------\n", 1)[1]
         paths = [line[7:] for line in records.splitlines() if line.startswith(b"Path = ")]
         for path in forbidden:
@@ -163,10 +164,12 @@ class ExtTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
         self.assertEqual(result.stdout, volume.read(0, volume.size))
 
-    def test_overlapping_metadata_descriptors_are_rejected(self):
-        result = self.run_image(BlockVolume(mapping="descriptor-overlap"))
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(result.stdout, b"")
+    def test_overlapping_metadata_preserves_independent_file_data(self):
+        volume = BlockVolume(mapping="descriptor-overlap")
+        self.limited_listing(volume)
+        result = self.run_image(volume)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, volume.read(0, volume.size))
 
     def test_indirect_journal_bootstrap_preserves_independent_files(self):
         for mapping in ("single", "double-hole"):
@@ -238,11 +241,12 @@ class ExtTests(unittest.TestCase):
                     volume.put32(root + 12, 0xFFFFFFFF)
                 else:
                     volume.put32(root + 20, volume.table)
-                result = self.run_image(volume, command="l", name=None)
-                if result.returncode == 0:
-                    self.limited_listing(volume, (NAME.encode(),), result)
-                else:
+                if fault == "metadata-alias":
+                    result = self.run_image(volume)
                     self.assertIn(result.returncode, (1, 2), result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, b"")
+                else:
+                    self.limited_listing(volume, (NAME.encode(),))
 
     def test_corrupt_nonroot_inodes_do_not_hide_independent_data(self):
         for fault in ("checksum", "empty", "extra-size", "conflicting-flags", "symlink-flags", "extent-root"):
@@ -255,15 +259,24 @@ class ExtTests(unittest.TestCase):
                     self.assertEqual(result.stdout, expected)
         for fault in ("root-checksum", "root-empty", "journal-corrupt"):
             with self.subTest(fault=fault):
-                result = self.run_image(inventory_volume(fault), command="l", name=None)
-                self.assertIn(result.returncode, (1, 2), result.stderr.decode(errors="replace"))
+                volume = inventory_volume(fault)
+                self.limited_listing(volume)
+                # An unavailable root loses names, but independently readable
+                # inodes remain accessible through the engine's orphan catalog.
+                if fault == "journal-corrupt":
+                    result = self.run_image(volume)
+                    self.assertEqual(result.stdout, volume.read(0, volume.size))
 
     def test_named_inodes_require_linux_read_acceptance(self):
         for case in ("mode-zero", "mode-unknown", "unlinked", "casefold", "reserved-alias",
                      "quota-alias", "negative-size", "bitmap-overflow", "extent-overflow"):
             with self.subTest(case=case):
                 volume = inode_volume(case)
-                self.limited_listing(volume, (NAME.encode(),))
+                listing = self.run_image(volume, command="l", name=None)
+                if listing.returncode == 0:
+                    self.limited_listing(volume, (NAME.encode(),), listing)
+                else:
+                    self.assertIn(listing.returncode, (1, 2))
                 result = self.run_image(volume)
                 self.assertEqual(result.stdout, b"")
 
@@ -305,10 +318,13 @@ class ExtTests(unittest.TestCase):
                     result = self.run_image(volume, engine, name="after-hole.bin")
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, volume.read(0, volume.size))
-        for volume in (DirectoryVolume("allocated-zero"), DirectoryVolume(fault="checksum")):
+        for volume, status in ((DirectoryVolume("allocated-zero"), 0),
+                               (DirectoryVolume(fault="checksum"), 2)):
             self.limited_listing(volume)
             result = self.run_image(volume)
-            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.returncode, status)
+            if status:
+                self.assertIn(b"Headers Error", result.stderr)
             self.assertEqual(result.stdout, volume.read(0, volume.size))
 
     def test_directory_type_conflict_does_not_hide_following_entries(self):
@@ -433,7 +449,10 @@ class ExtTests(unittest.TestCase):
                     volume.refresh()
                     self.limited_listing(volume, (invalid, b"nested/" + invalid))
                     result = self.run_image(volume, name=name)
-                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.returncode, 2 if layout != "inline" else 0,
+                                     result.stderr.decode(errors="replace"))
+                    if layout != "inline":
+                        self.assertIn(b"Headers Error", result.stderr)
                     self.assertEqual(result.stdout, expected)
 
     def test_conflicting_directory_alias_does_not_hide_following_file(self):
@@ -449,11 +468,11 @@ class ExtTests(unittest.TestCase):
             with self.subTest(tail=tail):
                 volume = cyclic_directory_volume(tail=tail)
                 listing = self.limited_listing(volume)
-                paths = [line[7:] for line in listing.stdout.decode().splitlines()
+                paths = [line[7:].replace("\\", "/") for line in listing.stdout.decode().splitlines()
                          if line.startswith("Path = ")]
                 for name, expected in volume.files.items():
                     matches = [path for path in paths if path == name or path.endswith("/" + name)]
-                    self.assertEqual(len(matches), 1)
+                    self.assertEqual(len(matches), 1, paths)
                     if name != NAME:
                         self.assertTrue(matches[0].startswith("[UNKNOWN]/"))
                     result = self.run_image(volume, name=matches[0])
@@ -665,7 +684,7 @@ class ExtTests(unittest.TestCase):
                         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                         self.assertEqual(result.stdout, expected)
 
-    def test_metadata_corruption_is_rejected(self):
+    def test_metadata_corruption_preserves_independent_readable_data(self):
         for location in ("super", "group", "inode-map", "block-map", "inode", "dir", "extent"):
             with self.subTest(location=location):
                 volume = ModernVolume()
@@ -676,13 +695,17 @@ class ExtTests(unittest.TestCase):
                            "extent": volume.extent_blocks[0] * 1024 + 8}
                 volume.data[offsets[location]] ^= 1
                 result = self.run_image(volume)
+                if location in ("group", "inode-map", "block-map"):
+                    self.limited_listing(volume)
+                    self.assertEqual(result.stdout, volume.read(0, volume.size))
+                    continue
                 if location in ("dir", "inode"):
                     self.limited_listing(volume, (NAME.encode(),))
                 else:
                     self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
 
-    def test_volume_geometry_rejects_truncation_and_invalid_group_inventory(self):
+    def test_short_source_preserves_data_and_invalid_geometry_is_rejected(self):
         volume = ModernVolume()
         padded = SimpleNamespace(data=volume.data + bytes(37))
         result = self.run_image(padded)
@@ -699,6 +722,10 @@ class ExtTests(unittest.TestCase):
                 if fault == "truncated":
                     volume.data = volume.data[:-1]
                 result = self.run_image(volume)
+                if fault == "truncated":
+                    self.limited_listing(volume)
+                    self.assertEqual(result.stdout, volume.read(0, volume.size))
+                    continue
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
 
@@ -713,7 +740,7 @@ class ExtTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
 
-    def test_block_bitmap_metadata_and_padding_need_more_than_valid_checksums(self):
+    def test_invalid_allocation_bitmaps_warn_without_hiding_readable_files(self):
         for modern in (False, True):
             for target in ("block-map", "inode-map", "table", "table-end", "padding", "padding-end"):
                 with self.subTest(modern=modern, target=target):
@@ -728,11 +755,11 @@ class ExtTests(unittest.TestCase):
                         volume.used.discard(block)
                         volume.refresh()
                     result = self.run_image(volume)
-                    self.assertNotEqual(result.returncode, 0)
-                    self.assertEqual(result.stdout, b"")
+                    self.limited_listing(volume)
+                    self.assertEqual(result.stdout, volume.read(0, volume.size))
 
-        # Linux rejects uninitialized root-group bitmaps; without descriptor
-        # checksums those flags have no meaning.
+        # Root-group allocation state is unverified, while inode/directory
+        # reads remain usable. Without descriptor checksums these flags have no meaning.
         for modern in (False, True):
             volume = ModernVolume() if modern else Volume("direct")
             struct.pack_into("<H", volume.data, volume.gdt * volume.block_size + 18, 2)
@@ -741,8 +768,8 @@ class ExtTests(unittest.TestCase):
                 volume.data[volume.block_map * volume.block_size:volume.block_map * volume.block_size + 1024] = bytes(1024)
             result = self.run_image(volume)
             if modern:
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(result.stdout, b"")
+                self.limited_listing(volume)
+                self.assertEqual(result.stdout, volume.read(0, volume.size))
             else:
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                 self.assertEqual(result.stdout, volume.read(0, volume.size))
@@ -752,8 +779,8 @@ class ExtTests(unittest.TestCase):
             bit = (volume.table - volume.first) // 4 if target == "metadata" else 256
             volume.data[volume.block_map * volume.block_size + bit // 8] &= ~(1 << (bit % 8))
             result = self.run_image(volume)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(result.stdout, b"")
+            self.limited_listing(volume)
+            self.assertEqual(result.stdout, volume.read(0, volume.size))
 
     def test_symlink_targets_use_linux_storage_and_termination_bounds(self):
         for layout in ("block-tail", "block-nul", "unwritten-tail", "large-size",
@@ -814,7 +841,8 @@ class ExtTests(unittest.TestCase):
                 volume = HtreeVolume(layout)
                 self.limited_listing(volume)
                 result = self.run_image(volume)
-                self.assertEqual(result.returncode, 0)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn(b"Headers Error", result.stderr)
                 self.assertEqual(result.stdout, volume.read(0, volume.size))
 
     def test_invalid_default_directory_hash_is_refused(self):

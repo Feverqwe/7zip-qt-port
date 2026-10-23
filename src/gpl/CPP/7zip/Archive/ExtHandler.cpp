@@ -43,6 +43,7 @@
 #include <cerrno>
 #include <climits>
 #include <new>
+#include <set>
 
 using namespace NWindows;
 
@@ -329,7 +330,7 @@ bool CHeader::Parse(const Byte *p) {
     LE_32(0x0C, NumFreeBlocks)
     LE_32(0x10, NumFreeInodes)
 
-    if (NumInodes < 2 || NumInodes <= NumFreeInodes)
+    if (NumInodes < 2)
         return false;
 
     LE_32(0x14, FirstDataBlock)
@@ -431,8 +432,6 @@ bool CHeader::Parse(const Byte *p) {
     // LE_32(0x1A0, ErrorBlock);
 
     if (NumBlocks < 1)
-        return false;
-    if (NumFreeBlocks > NumBlocks)
         return false;
 
     if (GetNumGroups() != GetNumGroups2())
@@ -836,6 +835,10 @@ Z7_CLASS_IMP_CHandler_IInArchive_3(
   bool _linkLimitations = false;
   bool _inodeLimitations = false;
   bool _indirectLimitations = false;
+  bool _allocationLimitations = false;
+  bool _catalogIncomplete = false;
+  bool _rootIncomplete = false;
+  bool _rootUnavailable = false;
   bool HasIndirectRangeLimit(const CNode &node) const
   {
     return node.IsRegular() && node.InlineIndex < 0 && !node.IsFlags_EXTENTS() &&
@@ -845,6 +848,8 @@ Z7_CLASS_IMP_CHandler_IInArchive_3(
   {
     node.DirectoryIncomplete = true;
     _directoryLimitations = true;
+    if (node.InodeNumber == k_INODE_ROOT)
+      _rootIncomplete = true;
   }
   struct CXattrContext {
     CHandler *Owner;
@@ -867,7 +872,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_3(
   static int ReadSystemInode(void *, uint32_t, void *, size_t) noexcept;
   static int ReadSystemBlock(void *, uint64_t, void *, size_t) noexcept;
   static int MapSystemInode(void *, uint32_t, uint32_t, uint32_t *, uint64_t *) noexcept;
-  HRESULT LoadSystemZone(const void *descriptors, UInt32 groups);
+  HRESULT LoadSystemZone();
   struct CDirectoryContext {
     CHandler *Owner;
     IInStream *Stream;
@@ -1584,34 +1589,15 @@ HRESULT CHandler::ReadLink(unsigned index, CByteBuffer &data, IInStream *source)
     return S_OK;
 }
 
-HRESULT CHandler::LoadSystemZone(const void *descriptors, UInt32 groups) {
+HRESULT CHandler::LoadSystemZone() {
     CSystemZoneContext context{{this, 0, S_OK, 0, {}}, {}, false};
     ext_block_services services{&context, ReadSystemInode, MapSystemInode};
-    const int error = ext_linux_system_zone(_volume.get(), descriptors, groups, &services);
-    if (context.Io.Result != S_OK)
+    const int error = ext_linux_system_zone(_volume.get(), &services);
+    RINOK(_openCallbackResult)
+    if (context.Io.Result == E_ABORT || context.Io.Result == E_OUTOFMEMORY)
         return context.Io.Result;
     if (error)
         return error == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
-    FOR_VECTOR(i, _nodes) {
-        const CNode &node = _nodes[i];
-        if ((node.Flags & ((UInt32)1 << 21)) ? node.EaReadError : node.SpecialReadError)
-            continue;
-        // The target reader validates the full mapping before reading it.
-        // A bad link storage reference must not suppress independent files.
-        if (node.IsLink())
-            continue;
-        const bool fastLink = node.IsFastSymlink(_h);
-        if (node.InlineIndex < 0 && !fastLink && node.IsFlags_EXTENTS() &&
-            (node.IsRegular() || node.IsDir() || node.IsLink()) &&
-            ext_linux_extent_check(_volume.get(), node.InodeNumber, node.ChecksumSeed,
-                                   GetUi16(node.Block + 6), node.Block, kNodeBlockFieldSize,
-                                   GetUi16(node.Block + 6), 0, 0))
-            return S_FALSE;
-        if (node.InlineIndex < 0 && !node.IsFlags_EXTENTS() &&
-            (node.IsRegular() || node.IsDir() || (node.IsLink() && !fastLink)) &&
-            ext_linux_blockrefs(_volume.get(), node.InodeNumber, node.Block, 15))
-            return S_FALSE;
-    }
     return S_OK;
 }
 
@@ -1801,8 +1787,10 @@ HRESULT CHandler::LoadXattrs() {
         for (unsigned a = 0; a < node.XattrCount; ++a)
             AddXattrItem(ino, (int)i, node.XattrFirst + a);
     }
-    const CNode &root = _nodes[_refs[k_INODE_ROOT]];
-    if (root.XattrCount) {
+    const CNode *root = _refs.Size() > k_INODE_ROOT && _refs[k_INODE_ROOT] >= 0
+                            ? &_nodes[_refs[k_INODE_ROOT]]
+                            : NULL;
+    if (root && root->XattrCount) {
         AString name("[ROOT]");
         for (;;) {
             bool collision = false;
@@ -1818,8 +1806,8 @@ HRESULT CHandler::LoadXattrs() {
             name += '_';
         }
         _rootXattrAux = (int)_auxItems.Add(name);
-        for (unsigned a = 0; a < root.XattrCount; ++a)
-            AddXattrItem(k_INODE_ROOT, -1, root.XattrFirst + a);
+        for (unsigned a = 0; a < root->XattrCount; ++a)
+            AddXattrItem(k_INODE_ROOT, -1, root->XattrFirst + a);
     }
     return S_OK;
 }
@@ -1837,6 +1825,8 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         if (ext_linux_open(buf + kHeaderDataOffset, &volume) != 0)
             return S_FALSE;
         _volume.reset(volume, ext_linux_close);
+        if (_h.NumFreeInodes >= _h.NumInodes || _h.NumFreeBlocks > _h.NumBlocks)
+            _allocationLimitations = true;
         if (_h.BlockGroupNr != 0)
             return S_FALSE; // it's just copy of super block
     }
@@ -1874,6 +1864,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         CRecordVector<CGroupDescriptor> groups;
 
         CByteBuffer gdBuf;
+        CByteBuffer gdAvailable(numGroups);
         {
             // ---------- Read groups ----------
 
@@ -1881,32 +1872,58 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             if ((gdBufSize >> gdBits) != numGroups)
                 return S_FALSE;
             gdBuf.Alloc(gdBufSize);
+            memset(gdBuf, 0, gdBufSize);
             const size_t blockSize = (size_t)1 << _h.BlockBits;
+            CByteBuffer gdPages((gdBufSize + blockSize - 1) >> _h.BlockBits);
+            CMyComPtr<IInStream> descriptorSource = CreateReadOnlyInput(inStream);
             for (size_t offset = 0; offset < gdBufSize; offset += blockSize) {
                 const size_t size = MyMin(blockSize, gdBufSize - offset);
-                RINOK(SeekAndRead(
-                    inStream,
+                const HRESULT result = SeekAndRead(
+                    descriptorSource,
                     ext_linux_descriptor_block(_volume.get(), (unsigned)(offset >> _h.BlockBits)),
-                    (Byte *)gdBuf + offset, size))
+                    (Byte *)gdBuf + offset, size);
+                if (result != S_OK && result != S_FALSE)
+                    return result;
+                gdPages[offset >> _h.BlockBits] = result == S_OK;
+                if (_openCallback) {
+                    RINOK(CheckProgress2())
+                }
             }
 
             const unsigned gd_Size = (unsigned)1 << gdBits;
-            const Byte *p = gdBuf;
+            Byte *p = gdBuf;
             for (unsigned i = 0; i < numGroups; i++, p += gd_Size) {
+                bool available = gdPages[((size_t)i << gdBits) >> _h.BlockBits] != 0;
+                if (!available) {
+                    const UInt64 descriptorBlock = ext_linux_descriptor_block(
+                        _volume.get(), (unsigned)(((size_t)i << gdBits) >> _h.BlockBits));
+                    CXattrContext context{this, 0, S_OK, 0, {}};
+                    context.Source = descriptorSource;
+                    available = ReadXattr(&context, 0,
+                                          (descriptorBlock << _h.BlockBits) +
+                                              (((size_t)i << gdBits) & (blockSize - 1)),
+                                          p, gd_Size) == 0;
+                    RINOK(_openCallbackResult)
+                    if (context.Result != S_OK && context.Result != S_FALSE)
+                        return context.Result;
+                }
+                gdAvailable[i] = available;
+                if (!available) {
+                    memset(p, 0, gd_Size);
+                    _allocationLimitations = true;
+                    _catalogIncomplete = true;
+                }
                 CGroupDescriptor gd;
                 gd.Parse(p, gd_Size);
-                if (ext_linux_group_check(_volume.get(), i, p) != 0)
-                    return S_FALSE;
-
                 groups.Add(gd);
             }
         }
+        const int prepared = ext_linux_prepare_groups(_volume.get(), gdBuf, gdAvailable, numGroups);
+        if (prepared)
+            return prepared == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
 
         {
             // ---------- Read nodes ----------
-
-            if (_h.NumInodes < _h.NumFreeInodes)
-                return S_FALSE;
 
             UInt32 numNodes = _h.InodesPerGroup;
             if (numNodes > _h.NumInodes)
@@ -1925,7 +1942,8 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             const size_t blockSize = (size_t)1 << _h.BlockBits;
             if (numNodes > blockSize * 8)
                 return S_FALSE;
-            const UInt32 numReserveInodes = _h.NumInodes - _h.NumFreeInodes + 1;
+            const UInt32 numReserveInodes =
+                _h.NumFreeInodes < _h.NumInodes ? _h.NumInodes - _h.NumFreeInodes + 1 : 0;
             // numReserveInodes = _h.NumInodes + 1;
             if (numReserveInodes != 0) {
                 _nodes.Reserve(numReserveInodes);
@@ -1950,10 +1968,17 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     break;
 
                 const CGroupDescriptor &gd = groups[gi];
-                // Linux rejects either uninitialized bitmap in the root group.
-                if (gi == 0 && (_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && (gd.Flags & 3))
-                    return S_FALSE;
-                if ((_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && (gd.Flags & 1)) {
+                const unsigned available = ext_linux_group_availability(_volume.get(), gi);
+                if (available != EXT_GROUP_COMPLETE)
+                    _allocationLimitations = true;
+                if (!(available & EXT_GROUP_INODE_TABLE)) {
+                    globalNodeIndex += MyMin(numNodes, _h.NumInodes - globalNodeIndex);
+                    _catalogIncomplete = true;
+                    continue;
+                }
+                const bool initializedFlags = _h.UseGdtChecksum() || _h.UseMetadataChecksum();
+                if (gi != 0 && initializedFlags && (available & EXT_GROUP_CHECKSUM) &&
+                    (gd.Flags & 1)) {
                     const UInt32 count = MyMin(numNodes, _h.NumInodes - globalNodeIndex);
                     globalNodeIndex += count;
                     numEmpty_in_Maps += count;
@@ -1962,21 +1987,46 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
                 PRF(printf("\n\ng%6d block = %6x\n", gi, (unsigned)gd.InodeTable));
 
-                RINOK(SeekAndRead(inStream, gd.InodeBitmap, nodesMap, blockSize))
-                if (ext_linux_bitmap_check(_volume.get(), gi,
-                                           (const Byte *)gdBuf + ((size_t)gi << gdBits), nodesMap,
-                                           1) != 0)
-                    return S_FALSE;
+                bool knownInodes = (available & EXT_GROUP_INODE_BITMAP) &&
+                                   (available & EXT_GROUP_CHECKSUM) &&
+                                   !(initializedFlags && (gd.Flags & 1));
+                if (knownInodes) {
+                    const HRESULT result =
+                        SeekAndRead(inodeSource, gd.InodeBitmap, nodesMap, blockSize);
+                    if (result != S_OK && result != S_FALSE)
+                        return result;
+                    knownInodes =
+                        result == S_OK &&
+                        ext_linux_bitmap_check(_volume.get(), gi,
+                                               (const Byte *)gdBuf + ((size_t)gi << gdBits),
+                                               nodesMap, 1) == 0;
+                    if (_openCallback) {
+                        RINOK(CheckProgress2())
+                    }
+                }
+                if (!knownInodes) {
+                    memset(nodesMap, 0xff, blockSize);
+                    _allocationLimitations = true;
+                }
                 // Uninitialized block bitmaps are synthesized by the kernel.
-                if (!((_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && (gd.Flags & 2))) {
+                if (available & EXT_GROUP_BLOCK_BITMAP && !(initializedFlags && (gd.Flags & 2))) {
                     CByteBuffer blockMap;
                     blockMap.Alloc(blockSize);
-                    RINOK(SeekAndRead(inStream, gd.BlockBitmap, blockMap, blockSize))
-                    if (ext_linux_bitmap_check(_volume.get(), gi,
+                    const HRESULT result =
+                        SeekAndRead(inodeSource, gd.BlockBitmap, blockMap, blockSize);
+                    if (result != S_OK && result != S_FALSE)
+                        return result;
+                    if (result != S_OK ||
+                        ext_linux_bitmap_check(_volume.get(), gi,
                                                (const Byte *)gdBuf + ((size_t)gi << gdBits),
                                                blockMap, 0) != 0)
-                        return S_FALSE;
+                        _allocationLimitations = true;
+                    if (_openCallback) {
+                        RINOK(CheckProgress2())
+                    }
                 }
+                if (gi == 0 && initializedFlags && (gd.Flags & 2))
+                    _allocationLimitations = true;
                 for (size_t offset = 0; offset < nodesDataSize; offset += blockSize) {
                     const HRESULT result = SeekAndRead(
                         inodeSource, gd.InodeTable + (offset >> _h.BlockBits),
@@ -2019,7 +2069,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     }
                     const Byte *p = nodesData + (size_t)n * _h.InodeSize;
                     if (IsEmptyData(p, _h.InodeSize)) {
-                        if (globalNodeIndex + 1 >= _h.FirstInode) {
+                        if (knownInodes && globalNodeIndex + 1 >= _h.FirstInode) {
                             _inodeLimitations = true;
                             // return S_FALSE;
                         }
@@ -2135,21 +2185,24 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 _headersWarning = true;
             }
 
-            if (_refs.Size() <= k_INODE_ROOT)
-                return S_FALSE;
-            if (_refs[k_INODE_ROOT] < 0)
-                return S_FALSE;
+            while (_refs.Size() <= k_INODE_ROOT)
+                _refs.Add(-1);
+            if (_refs[k_INODE_ROOT] < 0) {
+                _rootIncomplete = true;
+                _catalogIncomplete = true;
+            }
 
             // printf("\n numReserveInodes = %6d, _refs.Size() = %d, numEmpty = %7d\n",
             // numReserveInodes, _refs.Size(), (unsigned)numEmpty);
         }
         _stream = inStream;
-        RINOK(LoadSystemZone(gdBuf, numGroups))
+        RINOK(LoadSystemZone())
     }
 
     _stream = inStream; // we need stream for dir nodes
     RINOK(LoadEncryption())
 
+    bool rootReadable = false;
     {
         // ---------- Read Dirs ----------
 
@@ -2167,6 +2220,8 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             HRESULT callbackResult = S_OK;
             const HRESULT directoryResult = ReadDir(i, callbackResult);
             RINOK(callbackResult)
+            if (i == k_INODE_ROOT && directoryResult == S_OK)
+                rootReadable = true;
             if (directoryResult == S_FALSE)
                 MarkDirectoryIncomplete(_nodes[nodeIndex]);
             else {
@@ -2176,8 +2231,10 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         }
 
         const int ref = _refs[k_INODE_ROOT];
-        if (ref < 0 || _nodes[ref].ParentNode != k_INODE_ROOT)
-            return S_FALSE;
+        if (ref >= 0 && _nodes[ref].ParentNode != k_INODE_ROOT) {
+            MarkDirectoryIncomplete(_nodes[ref]);
+            _nodes[ref].ParentNode = k_INODE_ROOT;
+        }
     }
 
     {
@@ -2340,6 +2397,8 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 continue;
             if (node.Flags & ((UInt32)1 << 21))
                 continue;
+            if (i == k_INODE_ROOT && _rootIncomplete)
+                continue;
             const bool unnamedDirectory = node.IsDir() && node.ItemIndex < 0 && i != k_INODE_ROOT;
             if (node.NumLinksCalced == 0 || unnamedDirectory) {
                 CItem item;
@@ -2380,6 +2439,10 @@ HRESULT CHandler::Open2(IInStream *inStream) {
     }
 
     RINOK(LoadXattrs())
+    if (_items.IsEmpty() && !rootReadable) {
+        _rootUnavailable = true;
+        return S_FALSE;
+    }
     return S_OK;
 }
 
@@ -2446,6 +2509,10 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _linkLimitations = false;
     _inodeLimitations = false;
     _indirectLimitations = false;
+    _allocationLimitations = false;
+    _catalogIncomplete = false;
+    _rootIncomplete = false;
+    _rootUnavailable = false;
     _isUTF = true;
     _openCallback = NULL;
     _openCallbackResult = S_OK;
@@ -2685,6 +2752,24 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             reasons += "Some ext file data is outside the reader's logical address range. Only "
                        "addressable data is available; copying affected files reports an error.";
         }
+        const UInt32 limits = _volume ? ext_linux_read_limitations(_volume.get()) : 0;
+        const auto append = [&](const char *text) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += text;
+        };
+        if (limits & EXT_READ_SHORT_SOURCE)
+            append("The ext source is shorter than the declared volume. Some files may be "
+                   "incomplete or unreadable.");
+        if (_allocationLimitations || (limits & EXT_READ_GROUP_METADATA))
+            append("Some ext group descriptors or allocation metadata are unavailable or "
+                   "unverified. Files may be missing, outdated or reused; free space is unknown.");
+        if (limits & EXT_READ_JOURNAL_METADATA)
+            append("The ext journal metadata could not be read. Files may be outdated or "
+                   "inconsistent; no journal replay was performed.");
+        if (_rootIncomplete)
+            append("The ext root directory is incomplete or unavailable. Some original names and "
+                   "paths are missing.");
         if (_h.FeatureIncompat & 4) {
             if (!reasons.IsEmpty())
                 reasons += '\n';
@@ -2733,6 +2818,10 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         // case kpidGroupSize: prop = (UInt64)_h.BlocksPerGroup << _h.BlockBits; break;
 
     case kpidFreeSpace:
+        if (_allocationLimitations ||
+            (_volume && (ext_linux_read_limitations(_volume.get()) &
+                         (EXT_READ_GROUP_METADATA | EXT_READ_JOURNAL_METADATA))))
+            break;
         prop = (UInt64)_h.NumFreeBlocks << _h.BlockBits;
         break;
 
@@ -2817,6 +2906,11 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             prop = v;
         break;
     }
+
+    case kpidError:
+        if (_rootUnavailable)
+            prop = "The ext root directory could not be read. No readable entries were found.";
+        break;
 
     case kpidWarningFlags: {
         UInt32 v = 0;
@@ -3427,9 +3521,12 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
     if (!node.IsFlags_EXTENTS()) {
         if (allocated)
             return S_FALSE;
-        RINOK(CreateExtIndirectStream(_volume, source, node.Block, node.InodeNumber, _h.BlockBits,
-                                      streamSize, requireAllocated,
-                                      node.IsRegular() ? crypt : CExtCryptInode{}, &streamTemp))
+        const HRESULT mappingResult = CreateExtIndirectStream(
+            _volume, source, node.Block, node.InodeNumber, _h.BlockBits, streamSize,
+            requireAllocated, node.IsRegular() ? crypt : CExtCryptInode{}, &streamTemp);
+        if (mappingResult == S_FALSE && mappingIncomplete)
+            *mappingIncomplete = true;
+        RINOK(mappingResult)
         *stream = streamTemp.Detach();
         return S_OK;
     }
@@ -3565,10 +3662,23 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
                                IArchiveExtractCallback *extractCallback)) {
     COM_TRY_BEGIN
     const bool allFilesMode = (numItems == (UInt32)(Int32)-1);
+    const auto finish = [&]() -> HRESULT {
+        const UInt32 totalItems = _items.Size() + _auxItems.Size();
+        if (!(_rootIncomplete || _catalogIncomplete || _inodeLimitations) ||
+            !(allFilesMode || (numItems && numItems == totalItems &&
+                               std::set<UInt32>(indices, indices + numItems).size() == numItems)))
+            return S_OK;
+        CMyComPtr<IArchiveExtractCallbackMessage2> messages;
+        extractCallback->QueryInterface(IID_IArchiveExtractCallbackMessage2, (void **)&messages);
+        if (messages)
+            return messages->ReportExtractResult(NEventIndexType::kNoIndex, 0,
+                                                 NExtract::NOperationResult::kHeadersError);
+        return S_FALSE;
+    };
     if (allFilesMode)
         numItems = _items.Size() + _auxItems.Size();
     if (numItems == 0)
-        return S_OK;
+        return finish();
 
     UInt64 totalSize = 0;
     UInt32 i;
@@ -3691,7 +3801,7 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
         RINOK(extractCallback->SetOperationResult(opRes))
     }
 
-    return S_OK;
+    return finish();
     COM_TRY_END
 }
 

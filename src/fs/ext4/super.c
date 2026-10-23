@@ -237,6 +237,12 @@ int ext4_check_descriptors(struct super_block *sb,
 
 	for (i = 0; i < sbi->s_groups_count; i++) {
 		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, i, NULL);
+		if (!gdp) {
+			if (!sb->s_archive_partial)
+				return 0;
+			sb->s_archive_limitations |= EXT_READ_GROUP_METADATA;
+			goto next_group;
+		}
 
 		if (i == sbi->s_groups_count - 1 || flexbg_flag)
 			last_block = ext4_blocks_count(sbi->s_es) - 1;
@@ -255,6 +261,8 @@ int ext4_check_descriptors(struct super_block *sb,
 				 "superblock", i);
 			if (!sb_rdonly(sb))
 				return 0;
+			if (sb->s_archive_partial)
+				goto block_bitmap_unavailable;
 		}
 		if (block_bitmap >= sb_block + 1 &&
 		    block_bitmap <= last_bg_block) {
@@ -263,13 +271,22 @@ int ext4_check_descriptors(struct super_block *sb,
 				 "block group descriptors", i);
 			if (!sb_rdonly(sb))
 				return 0;
+			if (sb->s_archive_partial)
+				goto block_bitmap_unavailable;
 		}
 		if (block_bitmap < first_block || block_bitmap > last_block) {
 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
 			       "Block bitmap for group %u not in group "
 			       "(block %llu)!", i, block_bitmap);
-			return 0;
+			goto block_bitmap_unavailable;
 		}
+		goto block_bitmap_checked;
+block_bitmap_unavailable:
+		if (!sb->s_archive_partial)
+			return 0;
+		sbi->s_archive_group_available[i] &= ~EXT_GROUP_BLOCK_BITMAP;
+		sb->s_archive_limitations |= EXT_READ_GROUP_METADATA;
+block_bitmap_checked:
 		inode_bitmap = ext4_inode_bitmap(sb, gdp);
 		if (inode_bitmap == sb_block) {
 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
@@ -277,6 +294,8 @@ int ext4_check_descriptors(struct super_block *sb,
 				 "superblock", i);
 			if (!sb_rdonly(sb))
 				return 0;
+			if (sb->s_archive_partial)
+				goto inode_bitmap_unavailable;
 		}
 		if (inode_bitmap >= sb_block + 1 &&
 		    inode_bitmap <= last_bg_block) {
@@ -285,13 +304,22 @@ int ext4_check_descriptors(struct super_block *sb,
 				 "block group descriptors", i);
 			if (!sb_rdonly(sb))
 				return 0;
+			if (sb->s_archive_partial)
+				goto inode_bitmap_unavailable;
 		}
 		if (inode_bitmap < first_block || inode_bitmap > last_block) {
 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
 			       "Inode bitmap for group %u not in group "
 			       "(block %llu)!", i, inode_bitmap);
-			return 0;
+			goto inode_bitmap_unavailable;
 		}
+		goto inode_bitmap_checked;
+inode_bitmap_unavailable:
+		if (!sb->s_archive_partial)
+			return 0;
+		sbi->s_archive_group_available[i] &= ~EXT_GROUP_INODE_BITMAP;
+		sb->s_archive_limitations |= EXT_READ_GROUP_METADATA;
+inode_bitmap_checked:
 		inode_table = ext4_inode_table(sb, gdp);
 		if (inode_table == sb_block) {
 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
@@ -299,6 +327,8 @@ int ext4_check_descriptors(struct super_block *sb,
 				 "superblock", i);
 			if (!sb_rdonly(sb))
 				return 0;
+			if (sb->s_archive_partial)
+				goto inode_table_unavailable;
 		}
 		if (inode_table >= sb_block + 1 &&
 		    inode_table <= last_bg_block) {
@@ -307,16 +337,29 @@ int ext4_check_descriptors(struct super_block *sb,
 				 "block group descriptors", i);
 			if (!sb_rdonly(sb))
 				return 0;
+			if (sb->s_archive_partial)
+				goto inode_table_unavailable;
 		}
 		if (inode_table < first_block ||
 		    inode_table + sbi->s_itb_per_group - 1 > last_block) {
 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
 			       "Inode table for group %u not in group "
 			       "(block %llu)!", i, inode_table);
-			return 0;
+			goto inode_table_unavailable;
 		}
+		goto descriptor_checksum;
+inode_table_unavailable:
+		if (!sb->s_archive_partial)
+			return 0;
+		sbi->s_archive_group_available[i] &= ~EXT_GROUP_INODE_TABLE;
+		sb->s_archive_limitations |= EXT_READ_GROUP_METADATA;
+descriptor_checksum:
 		ext4_lock_group(sb, i);
 		if (!ext4_group_desc_csum_verify(sb, i, gdp)) {
+			if (sb->s_archive_partial) {
+				sbi->s_archive_group_available[i] &= ~EXT_GROUP_CHECKSUM;
+				sb->s_archive_limitations |= EXT_READ_GROUP_METADATA;
+			}
 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
 				 "Checksum for group %u failed (%u!=%u)",
 				 i, le16_to_cpu(ext4_group_desc_csum(sb, i,
@@ -327,6 +370,7 @@ int ext4_check_descriptors(struct super_block *sb,
 			}
 		}
 		ext4_unlock_group(sb, i);
+next_group:
 		if (!flexbg_flag)
 			first_block += EXT4_BLOCKS_PER_GROUP(sb);
 	}
@@ -551,7 +595,9 @@ int ext4_check_geometry(struct super_block *sb,
 		ext4_msg(sb, KERN_WARNING, "bad geometry: block count %llu "
 		       "exceeds size of device (%llu blocks)",
 		       ext4_blocks_count(es), blocks_count);
-		return -EINVAL;
+		if (!sb->s_archive_partial)
+			return -EINVAL;
+		sb->s_archive_limitations |= EXT_READ_SHORT_SOURCE;
 	}
 
 	/*

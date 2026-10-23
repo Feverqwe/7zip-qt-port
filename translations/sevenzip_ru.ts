@@ -3866,6 +3866,26 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Некоторые каталоги exFAT прочитаны не полностью. Часть файлов или имён может отсутствовать. Доступные файлы можно копировать.</translation>
         </message>
         <message>
+            <source>The ext source is shorter than the declared volume. Some files may be incomplete or unreadable.</source>
+            <translation>Источник ext короче заявленного размера тома. Некоторые файлы могут быть неполными или недоступными для чтения.</translation>
+        </message>
+        <message>
+            <source>Some ext group descriptors or allocation metadata are unavailable or unverified. Files may be missing, outdated or reused; free space is unknown.</source>
+            <translation>Некоторые дескрипторы групп или метаданные занятости ext недоступны или не проверены. Часть файлов может отсутствовать, быть устаревшей или содержать переиспользованные данные. Свободное место неизвестно.</translation>
+        </message>
+        <message>
+            <source>The ext journal metadata could not be read. Files may be outdated or inconsistent; no journal replay was performed.</source>
+            <translation>Метаданные журнала ext не удалось прочитать. Файлы могут быть устаревшими или несогласованными. Журнал не воспроизводился.</translation>
+        </message>
+        <message>
+            <source>The ext root directory is incomplete or unavailable. Some original names and paths are missing.</source>
+            <translation>Корневой каталог ext неполон или недоступен. Часть исходных имён и путей отсутствует.</translation>
+        </message>
+        <message>
+            <source>The ext root directory could not be read. No readable entries were found.</source>
+            <translation>Корневой каталог ext не удалось прочитать. Доступных записей не найдено.</translation>
+        </message>
+        <message>
             <source>The FAT root directory could not be read. No readable entries were found.</source>
             <translation>Корневой каталог FAT не удалось прочитать. Доступных записей не найдено.</translation>
         </message>
