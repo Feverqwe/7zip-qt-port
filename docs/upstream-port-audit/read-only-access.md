@@ -63,11 +63,10 @@ Cancel выбран по умолчанию, Escape отменяет. Ресур
 
 ### Границы следующей сверки
 
-Process-only fallback, предварительная проверка всего зашифрованного архива,
-повреждения, обнаруживаемые только при decoding, и сохранение частичного вывода
-требуют отдельной сверки. Source-visible диагностика перечисленных format
-handlers установлена, но полная recovery-сверка их branches и consumers первой
-итерацией не закрыта. Файловые системы требуют новой адресной сверки gates по
+Process-only fallback, предварительная проверка всего зашифрованного архива и
+сохранение decoder output рассмотрены в следующей секции. Source-visible диагностика
+перечисленных format handlers установлена; runtime примеры не являются доказательством
+восстановления любого повреждения каждого формата. Файловые системы требуют адресной сверки gates по
 текущим исходникам; прежние результаты не выдаются за новое runtime acceptance.
 
 Найденный отказ всего exFAT открытия при ошибке одного каталога исправлен
@@ -110,3 +109,95 @@ forward declarations; это не сбой compiler cache. Build trees и caches
 `build/codec-runtime`; runtime не пересобирался. Одноразовые fixtures удаляются
 через QTemporaryDir; сохранены только актуальные widget reports и небольшие
 runner receipts/логи. `git diff --check` прошёл.
+
+## Process fallback и частичный вывод — итерация 5
+
+Сверены исходные `Console/List.cpp::ListArchives`, `Print_OpenArchive_Props`,
+`ErrorInfo_Print`, `Console/ExtractCallbackConsole.cpp::SetOperationResult` и его
+formatter, `UI/Common/ArchiveExtractCallback.cpp::SetOperationResult`, исходные
+GetStream/Copy/Extract callers и Qt process/source adapters. Репозиторий и полный
+7-Zip commit указаны выше; существующие engine/format baselines сохранены.
+Console умеет перечислить доступные записи после успешного Open_Strict, но
+возвращает ненулевой status из-за archive diagnostics. Обратного CLI parser в
+upstream нет: новая логика ограничена существующим process transport.
+
+Process metadata сохраняет читаемый каталог при штатном exit 1/2, когда официальный
+technical listing содержит тип приоритетного архива, явную диагностику открытия и
+доступные записи. Crash, отмена, неизвестный status, отказ открытия без каталога
+и остальные форматы не превращаются в успешный recovery open. Диагностика также
+сохраняется при exit 0 с предупреждением. Перед публикацией папки используется тот
+же EN/RU запрос ограниченного чтения с default Cancel; после согласия виден badge,
+изменение источника запрещено и на UI, и на process mutation boundary. Повторное
+открытие запрашивает новое согласие. Копирование всего содержимого уже открытой
+ограниченной папки сохраняет этот scope, вместо нового скрытого открытия.
+
+Два независимых pretest всего зашифрованного архива удалены из process extraction
+и file-only source callback. Исходный extractor проверяет пароль при чтении
+выбранных данных; предварительный test всех записей не является требованием SDK.
+Теперь повреждение постороннего файла не блокирует исправную выборку. Запрос
+пароля, передача его движку, скрытие в журнале и отказ неверного пароля сохранены.
+Как у исходного extractor, ошибка может оставить непроверенный выходной файл;
+он не считается успешно извлечённым. Источник не исправляется и не перезаписывается.
+
+File-only source transport сохраняет выданные движком байты при штатной ошибке
+приоритетного формата. Они копируются через исходный CopyStream и штатную защиту
+выходных путей. CRC, data, unexpected-end, unsupported/unavailable и password
+diagnostics передаются по SDK per-item contract; неизвестная диагностика остаётся
+DataError. Console progress может находиться в той же физической строке, поэтому
+formatter label выделяется после progress. Ошибка отдельной записи не останавливает
+независимые следующие записи, если callback принимает её. Ошибка callback/записи,
+отмена, crash и нерезультативный запуск не превращаются в partial success.
+Пустые failed staging files удаляются, остальные принадлежат временной lease
+операции. Проверки путей и неоднозначных повторных имён не ослаблены.
+
+У native handlers сохранены исходные per-item results и уже выданные данные:
+проверены соответствующие extraction/error branches ZIP, TAR, gzip, bzip2, XZ,
+Zstandard и source callbacks; RAR memory/CRC consumers проверяются существующим
+набором. Для 7z/ZIP выборка продолжает использовать исходные CRC/data results.
+Header errors process-команды могут дать ошибку даже при полностью прочитанном
+выбранном файле: transport не выдаёт эти данные за отдельно проверенный успех.
+Отсутствующие solid dependencies, тома, пароль или codecs остаются ограничениями
+самого engine; согласие не создаёт недостающий decoder/recovery algorithm.
+Эта итерация не добавляет форматных parser/decoder bodies и не является новым
+переносом Linux/7-Zip модулей.
+
+Регрессии проверяют усечённый ZIP с читаемой Unicode/space записью и CRC-ошибкой
+другой записи, immutable source и запрет изменения; encrypted ZIP с исправной
+выборкой при повреждении посторонней записи; усечённый TAR и gzip/bzip2/XZ/Zstd
+с сохранением читаемых данных. Zstd берётся из существующей фиксированной libzstd
+fixture, поскольку официальный 7zz не создаёт этот формат. Отдельный SDK callback
+проверяет CRC для ZIP и 7z, точные непроверенные байты, следующую исправную запись
+и прекращение по E_ABORT callback. UI покрывает оба транспорта, EN/RU,
+cancel/accept, отдельное и batch открытие, полное/выборочное копирование и traversal.
+
+На macOS десять focused suites прошли (26.72 s), затем три непосредственно
+изменённых набора прошли повторно после локальных исправлений. Расширенный набор
+из одиннадцати suites на Linux/Windows дал десять PASS и один отдельный отказ
+`source_extract_advanced::dotPathsInCpio(native-handler)`, receipt
+`20261023T042510Z-f7cd4484`. Он воспроизведён на macOS и в baseline executable,
+собранном из последнего коммита без текущих изменений: file-service case проходит,
+native Cpio сообщает «Cannot open file as archive». Текущие изменения после
+проверки baseline восстановлены; CPIO code/fixtures не изменены. Этот отказ не
+считается acceptance и не скрывается исключением из отчёта. Windows security/ADS
+cases в этом наборе прошли; на macOS/Linux они пропущены по платформе.
+
+Финальные три affected suites прошли на macOS Cocoa (10.96 s), Linux и Windows,
+receipt `20261023T042947Z-57bccb95`. EN/RU warning JSON для native/process путей
+проверены отдельно: текст и controls помещаются; normal/compact badge покрыт тем
+же UI-набором. Upstream verifier прошёл: 418 exact / 263 adapted / 12 local.
+После адресного lsof и проверки identity/lock удалены два точных неактивных
+task-owned остатка диагностик и устаревшая ownership запись. Остальные временные
+fixtures удаляются через QTemporaryDir/lease; активные runs, инкрементальные
+build trees и compiler caches сохранены. Full/slow suites, physical media,
+rendered Windows/Linux appearance и installed-package acceptance не заявляются.
+Инкрементальные сборки приложения прошли на macOS и обоих guests; remote receipt
+`20261023T043230Z-f9781e7b`. В финальной source-сверке сохранены owners consent,
+metadata, callback и path validation; parsing process diagnostics остаётся в
+source extraction transport, общая completion не получает отдельного decoder.
+
+Оставшийся scope goal: новая source-сверка NTFS/ext bootstrap, ограничений чтения
+метаданных и результатов неполного каталога. В ext найдено source-visible
+требование полного размера устройства и безусловный отказ всего открытия при
+ошибке отдельного descriptor/bitmap. Они ещё требуют проверки исходного Linux
+reader и полезного ограниченного подмножества; успешные архивные проверки не
+закрывают эти gates.

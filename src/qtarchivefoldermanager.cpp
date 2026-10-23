@@ -314,6 +314,16 @@ HRESULT QtArchiveFolderManager::OpenLinkImpl(CArchiveLink &link, const COpenOpti
                 if (stopResult != S_OK)
                     return stopResult;
                 if (request->Result == S_OK) {
+                    auto *consent = dynamic_cast<IQtArchiveReadConsent *>(progress);
+                    auto *dialog = ui        ? &ui->ProgressDialog
+                                   : consent ? consent->ReadConsentDialog()
+                                             : nullptr;
+                    auto *readCallback = ui        ? ui
+                                         : consent ? consent->ReadConsentCallback()
+                                                   : nullptr;
+                    RINOK(ConfirmLimitedArchiveRead(dialog, readCallback, {},
+                                                    request->Info.readLimitations))
+                    resource->SetFilesystemReadLimitations(request->Info.readLimitations);
                     RINOK(CreateArchiveLinkTransport(link, request->Folder, resource,
                                                      sourceOptions.codecs))
                     keepOwnedPath = true;

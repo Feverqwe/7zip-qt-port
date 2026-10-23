@@ -65,6 +65,7 @@ struct ArchiveInfo {
     int folders = 0;
     bool encrypted = false;
     QMap<QString, QString> properties;
+    QString readLimitations;
 };
 
 struct CompressionOptions : NCompressDialog::CInfo {
@@ -99,6 +100,8 @@ class ArchiveBackend : public QObject {
     ~ArchiveBackend() override;
     virtual bool busy() const;
     virtual HRESULT lastResult() const;
+    // Decoder operation result, or -1 when the process did not provide one.
+    Int32 lastSourceExtractOperation() const { return sourceExtractOperation_; }
     // Explicit module/version boundary. The engine probe/discovery service
     // supplies its verified version; widgets consume immutable metadata only.
     HRESULT loadCodecCatalog(const QString &module, quint32 engineVersion);
@@ -261,11 +264,12 @@ class ArchiveBackend : public QObject {
         QDateTime MetadataChanged;
         QList<ArchiveEntry> Entries;
         bool Encrypted = false;
+        bool LimitedRead = false;
+        QString Format;
     };
     enum class Job {
         None,
         List,
-        ExtractCheck,
         Extract,
         Test,
         Hash,
@@ -294,7 +298,9 @@ class ArchiveBackend : public QObject {
     bool advanceProcessJob(Job completed);
     bool failProcessJob(Job completed, int exitCode, QProcess::ExitStatus status);
     bool publishProcessMutation();
-    void finishProcessListing();
+    void finishProcessListing(const QString &limitations = {});
+    QString processListingLimitations() const;
+    Int32 sourceExtractErrorOperation() const;
     void consumeOutput(const QByteArray &chunk, bool flush = false);
     void consumeLine(const QByteArray &line);
     static QList<ArchiveEntry> parseListing(const QString &output);
@@ -328,7 +334,7 @@ class ArchiveBackend : public QObject {
     bool selectCreationFormat(const QString &archive, const QStringList &sources,
                               const CompressionOptions &options, QString &format,
                               QString &error) const;
-    bool restoreListedArchive(const QString &archive);
+    bool restoreListedArchive(const QString &archive, bool allowLimited = true);
     void startListing(const QString &archive, const QString &password, const QString &format);
 
     std::shared_ptr<QProcess> process_;
@@ -397,8 +403,9 @@ class ArchiveBackend : public QObject {
     QString pendingPassword_;
     bool passwordPrompted_ = false;
     bool encrypted_ = false;
-    QStringList extractArguments_;
     QString extractPassword_;
+    bool sourceExtractRecovery_ = false;
+    Int32 sourceExtractOperation_ = -1;
     QList<QStringList> extractQueue_;
     bool overwritePromptActive_ = false;
     int overwriteAnswer_ = -1;

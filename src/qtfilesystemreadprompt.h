@@ -13,6 +13,8 @@ struct IQtArchiveReadConsent {
     virtual IOpenCallbackUI *ReadConsentCallback() const = 0;
 };
 bool ConfirmLimitedFilesystemRead(QWidget *parent, const QString &limitations);
+HRESULT ConfirmLimitedArchiveRead(CProgressDialog *dialog, IOpenCallbackUI *callback,
+                                  const QString &accepted, const QString &limitations);
 HRESULT PrepareLimitedFilesystemRead(const CArchiveLink &link, COpenArchiveCallback *callback,
                                      const QString &accepted, QString &limitations);
 HRESULT PrepareLimitedArchiveRead(const CArchiveLink &link, const CCodecs &codecs,

@@ -1,5 +1,6 @@
 #include "7zip/PropID.h"
 #include "archivebackend.h"
+#include "archivereadpolicy.h"
 #include <QPointer>
 
 #include <QDir>
@@ -148,13 +149,37 @@ QMap<QString, QString> ArchiveBackend::parseArchiveHeaderProperties(const QStrin
     return properties;
 }
 
-void ArchiveBackend::finishProcessListing() {
+QString ArchiveBackend::processListingLimitations() const {
+    QString listing = QString::fromUtf8(listingOutput_);
+    listing.replace("\r\n", "\n");
+    listing.replace('\r', '\n');
+    const qsizetype boundary = listing.indexOf("----------\n");
+    if (boundary < 0 || parseListing(listing).isEmpty())
+        return {};
+    const QString header = listing.left(boundary);
+    const QStringList lines = header.split('\n');
+    QString format;
+    for (const QString &line : lines)
+        if (line.startsWith("Type = "))
+            format = line.mid(7).toLower();
+    if (!IsArchiveRecoveryFormat(format))
+        return {};
+    // Console/List prints these diagnostics only after a usable Open_Strict.
+    // Do not recover a crash, cancellation, unknown engine failure or failed open.
+    if (!lines.contains("ERRORS:") && !lines.contains("WARNINGS:") &&
+        !header.contains("\nERROR = ") && !header.contains("\nWARNING = "))
+        return {};
+    return header.mid(header.indexOf("Type = ")).trimmed();
+}
+
+void ArchiveBackend::finishProcessListing(const QString &limitations) {
     QString listing = QString::fromUtf8(listingOutput_);
     listing.replace("\r\n", "\n");
     listing.replace('\r', '\n');
     entries_ = parseListing(listing);
     listed_ = true;
     ArchiveInfo info;
+    info.readLimitations = limitations;
     const QString header = listing.section(QStringLiteral("----------\n"), 0, 0);
     info.properties = parseArchiveHeaderProperties(header);
     for (const QString &line : header.split('\n')) {
@@ -197,7 +222,8 @@ void ArchiveBackend::finishProcessListing() {
     encrypted_ = info.encrypted;
     const QFileInfo listedFile(archive_);
     listedSourceArchives_.insert(archive_, {listedFile.size(), listedFile.lastModified(),
-                                            listedFile.metadataChangeTime(), entries_, encrypted_});
+                                            listedFile.metadataChangeTime(), entries_, encrypted_,
+                                            !limitations.isEmpty(), info.format});
     const auto entries = entries_;
     const QPointer<ArchiveBackend> owner(this);
     emit infoReady(info);

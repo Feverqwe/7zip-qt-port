@@ -61,7 +61,6 @@ std::shared_ptr<QProcess> ArchiveBackend::makeProcess(const QString &executable)
                 job_ = Job::None;
                 sourceExtractSelection_.reset();
                 extractQueue_.clear();
-                extractArguments_.clear();
                 pendingPassword_.clear();
                 createStages_.clear();
                 createPassword_.clear();
@@ -118,7 +117,7 @@ void ArchiveBackend::providePassword(const QString &password) {
     if (!busy())
         return;
     pendingPassword_ = password;
-    if (job_ == Job::ExtractCheck)
+    if (job_ == Job::Extract)
         extractPassword_ = password;
     process_->write(password.toUtf8() + '\n');
 }

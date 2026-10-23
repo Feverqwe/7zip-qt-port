@@ -239,11 +239,13 @@ bool ArchiveBackend::hasListedSourceArchive(const QString &archive) const {
            file.metadataChangeTime() == found->MetadataChanged;
 }
 
-bool ArchiveBackend::restoreListedArchive(const QString &archive) {
+bool ArchiveBackend::restoreListedArchive(const QString &archive, bool allowLimited) {
     if (!hasListedSourceArchive(archive))
         return false;
     const QString path = QFileInfo(archive).absoluteFilePath();
     const ListedSourceSnapshot &snapshot = listedSourceArchives_.constFind(path).value();
+    if (snapshot.LimitedRead && !allowLimited)
+        return false;
     archive_ = path;
     entries_ = snapshot.Entries;
     encrypted_ = snapshot.Encrypted;
@@ -372,12 +374,8 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
         addConflictPass("-aou", renameEntries);
     }
     pendingPassword_ = password;
-    if (encrypted_) {
-        extractArguments_ = arguments;
-        extractPassword_ = password;
-        start(Job::ExtractCheck, {"t", "-bsp1", "-bb1", "--", archive_});
-    } else
-        start(Job::Extract, arguments);
+    extractPassword_ = password;
+    start(Job::Extract, arguments);
 }
 
 void ArchiveBackend::test(const QString &archive, const QString &password) {

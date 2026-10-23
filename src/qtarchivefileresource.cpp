@@ -128,7 +128,9 @@ HRESULT QtArchiveFileResource::GetArchiveProperty(PROPID id, PROPVARIANT *value)
     if (_nativeOpen)
         return _nativeOpen->arc().Archive->GetArchiveProperty(id, value);
     NWindows::NCOM::CPropVariant prop;
-    if (id == kpidPhySize && _physicalSize >= 0)
+    if (id == kpidReadOnly)
+        prop = !_filesystemReadLimitations.isEmpty();
+    else if (id == kpidPhySize && _physicalSize >= 0)
         prop = UInt64(_physicalSize);
     else if (id == kpidOffset)
         prop.Set_Int64(_offset);
@@ -200,6 +202,7 @@ HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc, const CCodecs *codecs) co
     }
     if (_codecs && _codecs->result() == S_OK)
         arc.SetDefaultName(_codecs->nativeCodecs(), _codecs->formatIndex(Info.format));
+    arc.IsReadOnly = !_filesystemReadLimitations.isEmpty();
     // 7zz reports the logical stream across all split parts; source
     // ReadBasicProps compares kpidPhySize with that combined stream size.
     arc.FileSize = UInt64(Info.volumeCount > 1 && Info.totalPhysicalSize >= file.size()

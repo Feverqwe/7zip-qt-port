@@ -3523,6 +3523,15 @@ if(BUILD_TESTING)
     get_target_property(codec_catalog_backend_sources archive_backend_tests SOURCES)
     list(REMOVE_ITEM codec_catalog_backend_sources tests/archive_backend_tests.cpp)
     get_target_property(codec_catalog_backend_libraries archive_backend_tests LINK_LIBRARIES)
+    qt_add_executable(archive_recovery_backend_tests tests/archive_recovery_backend_tests.cpp
+        ${codec_catalog_backend_sources})
+    target_include_directories(archive_recovery_backend_tests PRIVATE src tests)
+    target_compile_definitions(archive_recovery_backend_tests PRIVATE
+        "SEVENZIP_RECOVERY_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_ZSTD_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/zstd_fixture.py\"")
+    target_link_libraries(archive_recovery_backend_tests PRIVATE ${codec_catalog_backend_libraries})
+    add_test(NAME archive_recovery_backend COMMAND archive_recovery_backend_tests -silent)
+    set_tests_properties(archive_recovery_backend PROPERTIES TIMEOUT 45)
     qt_add_executable(archive_workflow_tests tests/archive_workflow_tests.cpp
         ${codec_catalog_backend_sources}
         src/filetransferoperation.cpp src/filetransferoperation.h

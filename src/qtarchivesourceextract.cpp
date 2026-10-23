@@ -42,10 +42,6 @@ HRESULT ExtractItems(ArchiveBackend &backend, const QString &archive, const QStr
         CMyComBSTR value;
         RINOK(crypto->CryptoGetTextPassword(&value))
         password = QString::fromWCharArray(value);
-        // Source GetStream can replace an existing file. Verify the password
-        // before invoking that callback, as the 7zz file transport opens later.
-        RINOK(RunArchiveBackendRequest(
-            backend, [&] { backend.testSourceArchive(archive, password); }, callback, sync))
     }
     UInt32 total;
     RINOK(metadata->GetNumberOfItems(&total))
@@ -103,6 +99,7 @@ HRESULT ExtractItems(ArchiveBackend &backend, const QString &archive, const QStr
         }
         RINOK(callback->PrepareOperation(mode))
         HRESULT result = S_OK;
+        Int32 operation = NArchive::NExtract::NOperationResult::kOK;
         if (directory.boolVal == VARIANT_FALSE) {
             const QString streamPath = staging.filePath(QString::number(n));
             result = RunArchiveBackendRequest(
@@ -113,7 +110,13 @@ HRESULT ExtractItems(ArchiveBackend &backend, const QString &archive, const QStr
                                                    altStream.boolVal != VARIANT_FALSE);
                 },
                 callback, sync);
-            if (result == S_OK && output) {
+            if (result == S_FALSE)
+                operation = backend.lastSourceExtractOperation();
+            if (operation < 0)
+                operation = NArchive::NExtract::NOperationResult::kDataError;
+            if (output &&
+                (result == S_OK || (result == S_FALSE && QFileInfo::exists(streamPath)))) {
+                const HRESULT decoded = result;
                 CMyComPtr2<ISequentialInStream, CInFileStream> input;
                 input.Create_if_Empty();
                 if (!input->Open(us2fs(streamPath.toStdWString().c_str())))
@@ -122,6 +125,9 @@ HRESULT ExtractItems(ArchiveBackend &backend, const QString &archive, const QStr
                     CMyComPtr<ICompressProgressInfo> progress =
                         new CExtractStreamProgress(callback, completed);
                     result = NCompress::CopyStream(input.Interface(), output, progress);
+                    if (result != S_OK)
+                        return result;
+                    result = decoded;
                 }
             }
         }
@@ -131,9 +137,9 @@ HRESULT ExtractItems(ArchiveBackend &backend, const QString &archive, const QStr
         if (result == E_ABORT)
             return E_ABORT;
         const HRESULT reported = callback->SetOperationResult(
-            result == S_OK ? NArchive::NExtract::NOperationResult::kOK
-                           : NArchive::NExtract::NOperationResult::kDataError);
-        if (result != S_OK)
+            result == S_OK || result == S_FALSE ? operation
+                                                : NArchive::NExtract::NOperationResult::kDataError);
+        if (result != S_OK && result != S_FALSE)
             return result;
         RINOK(reported)
         if (size.vt == VT_UI8)

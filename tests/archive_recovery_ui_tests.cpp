@@ -87,22 +87,32 @@ class ArchiveRecoveryUiTests final : public QObject {
         QVERIFY(!backend.validateExtraction(fixture.filePath("output"), {}, {}, &error, true, {},
                                             &reader->arc()));
         QVERIFY(!error.isEmpty());
+        QSignalSpy complete(&backend, &ArchiveBackend::finished);
+        backend.list(path);
+        QTRY_COMPARE(complete.size(), 1);
+        QVERIFY(complete[0][0].toBool());
+        QVERIFY(!backend.validateExtraction(fixture.filePath("process output"), {}, {}, &error));
+        QVERIFY(!error.isEmpty());
     }
     void opensReadablePart_data() {
         QTest::addColumn<QString>("language");
         QTest::addColumn<bool>("accept");
         QTest::addColumn<bool>("batch");
+        QTest::addColumn<bool>("native");
         for (const QString &language : {"en", "ru"})
             for (bool accept : {false, true})
                 for (bool batch : {false, true})
-                    QTest::newRow(qPrintable(language + (accept ? "-accept" : "-cancel") +
-                                             (batch ? "-batch" : "-open")))
-                        << language << accept << batch;
+                    for (bool native : {false, true})
+                        QTest::newRow(qPrintable(language + (accept ? "-accept" : "-cancel") +
+                                                 (batch ? "-batch" : "-open") +
+                                                 (native ? "-native" : "-process")))
+                            << language << accept << batch << native;
     }
     void opensReadablePart() {
         QFETCH(QString, language);
         QFETCH(bool, accept);
         QFETCH(bool, batch);
+        QFETCH(bool, native);
         QtLoadTranslation(language == "en" ? "-" : "ru");
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -136,10 +146,12 @@ class ArchiveRecoveryUiTests final : public QObject {
         QCOMPARE(source.write(bytes), qint64(bytes.size()));
         source.close();
         ArchiveBackend backend(nullptr, engine_);
-        QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
-        QVERIFY(backend.discoverCodecCatalog(module_));
-        QTRY_COMPARE(ready.size(), 1);
-        QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
+        if (native) {
+            QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
+            QVERIFY(backend.discoverCodecCatalog(module_));
+            QTRY_COMPARE(ready.size(), 1);
+            QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
+        }
         MainWindow window(&backend);
         window.openPath(fixture.path());
         window.show();
@@ -162,7 +174,9 @@ class ArchiveRecoveryUiTests final : public QObject {
                                 geometry &= UiInspection::fullyVisible(*label, *box) &&
                                             UiInspection::labelFits(*label);
                         box->setProperty("uiInspection_language", language);
-                        geometry &= UiInspection::writeReport(*box, "archive-recovery-" + language);
+                        geometry &=
+                            UiInspection::writeReport(*box, "archive-recovery-" + language +
+                                                                (native ? "-native" : "-process"));
                         if (accept)
                             box->findChild<QPushButton *>("archiveOpenReadOnlyButton")->click();
                         else
@@ -249,7 +263,9 @@ class ArchiveRecoveryUiTests final : public QObject {
                                                                   QString::number(size.width())));
                 }
                 const QString output = fixture.filePath("copied");
+                copyingBroken = !native; // The process reports the archive's header error too.
                 window.extractTo(output, true);
+                copyingBroken = false;
                 QFile copied(output + '/' + healthyName);
                 QVERIFY(copied.open(QIODevice::ReadOnly));
                 QCOMPARE(copied.readAll(), healthy);
@@ -258,6 +274,9 @@ class ArchiveRecoveryUiTests final : public QObject {
                 window.extractTo(output, true);
                 copyingBroken = false;
                 QVERIFY(extractionErrors > 0);
+                QFile unverified(output + '/' + brokenName);
+                QVERIFY(unverified.open(QIODevice::ReadOnly));
+                QCOMPARE(unverified.readAll(), QByteArray("!") + broken.mid(1));
                 const QString allOutput = fixture.filePath("all copied");
                 copyingBroken = true;
                 const int previousErrors = extractionErrors;
@@ -268,6 +287,7 @@ class ArchiveRecoveryUiTests final : public QObject {
                 QVERIFY(allHealthy.open(QIODevice::ReadOnly));
                 QCOMPARE(allHealthy.readAll(), healthy);
                 QVERIFY(badge->isVisible());
+                QCOMPARE(questions, 1);
                 window.openPath(fixture.path());
                 window.openArchive(path);
                 QCOMPARE(questions, 2);

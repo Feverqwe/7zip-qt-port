@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/FileManager/OpenCallback.h"
 #include "Common/ComTry.h"
 #include "Windows/PropVariant.h"
+#include "archivereadpolicy.h"
 #include "qtcallbackdialogs.h"
 #include "qtdiagnostictext.h"
 #include <QCoreApplication>
@@ -87,9 +88,7 @@ HRESULT PrepareLimitedArchiveRead(const CArchiveLink &link, const CCodecs &codec
         if (arc.FormatIndex < 0)
             continue;
         const QString format = QString::fromWCharArray(codecs.GetFormatNamePtr(arc.FormatIndex));
-        if (!QStringList{"7z", "zip", "rar", "rar5", "tar", "gzip", "bzip2", "xz", "zstd"}.contains(
-                format.toLower()) ||
-            !arc.ErrorInfo.IsThereErrorOrWarning())
+        if (!IsArchiveRecoveryFormat(format) || !arc.ErrorInfo.IsThereErrorOrWarning())
             continue;
         archiveWarning = true;
         nativeMetadata = true;
@@ -107,9 +106,20 @@ HRESULT PrepareLimitedArchiveRead(const CArchiveLink &link, const CCodecs &codec
     if (!dialog || !callback || limitations.isEmpty() || limitations == accepted)
         return S_OK;
     RINOK(callback->Open_CheckBreak())
+    if (archiveWarning)
+        return ConfirmLimitedArchiveRead(dialog, callback, accepted, limitations);
     RINOK(RunCallbackDialog(*dialog, [&] {
-        if (!archiveWarning)
-            return ConfirmLimitedFilesystemRead(dialog, limitations) ? S_OK : E_ABORT;
+        return ConfirmLimitedFilesystemRead(dialog, limitations) ? S_OK : E_ABORT;
+    }))
+    return callback->Open_CheckBreak();
+}
+
+HRESULT ConfirmLimitedArchiveRead(CProgressDialog *dialog, IOpenCallbackUI *callback,
+                                  const QString &accepted, const QString &limitations) {
+    if (!dialog || !callback || limitations.isEmpty() || limitations == accepted)
+        return S_OK;
+    RINOK(callback->Open_CheckBreak())
+    RINOK(RunCallbackDialog(*dialog, [&] {
         QMessageBox warning(
             QMessageBox::Warning,
             QCoreApplication::translate("qtfilesystemreadprompt", "Open archive with limitations?"),

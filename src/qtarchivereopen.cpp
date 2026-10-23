@@ -164,9 +164,12 @@ void QtArchiveFileResource::AttachReopenService(ArchiveBackend &backend, const Q
             backend,
             [&backend, path, format, password] { backend.openFolder(path, format, password); },
             callback, _sync))
+        RINOK(ConfirmLimitedArchiveRead(ui ? &ui->ProgressDialog : nullptr, ui,
+                                        FilesystemReadLimitations(), request->Info.readLimitations))
         RINOK(CreateArchiveMetadata(request->Entries, metadata))
         Info = request->Info;
-        SetFilesystemReadLimitations(limitations);
+        SetFilesystemReadLimitations(
+            request->Info.readLimitations.isEmpty() ? limitations : request->Info.readLimitations);
         AttachNativeOpen(std::move(nativeOpen));
         SetArchiveMetadata(request->Info.physicalSize, request->Info.offset);
         return S_OK;

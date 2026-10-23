@@ -168,7 +168,8 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
     if (!resource || !resource->HasExtractService() || !sourceAvailable)
         return false;
     const bool scoped = onlySelected || !archiveFolder_.isEmpty() || resource->HasDirectInput() ||
-                        resource->UsesNativeMetadata();
+                        resource->UsesNativeMetadata() ||
+                        !resource->FilesystemReadLimitations().isEmpty();
     CRecordVector<UInt32> indices;
     QStringList validationNames = names;
     if (scoped) {
@@ -214,7 +215,7 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
             return true;
         }
         if (!onlySelected && archiveFolder_.isEmpty() && !resource->HasDirectInput() &&
-            !resource->UsesNativeMetadata()) {
+            !resource->UsesNativeMetadata() && resource->FilesystemReadLimitations().isEmpty()) {
             previousState_ = state_;
             setState(State::Operating);
             operationName_ = QtLangText(IDS_PROGRESS_EXTRACTING);

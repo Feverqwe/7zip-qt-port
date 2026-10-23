@@ -34,7 +34,7 @@ void ArchiveBackend::add(const QString &archive, const QStringList &sources) {
         return;
     }
     lastResult_ = E_FAIL;
-    if (!restoreListedArchive(archive)) {
+    if (!restoreListedArchive(archive, false)) {
         emit finished(
             false, QCoreApplication::translate("archivebackend_mutations",
                                                "Open the archive and inspect its contents first."));
@@ -160,8 +160,8 @@ bool ArchiveBackend::prepareMutation(const QString &archive) {
     }
     const QFileInfo target(archive);
     const QString suffix = target.suffix().toLower();
-    if (!restoreListedArchive(archive) || !target.isFile() || target.isSymLink() || encrypted_ ||
-        (suffix != "7z" && suffix != "zip")) {
+    if (!restoreListedArchive(archive, false) || !target.isFile() || target.isSymLink() ||
+        encrypted_ || (suffix != "7z" && suffix != "zip")) {
         emit finished(false,
                       QCoreApplication::translate("archivebackend_mutations",
                                                   "Open an unencrypted .7z or .zip archive."));
@@ -184,7 +184,7 @@ void ArchiveBackend::remove(const QString &archive, const QStringList &paths) {
         return;
     }
     lastResult_ = E_FAIL;
-    if (!restoreListedArchive(archive)) {
+    if (!restoreListedArchive(archive, false)) {
         emit finished(
             false, QCoreApplication::translate("archivebackend_mutations",
                                                "Open the archive and inspect its contents first."));
@@ -220,7 +220,7 @@ void ArchiveBackend::renameEntry(const QString &archive, const QString &oldName,
     lastResult_ = E_FAIL;
     const QString oldPath = mutationPath(oldName);
     const QString newPath = mutationPath(newName);
-    if (!restoreListedArchive(archive)) {
+    if (!restoreListedArchive(archive, false)) {
         emit finished(
             false, QCoreApplication::translate("archivebackend_mutations",
                                                "Open the archive and inspect its contents first."));
@@ -296,7 +296,7 @@ void ArchiveBackend::replaceEntry(const QString &archive, const QString &entry,
         return;
     }
     lastResult_ = E_FAIL;
-    if (!restoreListedArchive(archive)) {
+    if (!restoreListedArchive(archive, false)) {
         emit finished(
             false, QCoreApplication::translate("archivebackend_mutations",
                                                "Open the archive and inspect its contents first."));
