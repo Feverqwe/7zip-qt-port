@@ -80,6 +80,9 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/
     DESTINATION "${notices_destination}/sevenzip-cramfs")
 install(TARGETS sevenzip_brotli LIBRARY DESTINATION "${runtime_destination}/Formats")
 install(TARGETS sevenzip_lz4_frame LIBRARY DESTINATION "${runtime_destination}/Formats")
+install(TARGETS sevenzip_lzip LIBRARY DESTINATION "${runtime_destination}/Formats")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lzlib/COPYING"
+    DESTINATION "${notices_destination}/lzlib")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lz4/lib/LICENSE"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/brotli/7zip-zstd-LICENSE.txt"

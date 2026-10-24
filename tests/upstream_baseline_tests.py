@@ -128,6 +128,27 @@ class UpstreamBaselineTests(unittest.TestCase):
             baseline.review_reference(self.reference_manifest(), self.upstream, self.old,
                                       ["unreviewed/file.h"], self.port)
 
+    def test_reference_review_compares_binary_fixture_without_modifying_it(self):
+        fixture = self.upstream / "fixture.lz"
+        original = b"LZIP\0\xff\xa2"
+        fixture.write_bytes(original)
+        git(self.upstream, "add", ".")
+        git(self.upstream, "commit", "-qm", "binary baseline")
+        revision = git(self.upstream, "rev-parse", "HEAD")
+        local = self.port / "fixture.lz"
+        local.write_bytes(original)
+        data = {"repository": "https://example.invalid/source.git", "revision": revision,
+                "files": {"fixture.lz": hashlib.sha256(original).hexdigest()},
+                "adapted": {"fixture.lz": "fixture.lz"}}
+        report = baseline.review_reference(data, self.upstream, revision, [], self.port)
+        self.assertIn("Identical bytes.", report)
+        changed = b"LZIP\0\xff\xa3"
+        local.write_bytes(changed)
+        report = baseline.review_reference(data, self.upstream, revision, [], self.port)
+        self.assertIn("Local bytes differ.", report)
+        self.assertIn(hashlib.sha256(changed).hexdigest(), report)
+        self.assertEqual(local.read_bytes(), changed)
+
     def test_review_reports_adapted_and_exact_changes(self):
         (self.upstream / self.source).write_text("upstream revised source\n")
         (self.upstream / "CPP/Windows/Net.cpp").write_text("upstream revised vendor\n")
