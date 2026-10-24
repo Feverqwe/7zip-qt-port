@@ -119,8 +119,13 @@ original native writers and update callbacks; no console transport is retained.
 
 The File Manager's Test, Extract, Add and checksum commands for ordinary filesystem inputs
 launch the bundled `7zG`. The child owns native discovery, source GUI dispatch, dialogs and
-execution; the manager remains available. A versioned local request/ACK/result
-channel carries literal selections, typed options and outcomes. Before extraction
+execution; the manager remains available. A generated Qt Remote Objects interface
+over a private, current-user local channel carries literal selections, typed
+options and outcomes. Both processes use the same build's interface signature.
+The child copies and validates the complete request before explicitly acknowledging
+acceptance. Native process launch/observation, startup deadlines and independent
+child lifetime remain application responsibilities. Completion waits briefly for
+the observer to acknowledge the result before the child exits. Before extraction
 starts, the child reports the actual output paths after any source dialog edits.
 The observer retains that metadata through partial results or a crash. Native
 process observation

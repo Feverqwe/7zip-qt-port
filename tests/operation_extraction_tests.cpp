@@ -19,26 +19,31 @@ namespace {
 using namespace SourceExtractFixture;
 using Outcome = QtOperationResult::Outcome;
 using Environment = ScopedTestEnvironment;
-QtOperationResult Run(const QString &program, const QtOperationMessage &job) {
+QtOperationResult Run(const QString &program, const QtOperationJob &job) {
     QtOperationLauncher launcher;
     QEventLoop wait;
     QtOperationResult result{Outcome::ProtocolFailed, 2, "Fixture operation did not finish."};
+    bool timedOut = false;
     QObject::connect(&launcher, &QtOperationLauncher::finished, &wait,
                      [&](const QtOperationResult &value) {
-                         result = value;
+                         if (!timedOut)
+                             result = value;
                          wait.quit();
                      });
     QString error;
     if (!launcher.start(program, job, error))
         return {Outcome::LaunchFailed, 2, error};
-    QTimer::singleShot(20000, &wait, &QEventLoop::quit);
+    QTimer::singleShot(20000, &wait, [&] {
+        timedOut = true;
+        KillOperationProbe(launcher.processId());
+        QTimer::singleShot(2000, &wait, &QEventLoop::quit);
+    });
     wait.exec();
     return result;
 }
-QtOperationMessage Extract(const QString &archive, const QString &output) {
-    QtOperationMessage job;
-    job.Type = QtOperationMessage::Kind::Job;
-    job.Operation = QtOperationMessage::Command::Extract;
+QtOperationJob Extract(const QString &archive, const QString &output) {
+    QtOperationJob job;
+    job.Operation = QtOperationJob::Command::Extract;
     job.Paths = {archive};
     job.Destination = output;
     job.ShowDialog = false;
@@ -106,7 +111,10 @@ class OperationExtractionTests final : public QObject {
         auto job = Extract(archive, initial);
         job.ShowDialog = true;
         const auto result = Run(QStringLiteral(SEVENZIP_OPERATION_HOST), job);
-        QCOMPARE(result.Status, cancel ? Outcome::Cancelled : Outcome::Success);
+        QVERIFY2(
+            result.Status == (cancel ? Outcome::Cancelled : Outcome::Success),
+            qPrintable(
+                QString("Operation outcome %1: %2").arg(int(result.Status)).arg(result.Error)));
         QVERIFY(!QFileInfo::exists(initial));
         if (cancel) {
             QVERIFY(!QFileInfo::exists(actual));
@@ -139,7 +147,10 @@ class OperationExtractionTests final : public QObject {
         auto job = Extract(archive, output);
         job.YesToAll = false;
         const auto result = Run(QStringLiteral(SEVENZIP_OPERATION_HOST), job);
-        QCOMPARE(result.Status, cancel ? Outcome::Cancelled : Outcome::Success);
+        QVERIFY2(
+            result.Status == (cancel ? Outcome::Cancelled : Outcome::Success),
+            qPrintable(
+                QString("Operation outcome %1: %2").arg(int(result.Status)).arg(result.Error)));
         QCOMPARE(readFile(QDir(output).filePath(kName)),
                  replace ? QByteArray("incoming bytes") : QByteArray("retained bytes"));
         QCOMPARE(Roots(result), QStringList{QFileInfo(output).canonicalFilePath()});

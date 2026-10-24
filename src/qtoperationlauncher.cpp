@@ -1,59 +1,114 @@
 #include "qtoperationlauncher.h"
 #include "qtoperationprocess.h"
+#include "rep_operation_merged.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QLocalServer>
-#include <QLocalSocket>
-#include <QPointer>
+#include <QRemoteObjectHost>
 #include <QTemporaryDir>
 #include <QThread>
 #include <QTimer>
 #include <QUuid>
+#include <functional>
 #include <optional>
+
+namespace {
+class OperationChannel final : public OperationSource {
+  public:
+    OperationRequest Request;
+    std::function<void()> Accept;
+    std::function<void(const QString &)> Reject;
+    std::function<void(const QStringList &, const QStringList &)> Outputs;
+    std::function<bool(const OperationReport &)> Complete;
+    OperationRequest request() const override { return Request; }
+    void accept() override { Accept(); }
+    void reject(QString error) override { Reject(error); }
+    void outputs(QStringList directories, QStringList archives) override {
+        Outputs(directories, archives);
+    }
+    bool complete(OperationReport report) override { return Complete(report); }
+};
+} // namespace
 
 struct QtOperationLauncher::State {
     QtOperationProcess process_;
     std::unique_ptr<QTemporaryDir> directory_;
-    QLocalServer server_;
-    QPointer<QLocalSocket> socket_;
-    QtOperationMessageReader reader_;
-    QByteArray job_;
+    OperationChannel channel_;
+    QRemoteObjectHost host_;
     QTimer poll_, startup_;
     QElapsedTimer exited_;
     std::optional<QtOperationResult> result_;
     QStringList changedDirectories_;
     QStringList changedArchives_;
-    bool sent_ = false;
+    bool started_ = false;
     bool accepted_ = false;
+    bool acceptancePending_ = false;
     bool terminal_ = false;
 };
 
 QtOperationLauncher::QtOperationLauncher(QObject *parent)
     : QObject(parent), state_(std::make_unique<State>()) {
-    state_->server_.setSocketOptions(QLocalServer::UserAccessOption);
     state_->startup_.setSingleShot(true);
     state_->poll_.setInterval(25);
-    connect(&state_->server_, &QLocalServer::newConnection, this,
-            &QtOperationLauncher::acceptConnection);
+    state_->channel_.Accept = [this] {
+        if (state_->accepted_ || state_->result_ || state_->terminal_) {
+            protocolFailure(QCoreApplication::translate("QtOperation",
+                                                        "Unexpected operation protocol message."));
+            return;
+        }
+        state_->accepted_ = true;
+        state_->acceptancePending_ = true;
+        state_->startup_.stop();
+        // The child has copied and validated the request before this call.
+        // A receiver may delete the observer. Leave QtRO's dispatch stack
+        // before exposing that callback, so its connection stays alive there.
+        QMetaObject::invokeMethod(
+            this,
+            [this] {
+                state_->acceptancePending_ = false;
+                emit accepted();
+            },
+            Qt::QueuedConnection);
+    };
+    state_->channel_.Reject = [this](const QString &error) {
+        protocolFailure(error);
+        state_->startup_.stop();
+    };
+    state_->channel_.Outputs = [this](const QStringList &directories, const QStringList &archives) {
+        if (!state_->accepted_ || state_->result_ || state_->terminal_ || directories.isEmpty() ||
+            !ValidateOperationOutputs(directories, archives)) {
+            protocolFailure(QCoreApplication::translate("QtOperation",
+                                                        "Unexpected operation protocol message."));
+            return;
+        }
+        for (const auto &directory : directories)
+            if (!state_->changedDirectories_.contains(directory))
+                state_->changedDirectories_.append(directory);
+        for (const auto &archive : archives)
+            if (!state_->changedArchives_.contains(archive))
+                state_->changedArchives_.append(archive);
+    };
+    state_->channel_.Complete = [this](const OperationReport &report) {
+        QtOperationResult result;
+        if (!state_->accepted_ || state_->result_ || state_->terminal_ ||
+            !OperationResultFromReport(report, result)) {
+            protocolFailure(QCoreApplication::translate("QtOperation",
+                                                        "Unexpected operation protocol message."));
+            return false;
+        }
+        state_->result_ = result;
+        return true;
+    };
     connect(&state_->poll_, &QTimer::timeout, this, &QtOperationLauncher::observe);
     connect(&state_->startup_, &QTimer::timeout, this, [this] {
         protocolFailure(QCoreApplication::translate(
             "QtOperation", "Operation startup acknowledgement was not received."));
-        // No child termination: a request may already have been accepted even
-        // if its acknowledgement could not reach this observer.
-        if (state_->socket_)
-            state_->socket_->disconnectFromServer();
-        state_->server_.close();
+        // A lost acknowledgement does not authorize terminating independent work.
+        state_->host_.disableRemoting(&state_->channel_);
     });
 }
-QtOperationLauncher::~QtOperationLauncher() {
-    if (state_->socket_) {
-        disconnect(state_->socket_, nullptr, this, nullptr);
-        state_->socket_->setParent(nullptr);
-        state_->socket_->deleteLater();
-    }
-}
+QtOperationLauncher::~QtOperationLauncher() = default;
 
 QString QtOperationLauncher::GuiProgram() {
     return QDir(QCoreApplication::applicationDirPath())
@@ -68,8 +123,8 @@ QString QtOperationLauncher::GuiProgram() {
 
 quint64 QtOperationLauncher::processId() const { return state_->process_.processId(); }
 
-QtOperationLauncher *QtOperationLauncher::Launch(const QString &program,
-                                                 const QtOperationMessage &job, QString &error) {
+QtOperationLauncher *QtOperationLauncher::Launch(const QString &program, const QtOperationJob &job,
+                                                 QString &error) {
     auto *application = QCoreApplication::instance();
     if (!application || QThread::currentThread() != application->thread()) {
         error = QCoreApplication::translate("QtOperation",
@@ -84,19 +139,15 @@ QtOperationLauncher *QtOperationLauncher::Launch(const QString &program,
     return operation.release();
 }
 
-bool QtOperationLauncher::start(const QString &program, const QtOperationMessage &job,
-                                QString &error) {
-    if (state_->poll_.isActive() || state_->terminal_) {
+bool QtOperationLauncher::start(const QString &program, const QtOperationJob &job, QString &error) {
+    if (state_->started_ || state_->terminal_) {
         error =
             QCoreApplication::translate("QtOperation", "An operation observer cannot be reused.");
         return false;
     }
-    if (job.Type != QtOperationMessage::Kind::Job) {
-        error = QCoreApplication::translate("QtOperation", "Expected an operation job.");
+    if (!ValidateOperationJob(job, error))
         return false;
-    }
-    if (!EncodeOperationMessage(job, state_->job_, error))
-        return false;
+    state_->channel_.Request = OperationRequestFromJob(job);
     QString channel;
 #ifdef Q_OS_WIN
     channel = QStringLiteral("sevenzip-") + QUuid::createUuid().toString(QUuid::Id128);
@@ -111,41 +162,20 @@ bool QtOperationLauncher::start(const QString &program, const QtOperationMessage
     }
     channel = state_->directory_->filePath(QStringLiteral("operation"));
 #endif
-    if (!state_->server_.listen(channel)) {
-        error = state_->server_.errorString();
+    QRemoteObjectHost::setLocalServerOptions(QLocalServer::UserAccessOption);
+    if (!state_->host_.setHostUrl(QUrl(QStringLiteral("local:") + channel)) ||
+        !state_->host_.enableRemoting<OperationSourceAPI>(&state_->channel_)) {
+        error = QCoreApplication::translate("QtOperation", "Could not transfer the operation job.");
         return false;
     }
     if (!state_->process_.start(program, channel, error)) {
-        state_->server_.close();
+        state_->host_.disableRemoting(&state_->channel_);
         return false;
     }
+    state_->started_ = true;
     state_->startup_.start(10000);
     state_->poll_.start();
     return true;
-}
-
-void QtOperationLauncher::acceptConnection() {
-    const QPointer<QtOperationLauncher> owner(this);
-    while (state_->server_.hasPendingConnections()) {
-        QLocalSocket *socket = state_->server_.nextPendingConnection();
-        if (state_->socket_) {
-            socket->abort();
-            socket->deleteLater();
-            continue;
-        }
-        state_->socket_ = socket;
-        socket->setParent(this);
-        socket->setReadBufferSize(64 * 1024 * 1024 + 4);
-        connect(socket, &QLocalSocket::readyRead, this, &QtOperationLauncher::readMessages);
-        connect(socket, &QLocalSocket::disconnected, this, [this] {
-            // EOF is not cancellation or proof of a crash. Drain buffered
-            // messages and continue observing the actual native process.
-            readMessages();
-        });
-        readMessages();
-        if (!owner)
-            return;
-    }
 }
 
 void QtOperationLauncher::protocolFailure(const QString &error) {
@@ -153,75 +183,19 @@ void QtOperationLauncher::protocolFailure(const QString &error) {
         state_->result_ = QtOperationResult{QtOperationResult::Outcome::ProtocolFailed, 2, error};
 }
 
-void QtOperationLauncher::readMessages() {
-    if (!state_->socket_ || state_->terminal_)
-        return;
-    for (;;) {
-        QtOperationMessage message;
-        QString error;
-        const auto state = state_->reader_.read(*state_->socket_, message, error);
-        if (state == QtOperationMessageReader::State::Pending)
-            return;
-        if (state == QtOperationMessageReader::State::Error) {
-            protocolFailure(error);
-            return;
-        }
-        if (message.Type == QtOperationMessage::Kind::Ready && !state_->sent_ && !state_->result_) {
-            state_->sent_ = true;
-            if (state_->socket_->write(state_->job_) != state_->job_.size())
-                protocolFailure(QCoreApplication::translate(
-                    "QtOperation", "Could not transfer the operation job."));
-            state_->socket_->flush();
-            state_->job_.clear();
-        } else if (message.Type == QtOperationMessage::Kind::Accepted && state_->sent_ &&
-                   !state_->accepted_ && !state_->result_) {
-            state_->accepted_ = true;
-            state_->startup_.stop();
-            emit accepted();
-            // A receiver may close the observer. It must not kill the child.
-            return;
-        } else if (message.Type == QtOperationMessage::Kind::Outputs && state_->accepted_ &&
-                   !state_->result_) {
-            for (const auto &directory : message.Result.ChangedDirectories)
-                if (!state_->changedDirectories_.contains(directory))
-                    state_->changedDirectories_.append(directory);
-            for (const auto &archive : message.Result.ChangedArchives)
-                if (!state_->changedArchives_.contains(archive))
-                    state_->changedArchives_.append(archive);
-        } else if (message.Type == QtOperationMessage::Kind::Result && state_->accepted_ &&
-                   !state_->result_)
-            state_->result_ = message.Result;
-        else if (message.Type == QtOperationMessage::Kind::Rejected && !state_->accepted_ &&
-                 !state_->result_) {
-            state_->result_ = message.Result;
-            state_->startup_.stop();
-        } else {
-            protocolFailure(QCoreApplication::translate("QtOperation",
-                                                        "Unexpected operation protocol message."));
-            return;
-        }
-    }
-}
-
 void QtOperationLauncher::observe() {
-    if (state_->terminal_)
-        return;
-    const QPointer<QtOperationLauncher> owner(this);
-    acceptConnection();
-    if (!owner)
-        return;
-    readMessages();
-    if (!owner)
+    if (state_->terminal_ || state_->acceptancePending_)
         return;
     const auto native = state_->process_.poll();
     if (native.Status == QtOperationProcess::State::Running)
         return;
-    // A native exit can precede the socket's queued final read/EOF. Drain
-    // announced output roots before publishing even a crash result.
+    // Allow queued Remote Objects calls to arrive after native exit. The child
+    // normally waits for complete()'s reply, so a result is already captured.
     if (!state_->exited_.isValid())
         state_->exited_.start();
-    if (state_->socket_ && state_->socket_->state() == QLocalSocket::ConnectedState &&
-        state_->exited_.elapsed() < 1000)
+    // A crash can precede delivery of output notifications already queued by
+    // the child. Retain the bounded drain window even without a final report.
+    if (!state_->result_ && state_->exited_.elapsed() < 1000)
         return;
     using Outcome = QtOperationResult::Outcome;
     if (native.Status == QtOperationProcess::State::Crashed) {
@@ -261,8 +235,6 @@ void QtOperationLauncher::finish(QtOperationResult result) {
             result.ChangedArchives.append(archive);
     state_->poll_.stop();
     state_->startup_.stop();
-    state_->server_.close();
-    if (state_->socket_)
-        state_->socket_->disconnectFromServer();
+    state_->host_.disableRemoting(&state_->channel_);
     emit finished(result);
 }

@@ -52,8 +52,8 @@ void DriveOperationDialogs() {
             auto *dialog = qobject_cast<QDialog *>(widget);
             auto *stop = widget->findChild<QPushButton *>("IDB_STOP");
             auto *text = widget->findChild<QPlainTextEdit *>("IDE_BENCH2_EDIT");
-            const bool cancel =
-                qEnvironmentVariable("SEVENZIP_OPERATION_BENCHMARK_PROFILE") == "cancel";
+            const auto profile = qEnvironmentVariable("SEVENZIP_OPERATION_BENCHMARK_PROFILE");
+            const bool cancel = profile == "cancel" || profile == "normal-cancel";
             const bool finished =
                 stop ? !stop->isEnabled()
                      : text && text->toPlainText().contains(

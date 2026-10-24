@@ -205,7 +205,7 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
         action(window, "hashSHA256Action")->trigger();
         QCOMPARE(backend.GuiRequests.size(), 1);
         const auto &hash = backend.GuiRequests.first();
-        QCOMPARE(hash.Operation, QtOperationMessage::Command::Hash);
+        QCOMPARE(hash.Operation, QtOperationJob::Command::Hash);
         QCOMPARE(hash.HashMethod, QString("SHA256"));
         QStringList sources;
         for (const auto &path : hash.Paths)

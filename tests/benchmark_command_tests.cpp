@@ -18,9 +18,8 @@ class BenchmarkBackend final : public ArchiveBackend {
     using ArchiveBackend::ArchiveBackend;
     QtOperationLauncher *startGuiBenchmark(bool total, QString &error) override {
         ++Requests;
-        QtOperationMessage job;
-        job.Type = QtOperationMessage::Kind::Job;
-        job.Operation = QtOperationMessage::Command::Benchmark;
+        QtOperationJob job;
+        job.Operation = QtOperationJob::Command::Benchmark;
         job.TotalMode = total;
         ScopedTestEnvironment barrier("SEVENZIP_OPERATION_BARRIER", Barrier);
         auto *operation =

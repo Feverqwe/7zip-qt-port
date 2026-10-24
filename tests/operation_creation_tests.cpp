@@ -21,11 +21,10 @@ namespace {
 using namespace SourceExtractFixture;
 using Outcome = QtOperationResult::Outcome;
 using Environment = ScopedTestEnvironment;
-QtOperationMessage Compress(const QString &archive, const QStringList &paths,
-                            const QString &format = "zip") {
-    QtOperationMessage job;
-    job.Type = QtOperationMessage::Kind::Job;
-    job.Operation = QtOperationMessage::Command::Compress;
+QtOperationJob Compress(const QString &archive, const QStringList &paths,
+                        const QString &format = "zip") {
+    QtOperationJob job;
+    job.Operation = QtOperationJob::Command::Compress;
     job.Paths = paths;
     job.ArchivePath = archive;
     job.ArchiveType = format;
@@ -33,7 +32,7 @@ QtOperationMessage Compress(const QString &archive, const QStringList &paths,
     job.ShowDialog = false;
     return job;
 }
-QtOperationResult Run(const QString &program, const QtOperationMessage &job) {
+QtOperationResult Run(const QString &program, const QtOperationJob &job) {
     QtOperationLauncher launcher;
     QEventLoop wait;
     QtOperationResult result{Outcome::ProtocolFailed, 2, "Fixture operation did not finish."};
@@ -54,10 +53,9 @@ QtOperationResult Run(const QString &program, const QtOperationMessage &job) {
     wait.exec();
     return result;
 }
-QtOperationMessage Extract(const QString &archive, const QString &output) {
-    QtOperationMessage job;
-    job.Type = QtOperationMessage::Kind::Job;
-    job.Operation = QtOperationMessage::Command::Extract;
+QtOperationJob Extract(const QString &archive, const QString &output) {
+    QtOperationJob job;
+    job.Operation = QtOperationJob::Command::Extract;
     job.Paths = {archive};
     job.Destination = output;
     job.ShowDialog = false;

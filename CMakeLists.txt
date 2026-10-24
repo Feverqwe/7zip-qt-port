@@ -24,7 +24,7 @@ include_directories(src/CPP src/CPP/Common src/CPP/Windows src/CPP/7zip/Common s
 set_source_files_properties(src/CPP/7zip/Common/LimitedStreams.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Common")
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools Network)
+find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools Network RemoteObjects)
 find_package(Threads REQUIRED)
 include(cmake/Zstd.cmake)
 include(cmake/Exfat.cmake)
@@ -516,9 +516,10 @@ if(WIN32)
     target_link_libraries(sevenzip_filesystem PUBLIC mpr)
 endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
-target_include_directories(sevenzip_filesystem PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+qt_add_repc_merged(sevenzip_filesystem src/operation.rep)
+target_include_directories(sevenzip_filesystem PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
-target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core Qt6::Network sevenzip_common sevenzip_zip sevenzip_progress_sync)
+target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core Qt6::Network Qt6::RemoteObjects sevenzip_common sevenzip_zip sevenzip_progress_sync)
 target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_system_icons sevenzip_name_sort)
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/docs/upstream-baseline.json" sfx_baseline_json)
 string(JSON sfx_upstream_revision GET "${sfx_baseline_json}" revision)
@@ -3264,8 +3265,13 @@ if(BUILD_TESTING)
     target_compile_definitions(drag_drop_add_ui_tests PRIVATE
         "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
     add_dependencies(drag_drop_add_ui_tests operation_host)
-    add_test(NAME drag_drop_add_ui COMMAND drag_drop_add_ui_tests -silent)
-    set_tests_properties(drag_drop_add_ui PROPERTIES TIMEOUT 60 ENVIRONMENT
+    add_test(NAME drag_drop_add_ui COMMAND drag_drop_add_ui_tests
+        externalArchiveDrop externalFilesystemDropCreatesArchiveWithNativeName
+        launchFailureReleasesTemporarySource -silent)
+    add_test(NAME drag_drop_add_independent COMMAND drag_drop_add_ui_tests independentCompletion -silent)
+    add_test(NAME drag_drop_add_temporary COMMAND drag_drop_add_ui_tests temporarySourceLifetime -silent)
+    set_tests_properties(drag_drop_add_ui drag_drop_add_independent drag_drop_add_temporary PROPERTIES
+        TIMEOUT 60 RESOURCE_LOCK sevenzip_native_ui ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/drag_drop_add_ui.ini")
 endif()
 
@@ -3610,8 +3616,12 @@ if(BUILD_TESTING)
         target_compile_definitions(toolbar_archive_workflow_tests PRIVATE
             "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
         add_dependencies(toolbar_archive_workflow_tests operation_host)
-        add_test(NAME toolbar_archive_workflow COMMAND toolbar_archive_workflow_tests -silent)
-        set_tests_properties(toolbar_archive_workflow PROPERTIES TIMEOUT 120
+        add_test(NAME toolbar_archive_workflow COMMAND toolbar_archive_workflow_tests
+            repeatedArchiveTesting filesystemToolbarFailureRestoresSource archiveToolbarUsesSourceCopyTo
+            filesystemShellCommandsUseIndependentOperations extractionRefreshUsesCurrentLocation -silent)
+        add_test(NAME toolbar_archive_batch COMMAND toolbar_archive_workflow_tests
+            filesystemToolbarUsesSourceBatch -silent)
+        set_tests_properties(toolbar_archive_workflow toolbar_archive_batch PROPERTIES TIMEOUT 120
             RESOURCE_LOCK "sevenzip_native_ui;sevenzip_ui_artifacts" ENVIRONMENT
             "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/toolbar-archive-workflow.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
         qt_add_executable(toolbar_creation_workflow_tests tests/toolbar_creation_workflow_tests.cpp
@@ -4611,6 +4621,10 @@ foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
     set(sevenzip_test_target ${sevenzip_test}_tests)
     if(sevenzip_test STREQUAL "bookmarks")
         set(sevenzip_test_target bookmark_tests)
+    elseif(sevenzip_test MATCHES "^drag_drop_add_(independent|temporary)$")
+        set(sevenzip_test_target drag_drop_add_ui_tests)
+    elseif(sevenzip_test STREQUAL "toolbar_archive_batch")
+        set(sevenzip_test_target toolbar_archive_workflow_tests)
     elseif(sevenzip_test STREQUAL "interarchive_recovery_native")
         set(sevenzip_test_target interarchive_recovery_tests)
     elseif(sevenzip_test MATCHES "^native_rename_(2|301)$")
@@ -4694,7 +4708,9 @@ endif()
 # metrics do not describe the application's controls. Compare these dialog and
 # consumer tests using the same platform/fonts/style as the Windows application.
 if(BUILD_TESTING AND WIN32)
-    foreach(sevenzip_toolbar_test IN ITEMS toolbar_archive_workflow toolbar_creation_workflow manager_hash_workflow)
+    foreach(sevenzip_toolbar_test IN ITEMS toolbar_archive_workflow toolbar_archive_batch
+            toolbar_creation_workflow manager_hash_workflow operation_launcher operation_extraction
+            operation_creation operation_hash operation_benchmark)
       if(TEST ${sevenzip_toolbar_test})
         get_property(sevenzip_toolbar_environment TEST ${sevenzip_toolbar_test} PROPERTY ENVIRONMENT)
         list(FILTER sevenzip_toolbar_environment EXCLUDE REGEX "^QT_QPA_PLATFORM=")
@@ -4711,7 +4727,7 @@ if(BUILD_TESTING AND WIN32)
             codec_commands_ui codec_creation_ui ui_geometry dialog_size
             options_dialog options_integration options_keyboard options_window appearance_settings system_page menu_page help_source help_ui temp_cleanup context_dialog
             filesystem_selection_runtime ui_operations ui_copy_same ui_copy_routing app_copy_routing ui_update_modes archive_metadata_ui source_drop_add
-            drag_drop_add_ui modal_refresh_window
+            drag_drop_add_ui drag_drop_add_independent drag_drop_add_temporary modal_refresh_window
             main_shell panel_shell panel_key window_placement panel_key_source panel_list_load panel_item_icons panel_name_text archive_rename_window panel_copy_reload copy_publication_order filesystem_reload address_navigation panel_parent_reload panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash native_network_navigation native_persisted_locations address_combo panel_address_keys root_command persisted_location ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress panel_sort_commands panel_refresh_drop panel_refresh_completion panel_rename_state deferred_rename navigation_reload panel_deleted_draw panel_column_menu panel_column_initialization panel_column_schema panel_column_sort panel_column_changes panel_cell_text native_column_workflow panel_item_changed
             archive_reload_command drag_reload_completion panel_creation_path copy_archive_refresh interarchive_recovery panel_load_count panel_activation progress_dialog progress_worker progress_cancel archive_progress volume_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime

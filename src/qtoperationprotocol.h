@@ -1,9 +1,10 @@
-// Versioned, framed local messages for one independent GUI operation.
+// Application values and validation for the generated Remote Objects contract.
 #pragma once
-#include <QByteArray>
-#include <QIODevice>
 #include <QMetaType>
 #include <QStringList>
+
+class OperationRequest;
+class OperationReport;
 
 struct QtOperationResult {
     enum class Outcome {
@@ -23,10 +24,8 @@ struct QtOperationResult {
 };
 Q_DECLARE_METATYPE(QtOperationResult)
 
-struct QtOperationMessage {
-    enum class Kind { Ready, Job, Accepted, Outputs, Result, Rejected };
+struct QtOperationJob {
     enum class Command { Test, Extract, Compress, Hash, Benchmark };
-    Kind Type = Kind::Ready;
     Command Operation = Command::Test;
     QStringList Paths;
     bool YesToAll = false;
@@ -43,18 +42,11 @@ struct QtOperationMessage {
     QString HashBasePrefix;
     bool HashEnterToDirs = true;
     bool TotalMode = false;
-    QtOperationResult Result;
 };
 
-bool EncodeOperationMessage(const QtOperationMessage &message, QByteArray &frame, QString &error);
-
-class QtOperationMessageReader final {
-  public:
-    enum class State { Pending, Message, Error };
-    State read(QIODevice &input, QtOperationMessage &message, QString &error);
-
-  private:
-    QByteArray header_, body_;
-    quint32 size_ = 0;
-    bool failed_ = false;
-};
+bool ValidateOperationJob(const QtOperationJob &job, QString &error);
+OperationRequest OperationRequestFromJob(const QtOperationJob &job);
+QtOperationJob OperationJobFromRequest(const OperationRequest &request);
+OperationReport OperationReportFromResult(const QtOperationResult &result);
+bool OperationResultFromReport(const OperationReport &report, QtOperationResult &result);
+bool ValidateOperationOutputs(const QStringList &directories, const QStringList &archives);

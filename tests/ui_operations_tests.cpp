@@ -1873,7 +1873,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
 
         action(window, "toolbarAddAction")->trigger();
         QCOMPARE(backend.GuiRequests.size(), 1);
-        QCOMPARE(backend.GuiRequests.last().Operation, QtOperationMessage::Command::Compress);
+        QCOMPARE(backend.GuiRequests.last().Operation, QtOperationJob::Command::Compress);
         QVERIFY(backend.GuiRequests.last().ShowDialog);
         QCOMPARE(backend.GuiRequests.last().Paths.size(), 1);
         auto chooseSources = [&] {

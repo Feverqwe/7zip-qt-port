@@ -29,6 +29,9 @@ sources. Retain their copyright and license notices when redistributing them.
 | Lucide command/navigation icons | SVG geometry adapted to native Qt paths; [ISC and Feather MIT notices](third_party/lucide/LICENSE), [source provenance](docs/upstream-port-audit/ui-redesign.md#итерация-22-контурные-значки-команд). |
 
 Qt and other runtime dependencies keep their own licenses.
+The linked Qt Remote Objects module uses Qt's LGPL-3.0 licensing option
+(with its other available licenses retained in the SDK). Its matching source is
+available from the [official Qt repository](https://github.com/qt/qtremoteobjects/tree/v6.12.0).
 The QCOW/QCOW2 reader also uses QEMU metadata code under the
 [retained MIT notice](third_party/qemu/LICENSE) and read-only legacy crypto
 code under [LGPL-2.1-or-later](third_party/qemu/COPYING.LIB); see the
