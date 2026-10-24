@@ -84,6 +84,11 @@ Early verification and synthetic-review evidence is preserved in
 
 ## QEMU and Linux reference baselines
 
+ZIP's libzstd encoder and its 7-Zip-zstd adapter use the same reference
+verification/review commands with explicit source-to-owner maps. Their pinned
+revisions, imported scope and example commands are in the
+[ZIP encoder audit](upstream-port-audit/zip-zstd.md).
+
 QEMU follows the Linux reference-baseline model: original inventory units and
 SHA256 values are pinned to a retrievable commit, with an explicit mapping to
 local source owners. Local paths follow project boundaries and need not mirror

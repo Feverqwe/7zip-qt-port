@@ -101,6 +101,9 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lz4/lib/LICENSE"
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/brotli/LICENSE"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/brotli/7zip-zstd-LICENSE.txt"
     DESTINATION share/licenses/sevenzip-desktop/brotli)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/zstd/LICENSE"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/zstd/7zip-zstd-LICENSE.txt"
+    DESTINATION share/licenses/sevenzip-desktop/zstd-encoder)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-exfat)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"

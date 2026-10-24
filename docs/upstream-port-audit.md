@@ -51,6 +51,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Создание ZIP со Zstandard](upstream-port-audit/zip-zstd.md)
+  — официальный libzstd encoder, узкий ZIP adapter и runtime/UI consumers.
+
 - [ZIP: официальный компонент и независимые эталоны](upstream-port-audit/zip-refresh.md)
   — выбор основы и дополнительные проверки разрядности Shrink.
 

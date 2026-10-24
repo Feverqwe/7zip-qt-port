@@ -130,3 +130,9 @@ focused macOS evidence и непроверенные сценарии — в
 Официальный Shrink и runtime/cache исправления входят в базовый коммит;
 их повторный перенос и selective overrides не нужны. Ветка добавляет
 выбор эталонов и проверки изменения разрядности Shrink до 10/13 бит.
+
+Следующая реализация по запросу пользователя — создание и обновление ZIP
+методом Zstandard (93) на официальном libzstd с сохранением handler 7-Zip.
+Её source scope, решения по adapter и актуальные результаты собраны в
+[ZIP encoder audit](upstream-port-audit/zip-zstd.md); decoder migration
+и поддержка всех ZIP extensions не входят в эту реализацию.

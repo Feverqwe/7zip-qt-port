@@ -1,0 +1,39 @@
+{
+  "repository": "https://github.com/mcmilk/7-Zip-zstd.git",
+  "revision": "f7331b3fa14455d78a6e6a91bdd9571c999bb081",
+  "files": {
+    "CPP/7zip/Compress/ZstdEncoder.cpp": "74c1e08ca7175403d18f0796ac236f8b5e7c2ba95932da375ba980446337e710",
+    "CPP/7zip/Compress/ZstdEncoder.h": "92b29e3155574f5ee1196f72d41fe2f7dd5366ea6232b9ee7e7e5f73e192e1dc",
+    "CPP/7zip/Archive/Zip/ZipAddCommon.cpp": "807d8455bdd163ad834a11149be56579869116cc9cd7d7a490039555ca27e91e",
+    "CPP/7zip/Archive/Zip/ZipHeader.h": "b41c3dc944d25d4a9249fd8cd50d9e2a7a7bcd46a8500109966746e588a583b3",
+    "DOC/License.txt": "500467e51bb9f6f69473aad243befa5e5dbc35c007c5847d831a115776710880"
+  },
+  "adapted": {
+    "CPP/7zip/Compress/ZstdEncoder.cpp": "src/CPP/7zip/Compress/ZstdEncoder.cpp",
+    "CPP/7zip/Compress/ZstdEncoder.h": "src/CPP/7zip/Compress/ZstdEncoder.h",
+    "CPP/7zip/Archive/Zip/ZipAddCommon.cpp": "src/CPP/7zip/Archive/Zip/ZipAddCommon.cpp",
+    "CPP/7zip/Archive/Zip/ZipHeader.h": "src/CPP/7zip/Archive/Zip/ZipHeader.h",
+    "DOC/License.txt": "src/zstd/7zip-zstd-LICENSE.txt"
+  },
+  "scope": "CEncoder streaming loop and error mapping; ZIP method-93 writer dispatch and extract-version convention. Advanced fork-only properties, decoder, registration and non-ZIP coder property serialization omitted.",
+  "kind": "adapted-code",
+  "symbols": {
+    "CPP/7zip/Compress/ZstdEncoder.cpp": [
+      "NCompress::NZSTD::CEncoder::CEncoder",
+      "NCompress::NZSTD::CEncoder::~CEncoder",
+      "NCompress::NZSTD::CEncoder::Code",
+      "NCompress::NZSTD::CEncoder::SetCoderProperties",
+      "NCompress::NZSTD::CEncoder::SetCoderPropertiesOpt"
+    ],
+    "CPP/7zip/Compress/ZstdEncoder.h": [
+      "NCompress::NZSTD::CEncoder"
+    ],
+    "CPP/7zip/Archive/Zip/ZipAddCommon.cpp": [
+      "NArchive::NZip::CAddCommon::Set_Pre_CompressionResult (Zstd extract version)",
+      "NArchive::NZip::CAddCommon::Compress (Zstd encoder dispatch)"
+    ],
+    "CPP/7zip/Archive/Zip/ZipHeader.h": [
+      "NArchive::NZip::NFileHeader::NCompressionMethod::kExtractVersion_Zstd"
+    ]
+  }
+}

@@ -127,7 +127,7 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=()):
             bundle = snapshot / directory
             if not (bundle / original).is_file():
                 continue
-            extra_objects = ["$(O)\\reference_" + re.sub(r"[^a-zA-Z0-9_]", "_", name[:-2]) + ".obj"
+            extra_objects = ["$(O)\\reference_" + re.sub(r"[^a-zA-Z0-9_]", "_", str(pathlib.PurePosixPath(name).with_suffix(''))) + ".obj"
                              for name in sorted(extra_c)] if windows else []
             # Nmake expands the upstream link command while reading its include;
             # supply additional objects through Build.mak's supported LIBS input.
@@ -138,18 +138,22 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=()):
                 target = "$(O)\\" + stem + ".obj" if windows else "$(O)/" + stem + ".o"
                 lines.append(target + ": " + " ".join('"' + name + '"' if windows else name
                                                        for name in relative))
-            # Compile borrowed C modules as C, keeping upstream object outputs and
-            # compiler-cache launchers. They are linked into both native runtimes.
+            # Preserve each dependency's source language, upstream object outputs
+            # and compiler-cache launchers in both native runtimes.
             extra_objects = []
             for name in sorted(extra_c):
-                stem = "reference_" + re.sub(r"[^a-zA-Z0-9_]", "_", name[:-2])
+                stem = "reference_" + re.sub(r"[^a-zA-Z0-9_]", "_", str(pathlib.PurePosixPath(name).with_suffix('')))
                 target = "$(O)\\" + stem + ".obj" if windows else "$(O)/" + stem + ".o"
                 source = posixpath.relpath(name, directory)
                 needed = sorted(posixpath.relpath(header, directory)
                                 for header in dependencies.get(pathlib.PurePosixPath(name).stem, set()))
                 lines.append(target + ": " + " ".join([source, *needed]))
-                lines.append(('\t$(CC) $(CFLAGS_O2) -TC -Fo"' + target + '" "' + source + '"')
-                             if windows else '\t$(CC) $(CFLAGS) ' + source)
+                cpp = name.endswith(".cpp")
+                # Keep unchanged third-party C at CMake/MSVC's normal warning
+                # level rather than the 7-Zip-specific /Wall pragma contract.
+                flags = '$(CFLAGS_O2:-Wall=-W3)' if name.startswith("zstd/") else '$(CFLAGS_O2)'
+                lines.append(('\t$(CC) ' + flags + ' ' + ('-TP' if cpp else '-TC') + ' -Fo"' + target + '" "' + source + '"')
+                             if windows else ('\t$(CXX) $(CXXFLAGS) ' if cpp else '\t$(CC) $(CFLAGS) ') + source)
                 extra_objects.append(target)
             if extra_objects:
                 if not windows:
@@ -192,7 +196,7 @@ def prepare_runtime_snapshot(data, snapshot, upstream):
     for path in dependencies:
         relative = pathlib.PurePosixPath(path)
         if (relative.parts[:1] != ("src",) or ".." in relative.parts or
-                relative.suffix not in (".h", ".c") or path.startswith("src/gpl/") or
+                relative.suffix not in (".h", ".c", ".cpp") or path.startswith("src/gpl/") or
                 path in paths or (ROOT / path).is_symlink() or not (ROOT / path).is_file()):
             raise ValueError("Unsafe runtime source dependency: " + path)
         overlays[str(relative.relative_to("src"))] = ROOT / path
@@ -256,7 +260,7 @@ def prepare_runtime_snapshot(data, snapshot, upstream):
         hashes[path] = hashlib.sha256(destination.read_bytes()).hexdigest()
     (snapshot / "runtime-adaptations.json").write_text(json.dumps(hashes, indent=2) + "\n")
     runtime_header_dependencies(snapshot, members, overlays,
-                                [path[len("src/"):] for path in dependencies if path.endswith(".c")])
+                                [path[len("src/"):] for path in dependencies if path.endswith((".c", ".cpp"))])
 
 
 def verify(data, upstream):
