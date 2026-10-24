@@ -18,7 +18,7 @@ Linux commit. Повторная проверка всех 83 reference hashes m
 | --- | --- |
 | Descriptors, geometry, sections | Исходный 7-Zip reader с исправлениями по `isofs_fill_super`, `isofs_get_blocks`, `isofs_read_inode` и `isofs_read_level3_size`; High Sierra, XAR, directory dot inode, logical blocks и multi-section mapping. |
 | Namespace и metadata | Linux Rock Ridge/SUSP readers, Joliet/Acorn converters, NLS и timestamps; root choice, relocation, CE/XA, имена, links и read options подключены к archive enumeration. |
-| Data streams | Исходный extent mapper и Linux zisofs/zlib readers; bounded input, независимые курсоры, retained source, HRESULT/cancellation и decoded EOF проходят через существующие stream consumers. |
+| Data streams | Исходный extent mapper и Linux zisofs reader с официальным API zlib; bounded input, независимые курсоры, retained source, HRESULT/cancellation и decoded EOF проходят через существующие stream consumers. |
 | Host boundary | Owned buffers и callbacks заменяют VFS/page-cache services. Device session discovery, lookup/casefold, mount ownership/permissions, export и запись не входят в archive reader. |
 
 Повторно проверены изменения полных тел `dir.c`, `joliet.c`, `util.c`,
@@ -159,20 +159,15 @@ core fixes и исходный ограниченный RR parser; новые Li
 `zisofs_uncompress_block`, `zisofs_fill_pages`, `zisofs_read_folio`.
 Buffer-head reads используют bounded 7-Zip extent stream, включая Level 3
 multi-section mapping; folio acquisition заменён stream-owned cache до 128 KiB.
-Workspace и sink принадлежат потоку вместо kernel-global mutex/workspace.
+Decoder state и sink принадлежат потоку вместо kernel-global mutex/workspace.
 VFS operation table, module init/exit и shared page cache не переносятся.
 `IsoZisofs.cpp` содержит только ABI/ownership/error adapter; Seek использует
 исходное тело `CExtentsStream::Seek` с decoded EOF.
 
-Generic Linux zlib inflate компилируется как C: `inflate.c`, `inftrees.c`,
-`inffast.c`, их headers и `zlib.h`/`zconf.h`. Первые два тела и headers сохранены
-побайтно; в `inffast.c` pointer alignment cast заменён на `uintptr_t` для LLP64.
-`zutil.h` заменяет kernel includes и выбирает portable unaligned helper.
-Архитектурный s390 DFLTCC, unused blob helper и deflate encoder не нужны.
-Manifest фиксирует исходные SHA-256 и разделяет exact/adapted files.
-Сохранены notices H. Peter Anvin, Mark Adler и Jean-loup Gailly;
-из `zlib.h` выделен устанавливаемый `zlib-LICENSE.txt`.
-Все эти C sources подключены только к отдельному GPL `sevenzip_iso` без unRAR.
+С 2026-10-24 отдельная адаптация generic kernel zlib заменена официальным
+библиотечным API zlib 1.3.2; provenance и анализ совместимости приведены
+[ниже](#замена-kernel-zlib-библиотечным-api--2026-10-24).
+Linux zisofs read bodies и stream/cache boundaries сохранены.
 
 ZF size/header words/block shift управляют чтением, как в Linux; embedded
 zisofs header не становится дополнительным обязательным magic contract.
@@ -195,6 +190,106 @@ Handler публикует decoded Size и `zisofs` Method, сохраняет p
 Extract totals и CopyCoder используют decoded size. I/O HRESULT, отмена,
 independent cursors и retained-source lifetime сохраняются. Standalone `7zz`
 не получает этот GPL decoder; приложение использует dynamic format module.
+
+## Замена kernel zlib библиотечным API — 2026-10-24
+
+Официальный repository `https://github.com/madler/zlib.git`, tag `v1.3.2`,
+commit `da607da739fa6047df13e66a2af6b8bec7c2a498`.
+[Manifest](../zisofs-zlib-baseline.json) фиксирует SHA-256 полных исходных
+inventory units и их exact owners под `third_party/zlib/`.
+Без изменений импортированы `inflate.c`, `inffast.c`, `inftrees.c`,
+`adler32.c`, `zutil.c` и необходимые headers, включая `gzguts.h`,
+который используется utility translation unit. CMake компилирует их как C99
+в private static dependency `sevenzip_zisofs_zlib`.
+`Z_PREFIX` и hidden visibility изолируют символы от других модулей и Qt;
+`NO_GZIP` исключает ненужные gzip/CRC branches. Encoder, gzip file API,
+`inflateBack`, utilities и assembly не импортируются и не требуются zisofs.
+Лицензия zlib и copyright notices сохранены; официальный `LICENSE`
+устанавливается под прежним именем `sevenzip-iso/zlib-LICENSE.txt`.
+Для сохранённого kernel bound helper отдельно устанавливается исходный
+notice `sevenzip-iso/kernel-zlib-LICENSE.txt`.
+
+До изменения сравнены complete pinned Linux `compress.c`, kernel inflate,
+fast path, Huffman tables, headers и local adapter, затем официальные zlib
+init/reset/end, HEAD/DICT/TABLE/CODELENS/LEN/DIST/CHECK/DONE branches,
+fast path, allocation и checksum dependencies. Повторная сверка local changes
+с Linux сохраняет block/table mapping, sparse paths, guard page, bounded input,
+размеры, cache invalidation, stream consumers и HRESULT/cancellation.
+Новая decoding logic не добавляется: адаптация `compress.c` использует
+`inflateInit`, `inflateReset`, `inflate`, `inflateEnd`. Состояние принадлежит
+одному открытому reader; окно истории повторно используется между блоками.
+После reset явно сбрасываются input/output pointers и availability: zlib
+сохраняет эти поля, а padding предыдущего блока не должен стать новым input.
+
+От kernel zlib сохранён только прежний conservative `deflateBound` из полного
+`include/linux/zlib.h`, переименованный в `zisofs_deflate_bound` в
+`zisofscompat.h`. Его original hash и owner сохранены в
+[Linux manifest](../isofs-linux-baseline.json). Более тесный библиотечный
+`compressBound` сузил бы допустимые packed ranges с padding. Остальные kernel
+zlib units удалены; их original hashes оставлены как явно omitted historical
+scope. Этот helper не выполняет decoding.
+
+На исправных данных функциональных потерь не выявлено. Остаются обязательными
+zlib wrapper, проверенный Adler, stream end и точный decoded size;
+trailing padding после первого stream по-прежнему допускается. Dictionary
+streams по-прежнему возвращают data error; raw DEFLATE и gzip не становятся
+zisofs payload. Новых recovery gates нет, повреждённый блок по-прежнему целиком
+отвергается до публикации. В отличие от прежнего заранее выделенного kernel
+workspace библиотечное окно истории выделяется лениво при первом decode:
+allocation failure может появиться позже и возвращается как `-ENOMEM`.
+Затем `inflateReset` сохраняет окно. Исчерпывающая эквивалентность на всех
+возможных malformed bitstreams и performance acceptance не заявляются.
+
+Original baseline и proposed revision сравниваются существующими командами:
+
+```sh
+git clone --no-checkout https://github.com/madler/zlib.git build/reference-zlib
+python3 scripts/upstream_baseline.py reference-verify \
+  --manifest docs/zisofs-zlib-baseline.json --upstream build/reference-zlib
+python3 scripts/upstream_baseline.py reference-review \
+  --manifest docs/zisofs-zlib-baseline.json --upstream build/reference-zlib \
+  --new-revision <full-commit> --output build/zlib-update-review.md
+```
+
+Review включает complete originals и local owner differences; перед обновлением
+нужно повторно проверить dependency/omitted scope и ISO consumers.
+
+Diagnostic comparison на macOS arm64 сравнила reader до замены и после неё
+на 420 valid cases, 648 mutations/truncations, 36 dictionary cases и 36 I/O
+failures: различий в status, byte count и output hash нет. Проверены random,
+повторяющиеся и нулевые данные, stored/dynamic/fixed/Huffman-only streams,
+shifts 0/8/10/12/15/17, logical blocks 512/1024/2048, padding и повторные
+чтения с произвольных смещений. `iso` дополнен случаем expanding sub-page blocks
+с padding: он защищает прежний допустимый packed range и сброс буферов между
+блоками. Существующие `iso`/`iso_stream` также покрывают observable extraction,
+size/checksum errors, sparse/multi-section и stream lifetime.
+
+Source scope завершён для выбранной замены: Linux zisofs reader сохранён,
+official inflate dependency передана без изменений, kernel-only services и
+неиспользуемые library APIs перечислены выше. `reference-verify` проверил
+14 zlib originals; exact local bytes также сверены с их hashes. Проверены
+83 Linux original hashes и 60 adapted owners; общий 7-Zip baseline verify
+прошёл для 415 exact, 269 adapted и 15 local owners.
+
+Runtime validation на macOS arm64 и Linux x64: `iso` (19 tests, включая
+expanding-padding) PASS. macOS focused stream invocation
+`compressedStreamsAndLifetime compressedIoFailures corruptCompressedExtraction
+backendExtraction:zisofs backendExtraction:zisofs-multi` — 14 PASS.
+Общая `iso_stream` на macOS/Linux имеет 148 PASS и один failure
+`backendExtraction:names-joliet-surrogates` при открытии извлечённого имени
+с emoji. На macOS тот же failure воспроизведён старым ISO-модулем main
+checkout с тем же runtime; это не regression zisofs.
+На Windows x64/MSVC новый library/module/test target собраны, `iso` PASS;
+общая `iso_stream` достигла 60-second timeout после codec-discovery timeout
+в `backendExtraction:names-joliet-components`. Этот прогон не устанавливает
+приёмку всей Windows stream-suite.
+Повторная focused Windows проверка на готовой incremental сборке прошла:
+`iso` со случаем expanding-padding PASS, те же 14 адресных zisofs stream
+checks PASS. Таким образом новая library dependency собрана на macOS,
+Linux и Windows; исправные/повреждённые zisofs inputs проверены на трёх ОС,
+а общие ISO-suite failures выше остаются отдельными ограничениями приёмки.
+Full/release gate, slow suites и appearance checks не запускались:
+изменение ограничено decoder dependency и не меняет UI.
 
 ## High Sierra и recording dates
 

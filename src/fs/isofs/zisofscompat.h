@@ -3,7 +3,7 @@
 #define SEVENZIP_ZISOFS_COMPAT_H
 #include "../../zisofsreader.h"
 #include <errno.h>
-#include <linux/zlib.h>
+#include <zlib.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,7 +47,8 @@ struct sevenzip_zisofs {
     unsigned i_blkbits;
     unsigned char i_format_parm[2];
     sevenzip_zisofs_read_fn read;
-    void *context, *workspace;
+    void *context;
+    z_stream stream;
     struct page cache[32];
     unsigned cache_count;
     unsigned char *cache_data;
@@ -57,6 +58,11 @@ struct sevenzip_zisofs {
 #define ISOFS_I(inode) (inode)
 #define ISOFS_BUFFER_BITS(inode) ((inode)->i_blkbits)
 #define ISOFS_BUFFER_SIZE(inode) (1U << (inode)->i_blkbits)
+/* Linux include/linux/zlib.h bound, retained for accepted packed ranges.
+ * Library compressBound() is tighter and would reject existing padded blocks. */
+static inline unsigned long zisofs_deflate_bound(unsigned long s) {
+    return s + ((s + 7) >> 3) + ((s + 63) >> 6) + 11;
+}
 struct address_space {
     struct inode *host;
 };

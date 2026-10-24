@@ -31,9 +31,7 @@ static loff_t zisofs_uncompress_block(struct inode *inode, loff_t block_start,
 	uint64_t expected = min_t(uint64_t, 1ULL << zisofs_block_shift, inode->i_size - unpack_start);
 	struct page guard = { 0, inode->sink, 0 };
 	struct page *guarded[33];
-	z_stream stream = { .total_out = 0,
-			    .avail_in = 0,
-			    .avail_out = 0, };
+	z_streamp stream = &inode->stream;
 	int zerr;
 	int needblocks;
 	int haveblocks;
@@ -42,7 +40,7 @@ static loff_t zisofs_uncompress_block(struct inode *inode, loff_t block_start,
 	int curbh, curpage;
 
 	if (unpack_start >= inode->i_size || block_start < 0 || block_end < block_start ||
-	    (uint64_t)(block_end - block_start) > deflateBound(1UL << zisofs_block_shift)) {
+	    (uint64_t)(block_end - block_start) > zisofs_deflate_bound(1UL << zisofs_block_shift)) {
 		*errp = -EIO;
 		return 0;
 	}
@@ -73,7 +71,7 @@ static loff_t zisofs_uncompress_block(struct inode *inode, loff_t block_start,
 	guarded[pcount++] = &guard;
 	pages = guarded;
 
-	/* Acquire the input before using the stream-owned inflate workspace. */
+	/* Acquire the input before resetting the stream-owned decoder. */
 	blocknum = block_start >> bufshift;
 	bhs = kzalloc_objs(*bhs, needblocks + 1);
 	if (!bhs) {
@@ -98,51 +96,52 @@ static loff_t zisofs_uncompress_block(struct inode *inode, loff_t block_start,
 		goto b_eio;
 	}
 
-	stream.workspace = inode->workspace;
-
-
-	zerr = zlib_inflateInit(&stream);
+	zerr = inflateReset(stream);
+	stream->next_in = NULL;
+	stream->avail_in = 0;
+	stream->next_out = NULL;
+	stream->avail_out = 0;
 	if (zerr != Z_OK) {
 		if (zerr == Z_MEM_ERROR)
 			*errp = -ENOMEM;
 		else
 			*errp = -EIO;
-		printk(KERN_DEBUG "zisofs: zisofs_inflateInit returned %d\n",
+		printk(KERN_DEBUG "zisofs: zisofs_inflateReset returned %d\n",
 			       zerr);
 		goto z_eio;
 	}
 
 	while (curpage < pcount && curbh < haveblocks &&
 	       zerr != Z_STREAM_END) {
-		if (!stream.avail_out) {
+		if (!stream->avail_out) {
 			if (pages[curpage]) {
-				stream.next_out = kmap_local_page(pages[curpage])
+				stream->next_out = kmap_local_page(pages[curpage])
 						+ poffset;
-				stream.avail_out = PAGE_SIZE - poffset;
+				stream->avail_out = PAGE_SIZE - poffset;
 				poffset = 0;
 			} else {
-				stream.next_out = (void *)&inode->sink;
-				stream.avail_out = PAGE_SIZE;
+				stream->next_out = (void *)&inode->sink;
+				stream->avail_out = PAGE_SIZE;
 			}
 		}
-		if (!stream.avail_in) {
+		if (!stream->avail_in) {
 			wait_on_buffer(bhs[curbh]);
 			if (!buffer_uptodate(bhs[curbh])) {
 				*errp = -EIO;
 				break;
 			}
-			stream.next_in  = bhs[curbh]->b_data +
+			stream->next_in  = bhs[curbh]->b_data +
 						(block_start & bufmask);
-			stream.avail_in = min_t(unsigned, bufsize -
+			stream->avail_in = min_t(unsigned, bufsize -
 						(block_start & bufmask),
 						block_size);
-			block_size -= stream.avail_in;
+			block_size -= stream->avail_in;
 			block_start = 0;
 		}
 
-		while (stream.avail_out && stream.avail_in) {
-			zerr = zlib_inflate(&stream, Z_SYNC_FLUSH);
-			if (zerr == Z_BUF_ERROR && stream.avail_in == 0)
+		while (stream->avail_out && stream->avail_in) {
+			zerr = inflate(stream, Z_SYNC_FLUSH);
+			if (zerr == Z_BUF_ERROR && stream->avail_in == 0)
 				break;
 			if (zerr == Z_STREAM_END)
 				break;
@@ -158,36 +157,35 @@ static loff_t zisofs_uncompress_block(struct inode *inode, loff_t block_start,
 					       " avail_in = %ld,"
 					       " avail_out = %ld\n",
 					       zerr, inode->i_ino, curpage,
-					       curbh, stream.avail_in,
-					       stream.avail_out);
+					       curbh, stream->avail_in,
+					       stream->avail_out);
 					*errp = -EIO;
 				}
 				goto inflate_out;
 			}
 		}
 
-		if (!stream.avail_out) {
+		if (!stream->avail_out) {
 			/* This page completed */
 			if (pages[curpage]) {
 				flush_dcache_page(pages[curpage]);
 				SetPageUptodate(pages[curpage]);
 			}
-			if (stream.next_out != (unsigned char *)inode->sink) {
-				kunmap_local(stream.next_out);
-				stream.next_out = NULL;
+			if (stream->next_out != (unsigned char *)inode->sink) {
+				kunmap_local(stream->next_out);
+				stream->next_out = NULL;
 			}
 			curpage++;
 		}
-		if (!stream.avail_in)
+		if (!stream->avail_in)
 			curbh++;
 	}
 inflate_out:
 	/* Archive streams publish only complete, checked compression blocks. */
-	if (zerr != Z_STREAM_END || stream.total_out != expected)
+	if (zerr != Z_STREAM_END || stream->total_out != expected)
 		*errp = -EIO;
-	zlib_inflateEnd(&stream);
-	if (stream.next_out && stream.next_out != (unsigned char *)inode->sink)
-		kunmap_local(stream.next_out);
+	if (stream->next_out && stream->next_out != (unsigned char *)inode->sink)
+		kunmap_local(stream->next_out);
 
 z_eio:
 
@@ -196,7 +194,7 @@ b_eio:
 	for (i = 0; i < haveblocks; i++)
 		brelse(bhs[i]);
 	kfree(bhs);
-	return *errp ? 0 : stream.total_out;
+	return *errp ? 0 : stream->total_out;
 }
 
 /*
@@ -386,11 +384,17 @@ int sevenzip_zisofs_open(uint64_t packed, uint64_t unpacked, unsigned header,
     node->context = context;
     if (unpacked) {
         unsigned slots = shift > PAGE_SHIFT ? 1U << (shift - PAGE_SHIFT) : 1;
-        node->workspace = malloc(zlib_inflate_workspacesize());
         node->cache_data = (unsigned char *)malloc((size_t)slots * PAGE_SIZE);
-        if (!node->workspace || !node->cache_data) {
+        if (!node->cache_data) {
             sevenzip_zisofs_close(node);
             return -ENOMEM;
+        }
+    }
+    if (unpacked) {
+        int zerr = inflateInit(&node->stream);
+        if (zerr != Z_OK) {
+            sevenzip_zisofs_close(node);
+            return zerr == Z_MEM_ERROR ? -ENOMEM : -EIO;
         }
     }
     *output = node;
@@ -401,7 +405,7 @@ void sevenzip_zisofs_close(struct sevenzip_zisofs *node)
 {
     if (!node) return;
     free(node->cache_data);
-    free(node->workspace);
+    if (node->stream.state) inflateEnd(&node->stream);
     free(node);
 }
 

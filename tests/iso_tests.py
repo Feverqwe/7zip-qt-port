@@ -191,7 +191,8 @@ class IsoTests(unittest.TestCase):
         self.assertEqual(result.stdout, b"")
 
     def test_zisofs_decoded_bytes(self):
-        for kind in ("zisofs", "zisofs-shift0", "zisofs-pointer-boundary", "zisofs-expanding", "zisofs-small-sparse",
+        for kind in ("zisofs", "zisofs-shift0", "zisofs-pointer-boundary", "zisofs-expanding",
+                     "zisofs-expanding-padding", "zisofs-small-sparse",
                      "zisofs-shift17", "zisofs-padding", "zisofs-header0", "zisofs-embedded-header",
                      "zisofs-empty", "zisofs-sparse-marker", "zisofs-multi", "zisofs-block512"):
             image, files = volume(kind)
