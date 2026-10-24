@@ -62,6 +62,7 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 - [TAR по Linux](upstream-port-audit/tar-linux.md)
   — physical records, GNU/PAX/sparse, последовательное чтение и retained streams.
 - [Legacy LZ4/lzop по Linux](upstream-port-audit/linux-frames.md)
+- [Modern LZ4 Frame and shared official decoder](upstream-port-audit/lz4-frame.md)
   — block framing, checksum, точные consumed boundaries и CPIO consumers.
 - [Base64 по Linux](upstream-port-audit/base64-linux.md)
   — standard/URL-safe/IMAP alphabets, canonical tails и handler lifecycle.

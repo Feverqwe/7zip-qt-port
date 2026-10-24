@@ -6,11 +6,12 @@ add_library(sevenzip_erofs_core STATIC
     src/fs/erofs/inode.c src/fs/erofs/super.c src/fs/erofs/zmap.c
     src/fs/erofs/decompressor.c src/fs/erofs/decompressor_lzma.c
     src/fs/erofs/decompressor_deflate.c src/fs/erofs/decompressor_zstd.c
-    src/lib/crc/crc32-main.c src/lib/lz4/lz4_decompress.c
+    src/lib/crc/crc32-main.c
     src/erofsnativedecoders.c third_party/linux/lib/xz/xz_dec_lzma2.c
     third_party/7zip/C/ZstdDec.c third_party/7zip/C/Xxh64.c
     third_party/7zip/C/Alloc.c third_party/7zip/C/CpuArch.c)
 target_include_directories(sevenzip_erofs_core PRIVATE src src/lib/xz)
+target_link_libraries(sevenzip_erofs_core PUBLIC sevenzip_lz4)
 set_target_properties(sevenzip_erofs_core PROPERTIES AUTOMOC OFF AUTOUIC OFF
     POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
 

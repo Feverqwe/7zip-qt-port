@@ -1170,8 +1170,8 @@ ABI lifetime, у которой нет прямого аналога в Linux VF
 `lz4_wrapper.c` и `lzo_wrapper.c` (options/init/free/decompress), а также
 `lib/lzo/lzo1x_decompress_safe.c`, включая versioned RLE и overrun branches.
 LZO scalar branches используются на всех ОС; архитектурные ускорения kernel
-не нужны для корректного чтения. Существующий Linux LZ4 из EROFS используется
-повторно из единственного исходника `src/lib/lz4`, с его исходной лицензией.
+не нужны для корректного чтения. Общий raw LZ4 decoder для SquashFS, EROFS и
+legacy теперь берётся из [официальной библиотеки LZ4](lz4-frame.md).
 `xz_wrapper.c` сохраняет полные option structs и `squashfs_xz_comp_opts`.
 `block.c` сохраняет полные `copy_bio_to_actor` и `squashfs_read_data`, включая
 metadata header, bounds и недоступность decoder при bootstrap options.

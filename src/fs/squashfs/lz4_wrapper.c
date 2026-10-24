@@ -6,6 +6,7 @@
 
 
 #include "squashfscompat.h"
+#include <lz4.h>
 #include "squashfs_fs.h"
 #include "squashfs_fs_sb.h"
 #include "squashfs.h"

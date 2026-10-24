@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Contiguous-buffer calls to the original Linux LZ4 and MicroLZMA decoders.
+// Contiguous-buffer calls to the official LZ4 and Linux MicroLZMA decoders.
 #include "erofsreader.h"
-#include "include/linux/lz4.h"
+#include <lz4.h>
 #include "../third_party/linux/include/linux/xz.h"
 #include <errno.h>
 #include <limits.h>

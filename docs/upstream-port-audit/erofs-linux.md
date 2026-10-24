@@ -522,8 +522,9 @@ new C++ integration is formatted separately.
 
 ## Decoders and archive integration
 
-Linux `lib/lz4` decoder bodies retain their original C paths, with unaligned word
-loads, bit operations, builtins and host headers adapted narrowly. XZ Embedded
+Raw LZ4 now uses the unchanged official library; its full/partial contracts and
+the replacement of the earlier Linux decoder are recorded in the
+[LZ4 source audit](lz4-frame.md). XZ Embedded
 `lib/xz/xz_dec_lzma2.c`, its two private headers and public `include/linux/xz.h`
 are unchanged; the supported userspace configuration boundary selects single-call
 MicroLZMA. The existing 7-Zip Deflate and Zstd implementations are reused.

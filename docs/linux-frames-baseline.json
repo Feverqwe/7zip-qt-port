@@ -29,5 +29,9 @@
       "src/p_lzo.c": "e37f4b7d09c951c9b54c6d48ccab9be8a538324ff204e2f3820b3874330ff8be"
     },
     "scope": "Source comparison of header versions, header checksum and block checksum ordering; no standalone lzop implementation copied."
+  },
+  "replaced_dependencies": {
+    "include/linux/lz4.h": "lz4-frame-baseline.json: lib/lz4.h",
+    "lib/lz4/lz4_decompress.c": "lz4-frame-baseline.json: lib/lz4.c"
   }
 }

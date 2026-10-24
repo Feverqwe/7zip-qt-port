@@ -73,5 +73,10 @@
     "fs/squashfs/xattr.h",
     "include/linux/lzo.h",
     "lib/lzo/lzodefs.h"
-  ]
+  ],
+  "replaced_dependencies": {
+    "include/linux/lz4.h": "lz4-frame-baseline.json: lib/lz4.h",
+    "lib/lz4/lz4_decompress.c": "lz4-frame-baseline.json: lib/lz4.c",
+    "lib/lz4/lz4defs.h": "lz4-frame-baseline.json: lib/lz4.h"
+  }
 }

@@ -88,14 +88,11 @@
     "include/linux/fs.h",
     "include/linux/fs_dirent.h",
     "include/linux/kdev_t.h",
-    "include/linux/lz4.h",
     "include/linux/string.h",
     "include/uapi/linux/posix_acl.h",
     "include/uapi/linux/posix_acl_xattr.h",
     "lib/crc/crc32-main.c",
     "lib/crc/gen_crc32table.c",
-    "lib/lz4/lz4_decompress.c",
-    "lib/lz4/lz4defs.h",
     "lib/string.c",
     "lib/xxhash.c",
     "mm/util.c"
@@ -105,5 +102,10 @@
       "generator": "src/lib/crc/gen_crc32table.c",
       "sha256": "8992943fad11324c5d86cb156ea3ec26e91829ae3bacf181636eed9459101971"
     }
+  },
+  "replaced_dependencies": {
+    "include/linux/lz4.h": "lz4-frame-baseline.json: lib/lz4.h",
+    "lib/lz4/lz4_decompress.c": "lz4-frame-baseline.json: lib/lz4.c",
+    "lib/lz4/lz4defs.h": "lz4-frame-baseline.json: lib/lz4.h"
   }
 }
