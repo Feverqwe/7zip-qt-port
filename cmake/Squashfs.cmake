@@ -11,6 +11,7 @@ set_target_properties(sevenzip_squashfs_metadata PROPERTIES AUTOMOC OFF AUTOUIC 
 # Linux-derived C readers remain in a separate GPL format module.
 add_library(sevenzip_squashfs MODULE
     src/gpl/CPP/7zip/Archive/SquashfsHandler.cpp src/exfatmodule.cpp src/archiveattributes.cpp
+    src/squashfszlib.cpp
     src/squashfsdecoder.c src/fs/squashfs/decompressor.c
     src/fs/squashfs/decompressor_single.c
     src/fs/squashfs/lz4_wrapper.c src/fs/squashfs/lzo_wrapper.c src/fs/squashfs/xz_wrapper.c
@@ -25,10 +26,6 @@ add_library(sevenzip_squashfs MODULE
     third_party/7zip/CPP/7zip/Common/ProgressUtils.cpp
     third_party/7zip/CPP/7zip/Common/PropId.cpp
     third_party/7zip/CPP/7zip/Compress/CopyCoder.cpp
-    third_party/7zip/CPP/7zip/Compress/ZlibDecoder.cpp
-    third_party/7zip/CPP/7zip/Compress/DeflateDecoder.cpp
-    third_party/7zip/CPP/7zip/Compress/BitlDecoder.cpp
-    third_party/7zip/CPP/7zip/Compress/LzOutWindow.cpp
     third_party/7zip/CPP/Windows/PropVariant.cpp
     third_party/7zip/CPP/Windows/PropVariantUtils.cpp
     third_party/7zip/CPP/Windows/PropVariantConv.cpp
@@ -51,7 +48,8 @@ add_library(sevenzip_squashfs MODULE
 target_include_directories(sevenzip_squashfs PRIVATE src src/C third_party/7zip/C third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
 target_compile_definitions(sevenzip_squashfs PRIVATE Z7_ST)
-target_link_libraries(sevenzip_squashfs PRIVATE sevenzip_squashfs_metadata Threads::Threads sevenzip_lz4 sevenzip_zstd)
+target_link_libraries(sevenzip_squashfs PRIVATE sevenzip_squashfs_metadata Threads::Threads
+    sevenzip_lz4 sevenzip_zstd sevenzip_zisofs_zlib)
 set_target_properties(sevenzip_squashfs PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
 if(UNIX AND NOT APPLE)

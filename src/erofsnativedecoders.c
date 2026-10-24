@@ -1,13 +1,41 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Contiguous-buffer calls to the official LZ4 and liblzma MicroLZMA decoders.
+// Contiguous-buffer calls to the official LZ4, liblzma and zlib decoders.
 #include "erofsreader.h"
 #include <lz4.h>
 #include <lzma.h>
+#include <zlib.h>
 #include <errno.h>
 #include <limits.h>
 #include "../third_party/7zip/C/Alloc.h"
 #include "../third_party/7zip/C/ZstdDec.h"
 #include <string.h>
+
+static int erofs_decode_deflate(const void *input, size_t input_size, void *output,
+                                size_t output_size, int partial) {
+    z_stream state = {0};
+    int status = inflateInit2(&state, -MAX_WBITS);
+    if (status != Z_OK)
+        return status == Z_MEM_ERROR ? -ENOMEM : -EILSEQ;
+    state.next_in = (Bytef *)input;
+    state.avail_in = (uInt)input_size;
+    state.next_out = output;
+    state.avail_out = (uInt)output_size;
+    status = inflate(&state, Z_SYNC_FLUSH);
+    if (!partial && status == Z_OK && !state.avail_out) {
+        // Consume the end marker even when the caller's buffer is exactly full;
+        // a further output byte means the extent's declared length is wrong.
+        Bytef guard;
+        state.next_out = &guard;
+        state.avail_out = 1;
+        status = inflate(&state, Z_SYNC_FLUSH);
+    }
+    int error = status == Z_MEM_ERROR ? -ENOMEM : -EILSEQ;
+    if (state.total_out == output_size &&
+        (status == Z_STREAM_END || (partial && status == Z_OK)))
+        error = 0;
+    inflateEnd(&state);
+    return error;
+}
 
 static int erofs_decode_zstd(unsigned int dictionary, const void *input, size_t input_size,
                               void *output, size_t output_size, int partial) {
@@ -94,5 +122,7 @@ int erofs_decode_native(unsigned int algorithm, unsigned int dictionary, const v
     }
     if (algorithm == 3)
         return erofs_decode_zstd(dictionary, input, input_size, output, output_size, partial);
+    if (algorithm == 2)
+        return erofs_decode_deflate(input, input_size, output, output_size, partial);
     return -EINVAL;
 }

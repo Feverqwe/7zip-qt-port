@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // Archive stream, cancellation and decompression services for Linux EROFS.
 #include "erofsarchivereader.h"
-#include "7zip/Common/StreamObjects.h"
 #include "7zip/Common/StreamUtils.h"
-#include "7zip/Compress/DeflateDecoder.h"
 #include "Common/UTFConvert.h"
 #include <cerrno>
 #include <cstring>
@@ -50,30 +48,11 @@ int ErofsArchiveReader::Decode(void *context, unsigned int algorithm, unsigned i
     auto &self = *static_cast<ErofsArchiveReader *>(context);
     if (self.transport_ != S_OK)
         return -EIO;
-    if (algorithm != 2)
-        return erofs_decode_native(algorithm, dictionary, input, inputSize, output, outputSize,
-                                   partial);
-    try {
-        CMyComPtr2<ISequentialInStream, CBufInStream> source;
-        source.Create_if_Empty();
-        source->Init(static_cast<const Byte *>(input), inputSize);
-        CMyComPtr2<ISequentialOutStream, CBufPtrSeqOutStream> dest;
-        dest.Create_if_Empty();
-        dest->Init(static_cast<Byte *>(output), outputSize);
-        auto *spec = new NCompress::NDeflate::NDecoder::CCOMCoder;
-        CMyComPtr<ICompressCoder> coder = spec;
-        spec->Set_NeedFinishInput(!partial);
-        const UInt64 expected = outputSize;
-        const HRESULT result = coder->Code(source, dest, nullptr, &expected, nullptr);
-        if (FAILED(result))
-            self.transport_ = result;
-        return result == S_OK && dest->GetPos() == outputSize ? 0 : -EILSEQ;
-    } catch (const std::bad_alloc &) {
+    const int error =
+        erofs_decode_native(algorithm, dictionary, input, inputSize, output, outputSize, partial);
+    if (algorithm == 2 && error == -ENOMEM)
         self.transport_ = E_OUTOFMEMORY;
-    } catch (...) {
-        self.transport_ = E_FAIL;
-    }
-    return -EIO;
+    return error;
 }
 
 int ErofsArchiveReader::OpenDevice(void *context, unsigned int id, const char *tag, uint64_t size) {

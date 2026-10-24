@@ -27,7 +27,7 @@ add_library(sevenzip_erofs_core STATIC
     third_party/7zip/C/Alloc.c third_party/7zip/C/CpuArch.c)
 target_include_directories(sevenzip_erofs_core PRIVATE src)
 target_link_libraries(sevenzip_erofs_core PUBLIC sevenzip_lz4 sevenzip_zstd
-    sevenzip_erofs_liblzma)
+    sevenzip_erofs_liblzma sevenzip_zisofs_zlib)
 set_target_properties(sevenzip_erofs_core PROPERTIES AUTOMOC OFF AUTOUIC OFF
     POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
 
@@ -40,9 +40,6 @@ add_library(sevenzip_erofs MODULE
     third_party/7zip/CPP/7zip/Common/InBuffer.cpp
     third_party/7zip/CPP/7zip/Common/OutBuffer.cpp
     third_party/7zip/CPP/7zip/Common/PropId.cpp
-    third_party/7zip/CPP/7zip/Compress/DeflateDecoder.cpp
-    third_party/7zip/CPP/7zip/Compress/BitlDecoder.cpp
-    third_party/7zip/CPP/7zip/Compress/LzOutWindow.cpp
     third_party/7zip/CPP/Windows/PropVariant.cpp
     third_party/7zip/CPP/Windows/TimeUtils.cpp
     third_party/7zip/CPP/Common/MyWindows.cpp
@@ -72,6 +69,17 @@ function(sevenzip_deploy_erofs)
     add_dependencies(sevenzip_desktop sevenzip_erofs_runtime)
 endfunction()
 if(BUILD_TESTING)
+    qt_add_executable(filesystem_zlib_tests tests/filesystem_zlib_tests.cpp src/squashfszlib.cpp
+        third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
+        third_party/7zip/CPP/7zip/Common/OutBuffer.cpp)
+    set_target_properties(filesystem_zlib_tests PROPERTIES AUTOMOC ON)
+    target_include_directories(filesystem_zlib_tests PRIVATE src third_party/7zip/CPP third_party/7zip)
+    target_link_libraries(filesystem_zlib_tests PRIVATE sevenzip_erofs_core Qt6::Test)
+    if(WIN32)
+        target_link_libraries(filesystem_zlib_tests PRIVATE oleaut32)
+    endif()
+    add_test(NAME filesystem_zlib COMMAND filesystem_zlib_tests -silent)
+    set_tests_properties(filesystem_zlib PROPERTIES TIMEOUT 30)
     qt_add_executable(erofs_reader_tests tests/erofs_reader_tests.cpp)
     set_target_properties(erofs_reader_tests PROPERTIES AUTOMOC ON)
     target_include_directories(erofs_reader_tests PRIVATE src)

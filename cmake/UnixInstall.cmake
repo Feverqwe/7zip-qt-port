@@ -56,6 +56,8 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/BSD-2-Clause"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
     DESTINATION "${notices_destination}/sevenzip-squashfs")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib/LICENSE"
+    DESTINATION "${notices_destination}/sevenzip-squashfs" RENAME zlib-LICENSE.txt)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/LGPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/BSD-2-Clause"
@@ -94,6 +96,8 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/exceptions/Linux-syscall-note"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
     DESTINATION "${notices_destination}/sevenzip-erofs")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib/LICENSE"
+    DESTINATION "${notices_destination}/sevenzip-erofs" RENAME zlib-LICENSE.txt)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/xz/COPYING.0BSD"
     DESTINATION "${notices_destination}/sevenzip-erofs" RENAME liblzma-COPYING.0BSD)
 install(TARGETS sevenzip_brotli LIBRARY DESTINATION "${runtime_destination}/Formats")

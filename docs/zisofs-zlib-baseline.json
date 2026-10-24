@@ -51,7 +51,12 @@
   },
   "local_integration": [
     "cmake/Iso.cmake",
-    "src/fs/isofs/zisofscompat.h"
+    "src/fs/isofs/zisofscompat.h",
+    "cmake/Squashfs.cmake",
+    "src/squashfszlib.cpp",
+    "src/squashfszlib.h",
+    "cmake/Erofs.cmake",
+    "src/erofsnativedecoders.c"
   ],
-  "scope": "Official zlib 1.3.2 inflate and Adler-32 APIs; unchanged portable C decoder subset; NO_GZIP omits gzip decoding/CRC, encoder, file API and platform assembly are not built. Z_PREFIX isolates library symbols."
+  "scope": "Official zlib 1.3.2 inflate and Adler-32 APIs shared by Zisofs, SquashFS zlib blocks and EROFS raw DEFLATE extents; unchanged portable C decoder subset; NO_GZIP omits gzip decoding/CRC, encoder, file API and platform assembly are not built. Z_PREFIX isolates library symbols."
 }

@@ -24,10 +24,10 @@
 #include "7zip/Common/StreamUtils.h"
 
 #include "7zip/Compress/CopyCoder.h"
-#include "7zip/Compress/ZlibDecoder.h"
 #include "archiveattributes.h"
 #include "squashfsdecoder.h"
 #include "squashfsmetadata.h"
+#include "squashfszlib.h"
 #include <algorithm>
 #include <errno.h>
 #include <map>
@@ -451,7 +451,6 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   CMyComPtr2_Create<ISequentialOutStream, CDynBufSeqOutStream> _dynOutStream;
 
   // CMyComPtr2<ICompressCoder, NCompress::NLzma::CDecoder> _lzmaDecoder;
-  CMyComPtr2<ICompressCoder, NCompress::NZlib::CDecoder> _zlibDecoder;
 
   CXzUnpacker _xz;
   CZstdDecHandle _zstd;
@@ -1072,9 +1071,7 @@ IMP_IInArchive_Props IMP_IInArchive_ArcProps_WITH_NAME
     }
     UInt32 method = _h.Method;
     if (method == kMethod_ZLIB) {
-        _zlibDecoder.Create_if_Empty();
-        const UInt64 outputLimit = outSizeMax;
-        RINOK(_zlibDecoder.Interface()->Code(_limitedInStream, outStream, NULL, &outputLimit, NULL))
+        RINOK(SquashfsDecodeZlib(_limitedInStream, outStream, outSizeMax))
 
     } else {
         if (_inputBuffer.Size() < inSize)

@@ -1,5 +1,48 @@
 # Read-only EROFS from Linux
 
+## Raw DEFLATE through official zlib — 2026-10-24
+
+EROFS raw DEFLATE now uses the unchanged zlib 1.3.2 C subset already shared
+with Zisofs and SquashFS. Repository, full commit, original-unit SHA256 and
+local owners remain in the [shared manifest](../zisofs-zlib-baseline.json).
+The repeatable reference-verify/reference-review commands in the
+[Zisofs audit](isofs-linux.md) apply to this same baseline; future updates
+must include all three consumers. Original notices remain intact, and the zlib
+license is installed with the EROFS notices on Unix and Windows.
+
+Before substitution, the complete pinned Linux `decompressor_deflate.c`,
+`z_erofs_fixup_insize`, mapper/full-prefix flags, current decode callback,
+SDK Deflate decoder and its buffer/finish services were compared. The original
+Linux body already calls zlib, but its page switching, pool/workspace and kernel
+API cannot serve a contiguous archive buffer directly. The small local
+`erofs_decode_deflate` in `src/erofsnativedecoders.c` connects the public API;
+it introduces no decoding algorithm. Linux source hashes and mapped owners
+remain in [the existing inventory](../erofs-linux-baseline.json).
+
+Both modes require exactly the requested output length. Full mode additionally
+requires DEFLATE stream completion; a private one-byte guard rejects output
+overflow while allowing an end marker after an exactly filled destination.
+Prefix mode may stop before the stream ends. Neither mode requires all source
+padding to be consumed. Existing config/header validation, leading-zero fixup,
+read-only bounds, mapping, source transport and cancellation remain in their
+owners. The C++ callback retains allocation-error translation. SDK Deflate,
+Bitl and LzOutWindow bodies are removed from this module's build composition;
+the general archive codecs retain their original implementations.
+
+After integration the full/prefix callers and exact-size/error branches were
+compared again. This codec substitution is source-complete within the existing
+read-side scope; it adds no recovery mode. Corrupt-stream recovery differences
+are permitted by the task, but this does not relax completion or validation.
+Runtime validation is recorded separately below.
+
+The six focused suites passed on macOS arm64, Linux x64 and Windows x64/MSVC.
+The full/prefix/guard regression, 480 valid-stream comparisons, historical
+archive ABI comparison, first Windows discovery timeout and successful final
+rerun are recorded with receipts and scope in the
+[shared zlib validation](squashfs-linux.md). Source transfer completeness and
+runtime evidence remain separate; no recovery, full/slow, native mount,
+release-install or performance acceptance is inferred.
+
 ## MicroLZMA through liblzma — 2026-10-24
 
 EROFS now uses the unchanged public `lzma_microlzma_decoder`, `lzma_code` and
@@ -615,8 +658,8 @@ new C++ integration is formatted separately.
 Raw LZ4 now uses the unchanged official library; its full/partial contracts and
 the replacement of the earlier Linux decoder are recorded in the
 [LZ4 source audit](lz4-frame.md). MicroLZMA uses the unchanged liblzma subset
-described in the 2026-10-24 substitution above. The existing 7-Zip Deflate and
-Zstd implementations are reused.
+described in the 2026-10-24 substitution above. Raw DEFLATE uses the shared
+official zlib API described above; Zstd retains the existing 7-Zip integration.
 Zstd uses caller-owned bounded buffers, checks the configured dictionary limit
 and preserves partial-reference decoding without trusting a frame's requested
 allocation size. No independent compression algorithm is introduced.

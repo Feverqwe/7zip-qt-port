@@ -16,7 +16,7 @@ struct sevenzip_squashfs_decoder {
     struct sevenzip_squashfs_io io;
 };
 
-// 7-Zip already supplies bounded Zlib/XZ/Zstd decoder bodies. The Linux
+// The module supplies bounded zlib/XZ/Zstd decoders. The Linux
 // framework still parses their options; its stream wrapper owns no extra state.
 void *sevenzip_squashfs_external_init(struct squashfs_sb_info *msblk, void *opts)
 {

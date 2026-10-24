@@ -1,5 +1,78 @@
 # SquashFS: metadata, streams и Linux-декодеры
 
+## Официальный zlib вместо SDK Deflate — 2026-10-24
+
+Zlib blocks теперь используют unchanged portable C subset zlib 1.3.2 из
+`https://github.com/madler/zlib.git`, commit
+`da607da739fa6047df13e66a2af6b8bec7c2a498`. Общий с Zisofs
+[manifest](../zisofs-zlib-baseline.json) сохраняет SHA256 полных original units,
+exact owners и local integration; новые копии библиотеки не создаются.
+Команды reference-verify/reference-review из
+[Zisofs audit](isofs-linux.md) применяются к тому же manifest. При update review
+проверять также SquashFS и EROFS consumers. zlib notice устанавливается рядом
+с notices обоих модулей.
+
+До реализации сверены полные `ZlibDecoder::{h,cpp}`, `DeflateDecoder::{h,cpp}`,
+`InBuffer`, `OutBuffer`, stream helpers, текущий GPL `CHandler::Decompress`,
+metadata и cached-file callers, original SDK SquashfsHandler и Linux
+compressor framework/options. SDK source baseline выбран из текущего
+[7-Zip inventory](../upstream-baseline.json); исторический Linux baseline ниже
+не изменён. Raw inflate заменяет только алгоритм, reusable SDK stream services
+остаются. У upstream нет готового zlib stream adapter с этим archive HRESULT
+contract; `src/squashfszlib.{h,cpp}` — узкая local integration, не новый decoder.
+
+Сохранены отдельная двухбайтовая `NZlib::IsZlib` validation до чтения тела,
+SDK read-ahead и выходной buffer/flush boundary. Валидный заголовок проходит
+в raw DEFLATE с полным окном; Adler проверяется отдельно после успешного
+flush. Это сохраняет приоритет header/body/input/output/trailer ошибок.
+Проверенный первый поток допускает trailing bytes/второй member; aggregate
+input consumption не требуется. Decoded output ограничен размером блока,
+переполнение отвергается с частным guard byte. Metadata/data consumers
+публикуют только успешно проверенные блоки. Recovery не расширяется.
+
+Из SquashFS module composition убраны SDK Zlib/Deflate/Bitl/LzOutWindow
+bodies; они остаются authoritative dependencies других форматов. Linux
+LZ4/LZO/options, SDK XZ/Zstd, metadata/file mappings не меняются. После
+подключения повторно сверены оба callers и failure/publication branches.
+Source substitution данного codec path завершена; общий read-side scope ниже
+сохраняет свои границы. Runtime validation описывается отдельно.
+
+### Проверка замены zlib — 2026-10-24
+
+На macOS arm64, Linux x64 и Windows x64/MSVC собраны затронутые modules и
+прямые test consumers; suites `filesystem_zlib`, `squashfs`, `squashfs_stream`,
+`erofs_reader`, `erofs_module`, `erofs` прошли. Финальные remote receipts:
+Linux `20261024T182533Z-4ae07c60`, Windows `20261024T183447Z-9da539fa`.
+Первый Windows run `20261024T181809Z-80eb5967` прошёл пять suites; один backend
+discovery check в `erofs_module` завершился по timeout при 62 остальных PASS.
+Финальный run не воспроизвёл этот сбой; причина не установлена, timeout не
+изменён.
+
+Новая regression проверяет реальные decode results: verified first stream,
+checksum/truncation/overflow, короткие source/output transfers, header rejection
+до body transport error и output/body/trailer error priority. EROFS coverage
+проверяет exact output, full completion, prefix без end marker, trailing padding
+и нетронутый output guard; stored/compressed streams генерирует независимый
+encoder Qt. Existing format suites проверяют metadata/data consumers, errors,
+cancellation, повторное чтение, archive ABI и backend extraction.
+
+Дополнительная macOS diagnostic сравнила production EROFS DEFLATE с прежним
+SDK и ожидаемыми bytes на 480 valid full/prefix requests: stored/fixed/dynamic,
+окна 9/12/15, tails и guards; все совпали. Actual archive ABI diagnostic дала
+совпадение 77 SquashFS и 142 EROFS requests с сохранёнными SDK modules из
+`df10e42b`: современные fixtures, corruption, короткие чтения, I/O failures
+и cancellation. Это ограниченное сравнение с историческим control, не доказательство
+эквивалентности всего текущего reader или любых повреждённых входов. Потерь
+на проверенных исправных данных не найдено. Recovery equivalence не требуется.
+Reports сохранены в task-local `build/review/filesystem-zlib`.
+
+Полный SDK baseline verifier и две существующие provenance tooling suites
+прошли на macOS; все 14 zlib owners совпадают с original hashes. Linkage
+проверка обоих macOS modules показала только system dependencies и отсутствие
+exported inflate/Adler symbols. Compiler caches и incremental build trees
+сохранены; disposable fixtures не оставлены. Full/slow suites, native mounts,
+release installation, UI appearance и performance acceptance не запускались.
+
 > Compatibility scope narrowed on 2026-10-24; see [retired formats](retired-formats.md).
 > Earlier dated source/runtime evidence below describes the scope at that date.
 
