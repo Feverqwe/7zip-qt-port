@@ -23,7 +23,7 @@ class ArchiveRecoveryBackendTests final : public QObject, protected ArchiveBacke
     }
   private slots:
     void initTestCase() {
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine_.isEmpty());
     }
     void readableCatalogueSurvivesListingErrors() {
@@ -52,7 +52,7 @@ class ArchiveRecoveryBackendTests final : public QObject, protected ArchiveBacke
         QVERIFY(!qvariant_cast<ArchiveInfo>(info[0][0]).readLimitations.isEmpty());
         const QString output = fixture.filePath("output");
         backend.extract(path, output, {QStringLiteral("healthy 空 file.txt")});
-        await(backend, false); // The console also reports the archive's header error.
+        await(backend, false); // Readable output does not clear the archive header error.
         QFile copied(output + QStringLiteral("/healthy 空 file.txt"));
         QVERIFY(copied.open(QIODevice::ReadOnly));
         QCOMPARE(copied.readAll(), QByteArray("healthy bytes"));
@@ -70,10 +70,6 @@ class ArchiveRecoveryBackendTests final : public QObject, protected ArchiveBacke
         QVERIFY2(backend.lastSourceExtractOperation() ==
                      NArchive::NExtract::NOperationResult::kCRCError,
                  qPrintable(diagnostics.join('\n')));
-        QSignalSpy refused(&backend, &ArchiveBackend::finished);
-        backend.remove(path, {"broken.txt"});
-        QCOMPARE(refused.size(), 1);
-        QVERIFY(!refused[0][0].toBool());
         QVERIFY(source.open(QIODevice::ReadOnly));
         QCOMPARE(source.readAll(), bytes);
     }
@@ -210,8 +206,5 @@ class ArchiveRecoveryBackendTests final : public QObject, protected ArchiveBacke
     }
 };
 
-int main(int argc, char **argv) {
-    ArchiveRecoveryBackendTests tests;
-    return backendTestMain(argc, argv, &tests);
-}
+QTEST_GUILESS_MAIN(ArchiveRecoveryBackendTests)
 #include "archive_recovery_backend_tests.moc"

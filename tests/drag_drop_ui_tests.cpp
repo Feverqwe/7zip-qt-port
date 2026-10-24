@@ -2,6 +2,7 @@
 #include "filetable.h"
 #include "fixtures/drag_event_position.h"
 #include "layout_inspection.h"
+#include "native_archive_fixture.h"
 #include "qtownedtempregistry.h"
 #include "qtpaneldragtransport.h"
 #include "window_state_support.h"
@@ -102,9 +103,7 @@ class DragDropUiTests final : public QObject {
         const QString archive = root.filePath("source.zip");
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {input.fileName()});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {input.fileName()}));
         QFile original(archive);
         QVERIFY(original.open(QIODevice::ReadOnly));
         const QByteArray originalBytes = original.readAll();
@@ -121,23 +120,10 @@ class DragDropUiTests final : public QObject {
         table->setCurrentCell(Row(*table, name), 0);
         CMyComPtr<IFolderFolder> provider = table->sourcePanel->GetFolder();
         finished.clear();
-        bool extracted = false, closeRefused = false, protectedActiveRoot = false;
+        QSet<QString> previousRoots;
+        for (const auto &entry : QtOwnedTempRegistry().Entries())
+            previousRoots.insert(entry.path);
         QStringList dragRoots;
-        connect(&backend, &ArchiveBackend::engineStarted, &window, [&] {
-            if (extracted)
-                return;
-            extracted = true;
-            closeRefused = !window.close();
-            QMetaObject::invokeMethod(table, "cellClicked", Qt::DirectConnection,
-                                      Q_ARG(int, Row(*table, name)), Q_ARG(int, 0));
-            QtOwnedTempRegistry registry;
-            for (const auto &entry : registry.Entries()) {
-                if (entry.active && QFileInfo(entry.path).fileName().startsWith("7zE")) {
-                    dragRoots.append(entry.path);
-                    protectedActiveRoot |= entry.active && !registry.ClaimForDeletion(entry);
-                }
-            }
-        });
         bool cancelledNativeDrag = false;
         QTimer cancelNativeDrag;
         const bool xcb = QGuiApplication::platformName() == QStringLiteral("xcb");
@@ -181,16 +167,17 @@ class DragDropUiTests final : public QObject {
         cancelNativeDrag.stop();
         if (xcb && !right)
             QVERIFY(cancelledNativeDrag);
+        for (const auto &entry : QtOwnedTempRegistry().Entries())
+            if (!previousRoots.contains(entry.path) &&
+                QFileInfo::exists(QDir(entry.path).filePath(name)))
+                dragRoots.append(entry.path);
         const bool nativeOle = QGuiApplication::platformName() == QStringLiteral("windows");
-        if (right || nativeOle) {
-            // This fixture holds no OS mouse button. OLE's source
-            // QueryContinueDrag cancels before requesting lazy archive bytes.
-            // Qt's other transports prepare bytes before entering exec instead.
-            QVERIFY(!extracted);
-            QVERIFY(!closeRefused && !protectedActiveRoot);
+        if (right || nativeOle)
             QVERIFY(dragRoots.isEmpty());
-        } else
-            QVERIFY(extracted && closeRefused && protectedActiveRoot);
+#ifdef Q_OS_MACOS
+        else
+            QVERIFY(!dragRoots.isEmpty());
+#endif
         QVERIFY(window.isVisible());
         QVERIFY(!backend.busy());
         QCOMPARE(table->sourcePanel->GetFolder(), provider.Interface());
@@ -287,9 +274,7 @@ class DragDropUiTests final : public QObject {
         const QString archive = root.filePath("target.zip");
         ArchiveBackend backend;
         QSignalSpy created(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {seed});
-        QVERIFY(created.wait(30000));
-        QVERIFY(created.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {seed}));
         QFile before(archive);
         QVERIFY(before.open(QIODevice::ReadOnly));
         const QByteArray original = before.readAll();

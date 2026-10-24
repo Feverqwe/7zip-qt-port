@@ -2,7 +2,6 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QStandardPaths>
 #ifdef _WIN32
 #include "Common/StringConvert.h"
 #include "Windows/FileIO.h"
@@ -67,7 +66,7 @@ bool ArchiveCodecImage::copyFolder(const QString &source, const QString &relativ
     return true;
 }
 
-bool ArchiveCodecImage::prepare(const QString &module, const QString &engine) {
+bool ArchiveCodecImage::prepare(const QString &module) {
     if (!directory_.isValid())
         return false;
     const QFileInfo main(module);
@@ -84,16 +83,6 @@ bool ArchiveCodecImage::prepare(const QString &module, const QString &engine) {
         // their own nested assets, which must belong to the same immutable image.
         if (!copyFolder(plugins.absolutePath(), folder))
             return false;
-    }
-    if (!engine.isEmpty()) {
-        const QString executable = QFileInfo(engine).isFile()
-                                       ? QFileInfo(engine).absoluteFilePath()
-                                       : QStandardPaths::findExecutable(engine);
-        const QFileInfo program(executable);
-        // Legacy process consumers can share this deployment while they are
-        // being migrated. Native discovery does not require an executable.
-        if (!executable.isEmpty() && program.isFile() && copyFile(executable, program.fileName()))
-            engine_ = directory_.filePath(program.fileName());
     }
     return true;
 }

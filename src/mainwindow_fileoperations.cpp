@@ -197,14 +197,14 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
         rememberTransferDestination(destination);
         if (copyToSame) {
             if (move) {
-                archiveMovePaths_ = paths;
+                archiveMoveIndices_ = indices;
                 archiveMoveStage_ = ArchiveMoveStage::Extracting;
             }
             const bool handled =
                 extractWithSource(destination, true, archivePassword_, options, paths, &indices);
             if (!handled || state_ != State::Operating) {
                 archiveMoveStage_ = ArchiveMoveStage::None;
-                archiveMovePaths_.clear();
+                archiveMoveIndices_.Clear();
                 transferDestinationPanel_.reset();
                 if (!handled)
                     QMessageBox::warning(this, QtLangText(IDS_COPYING),
@@ -225,19 +225,19 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
                 transferDestinationPanel_.reset();
             return;
         }
-        archiveMovePaths_ = paths;
+        archiveMoveIndices_ = indices;
         archiveMoveStage_ = ArchiveMoveStage::Extracting;
         if (extractWithSource(destination, true, archivePassword_, options, paths, &indices)) {
             if (state_ != State::Operating) {
                 archiveMoveStage_ = ArchiveMoveStage::None;
-                archiveMovePaths_.clear();
+                archiveMoveIndices_.Clear();
                 transferDestinationPanel_.reset();
             }
             return;
         }
         if (!QFileInfo(destination).isDir() || QFileInfo(destination).isSymLink()) {
             archiveMoveStage_ = ArchiveMoveStage::None;
-            archiveMovePaths_.clear();
+            archiveMoveIndices_.Clear();
             transferDestinationPanel_.reset();
             QMessageBox::warning(
                 this, "Sevenzip",

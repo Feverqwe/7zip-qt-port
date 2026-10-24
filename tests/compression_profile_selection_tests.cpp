@@ -3,6 +3,7 @@
 #include "createarchivedialog.h"
 #include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 #include <QScopeGuard>
 #include <QScrollArea>
 #include <QSignalSpy>
@@ -176,8 +177,9 @@ class CompressionProfileSelectionTests final : public QObject {
             done.clear();
             return success;
         };
-        backend.create(dialog.target(), {input}, {}, false, options);
-        QVERIFY(completed());
+        QCOMPARE(
+            SourceCreationFixture::Create(backend, dialog.target(), {input}, {}, false, options),
+            S_OK);
         backend.list(dialog.target());
         QVERIFY(completed());
         backend.test(dialog.target());

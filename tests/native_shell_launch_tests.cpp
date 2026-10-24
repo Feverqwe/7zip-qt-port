@@ -77,7 +77,7 @@ class NativeShellLaunchTests final : public QObject {
         const QString library = installed.isEmpty() ? QString::fromUtf8(NATIVE_SHELL_LIBRARY)
                                                     : QDir(installed).filePath("bin/7-zip.dll");
         if (!installed.isEmpty()) {
-            for (const QString &name : {"7zFM.exe", "7zG.exe", "7z.exe", "7z.dll", "7-zip.dll"})
+            for (const QString &name : {"7zFM.exe", "7zG.exe", "7z.dll", "7-zip.dll"})
                 QVERIFY2(QFileInfo::exists(QDir(installed).filePath("bin/" + name)),
                          qPrintable(name));
             QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
@@ -85,7 +85,7 @@ class NativeShellLaunchTests final : public QObject {
             QVERIFY(!system.isEmpty());
             const QString binary = QDir::toNativeSeparators(QDir(installed).filePath("bin"));
             environment.insert("PATH", binary + ";" + system + "\\System32;" + system);
-            environment.insert("SEVENZIP_ENGINE_PATH", binary + "\\7z.exe");
+            environment.insert("SEVENZIP_CODEC_MODULE_PATH", binary + "\\7z.dll");
             environment.insert("QT_PLUGIN_PATH", QString());
             environment.insert("QT_QPA_PLATFORM_PLUGIN_PATH", QString());
             host.setProcessEnvironment(environment);

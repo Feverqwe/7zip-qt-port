@@ -1,4 +1,4 @@
-# Prepare official Windows dynamic and standalone clients from the pinned source.
+# Prepare the official Windows console sidecar and codec module from pinned source.
 [CmdletBinding()]
 param(
     [string]$UpstreamCheckout,
@@ -43,7 +43,6 @@ if ((Get-Item -LiteralPath $output).Attributes -band [IO.FileAttributes]::Repars
 $artifacts = [ordered]@{
     '7z.exe' = 'CPP/7zip/UI/Console'
     '7z.dll' = 'CPP/7zip/Bundles/Format7zF'
-    '7zz.exe' = 'CPP/7zip/Bundles/Alone2'
 }
 $manifest = Join-Path $output 'runtime.json'
 $existing = @($artifacts.Keys | ForEach-Object { Join-Path $output $_ }) +
@@ -100,6 +99,23 @@ $snapshot = Join-Path $output '.build-runtime'
         version = ([int]$major.Groups[1].Value -shl 16) -bor [int]$minor.Groups[1].Value
         files = $files
     }
+    $retired = @()
+    if ($owner) {
+        foreach ($property in $owner.files.PSObject.Properties) {
+            $name = $property.Name
+            if ($artifacts.Contains($name)) { continue }
+            if ([IO.Path]::GetFileName($name) -ne $name) { throw 'Unsafe retired runtime artifact.' }
+            $path = Join-Path $output $name
+            if (Test-Path -LiteralPath $path) {
+                $item = Get-Item -LiteralPath $path
+                if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
+                    (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $property.Value.sha256) {
+                    throw 'Refusing to remove a modified retired runtime artifact.'
+                }
+                $retired += $path
+            }
+        }
+    }
     $stagedManifest = Join-Path $snapshot 'runtime.json'
     [IO.File]::WriteAllText($stagedManifest, ($record | ConvertTo-Json -Depth 5) + "`n",
                           (New-Object Text.UTF8Encoding($false)))
@@ -108,6 +124,7 @@ $snapshot = Join-Path $output '.build-runtime'
     }
     Copy-Item -LiteralPath (Join-Path $snapshot 'DOC/License.txt') -Destination (Join-Path $output 'LICENSE.txt')
     Move-Item -LiteralPath $stagedManifest -Destination $manifest -Force
+    foreach ($path in $retired) { Remove-Item -LiteralPath $path }
     Write-Output "Prepared official Windows codec runtime: $output"
     Write-Output "Upstream: $revision"
 }

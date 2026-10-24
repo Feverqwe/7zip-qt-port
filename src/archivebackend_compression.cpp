@@ -142,39 +142,3 @@ bool ArchiveBackend::compressionProperties(const QString &suffix, const QString 
     *properties = NCompressDialog::GetCompressionProperties(info, suffix == "7z");
     return true;
 }
-
-bool ArchiveBackend::compressionSwitches(const QString &suffix, const QString &password,
-                                         bool encryptHeaders, const CompressionOptions &options,
-                                         QStringList *switches, QString *error) {
-    CObjectVector<CProperty> properties;
-    if (!compressionProperties(suffix, password, encryptHeaders, options, &properties, error))
-        return false;
-    switches->clear();
-    // UpdateGUI.cpp's lifecycle projection is transported through the source
-    // ArchiveCommandLine.cpp switches, outside method properties.
-    if (options.SetArcMTime.Val)
-        switches->append("-stl");
-    if (options.PreserveATime.Def && options.PreserveATime.Val)
-        switches->append("-ssp");
-    if (options.OpenShareForWrite)
-        switches->append("-ssw");
-    // ArchiveCommandLine.cpp uses kMinus and SetBoolPair for kSymLinks.
-    if (options.SymLinks.Def || options.SymLinks.Val)
-        switches->append(options.SymLinks.Val ? "-snl" : "-snl-");
-    if (options.HardLinks.Def || options.HardLinks.Val)
-        switches->append(options.HardLinks.Val ? "-snh" : "-snh-");
-    if (options.AltStreams.Def || options.AltStreams.Val)
-        switches->append(options.AltStreams.Val ? "-sns" : "-sns-");
-    if (options.NtSecurity.Val)
-        switches->append("-sni");
-    FOR_VECTOR(i, properties) {
-        const CProperty &property = properties[i];
-        QString argument = "-m" + QString::fromWCharArray(property.Name.Ptr());
-        if (!property.Value.IsEmpty())
-            argument += '=' + QString::fromWCharArray(property.Value.Ptr());
-        switches->append(argument);
-    }
-    if (!password.isEmpty())
-        switches->append("-p");
-    return true;
-}

@@ -23,7 +23,7 @@ class WindowsPackageVerificationTests(unittest.TestCase):
             "architecture": "x86_64",
             "files": {},
         }
-        for name in ("7z.exe", "7z.dll", "7zz.exe"):
+        for name in ("7z.exe", "7z.dll"):
             payload = f"disposable {name}".encode()
             (self.runtime / name).write_bytes(payload)
             self.record["files"][name] = {"sha256": hashlib.sha256(payload).hexdigest()}
@@ -61,7 +61,7 @@ class WindowsPackageVerificationTests(unittest.TestCase):
         self.verify(False)
 
     def test_missing_binary(self):
-        (self.runtime / "7zz.exe").unlink()
+        (self.runtime / "7z.exe").unlink()
         self.verify(False)
 
     def test_missing_recorded_checksum(self):

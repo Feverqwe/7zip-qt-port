@@ -104,7 +104,7 @@ bool makeArchive(const QString &directory, const QString &path, const QString &t
                  const QString &name) {
     QProcess process;
     process.setWorkingDirectory(directory);
-    process.start(QStandardPaths::findExecutable("7zz"), {"a", "-t" + type, "--", path, name});
+    process.start(QStandardPaths::findExecutable("7z"), {"a", "-t" + type, "--", path, name});
     return process.waitForFinished(10000) && process.exitCode() == 0;
 }
 void dismissResults(WidgetDialogFixture &dialogs, QStringList &errors, QStringList &successes) {

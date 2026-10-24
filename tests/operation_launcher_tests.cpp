@@ -1,3 +1,4 @@
+#include "archivecodelocation.h"
 #include "fixtures/operation_kill.h"
 #include "fixtures/operation_parent.h"
 #include "fixtures/operation_program.h"
@@ -56,14 +57,14 @@ class OperationLauncherTests final : public QObject {
         QVERIFY(QDir().mkpath(deployment));
         const QString module = QStringLiteral(SEVENZIP_CODEC_MODULE);
         QVERIFY(QFile::copy(module, QDir(deployment).filePath(QFileInfo(module).fileName())));
-        const QByteArray oldEngine = qgetenv("SEVENZIP_ENGINE_PATH");
+        const QByteArray oldEngine = qgetenv("SEVENZIP_CODEC_MODULE_PATH");
         const auto restore = qScopeGuard([&] {
             if (oldEngine.isNull())
-                qunsetenv("SEVENZIP_ENGINE_PATH");
+                qunsetenv("SEVENZIP_CODEC_MODULE_PATH");
             else
-                qputenv("SEVENZIP_ENGINE_PATH", oldEngine);
+                qputenv("SEVENZIP_CODEC_MODULE_PATH", oldEngine);
         });
-        qputenv("SEVENZIP_ENGINE_PATH", QDir(deployment).filePath("missing console").toUtf8());
+        qputenv("SEVENZIP_CODEC_MODULE_PATH", FindArchiveModule(deployment).toUtf8());
         QtOperationLauncher launcher;
         QSignalSpy accepted(&launcher, &QtOperationLauncher::accepted);
         QSignalSpy finished(&launcher, &QtOperationLauncher::finished);
@@ -147,7 +148,7 @@ class OperationLauncherTests final : public QObject {
         const auto archive = directory.filePath("protected.7z");
         QProcess create;
         create.setWorkingDirectory(directory.path());
-        create.start(QStandardPaths::findExecutable("7zz"),
+        create.start(QStandardPaths::findExecutable("7z"),
                      {"a", "-t7z", "-pfixture-password", "-mhe=on", archive, "secret.txt"});
         QVERIFY(create.waitForFinished(10000));
         QCOMPARE(create.exitCode(), 0);

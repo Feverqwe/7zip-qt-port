@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "fixtures/widget_dialogs.h"
 #include "mainwindow.h"
+#include "native_archive_fixture.h"
 #include <QLineEdit>
 
 #include <QCryptographicHash>
@@ -62,7 +63,6 @@ class ChecksumTests : public QObject {
         file.close();
         ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        QSignalSpy engineStarted(&backend, &ArchiveBackend::engineStarted);
         backend.hash({path}, "SHA256");
         QVERIFY(backend.busy());
         QCOMPARE(backend.setPaused(true), S_OK);
@@ -71,7 +71,6 @@ class ChecksumTests : public QObject {
         QVERIFY(!finished.takeFirst().first().toBool());
         QVERIFY(!backend.busy());
         QCOMPARE(backend.lastResult(), E_ABORT);
-        QCOMPARE(engineStarted.size(), 0);
     }
 
     void archiveMenuHashesSelectedFile() {
@@ -87,9 +86,7 @@ class ChecksumTests : public QObject {
         ArchiveBackend backend;
         const QString archive = temporary.filePath("sample.7z");
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {path});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {path}));
 
         MainWindow window(&backend);
         window.show();
@@ -141,9 +138,8 @@ class ChecksumTests : public QObject {
         options.Level = 0;
         const QString password = outcome == "crc" ? QString() : QStringLiteral("fixture password");
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {inputPath}, password, false, options);
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(
+            NativeArchiveFixture::WriteFiles(archive, {inputPath}, "zip", password, false, true));
         if (outcome == "crc") {
             QFile bytes(archive);
             QVERIFY(bytes.open(QIODevice::ReadOnly));

@@ -13,7 +13,7 @@ Follow `AGENTS.md` for coverage, focused build/CTest
 wrappers, the full gate and reporting platform limits.
 
 Prefer small public-behavior tests and disposable archives made by official
-`7zz` or the affected native provider. Select relevant failure cases rather
+`7z` sidecar or the affected native provider. Select relevant failure cases rather
 than repeating a universal edge-case list. Matching output alone does not prove
 source reuse: compare port bodies with the recorded upstream implementation.
 Do not replace behavior tests with source-text assertions or treat a startup

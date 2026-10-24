@@ -48,7 +48,7 @@ class FileManagerStartupTests final : public QObject {
   private slots:
     void initTestCase() {
         module = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
-        engine = QStandardPaths::findExecutable("7zz");
+        engine = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine.isEmpty());
         ArchiveCodecCatalog probe(module, 0);
         QCOMPARE(probe.result(), S_OK);
@@ -333,7 +333,7 @@ class FileManagerStartupTests final : public QObject {
             const QString binary = QDir::toNativeSeparators(QDir(installed).filePath("bin"));
             executable = binary + "\\7zFM.exe";
             environment.insert("PATH", binary + ";" + system + "\\System32;" + system);
-            environment.insert("SEVENZIP_ENGINE_PATH", binary + "\\7z.exe");
+            environment.insert("SEVENZIP_CODEC_MODULE_PATH", binary + "\\7z.dll");
             environment.insert("QT_PLUGIN_PATH", QString());
             environment.insert("QT_QPA_PLATFORM_PLUGIN_PATH", QString());
         }

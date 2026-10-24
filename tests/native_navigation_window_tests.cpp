@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
+#include "native_archive_fixture.h"
 #include "window_state_support.h"
 #include <QAction>
 #include <QFile>
@@ -206,9 +207,7 @@ class NativeNavigationWindowTests : public QObject, protected MainWindowTestSupp
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         const QString archive = dir.filePath("address.zip");
-        backend.create(archive, {payload.fileName()});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {payload.fileName()}));
         MainWindow window(&backend);
         window.show();
         window.openArchive(archive);
@@ -229,7 +228,7 @@ class NativeNavigationWindowTests : public QObject, protected MainWindowTestSupp
         payload.close();
         QProcess update;
         update.setWorkingDirectory(QFileInfo(payload.fileName()).absolutePath());
-        const QString executable = QStandardPaths::findExecutable("7zz");
+        const QString executable = QStandardPaths::findExecutable("7z");
         QVERIFY(!executable.isEmpty());
         update.start(executable,
                      {"u", "-y", "--", archive, QFileInfo(payload.fileName()).fileName()});

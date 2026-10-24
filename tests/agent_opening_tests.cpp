@@ -198,7 +198,7 @@ class AgentOpeningTests final : public QObject, protected ArchiveBackendTestSupp
         }
     }
     void initTestCase() {
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY2(!engine_.isEmpty(), "Official fixture engine is required");
     }
     void openingWaitsForPendingCodecDiscovery_data() {

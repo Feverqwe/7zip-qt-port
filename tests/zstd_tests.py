@@ -17,7 +17,7 @@ class ZstdTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-zstd-runtime-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX,
+        for name in ("7z" + SUFFIX,
                      "7z.dll" if sys.platform == "win32" else "7z.so"):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
 
@@ -33,7 +33,7 @@ class ZstdTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix="sevenzip-zstd-") as temporary:
                 path = Path(temporary) / "архив 空.bin"
                 path.write_bytes(image)
-                for engine in ("7z", "7zz"):
+                for engine in ("7z",):
                     with self.subTest(kind=kind, engine=engine):
                         result = self.command(engine, path, "l", "-slt", forced=False)
                         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -53,7 +53,7 @@ class ZstdTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix="sevenzip-zstd-invalid-") as temporary:
                 path = Path(temporary) / "bad.bin"
                 path.write_bytes(image)
-                for engine in ("7z", "7zz"):
+                for engine in ("7z",):
                     with self.subTest(kind=kind, engine=engine):
                         result = self.command(engine, path, "t")
                         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)

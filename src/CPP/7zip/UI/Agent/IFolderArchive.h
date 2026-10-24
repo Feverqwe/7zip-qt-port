@@ -14,7 +14,7 @@
 #include "7zip/UI/Common/ExtractMode.h"
 
 // Engine objects cross this unchanged interface only as opaque pointers.
-// ArchiveBackend owns the external 7zz integration; no codec loader is built here.
+// ArchiveBackend owns native module/service attachment; no codec loader is built here.
 class CCodecs;
 
 Z7_PURE_INTERFACES_BEGIN

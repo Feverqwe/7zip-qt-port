@@ -150,7 +150,7 @@ class AgentStreamCopyUiTests final : public QObject, protected MainWindowTestSup
         if (sourceArchive) {
             QProcess creator;
             creator.setWorkingDirectory(input);
-            creator.start(QStandardPaths::findExecutable("7zz"),
+            creator.start(QStandardPaths::findExecutable("7z"),
                           {"a", "-tzip", "--", inputArchive, copied, moved});
             QVERIFY(creator.waitForFinished(10000));
             QCOMPARE(creator.exitCode(), 0);
@@ -240,7 +240,7 @@ class AgentStreamCopyUiTests final : public QObject, protected MainWindowTestSup
             QTRY_VERIFY(row(*source, moved) < 0);
             QProcess extractor;
             const QString output = fixture.filePath("source output");
-            extractor.start(QStandardPaths::findExecutable("7zz"),
+            extractor.start(QStandardPaths::findExecutable("7z"),
                             {"x", "-y", "-o" + output, "--", inputArchive});
             QVERIFY(extractor.waitForFinished(10000));
             QCOMPARE(extractor.exitCode(), 0);
@@ -266,7 +266,7 @@ class AgentStreamCopyUiTests final : public QObject, protected MainWindowTestSup
         inspectWindow(window, tag + "-after");
         const QString output = fixture.filePath("output");
         QProcess extractor;
-        extractor.start(QStandardPaths::findExecutable("7zz"),
+        extractor.start(QStandardPaths::findExecutable("7z"),
                         {"x", "-y", "-sns", "-o" + output, "--", archive});
         QVERIFY(extractor.waitForFinished(10000));
         QCOMPARE(extractor.exitCode(), 0);

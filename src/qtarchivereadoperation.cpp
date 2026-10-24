@@ -132,7 +132,7 @@ class CTestCallback final : public IArchiveExtractCallback,
         if (!allowed || !answer)
             return E_INVALIDARG;
         // ExtractCallback::RequestMemoryUse's non-dialog fast path: preserve
-        // the engine's already allowed budget, without silently increasing it.
+        // the decoder's already allowed budget, without silently increasing it.
         if ((flags & NRequestMemoryUseFlags::k_IsReport) == 0 && required <= *allowed) {
             *answer = NRequestMemoryAnswerFlags::k_Allow;
             return S_OK;
@@ -198,10 +198,11 @@ HRESULT ExtractEntry(QtArchiveReadOperation &operation,
 
 QtArchiveReadOperation::QtArchiveReadOperation(QString path, QString password,
                                                std::shared_ptr<const ArchiveCodecCatalog> catalog,
-                                               Work work, Kind kind, QString format, QString engine)
+                                               Work work, Kind kind, QString format,
+                                               QString moduleLocation)
     : catalog_(std::move(catalog)), path_(std::move(path)), work_(std::move(work)), kind_(kind),
-      format_(std::move(format)), engine_(std::move(engine)), password_(std::move(password)),
-      passwordDefined_(!password_.isEmpty()) {}
+      format_(std::move(format)), moduleLocation_(std::move(moduleLocation)),
+      password_(std::move(password)), passwordDefined_(!password_.isEmpty()) {}
 
 void QtArchiveReadOperation::cancel() {
     progress_.cancel();
@@ -287,7 +288,7 @@ void QtArchiveReadOperation::run() {
         if (Result != S_OK)
             return;
         if (!catalog_) {
-            catalog_ = ArchiveCodecProbe::LoadCatalog(engine_);
+            catalog_ = ArchiveCodecProbe::LoadCatalog(moduleLocation_);
             CatalogDiagnostic = catalog_->error();
         }
         // Native entrypoints are not interruptible. Retain their image until

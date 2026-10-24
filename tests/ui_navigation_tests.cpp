@@ -339,7 +339,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QTimer warningResponder;
         connect(&warningResponder, &QTimer::timeout, &window, [] { dismissWarnings(); });
         warningResponder.start(1);
-        backend.queueListAction([&] { backend.fail(QStringLiteral("7zz не запустился.")); });
+        backend.queueListAction([&] { backend.fail(QStringLiteral("7z не запустился.")); });
         window.openArchive("failed.7z");
         warningResponder.stop();
         QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(),

@@ -3,6 +3,7 @@
 #include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 #include "qtcompressoptionsdialog.h"
+#include "source_creation_fixture.h"
 #include <QDateTime>
 #include <QScrollArea>
 #include <QScrollBar>
@@ -183,9 +184,7 @@ class CompressionAdvancedTests final : public QObject {
         const QString archive = output.filePath("result." + format);
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {a, b}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
-        QVERIFY2(finished.last().first().toBool(), qPrintable(finished.last().at(1).toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, archive, {a, b}, {}, false, options), S_OK);
 #ifdef Q_OS_WIN
         for (const QString &path : {a, b})
             QCOMPARE(QFileInfo(path).lastRead(), accessed);
@@ -205,11 +204,8 @@ class CompressionAdvancedTests final : public QObject {
         options.PreserveATime.SetTrueTrue();
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
-        backend.create(fixture.filePath("result.7z"), {source}, {}, false, options);
-        QCOMPARE(finished.size(), 1);
-        QVERIFY(!finished.last().first().toBool());
-        QCOMPARE(started.size(), 0);
+        QVERIFY(SourceCreationFixture::Create(backend, fixture.filePath("result.7z"), {source}, {},
+                                              false, options) != S_OK);
         QCOMPARE(readFile(source), QByteArray("retained source"));
         QVERIFY(!QFileInfo::exists(fixture.filePath("result.7z")));
         NCompression::CInfo persisted;
@@ -427,11 +423,10 @@ class CompressionAdvancedTests final : public QObject {
         const QString archive = fixture.filePath("time." + format);
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
-        QVERIFY2(finished.last().first().toBool(), qPrintable(finished.last().at(1).toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, archive, {source}, {}, false, options),
+                 S_OK);
         QProcess listing;
-        listing.start("7zz", {"l", "-slt", "--", archive});
+        listing.start("7z", {"l", "-slt", "--", archive});
         QVERIFY(listing.waitForFinished(15000));
         QCOMPARE(listing.exitCode(), 0);
         const QByteArray metadata = listing.readAllStandardOutput();
@@ -468,9 +463,8 @@ class CompressionAdvancedTests final : public QObject {
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         const QString target = fixture.filePath("no-time.7z");
-        backend.create(target, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
-        QVERIFY(finished.last().first().toBool());
+        QCOMPARE(SourceCreationFixture::Create(backend, target, {source}, {}, false, options),
+                 S_OK);
         QSignalSpy listed(&backend, &ArchiveBackend::entriesReady);
         backend.list(target);
         QTRY_COMPARE_WITH_TIMEOUT(listed.size(), 1, 15000);
@@ -480,24 +474,18 @@ class CompressionAdvancedTests final : public QObject {
         options.Options = "unknown-property=on";
         const QString bad = fixture.filePath("invalid.7z");
         finished.clear();
-        backend.create(bad, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
-        QVERIFY(!finished.last().first().toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, bad, {source}, {}, false, options) != S_OK);
         QVERIFY(!QFileInfo::exists(bad));
         options.Options.Empty();
         options.TimePrec = UInt32(NFileTimeType::kUnix); // Unsupported by the source 7z handler.
         finished.clear();
-        backend.create(bad, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
-        QVERIFY(!finished.last().first().toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, bad, {source}, {}, false, options) != S_OK);
         QVERIFY(!QFileInfo::exists(bad));
         options.TimePrec = UInt32(-1);
         options.Options = "0=BZip2";
         finished.clear();
-        connect(&backend, &ArchiveBackend::engineStarted, &backend, &ArchiveBackend::cancel);
-        backend.create(bad, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
-        QCOMPARE(backend.lastResult(), E_ABORT);
+        QCOMPARE(SourceCreationFixture::Create(backend, bad, {source}, {}, false, options, true),
+                 E_ABORT);
         QVERIFY(!QFileInfo::exists(bad));
         QCOMPARE(readFile(source), bytes);
         QVERIFY(

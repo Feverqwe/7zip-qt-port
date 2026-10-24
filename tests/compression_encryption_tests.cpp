@@ -1,5 +1,6 @@
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 #include <QScrollArea>
 #include <QSettings>
 #include <QSignalSpy>
@@ -165,13 +166,12 @@ class CompressionEncryptionTests final : public QObject {
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
-        backend.create(dialog.target(), dialog.sources(), dialog.password(),
-                       dialog.encryptHeaders(), dialog.compressionOptions());
-        QTRY_COMPARE_WITH_TIMEOUT(done.count(), 1, 30000);
-        const auto result = done.takeFirst();
-        QVERIFY2(result[0].toBool(), qPrintable(result[1].toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, dialog.target(), dialog.sources(),
+                                               dialog.password(), dialog.encryptHeaders(),
+                                               dialog.compressionOptions()),
+                 S_OK);
         QProcess process;
-        process.start("7zz", {"l", "-slt", "-p" + password, "--", dialog.target()});
+        process.start("7z", {"l", "-slt", "-p" + password, "--", dialog.target()});
         QVERIFY(process.waitForFinished(30000));
         QCOMPARE(process.exitCode(), 0);
         const QByteArray listing = process.readAllStandardOutput();
@@ -179,7 +179,7 @@ class CompressionEncryptionTests final : public QObject {
         if (format == "zip" && !password.isEmpty())
             QVERIFY(listing.contains(encryption == "ZipCrypto" ? "ZipCrypto" : "AES-256"));
         if (headers) {
-            process.start("7zz", {"l", "-slt", "-pwrong", "--", dialog.target()});
+            process.start("7z", {"l", "-slt", "-pwrong", "--", dialog.target()});
             QVERIFY(process.waitForFinished(30000));
             QVERIFY(process.exitCode() != 0);
             QVERIFY(
@@ -187,7 +187,7 @@ class CompressionEncryptionTests final : public QObject {
         }
         const QString output =
             directory_.filePath(QString::fromLatin1(QTest::currentDataTag()) + "-out");
-        process.start("7zz", {"x", "-p" + password, "-o" + output, "--", dialog.target()});
+        process.start("7z", {"x", "-p" + password, "-o" + output, "--", dialog.target()});
         QVERIFY(process.waitForFinished(30000));
         QCOMPARE(process.exitCode(), 0);
         QFile file(QDir(output).filePath(QFileInfo(source_).fileName()));
@@ -200,28 +200,22 @@ class CompressionEncryptionTests final : public QObject {
         CompressionOptions options;
         options.EncryptionMethod = "AES256";
         const QString target = directory_.filePath("rejected.zip");
-        backend.create(target, {source_}, QString(100, 'x'), false, options);
-        QCOMPARE(done.count(), 1);
-        QVERIFY(!done.takeFirst()[0].toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, target, {source_}, QString(100, 'x'), false,
+                                              options) != S_OK);
         QVERIFY(!QFileInfo::exists(target));
-        backend.create(target, {source_}, QStringLiteral("пароль"), false, options);
-        QCOMPARE(done.count(), 1);
-        QVERIFY(!done.takeFirst()[0].toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, target, {source_}, QStringLiteral("пароль"),
+                                              false, options) != S_OK);
         options.EncryptionMethod = "unsupported";
-        backend.create(target, {source_}, "abc", false, options);
-        QCOMPARE(done.count(), 1);
-        QVERIFY(!done.takeFirst()[0].toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, target, {source_}, "abc", false, options) !=
+                S_OK);
         options.EncryptionMethod = "AES256";
-        backend.create(directory_.filePath("invalid.7z"), {source_}, "abc", false, options);
-        QCOMPARE(done.count(), 1);
-        QVERIFY(!done.takeFirst()[0].toBool());
-        backend.create(target, {source_}, "abc", true, options);
-        QCOMPARE(done.count(), 1);
-        QVERIFY(!done.takeFirst()[0].toBool());
-        backend.create(target, {source_}, "abc", false, options);
-        QTimer::singleShot(0, &backend, &ArchiveBackend::cancel);
-        QTRY_COMPARE_WITH_TIMEOUT(done.count(), 1, 30000);
-        QVERIFY(!done.takeFirst()[0].toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, directory_.filePath("invalid.7z"), {source_},
+                                              "abc", false, options) != S_OK);
+        QVERIFY(SourceCreationFixture::Create(backend, target, {source_}, "abc", true, options) !=
+                S_OK);
+        QCOMPARE(
+            SourceCreationFixture::Create(backend, target, {source_}, "abc", false, options, true),
+            E_ABORT);
         QVERIFY(!QFileInfo::exists(target));
         QVERIFY(QDir(directory_.path())
                     .entryList({"*.stage-*", "*.sevenzip-*"}, QDir::Files | QDir::Hidden)

@@ -26,7 +26,7 @@ QByteArray read(const QString &path) {
     QFile file(path);
     return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
 }
-QString executable() { return QStandardPaths::findExecutable("7zz"); }
+QString executable() { return QStandardPaths::findExecutable("7z"); }
 bool createArchive(const QString &directory, const QString &archive, const QString &name,
                    const QString &format, const QString &password) {
     QProcess process;

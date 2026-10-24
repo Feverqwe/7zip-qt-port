@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "copydialog.h"
 #include "layout_inspection.h"
+#include "native_archive_fixture.h"
 #include "window_state_support.h"
 
 class UiCopySameTests final : public QObject, protected MainWindowTestSupport {
@@ -253,9 +254,7 @@ class UiCopySameTests final : public QObject, protected MainWindowTestSupport {
         const QString archive = fixture.filePath(QStringLiteral("archive.zip"));
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {first, second});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {first, second}));
         MainWindow window(&backend);
         window.openArchive(archive);
         window.show();

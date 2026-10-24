@@ -57,7 +57,7 @@ class CDismissal {
 bool engine(const QString &dir, const QStringList &args) {
     QProcess process;
     process.setWorkingDirectory(dir);
-    process.start(QStandardPaths::findExecutable("7zz"), args);
+    process.start(QStandardPaths::findExecutable("7z"), args);
     return process.waitForFinished(10000) && process.exitCode() == 0;
 }
 } // namespace

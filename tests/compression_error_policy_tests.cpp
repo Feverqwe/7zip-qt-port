@@ -4,6 +4,7 @@
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 #include "source_extract_fixture.h"
 #include <QScopeGuard>
 #include <QSignalSpy>
@@ -176,9 +177,9 @@ class CompressionErrorPolicyTests final : public QObject {
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
-        backend.create(dialog.target(), {input}, {}, false, dialog.compressionOptions());
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done[0][0].toBool(), qPrintable(done[0][1].toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, dialog.target(), {input}, {}, false,
+                                               dialog.compressionOptions()),
+                 S_OK);
         done.clear();
         backend.list(dialog.target());
         QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);

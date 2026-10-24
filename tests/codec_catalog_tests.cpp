@@ -1,5 +1,6 @@
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
+#include "native_archive_fixture.h"
 #include "qtarchivefoldermanager.h"
 #include <QFile>
 #include <QFileInfo>
@@ -27,7 +28,7 @@ class CodecCatalogTests : public QObject {
         QSKIP("Official module unavailable; real open modes remain unverified");
 #else
         QFETCH(QString, type);
-        const QString engine = QStandardPaths::findExecutable("7zz");
+        const QString engine = QStandardPaths::findExecutable("7z");
         if (engine.isEmpty())
             QSKIP("Official engine unavailable; real open modes remain unverified");
         QTemporaryDir temporary;
@@ -44,9 +45,7 @@ class CodecCatalogTests : public QObject {
         input.close();
         const QString seed = temporary.filePath("seed.zip");
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(seed, {input.fileName()});
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QVERIFY(NativeArchiveFixture::WriteFiles(seed, {input.fileName()}));
         QFile original(seed);
         QVERIFY(original.open(QIODevice::ReadOnly));
         const QByteArray bytes = original.readAll();
@@ -85,7 +84,7 @@ class CodecCatalogTests : public QObject {
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official module unavailable; real discovery remains unverified");
 #else
-        const QString engine = QStandardPaths::findExecutable("7zz");
+        const QString engine = QStandardPaths::findExecutable("7z");
         if (engine.isEmpty())
             QSKIP("Official engine unavailable; real discovery remains unverified");
         ArchiveBackend backend(nullptr, engine);
@@ -94,11 +93,9 @@ class CodecCatalogTests : public QObject {
         QVERIFY(!backend.discoverCodecCatalog());
         QVERIFY(backend.busy());
         QSignalSpy refused(&backend, &ArchiveBackend::finished);
-        QSignalSpy launched(&backend, &ArchiveBackend::engineStarted);
         backend.list("unused");
         QCOMPARE(refused.size(), 1);
         QVERIFY(!refused[0][0].toBool());
-        QVERIFY(launched.isEmpty());
         QCOMPARE(backend.loadCodecCatalog("unused", 1), E_ABORT);
         QTRY_COMPARE(ready.size(), 1);
         QVERIFY(!backend.busy());
@@ -141,12 +138,10 @@ class CodecCatalogTests : public QObject {
         QCOMPARE(manager->GetIconPath(L"zip", nullptr, &iconIndex), E_INVALIDARG);
         QCOMPARE(manager->GetIconPath(nullptr, &iconPath, &iconIndex), E_INVALIDARG);
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
         backend.openFolder("unused", "zip..*");
         QCOMPARE(finished.size(), 1);
         QVERIFY(!finished[0][0].toBool());
         QCOMPARE(backend.lastResult(), E_INVALIDARG);
-        QVERIFY(started.isEmpty());
         QVERIFY(!backend.busy());
 #endif
     }
@@ -154,19 +149,15 @@ class CodecCatalogTests : public QObject {
     void cancelledProbeCanRestartAndLateDeliveryCanDeleteBackend() {
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
-        const QFileInfo fixture(QString::fromUtf8(CODEC_PROBE_FIXTURE));
-        const QString suffix = fixture.suffix().isEmpty() ? QString() : "." + fixture.suffix();
-        const QString engine = temporary.filePath("probe й hang" + suffix);
-        QVERIFY(QFile::copy(fixture.absoluteFilePath(), engine));
-        auto *backend = new ArchiveBackend(nullptr, engine);
+        auto *backend = new ArchiveBackend;
         QSignalSpy ready(backend, &ArchiveBackend::codecCatalogReady);
-        QVERIFY(backend->discoverCodecCatalog("unused"));
+        QVERIFY(backend->discoverCodecCatalog(temporary.filePath("missing module")));
         backend->cancelCodecDiscovery();
         QTRY_COMPARE(ready.size(), 1);
         QVERIFY(!ready[0][0].toBool());
         QVERIFY(!backend->codecCatalog());
         connect(backend, &ArchiveBackend::codecCatalogReady, this, [backend] { delete backend; });
-        QVERIFY(backend->discoverCodecCatalog("unused"));
+        QVERIFY(backend->discoverCodecCatalog(temporary.filePath("missing module")));
         backend->cancelCodecDiscovery();
         QTRY_COMPARE(ready.size(), 2);
     }

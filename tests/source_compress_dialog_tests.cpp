@@ -513,7 +513,7 @@ class SourceCompressDialogTests final : public QObject {
             QCOMPARE(service.Result(), S_OK);
             QCOMPARE(errors, 0u);
             QProcess verify;
-            verify.start(QStandardPaths::findExecutable("7zz"), {"t", "--", output});
+            verify.start(QStandardPaths::findExecutable("7z"), {"t", "--", output});
             QVERIFY(verify.waitForFinished(10000));
             QCOMPARE(verify.exitCode(), 0);
         }

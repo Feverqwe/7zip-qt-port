@@ -114,7 +114,7 @@ class NestedUpdateTests final : public QObject {
         } else {
             QCOMPARE(errors, 0);
             QProcess process;
-            process.start(QStandardPaths::findExecutable("7zz"),
+            process.start(QStandardPaths::findExecutable("7z"),
                           {"x", "-y", "-o" + extracted.path(), "--", outerArchive});
             QVERIFY(process.waitForFinished(10000));
             QCOMPARE(process.exitCode(), 0);

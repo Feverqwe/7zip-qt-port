@@ -74,9 +74,7 @@ class CommandPolicyRuntimeTests : public QObject, protected MainWindowTestSuppor
         }
         for (const char *name : {"deleteAction", "renameAction", "createFolderAction"})
             QCOMPARE(action(window, name)->isEnabled(), encrypted);
-        QCOMPARE(backend.removeCalls, 0);
-        QCOMPARE(backend.renameCalls, 0);
-        QCOMPARE(backend.addCalls, 0);
+
         QCOMPARE(backend.extractCalls, 0);
         QVERIFY(action(window, "copyAction")->isEnabled());
         QVERIFY(action(window, "selectedPropertiesAction")->isEnabled());

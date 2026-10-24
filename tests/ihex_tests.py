@@ -17,7 +17,7 @@ class IhexTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-ihex-runtime-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX,
+        for name in ("7z" + SUFFIX,
                      "7z.dll" if sys.platform == "win32" else "7z.so"):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
 
@@ -35,7 +35,7 @@ class IhexTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix="sevenzip-ihex-") as temporary:
                 path = Path(temporary) / "образ 空.bin"
                 path.write_bytes(image)
-                for engine in ("7z", "7zz"):
+                for engine in ("7z",):
                     with self.subTest(kind=kind, engine=engine):
                         result = self.command(engine, path, "l", "-slt", fmt=fmt, *options, forced=metadata["profile"])
                         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -54,7 +54,7 @@ class IhexTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix="sevenzip-ihex-invalid-") as temporary:
                 path = Path(temporary) / "bad.ihex"
                 path.write_bytes(image)
-                for engine in ("7z", "7zz"):
+                for engine in ("7z",):
                     with self.subTest(kind=kind, engine=engine):
                         result = self.command(engine, path, "t", *(["-miqs5xx=on"] if metadata["profile"] else []))
                         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
@@ -65,7 +65,7 @@ class IhexTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="sevenzip-ihex-profile-") as temporary:
             path = Path(temporary) / "settings.ihex"
             path.write_bytes(image)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 result = self.command(engine, path, "t")
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
 

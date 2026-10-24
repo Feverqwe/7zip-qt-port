@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mainwindow.h"
+#include "qtoperationlauncher.h"
 
 #include <QAbstractButton>
 #include <QAction>
@@ -35,7 +36,7 @@
 class ControlledBackend : public ArchiveBackend {
   public:
     bool discoverCodecCatalog(const QString & = {}) override { return false; }
-    ControlledBackend() : ArchiveBackend(nullptr, "/missing/7zz") {
+    ControlledBackend() : ArchiveBackend(nullptr, "/missing/7z") {
         connect(this, &ArchiveBackend::infoReady, this,
                 [this](const ArchiveInfo &) { listedInfoReported_ = true; });
     }
@@ -103,31 +104,62 @@ class ControlledBackend : public ArchiveBackend {
         lastTestPassword = password;
         busy_ = true;
     }
-    void create(const QString &target, const QStringList &sources, const QString & = {},
-                bool = false, const CompressionOptions &options = {}) override {
-        ++createCalls;
-        lastCreateTarget = target;
-        lastCreateSources = sources;
-        lastCompressionOptions = options;
-        busy_ = true;
+    // Synthetic providers advertise their own public capabilities. Native
+    // writer behavior is exercised with real archives in the component suites.
+    bool supportsArchiveUpdate(const QString &format) const override {
+        return format.compare("7z", Qt::CaseInsensitive) == 0 ||
+               format.compare("zip", Qt::CaseInsensitive) == 0;
     }
-    void add(const QString &target, const QStringList &sources) override {
-        ++addCalls;
-        lastAddTarget = target;
-        lastAddSources = sources;
-        busy_ = true;
+    QtOperationLauncher *startGuiCompress(const QString &archive, const QString &type,
+                                          bool addExtension, const QStringList &paths, bool email,
+                                          bool showDialog, QString &error) override {
+        QtOperationMessage job;
+        job.Operation = QtOperationMessage::Command::Compress;
+        job.ArchivePath = archive;
+        job.ArchiveType = type;
+        job.AddExtension = addExtension;
+        job.Paths = paths;
+        job.EMail = email;
+        job.ShowDialog = showDialog;
+        return captureGuiRequest(std::move(job), error);
     }
-    void remove(const QString &, const QStringList &paths) override {
-        ++removeCalls;
-        lastRemoved = paths;
-        busy_ = true;
+    QtOperationLauncher *startGuiHash(const QStringList &paths, const QString &method,
+                                      const QString &basePrefix, bool enterToDirs,
+                                      QString &error) override {
+        QtOperationMessage job;
+        job.Operation = QtOperationMessage::Command::Hash;
+        job.Paths = paths;
+        job.HashMethod = method;
+        job.HashBasePrefix = basePrefix;
+        job.HashEnterToDirs = enterToDirs;
+        return captureGuiRequest(std::move(job), error);
     }
-    void renameEntry(const QString &, const QString &oldPath, const QString &newPath) override {
-        ++renameCalls;
-        lastRenameOld = oldPath;
-        lastRenameNew = newPath;
-        busy_ = true;
+    QtOperationLauncher *startGuiTest(const QStringList &paths, QString &error,
+                                      bool hashMode = false) override {
+        QtOperationMessage job;
+        job.Paths = paths;
+        job.HashMode = hashMode;
+        return captureGuiRequest(std::move(job), error);
     }
+    QtOperationLauncher *startGuiExtract(const QStringList &paths, const QString &destination,
+                                         bool showDialog, bool elimDup, quint32 writeZone,
+                                         QString &error) override {
+        QtOperationMessage job;
+        job.Operation = QtOperationMessage::Command::Extract;
+        job.Paths = paths;
+        job.Destination = destination;
+        job.ShowDialog = showDialog;
+        job.ElimDup = elimDup;
+        job.WriteZone = writeZone;
+        return captureGuiRequest(std::move(job), error);
+    }
+    QtOperationLauncher *startGuiBenchmark(bool total, QString &error) override {
+        QtOperationMessage job;
+        job.Operation = QtOperationMessage::Command::Benchmark;
+        job.TotalMode = total;
+        return captureGuiRequest(std::move(job), error);
+    }
+    QList<QtOperationMessage> GuiRequests;
     void cancel() override {
         ++cancelCalls;
         busy_ = false;
@@ -153,17 +185,9 @@ class ControlledBackend : public ArchiveBackend {
         result_ = result;
         emit finished(false, message);
     }
-    void completeCreate() {
-        busy_ = false;
-        emit finished(true, QStringLiteral("Архив создан."));
-    }
     void completeExtraction() {
         busy_ = false;
         emit finished(true, QStringLiteral("Извлечение завершено."));
-    }
-    void completeAdd() {
-        busy_ = false;
-        emit finished(true, QStringLiteral("Файлы добавлены."));
     }
     void report(int percent, const QString &detail, const QString &line) {
         emit outputReceived(line);
@@ -174,27 +198,27 @@ class ControlledBackend : public ArchiveBackend {
     int testCalls = 0;
     bool listedInfoReported_ = false;
     QString lastOpenFormat;
-    int createCalls = 0;
-    int addCalls = 0;
-    int removeCalls = 0;
-    int renameCalls = 0;
     int cancelCalls = 0;
-    CompressionOptions lastCompressionOptions;
     QString lastArchive;
     QStringList lastSelected;
     QString lastExtractDestination;
     QString lastExtractPassword;
     ExtractionOptions lastExtractionOptions;
     QString lastTestPassword;
-    QString lastCreateTarget;
-    QStringList lastCreateSources;
-    QString lastAddTarget;
-    QStringList lastAddSources;
-    QStringList lastRemoved;
-    QString lastRenameOld;
-    QString lastRenameNew;
 
   private:
+    QtOperationLauncher *captureGuiRequest(QtOperationMessage job, QString &error) {
+        job.Type = QtOperationMessage::Kind::Job;
+        GuiRequests.append(std::move(job));
+        error.clear();
+        auto *operation = new QtOperationLauncher(this);
+        QTimer::singleShot(0, operation, [operation] {
+            emit operation->accepted();
+            emit operation->finished({QtOperationResult::Outcome::Cancelled, 255, {}});
+            operation->deleteLater();
+        });
+        return operation;
+    }
     bool busy_ = false;
     HRESULT result_ = S_OK;
     QStringList ownedArchiveFixtures_;

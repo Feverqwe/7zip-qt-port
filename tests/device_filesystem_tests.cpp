@@ -36,7 +36,7 @@ class DeviceFilesystemTests final : public QObject {
         );
         ArchiveCodecProbe probe;
         bool done = false;
-        QVERIFY(probe.Start(engine_, module, [&](auto result) {
+        QVERIFY(probe.Start(module, [&](auto result) {
             catalog_ = result.catalog;
             done = true;
         }));

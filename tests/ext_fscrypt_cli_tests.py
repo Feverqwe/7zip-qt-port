@@ -1,4 +1,4 @@
-"""Native encrypted ext4 reads through the dynamic engine and standalone refusal."""
+"""Native encrypted ext4 reads through the dynamic engine."""
 from pathlib import Path
 import base64
 import json
@@ -22,7 +22,7 @@ class FscryptCliTests(unittest.TestCase):
         cls.root = Path(cls.temporary.name)
         core = "7z.dll" if sys.platform == "win32" else "7z.so"
         cls.suffix = ".exe" if sys.platform == "win32" else ""
-        for name in ("7z" + cls.suffix, "7zz" + cls.suffix, core):
+        for name in ("7z" + cls.suffix, core):
             shutil.copy2(RUNTIME / name, cls.root / name)
         (cls.root / "Formats").mkdir()
         shutil.copy2(MODULE, cls.root / "Formats" / MODULE.name)
@@ -260,11 +260,6 @@ class FscryptCliTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(result.stdout, b"")
 
-    def test_standalone_without_gpl_module_cannot_publish_ciphertext(self):
-        case = self.record["cases"][0]
-        result = self.invoke("7zz", "x", self.keys, case["name"] + "/" + case["filename"])
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(result.stdout, b"")
 
     def test_foreign_policy_with_available_key_is_denied(self):
         # Preserve a valid inode checksum and give the file a different known

@@ -149,8 +149,7 @@ class ExtractionOptionsTests : public QObject {
         const QString destination = fixture.filePath("output");
         writeFile(source, "fixture SQL gzip bytes");
         ArchiveBackend backend;
-        backend.create(archive, {source});
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         backend.list(archive);
         await(backend, true);
         QString error;
@@ -182,8 +181,7 @@ class ExtractionOptionsTests : public QObject {
         QVERIFY(QDir().mkpath(output));
         writeFile(QDir(output).filePath(name), "old bytes");
         ArchiveBackend backend;
-        backend.create(archive, {source});
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         backend.list(archive);
         await(backend, true);
         const auto cancellation =
@@ -217,8 +215,7 @@ class ExtractionOptionsTests : public QObject {
         writeFile(QDir(other).filePath(QStringLiteral("δ.txt")), "other bytes");
         const QString archive = temp.filePath("fixture.zip");
         ArchiveBackend backend;
-        backend.create(archive, {source, other});
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source, other}));
         backend.list(archive);
         await(backend, true);
 
@@ -261,17 +258,18 @@ class ExtractionOptionsTests : public QObject {
         writeFile(output + QStringLiteral("/источник с пробелом/γ_1.txt"), "occupied rename");
         const QString archive = temp.filePath("fixture." + format);
         ArchiveBackend backend;
-        backend.create(archive, {source});
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         backend.list(archive);
         await(backend, true);
 
-        QList<int> answers{NOverwriteAnswer::kNo, NOverwriteAnswer::kYes,
-                           NOverwriteAnswer::kAutoRename};
         QSignalSpy requested(&backend, &ArchiveBackend::overwriteRequired);
         connect(&backend, &ArchiveBackend::overwriteRequired, &backend,
-                [&backend, &answers](const QString &, const ArchiveEntry &) {
-                    backend.provideOverwriteAnswer(answers.takeFirst());
+                [&backend](const QString &, const ArchiveEntry &incoming) {
+                    backend.provideOverwriteAnswer(incoming.path.endsWith(QStringLiteral("α.txt"))
+                                                       ? NOverwriteAnswer::kNo
+                                                   : incoming.path.endsWith(QStringLiteral("β.txt"))
+                                                       ? NOverwriteAnswer::kYes
+                                                       : NOverwriteAnswer::kAutoRename);
                 });
         ExtractionOptions options;
         options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
@@ -301,7 +299,6 @@ class ExtractionOptionsTests : public QObject {
         ExtractionOptions flatOptions;
         flatOptions.pathMode = ExtractionOptions::PathMode::NoPaths;
         flatOptions.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
-        answers = {NOverwriteAnswer::kYes};
         backend.extract(archive, flat, {QStringLiteral("источник с пробелом/β.txt")}, {},
                         flatOptions);
         await(backend, true);
@@ -318,8 +315,7 @@ class ExtractionOptionsTests : public QObject {
             writeFile(source + "/" + name, "new");
         const QString archive = temp.filePath("fixture.7z");
         ArchiveBackend backend;
-        backend.create(archive, {source});
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         backend.list(archive);
         await(backend, true);
         ExtractionOptions options;
@@ -370,8 +366,7 @@ class ExtractionOptionsTests : public QObject {
         const QString archive = temp.filePath("encrypted." + format);
         const QString password = QStringLiteral("test-only-password");
         ArchiveBackend backend;
-        backend.create(archive, {source}, password);
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}, {}, password));
         backend.list(archive, password);
         await(backend, true);
         connect(&backend, &ArchiveBackend::overwriteRequired, &backend,
@@ -405,8 +400,7 @@ class ExtractionOptionsTests : public QObject {
         writeFile(source, "new");
         writeFile(output + "/file.txt", "old");
         ArchiveBackend backend;
-        backend.create(archive, {source});
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         backend.list(archive);
         await(backend, true);
         ExtractionOptions options;
@@ -437,8 +431,7 @@ class ExtractionOptionsTests : public QObject {
         writeFile(source + QStringLiteral("/new.txt"), "new file");
         const QString archive = temp.filePath(QStringLiteral("fixture.") + format);
         ArchiveBackend backend;
-        backend.create(archive, {source});
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         backend.list(archive);
         await(backend, true);
 
@@ -494,8 +487,7 @@ class ExtractionOptionsTests : public QObject {
         writeFile(source + "/δ file.txt", "archive version");
         const QString archive = temp.filePath("fixture." + format);
         ArchiveBackend backend;
-        backend.create(archive, {source});
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         backend.list(archive);
         await(backend, true);
 
@@ -543,8 +535,7 @@ class ExtractionOptionsTests : public QObject {
         writeFile(source + "/second/same.txt", "second");
         const QString archive = temp.filePath("collision.zip");
         ArchiveBackend backend;
-        backend.create(archive, {source});
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         backend.list(archive);
         await(backend, true);
         ExtractionOptions flat;

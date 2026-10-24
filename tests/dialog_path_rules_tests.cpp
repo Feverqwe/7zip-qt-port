@@ -7,6 +7,7 @@
 #include "createarchivedialog.h"
 #include "extractdialog.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 #include "source_extract_fixture.h"
 #include <QDialogButtonBox>
 #include <QPushButton>
@@ -160,9 +161,9 @@ class DialogPathRulesTests final : public QObject {
         QCOMPARE(normalized(create.target()), archive);
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
-        backend.create(create.target(), {input}, {}, false, create.compressionOptions());
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done[0][0].toBool(), qPrintable(done[0][1].toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, create.target(), {input}, {}, false,
+                                               create.compressionOptions()),
+                 S_OK);
         done.clear();
         QVERIFY(QFileInfo::exists(archive));
         const QByteArray archiveBytes = SourceExtractFixture::readFile(archive);

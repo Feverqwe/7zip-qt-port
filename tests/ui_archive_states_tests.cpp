@@ -67,7 +67,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
     }
 
     void launchFailure() {
-        ArchiveBackend backend(nullptr, "/definitely/missing/7zz");
+        ArchiveBackend backend(nullptr, "/definitely/missing/7z");
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
         QFile archive(temporary.filePath("missing.7z"));
@@ -78,7 +78,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         connect(&timer, &QTimer::timeout, &window, [] { dismissWarnings(); });
         timer.start(10);
         window.openArchive(archive.fileName());
-        QTRY_VERIFY_WITH_TIMEOUT(window.statusBar()->currentMessage().contains("7zz"), 3000);
+        QTRY_VERIFY_WITH_TIMEOUT(window.statusBar()->currentMessage().contains("7z"), 3000);
         QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(),
                  QFileInfo(QDir::currentPath()).canonicalFilePath());
         QVERIFY(!action(window, "backAction")->isEnabled());
@@ -276,13 +276,13 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         warningResponder.start(1);
         backend.queueListAction([&] {
             backend.report(-1, {}, QStringLiteral("ERROR: повреждённый архив"));
-            backend.fail(QStringLiteral("7zz завершился с кодом 2."));
+            backend.fail(QStringLiteral("7z завершился с кодом 2."));
         });
         window.openArchive("second.zip");
         warningResponder.stop();
-        QCOMPARE(errors, QStringList({QStringLiteral("7zz завершился с кодом 2.")}));
+        QCOMPARE(errors, QStringList({QStringLiteral("7z завершился с кодом 2.")}));
         QCOMPARE(backend.lastResult(), E_FAIL);
-        QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("7zz завершился с кодом 2."));
+        QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("7z завершился с кодом 2."));
     }
 
     void contextMenuFollowsSelectionAndLocation() {

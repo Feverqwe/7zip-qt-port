@@ -1269,7 +1269,7 @@ Z7_COM7F_IMF(CAgentFolder::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *pro
         return E_FAIL;
     UInt32 numProps = 0;
     _agentSpec->GetArchive()->GetNumberOfProperties(&numProps);
-    // Source in-process callers supply valid indices. The public 7zz adapter
+    // Source in-process callers supply valid indices. The typed metadata adapter
     // validates indices and initializes an unwritten count, retaining the
     // source policy of consuming a written count regardless of HRESULT.
     if (!_agentSpec->ThereIsPathProp) {

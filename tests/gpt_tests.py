@@ -18,7 +18,7 @@ class GptTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-gpt-runtime-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX,
+        for name in ("7z" + SUFFIX,
                      "7z.dll" if sys.platform == "win32" else "7z.so"):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
 
@@ -37,7 +37,7 @@ class GptTests(unittest.TestCase):
     def test_partition_payload_and_discovery(self):
         for kind in CASES:
             image, expected, sector = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     result = self.run_image(engine, image)
                     self.assertEqual(result.returncode, 0, result.stderr)
@@ -51,7 +51,7 @@ class GptTests(unittest.TestCase):
     def test_invalid_tables_fail_normally(self):
         for kind in BAD:
             image, _, _ = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     self.assertEqual(self.run_image(engine, image).returncode, 2)
 
@@ -64,7 +64,7 @@ class GptTests(unittest.TestCase):
             struct.pack_into(">QQ", footer, 40, len(image), len(image))
             struct.pack_into(">I", footer, 60, 2)
             struct.pack_into(">I", footer, 64, (~sum(footer)) & 0xffffffff)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     wrapped = image + footer
                     result = self.run_image(engine, wrapped, listing=True, format_name="VHD")

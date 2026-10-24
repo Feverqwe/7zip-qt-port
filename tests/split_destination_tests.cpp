@@ -1,5 +1,6 @@
 #include "CPP/Common/Wildcard.h"
 #include "extractdialog.h"
+#include "native_archive_fixture.h"
 #include <QDir>
 #include <QFile>
 #include <QSettings>
@@ -121,9 +122,7 @@ class SplitDestinationTests final : public QObject {
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString archive = fixture.filePath("split-dest.zip");
-        backend.create(archive, {source});
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         done.clear();
         backend.list(archive);
         QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);

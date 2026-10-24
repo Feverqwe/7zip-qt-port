@@ -37,7 +37,7 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
 
   private slots:
     void initTestCase() {
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine_.isEmpty());
         QVERIFY(seeds_.isValid());
         const QString added = QStringLiteral("a copied 文件.txt");

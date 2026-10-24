@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/App.h"
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "archivebackend.h"
+#include "native_archive_fixture.h"
 #include "qtarchivefileresource.h"
 #include "qtownedtempregistry.h"
 #include "qtpaneldragtransport.h"
@@ -28,6 +29,14 @@ class DragArchiveTests : public QObject {
                             const QString &name, bool writable) {
         auto *resource = new QtArchiveFileResource(path);
         CMyComPtr<IUnknown> owner = resource;
+        if (NativeArchiveFixture::Attach(backend) != S_OK)
+            return false;
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        if (backend.openNativeArchive(path, "zip", nullptr, reader) != S_OK)
+            return false;
+        resource->AttachCodecCatalog(backend.codecCatalog());
+        resource->AttachNativeOpen(std::move(reader));
+        resource->UseNativeMetadata();
         resource->AttachExtractService(backend, "zip");
         if (writable) {
             resource->AttachUpdateService(backend, "zip");
@@ -81,7 +90,7 @@ class DragArchiveTests : public QObject {
         const QString targetZip = root.filePath("target.zip");
         const QString destination = root.filePath("destination");
         QVERIFY(QDir().mkpath(destination));
-        const QString engine = QStandardPaths::findExecutable("7zz");
+        const QString engine = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine.isEmpty());
         for (const auto &pair :
              {qMakePair(sourceZip, name), qMakePair(targetZip, QString("untouched.txt"))}) {
@@ -197,7 +206,7 @@ class DragArchiveTests : public QObject {
         QCOMPARE(input.write(payload), qint64(payload.size()));
         input.close();
         const QString archive = fixture.filePath("исходный архив.zip");
-        const QString engine = QStandardPaths::findExecutable("7zz");
+        const QString engine = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine.isEmpty());
         QProcess create;
         create.setWorkingDirectory(fixture.path());
@@ -213,7 +222,7 @@ class DragArchiveTests : public QObject {
         QTRY_VERIFY(!backend.busy());
         QCOMPARE(listed.size(), 1);
         if (outcome == 3)
-            connect(&backend, &ArchiveBackend::engineStarted, &backend,
+            connect(&backend, &ArchiveBackend::phaseStarted, &backend,
                     [&backend] { backend.cancel(); });
         auto *resource = new QtArchiveFileResource(archive);
         CMyComPtr<IUnknown> resourceOwner = resource;
@@ -291,7 +300,13 @@ class DragArchiveTests : public QObject {
         }
         if (outcome == 5) {
             QCOMPARE(calls, 0);
-            const auto entries = QtOwnedTempRegistry().Entries();
+            auto entries = QtOwnedTempRegistry().Entries();
+            entries.erase(std::remove_if(entries.begin(), entries.end(),
+                                         [&](const auto &entry) {
+                                             return !QFileInfo::exists(
+                                                 QDir(entry.path).filePath(listed.front().path));
+                                         }),
+                          entries.end());
             QCOMPARE(entries.size(), 1);
             ownedRoot = entries.front().path;
             delivered = QDir(ownedRoot).filePath(listed.front().path);

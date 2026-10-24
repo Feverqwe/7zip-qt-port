@@ -54,10 +54,10 @@ class UnixGuiEntryTests final : public QObject {
             const QString deployment = fixture.filePath("module-only deployment");
             QVERIFY(QDir().mkpath(deployment));
             const QString module = QStringLiteral(SEVENZIP_CODEC_MODULE);
-            QVERIFY(QFile::copy(module, QDir(deployment).filePath(QFileInfo(module).fileName())));
+            const QString copiedModule = QDir(deployment).filePath(QFileInfo(module).fileName());
+            QVERIFY(QFile::copy(module, copiedModule));
             auto environment = QProcessEnvironment::systemEnvironment();
-            environment.insert("SEVENZIP_ENGINE_PATH",
-                               QDir(deployment).filePath("unavailable console"));
+            environment.insert("SEVENZIP_CODEC_MODULE_PATH", copiedModule);
             helper.setProcessEnvironment(environment);
 #else
             QSKIP("The native module is not configured for this build");
@@ -76,11 +76,11 @@ class UnixGuiEntryTests final : public QObject {
             QVERIFY(!QFileInfo::exists(extracted));
         if (command == "a") {
             QProcess verify;
-            verify.start(QStandardPaths::findExecutable("7zz"), {"t", "--", created});
+            verify.start(QStandardPaths::findExecutable("7z"), {"t", "--", created});
             QVERIFY(verify.waitForFinished(10000));
             QCOMPARE(verify.exitCode(), 0);
             QProcess extract;
-            extract.start(QStandardPaths::findExecutable("7zz"),
+            extract.start(QStandardPaths::findExecutable("7z"),
                           {"x", "-y", "-o" + output, "--", created});
             QVERIFY(extract.waitForFinished(10000));
             QCOMPARE(extract.exitCode(), 0);

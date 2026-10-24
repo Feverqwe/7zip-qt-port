@@ -7,18 +7,6 @@
 #include "native_properties_fixture.h"
 #endif
 
-class FilesystemPathBackend : public ControlledBackend {
-  public:
-    void hash(const QStringList &paths, const QString &method) override {
-        hashPaths = paths;
-        hashMethod = method;
-        ++hashCalls;
-    }
-    QStringList hashPaths;
-    QString hashMethod;
-    int hashCalls = 0;
-};
-
 class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
     quint32 moduleVersion_ = 0;
@@ -80,28 +68,30 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         QStringList sources;
         int errors = 0;
         auto cancelCreate = [&] {
+            backend.GuiRequests.clear();
             QTimer answer;
             connect(&answer, &QTimer::timeout, &window, [&] {
-                auto *dialog =
-                    qobject_cast<CreateArchiveDialog *>(QApplication::activeModalWidget());
-                if (dialog) {
-                    sources = dialog->sources();
-                    for (QString &path : sources)
-                        path = path.normalized(QString::NormalizationForm_C);
-                    dialog->reject();
-                } else if (auto *box =
-                               qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
                     ++errors;
                     box->accept();
                 }
             });
             answer.start(1);
             action(window, "toolbarAddAction")->trigger();
+            if (!backend.GuiRequests.isEmpty()) {
+                const auto &job = backend.GuiRequests.last();
+                QCOMPARE(job.Operation, QtOperationMessage::Command::Compress);
+                QVERIFY(job.ShowDialog);
+                sources = job.Paths;
+                for (QString &path : sources)
+                    path = QDir::cleanPath(QDir::fromNativeSeparators(path))
+                               .normalized(QString::NormalizationForm_C);
+            }
         };
         cancelCreate();
         QVERIFY(sources.isEmpty());
         QCOMPARE(errors, 1);
-        QCOMPARE(backend.createCalls, 0);
+
         table(window)->selectionModel()->select(table(window)->model()->index(0, 0),
                                                 QItemSelectionModel::Select |
                                                     QItemSelectionModel::Rows);
@@ -116,7 +106,7 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         cancelCreate();
         QVERIFY(sources.isEmpty());
         QCOMPARE(errors, 2);
-        QCOMPARE(backend.createCalls, 0);
+
         action(window, "flatViewAction")->setChecked(false);
     }
 
@@ -141,7 +131,7 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         createFile(root.filePath(name));
         createFile(root.filePath(directory + '/' + name));
 
-        FilesystemPathBackend backend;
+        ControlledBackend backend;
 #ifdef SEVENZIP_CODEC_MODULE
         QCOMPARE(backend.loadCodecCatalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), moduleVersion_),
                  S_OK);
@@ -202,40 +192,33 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         }
         QStringList expected = {root.filePath(name), second};
         expected.sort();
-        QHash<QString, QString> hashResults;
-        QTimer closeResults;
-        connect(&closeResults, &QTimer::timeout, this, [&] {
-            auto *dialog = qobject_cast<CListViewDialog *>(QApplication::activeModalWidget());
-            if (!dialog)
-                return;
-            FOR_VECTOR(i, dialog->Strings)
-            hashResults.insert(ToQString(dialog->Strings[i]), ToQString(dialog->Values[i]));
-            dialog->accept();
-        });
-        closeResults.start(1);
         action(window, "hashSHA256Action")->trigger();
-        closeResults.stop();
-        // Forged display paths would fail to read. The source panel indices
-        // must instead hash both real files, including ordinary folder children.
-        QCOMPARE(hashResults.value(ToQString(LangString(IDS_PROP_FILES))), QString("2"));
-        QVERIFY(hashResults.value(ToQString(LangString(IDS_PROP_SIZE))).startsWith("28"));
-        QVERIFY(!hashResults.contains(ToQString(LangString(IDS_PROP_NUM_ERRORS))));
-        QCOMPARE(backend.hashCalls, 0);
+        QCOMPARE(backend.GuiRequests.size(), 1);
+        const auto hash = backend.GuiRequests.takeFirst();
+        QCOMPARE(hash.Operation, QtOperationMessage::Command::Hash);
+        QCOMPARE(hash.HashMethod, QString("SHA256"));
+        QCOMPARE(hash.HashEnterToDirs, !flat);
+        QStringList hashSources;
+        for (const QString &path : hash.Paths) {
+            const QString resolved =
+                QDir::isAbsolutePath(path) ? path : QDir(hash.HashBasePrefix).filePath(path);
+            hashSources.append(QDir::cleanPath(QDir::fromNativeSeparators(resolved))
+                                   .normalized(QString::NormalizationForm_C));
+        }
+        hashSources.sort();
+        QCOMPARE(hashSources, expected);
         QTRY_VERIFY(action(window, "toolbarAddAction")->isEnabled());
-
-        QStringList dialogSources;
-        QTimer::singleShot(0, &window, [&] {
-            auto *dialog = qobject_cast<CreateArchiveDialog *>(QApplication::activeModalWidget());
-            QVERIFY(dialog);
-            dialogSources = dialog->sources();
-            for (QString &path : dialogSources)
-                path = path.normalized(QString::NormalizationForm_C);
-            dialog->reject();
-        });
         action(window, "toolbarAddAction")->trigger();
-        dialogSources.sort();
-        QCOMPARE(dialogSources, expected);
-        QCOMPARE(backend.createCalls, 0);
+        QCOMPARE(backend.GuiRequests.size(), 1);
+        const auto add = backend.GuiRequests.takeFirst();
+        QCOMPARE(add.Operation, QtOperationMessage::Command::Compress);
+        QVERIFY(add.ShowDialog);
+        QStringList sources = add.Paths;
+        for (QString &path : sources)
+            path = QDir::cleanPath(QDir::fromNativeSeparators(path))
+                       .normalized(QString::NormalizationForm_C);
+        sources.sort();
+        QCOMPARE(sources, expected);
         action(window, "flatViewAction")->setChecked(false);
     }
 };

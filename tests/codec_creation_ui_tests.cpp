@@ -1,6 +1,7 @@
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 #include <QCheckBox>
 #include <QScrollArea>
 #include <QSignalSpy>
@@ -24,7 +25,7 @@ class CodecCreationUiTests final : public QObject {
         previousSettings_ = qgetenv("SEVENZIP_SETTINGS_PATH");
         qputenv("SEVENZIP_SETTINGS_PATH", fixture_.filePath("settings.ini").toUtf8());
         module_ = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         if (engine_.isEmpty())
             QSKIP("Official engine unavailable; native creation UI remains unverified");
         ArchiveBackend backend(nullptr, engine_);
@@ -104,10 +105,9 @@ class CodecCreationUiTests final : public QObject {
         ArchiveBackend backend(nullptr, engine_);
         QCOMPARE(backend.loadCodecCatalog(module_, catalog_->version()), S_OK);
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(dialog.target(), dialog.sources(), dialog.password(),
-                       dialog.encryptHeaders(), options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, dialog.target(), dialog.sources(),
+                                               dialog.password(), dialog.encryptHeaders(), options),
+                 S_OK);
         QVERIFY(QFileInfo::exists(dialog.target()));
         if (type == "tar") {
             // TarHeader.cpp defines POSIX versus GNU magic. This observes the

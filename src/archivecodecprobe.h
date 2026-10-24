@@ -19,19 +19,18 @@ class ArchiveCodecProbe final : public QObject {
     std::shared_ptr<Work> work_;
     std::function<void(ArchiveCodecProbeResult)> completion_;
     bool active_ = false;
-    static ArchiveCodecProbeResult Discover(const QString &engine, const QString &module,
+    static ArchiveCodecProbeResult Discover(const QString &module,
                                             const std::shared_ptr<Work> &work);
     void Complete(ArchiveCodecProbeResult result);
 
   public:
     // Blocking native loading for joined workers; never call on the GUI thread.
-    static std::shared_ptr<const ArchiveCodecCatalog> LoadCatalog(const QString &engine,
-                                                                  const QString &module = {});
+    static std::shared_ptr<const ArchiveCodecCatalog> LoadCatalog(const QString &module = {});
     explicit ArchiveCodecProbe(QObject *parent = nullptr);
     ~ArchiveCodecProbe() override;
     // Reject active or failed startup without publishing a partial operation.
-    bool Start(const QString &engine, const QString &module,
-               std::function<void(ArchiveCodecProbeResult)> completion, int timeoutMs = 5000);
+    bool Start(const QString &module, std::function<void(ArchiveCodecProbeResult)> completion,
+               int timeoutMs = 5000);
     void Cancel();
     bool active() const { return active_; }
 };

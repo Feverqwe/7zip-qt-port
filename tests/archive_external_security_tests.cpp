@@ -8,73 +8,11 @@
 
 using namespace ExternalEditorFixture;
 
-class ExtractBackend final : public ArchiveBackend {
-  public:
-    HRESULT Failure = S_OK;
-    QString Output;
-    HRESULT lastResult() const override {
-        return Failure == S_OK ? ArchiveBackend::lastResult() : Failure;
-    }
-    void extractSourceEntry(const QString &archive, const QString &entry, const QString &output,
-                            const QString &format, const QString &password,
-                            bool isAltStream = false) override {
-        Output = output;
-        if (Failure == S_OK)
-            ArchiveBackend::extractSourceEntry(archive, entry, output, format, password,
-                                               isAltStream);
-        else
-            emit finished(false, Failure == E_ABORT
-                                     ? QStringLiteral("Операция отменена.")
-                                     : QStringLiteral("Controlled extract failure."));
-    }
-};
-
 class ArchiveExternalSecurityTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
     WidgetDialogFixture widgetDialogs_;
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
-    void extractionFailureDoesNotLaunchEditor_data() {
-        QTest::addColumn<bool>("cancel");
-        QTest::newRow("failure") << false;
-        QTest::newRow("cancel") << true;
-    }
-    void extractionFailureDoesNotLaunchEditor() {
-        QFETCH(bool, cancel);
-        QTemporaryDir fixture;
-        const QString name = QStringLiteral("извлечь файл.txt");
-        const QString archive = fixture.filePath("original.zip");
-        QVERIFY(write(fixture.filePath(name), "original"));
-        QVERIFY(createArchive(fixture.path(), archive, name));
-        const QByteArray original = read(archive);
-        const QString control = fixture.filePath("control");
-        configure(control);
-        ExtractBackend backend;
-        MainWindow window(&backend);
-        window.show();
-        window.openArchive(archive);
-        QTRY_COMPARE(table(window)->rowCount(), 1);
-        table(window)->selectRow(0);
-        backend.Failure = cancel ? E_ABORT : E_FAIL;
-        QTimer responder;
-        widgetDialogs_.connectResponder(responder, this, [this] {
-            auto *modal = widgetDialogs_.activeDialog();
-            if (auto *box = qobject_cast<QMessageBox *>(modal))
-                box->accept();
-            else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
-                auto *close = progress->findChild<QPushButton *>("IDCANCEL");
-                if (TestProgressDialog::IsCloseButton(close))
-                    close->click();
-            }
-        });
-        responder.start(1);
-        action(window, "editFileAction")->trigger();
-        responder.stop();
-        QVERIFY(!backend.Output.isEmpty());
-        QVERIFY(!QFileInfo(control + ".ready").exists());
-        QVERIFY(!QFileInfo(backend.Output).exists());
-        QCOMPARE(read(archive), original);
-    }
     void protectedArchiveUsesSourcePasswordAndWriter_data() {
         QTest::addColumn<QString>("format");
         QTest::addColumn<bool>("cancelPassword");

@@ -80,7 +80,6 @@ class FolderSizeViewTests final : public QObject, protected MainWindowTestSuppor
         QVERIFY(
             UiInspection::writeReport(window, compact ? "folder-f3-compact" : "folder-f3-normal"));
         QCOMPARE(backend.extractCalls, 0);
-        QCOMPARE(backend.createCalls, 0);
     }
 };
 QTEST_MAIN(FolderSizeViewTests)

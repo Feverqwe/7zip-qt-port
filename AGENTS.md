@@ -26,9 +26,10 @@ for Windows, macOS, and Linux. The official source checkout is `../7zip-upstream
 - New functional code requires evidence that no usable upstream implementation
   exists. Existing independent logic is migration debt: replace the relevant part
   when working on it without expanding into a repository-wide rewrite.
-- Keep archive operations behind `ArchiveBackend` and the official engine.
-  Widgets do not construct `7zz` syntax; the transport is an integration constraint,
-  not a reason to recreate upstream logic. Do not reimplement archive formats or compression.
+- Keep archive operations behind `ArchiveBackend` and the official native engine.
+  `7zFM` and `7zG` do not invoke console clients. Build and ship the official `7z`
+  as an independent sidecar; do not build or ship `7zz`. Do not reimplement archive
+  formats or compression.
 - Keep the sibling upstream checkout read-only. Copying source into this repository
   is authorized; editing upstream or adding Qt to it requires a user request.
 - Record full upstream commit, retrievable source repository, paths/symbols,

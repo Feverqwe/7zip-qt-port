@@ -12,9 +12,9 @@ import uuid
 
 
 def run(args):
-    engine = shutil.which("7zz")
+    engine = shutil.which("7z")
     if not engine:
-        raise RuntimeError("The official 7zz fixture engine is required")
+        raise RuntimeError("The official 7z fixture engine is required")
     with tempfile.TemporaryDirectory(prefix="sevenzip-native-startup-") as temporary:
         root = Path(temporary)
         extension = "sevenzip-fixture-" + uuid.uuid4().hex

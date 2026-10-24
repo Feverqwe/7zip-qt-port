@@ -91,9 +91,9 @@ from an ordinary local file copy.
 
 ## Archive backend and safety
 
-`ArchiveBackend` owns archive integration: official native-module and process
-transport, argument construction/parsing, validation, cancellation and results.
-Widgets invoke operations through this boundary and do not construct `7zz` syntax.
+`ArchiveBackend` owns native archive integration, standalone GUI operation launch,
+validation, cancellation and results. Widgets invoke operations through this
+boundary and do not construct engine command syntax.
 Source extract/update callbacks and Agent folder bindings retain the original
 functional owners.
 
@@ -114,8 +114,8 @@ When no catalog is available, the read worker loads a retained deployment before
 opening the archive. Missing providers produce a native failure. Read operations
 never start the console. Destination extraction uses original Common/Extract
 and ArchiveExtractCallback in the same worker, including overwrite decisions
-delivered to the GUI and a final bounded-output policy. The CLI transport remains
-for write operations that have not yet migrated.
+delivered to the GUI and a final bounded-output policy. Archive writes use the
+original native writers and update callbacks; no console transport is retained.
 
 The File Manager's Test, Extract, Add and checksum commands for ordinary filesystem inputs
 launch the bundled `7zG`. The child owns native discovery, source GUI dispatch, dialogs and

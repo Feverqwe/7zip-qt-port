@@ -49,7 +49,7 @@ class BenchmarkCommandTests final : public QObject, protected MainWindowTestSupp
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official module unavailable; Benchmark menu remains unverified");
 #else
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine_.isEmpty());
         module_ = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
         ArchiveBackend backend(nullptr, engine_);

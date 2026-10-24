@@ -20,7 +20,7 @@ class CramfsTests(unittest.TestCase):
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
         core = "7z.dll" if sys.platform == "win32" else "7z.so"
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX, core):
+        for name in ("7z" + SUFFIX, core):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
@@ -42,7 +42,7 @@ class CramfsTests(unittest.TestCase):
         self.assertEqual(result.stdout, expected)
 
     def test_sparse_contents(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for endian in ("<", ">"):
                 for blocks in ([bytes(4096), b"A" * 4096, bytes(73)],
                                [b"A" * 4096, bytes(4096), b"tail"], [bytes(4096), bytes(73)]):
@@ -50,7 +50,7 @@ class CramfsTests(unittest.TestCase):
                         self.assertContents(image(blocks, endian), b"".join(blocks), engine)
 
     def test_retains_explicit_legacy_lzma_and_larger_blocks(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             self.assertContents(image([b"A" * 8192, b"tail"], legacy_block_bits=13), b"A" * 8192 + b"tail", engine)
             self.assertContents(image([b"A" * 4096, b"tail"], storage=["lzma"] * 2,
                                       legacy_block_bits=12), b"A" * 4096 + b"tail", engine)
@@ -80,7 +80,7 @@ class CramfsTests(unittest.TestCase):
             self.assertContents(image([b"tail"], storage=["direct-raw"], version2=version2), b"tail")
 
     def test_global_volume_coordinates_do_not_create_false_tails(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for boot_prefix, outer_prefix in ((512, 0), (0, 1024)):
                 volume = image([b"volume payload"], prefix=boot_prefix)
                 data = b"X" * outer_prefix + volume
@@ -98,7 +98,7 @@ class CramfsTests(unittest.TestCase):
                         self.assertEqual(extracted.stdout, b"volume payload")
 
     def test_verified_volume_origin_distinguishes_embedded_and_boot_prefixes(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for endian in ("<", ">"):
                 large = bytes((i * 73 + i // 17) % 256 for i in range(2048))
                 for boot, outer, payload in ((0, 512, b"verified origin"),
@@ -118,7 +118,7 @@ class CramfsTests(unittest.TestCase):
                         self.assertEqual(extracted.stdout, payload)
 
     def test_boot_prefix_can_have_its_root_before_the_superblock(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for endian in ("<", ">"):
                 data = bytearray(image([b"root before superblock"], endian, prefix=512))
                 data[76:96] = data[588:608]
@@ -131,7 +131,7 @@ class CramfsTests(unittest.TestCase):
                     self.assertEqual(extracted.stdout, b"root before superblock")
 
     def test_unverified_crc_or_v1_can_select_the_only_complete_catalog(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for version2 in (False, True):
                 for boot, outer in ((0, 512), (512, 1024)):
                     volume = bytearray(image([b"catalog origin"], prefix=boot, version2=version2))
@@ -147,7 +147,7 @@ class CramfsTests(unittest.TestCase):
                         self.assertEqual(extracted.stdout, b"catalog origin")
 
     def test_ambiguous_catalogs_expose_selected_data_as_unverified(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for endian in ("<", ">"):
                 data, payload = ambiguous_origin(endian)
                 with self.subTest(engine=engine, endian=endian):
@@ -264,7 +264,7 @@ class CramfsTests(unittest.TestCase):
             self.assertIn("Group ID = 42", text)
 
     def test_empty_inode_streams_do_not_require_unused_offsets(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for endian in ("<", ">"):
                 for mode, size in ((0o100644, 0), (0o120777, 0), (0o20644, 0x1234)):
                     data = bytearray(image([], endian, mode=mode))
@@ -280,7 +280,7 @@ class CramfsTests(unittest.TestCase):
                             self.assertIn(b"Device Minor = 52", listing.stdout)
 
     def test_fsid_counters_do_not_control_readable_file_access(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for endian in ("<", ">"):
                 for count in (0, 0xffffffff):
                     data = bytearray(image([b"readable data"], endian))
@@ -290,7 +290,7 @@ class CramfsTests(unittest.TestCase):
                         self.assertContents(data, b"readable data", engine)
 
     def test_zero_offset_directory_has_no_payload_despite_raw_size(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for endian in ("<", ">"):
                 data = bytearray(image([b"unreferenced data"], endian))
                 data[64:76] = inode(0o40755, 17, 0, endian=endian)
@@ -336,7 +336,7 @@ class CramfsTests(unittest.TestCase):
                     self.assertNotIn(b"Path = ../x", listing.stdout)
 
     def test_checksum_warning_preserves_readable_payload(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for endian in ("<", ">"):
                 data = bytearray(image([b"readable payload"], endian, prefix=512))
                 data[512 + 32] ^= 1

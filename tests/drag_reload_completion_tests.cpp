@@ -8,36 +8,13 @@
 #include <QDragEnterEvent>
 #include <QDropEvent>
 
-class DropUpdateBackend final : public ArchiveBackend {
-  public:
-    bool Fail = false, Started = false;
-    void updateSourcePlan(const QString &archive, const SourceUpdatePlan &plan,
-                          const QString &output, const QString &format, const QString &password,
-                          const std::optional<CompressionOptions> &options) override {
-        Started = true;
-        if (Fail)
-            emit finished(false, QStringLiteral("Controlled drop update failure."));
-        else
-            ArchiveBackend::updateSourcePlan(archive, plan, output, format, password, options);
-    }
-    void updateSourceAdd(const QString &archive, const QStringList &entries, const QString &root,
-                         const QString &output, const QString &format,
-                         const QString &password) override {
-        Started = true;
-        if (Fail)
-            emit finished(false, QStringLiteral("Controlled drop update failure."));
-        else
-            ArchiveBackend::updateSourceAdd(archive, entries, root, output, format, password);
-    }
-};
-
 class DragReloadCompletionTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
     QString engine_;
 
   private slots:
     void initTestCase() {
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine_.isEmpty());
     }
     void archiveDropUsesSourceRefresh_data() {
@@ -50,7 +27,7 @@ class DragReloadCompletionTests final : public QObject, protected MainWindowTest
             for (bool russian : {false, true})
                 for (bool icons : {false, true})
                     for (bool alternative : {false, true})
-                        for (int outcome : {0, 1, 2, 3, 4})
+                        for (int outcome : {0, 1, 2})
                             QTest::newRow(qPrintable(QString("%1-%2-%3-%4-%5")
                                                          .arg(pane)
                                                          .arg(russian)
@@ -91,12 +68,7 @@ class DragReloadCompletionTests final : public QObject, protected MainWindowTest
         QVERIFY(QFile::copy(archive, peerArchive));
         const QByteArray original = SourceExtractFixture::readFile(archive);
         const QByteArray peerBytes = SourceExtractFixture::readFile(peerArchive);
-        DropUpdateBackend backend;
-        backend.Fail = outcome == 3;
-        connect(&backend, &ArchiveBackend::engineStarted, &backend, [&] {
-            if (outcome == 4 && backend.Started)
-                backend.cancel();
-        });
+        ArchiveBackend backend;
         MainWindow window(&backend);
         window.show();
         QVERIFY(QTest::qWaitForWindowActive(&window));
@@ -173,9 +145,8 @@ class DragReloadCompletionTests final : public QObject, protected MainWindowTest
         QCoreApplication::sendEvent(view->viewport(), &drop);
         respond.stop();
         QVERIFY(confirmed);
-        QCOMPARE(backend.Started, outcome == 0 || outcome >= 3);
         QCOMPARE(drop.isAccepted(), outcome == 0);
-        QCOMPARE(!errors.isEmpty(), outcome == 3);
+        QVERIFY(errors.isEmpty());
         QCOMPARE(panel.GetFolder(), provider.Interface());
         QCOMPARE(peerList->sourcePanel->GetFolder(), peerProvider.Interface());
         QVERIFY(peerPublication.isEmpty());

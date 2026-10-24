@@ -1,5 +1,7 @@
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
+#include "native_archive_fixture.h"
+#include "source_creation_fixture.h"
 #include "technical_listing_fixture.h"
 #include "window_state_support.h"
 #include <QProcess>
@@ -9,7 +11,7 @@ bool runEngine(const QString &directory, const QStringList &arguments,
                QByteArray *output = nullptr) {
     QProcess process;
     process.setWorkingDirectory(directory);
-    process.start(QStringLiteral("7zz"), arguments);
+    process.start(QStringLiteral("7z"), arguments);
     if (!process.waitForFinished(30000) || process.exitStatus() != QProcess::NormalExit ||
         process.exitCode() != 0)
         return false;
@@ -91,9 +93,10 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         MainWindow window(&backend);
         window.show();
         selectFilesystemSource(window, backend, source);
+        CreateArchiveDialog create(fixture.path(), {source}, &window, backend.codecCatalog());
         bool accepted = false;
         QTimer::singleShot(0, &window, [&] {
-            auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
+            auto *dialog = &create;
             QVERIFY(dialog);
             setOutput(*dialog, archive, format);
             auto *remove = dialog->findChild<QCheckBox *>("archiveDeleteAfterCompression");
@@ -105,7 +108,12 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
                 dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
             accepted = dialog->result() == QDialog::Accepted;
         });
-        action(window, "toolbarAddAction")->trigger();
+        create.exec();
+        if (create.result() == QDialog::Accepted)
+            QCOMPARE(SourceCreationFixture::Create(backend, archive, create.sources(),
+                                                   create.password(), create.encryptHeaders(),
+                                                   create.compressionOptions()),
+                     S_OK);
         QCOMPARE(accepted, !cancel);
         if (cancel) {
             QVERIFY(QFileInfo::exists(source));
@@ -158,9 +166,10 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         passwordAnswer.start(1);
         window.show();
         selectFilesystemSource(window, backend, added);
+        CreateArchiveDialog create(fixture.path(), {added}, &window, backend.codecCatalog());
         bool accepted = false;
         QTimer::singleShot(0, &window, [&] {
-            auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
+            auto *dialog = &create;
             if (!dialog)
                 return;
             setOutput(*dialog, archive, "7z");
@@ -170,7 +179,12 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
             dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
             accepted = dialog->result() == QDialog::Accepted;
         });
-        action(window, "toolbarAddAction")->trigger();
+        create.exec();
+        if (create.result() == QDialog::Accepted)
+            QCOMPARE(SourceCreationFixture::Create(backend, archive, create.sources(),
+                                                   create.password(), create.encryptHeaders(),
+                                                   create.compressionOptions()),
+                     S_OK);
         QVERIFY(accepted);
         QCOMPARE(passwordPrompts, 0);
         passwordAnswer.stop();
@@ -200,9 +214,7 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         file.close();
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {source});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         QFile archiveFile(archive);
         QVERIFY(archiveFile.open(QIODevice::ReadWrite));
         QVERIFY(archiveFile.setFileTime(entryTime.addDays(1), QFileDevice::FileModificationTime));
@@ -222,11 +234,12 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         MainWindow window(&backend);
         window.show();
         selectFilesystemSource(window, backend, source);
+        CreateArchiveDialog create(fixture.path(), {source}, &window, backend.codecCatalog());
         bool dialogSeen = false;
         bool sourceSelected = false;
         bool dialogAccepted = false;
         QTimer::singleShot(0, &window, [&] {
-            auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
+            auto *dialog = &create;
             if (!dialog)
                 return;
             dialogSeen = true;
@@ -246,7 +259,12 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
             dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
             dialogAccepted = dialog->result() == QDialog::Accepted;
         });
-        action(window, "toolbarAddAction")->trigger();
+        create.exec();
+        if (create.result() == QDialog::Accepted)
+            QCOMPARE(SourceCreationFixture::Create(backend, archive, create.sources(),
+                                                   create.password(), create.encryptHeaders(),
+                                                   create.compressionOptions()),
+                     S_OK);
         QVERIFY(dialogSeen);
         QVERIFY(sourceSelected);
         QVERIFY(dialogAccepted);
@@ -281,15 +299,14 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         file.close();
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {source});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         MainWindow window(&backend);
         window.show();
         selectFilesystemSource(window, backend, source);
+        CreateArchiveDialog create(fixture.path(), {source}, &window, backend.codecCatalog());
         bool accepted = false;
         QTimer::singleShot(0, &window, [&] {
-            auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
+            auto *dialog = &create;
             if (!dialog)
                 return;
             auto *pathModeControl = dialog->findChild<QComboBox *>("archivePathMode");
@@ -302,7 +319,12 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
             dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
             accepted = dialog->result() == QDialog::Accepted;
         });
-        action(window, "toolbarAddAction")->trigger();
+        create.exec();
+        if (create.result() == QDialog::Accepted)
+            QCOMPARE(SourceCreationFixture::Create(backend, archive, create.sources(),
+                                                   create.password(), create.encryptHeaders(),
+                                                   create.compressionOptions()),
+                     S_OK);
         QVERIFY(accepted);
         QByteArray listing;
         QVERIFY(runEngine(fixture.path(), {"l", "-slt", "-sccUTF-8", "--", archive}, &listing));

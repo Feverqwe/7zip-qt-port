@@ -277,7 +277,6 @@ class ArchiveLayerChainTests final : public QObject {
         QVERIFY(backend.discoverCodecCatalog(module_));
         QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 15000);
         QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
-        QSignalSpy processes(&backend, &ArchiveBackend::engineStarted);
         CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
         auto *file = new CInFileStream;
         CMyComPtr<IInStream> native = file;
@@ -461,7 +460,6 @@ class ArchiveLayerChainTests final : public QObject {
         QVERIFY(copied.open(QIODevice::ReadOnly));
         QCOMPARE(copied.readAll(), manifest_["payload"].toString().toUtf8());
         QCOMPARE(QDir(output).entryList(QDir::Files).size(), 1);
-        QCOMPARE(processes.size(), 0);
         QVERIFY(original.open(QIODevice::ReadOnly));
         QCOMPARE(original.readAll(), bytes);
         operations.Release();

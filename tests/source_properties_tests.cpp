@@ -23,7 +23,6 @@
 #include <QTimer>
 #include <QTreeWidget>
 #include <QtTest>
-#include <cstdio>
 
 namespace {
 bool write(const QString &path, const QByteArray &bytes) {
@@ -47,26 +46,36 @@ class SourcePropertiesTests final : public QObject {
         QTemporaryDir fixture;
         const QString path = fixture.filePath("transport fixture.7z");
         QVERIFY(write(path, "transport fixture"));
-        qputenv("SEVENZIP_PROPERTIES_FIXTURE", "1");
-        const auto restore = qScopeGuard([] { qunsetenv("SEVENZIP_PROPERTIES_FIXTURE"); });
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
-        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
-        CFfpOpen opening(manager);
-        QCOMPARE(opening.OpenFileFolderPlugin(nullptr, us2fs(path.toStdWString().c_str()),
-                                              UString(), nullptr),
-                 HRESULT(S_OK));
+        auto *resource = new QtArchiveFileResource(path);
+        CMyComPtr<IUnknown> owner = resource;
+        resource->Info.format = "7z";
+        resource->Info.properties.insert("Comment", fullValue());
+        resource->SetArchiveMetadata(17, 0);
+        ArchiveEntry huge;
+        huge.path = "huge.txt";
+        huge.sizeValue = UInt64(-1);
+        huge.packedSizeValue = 0;
+        huge.rawProperties.insert(kpidSha1, QByteArray(20, '\0'));
+        huge.rawProperties.insert(kpidSha256, QByteArray(32, char(0xab)));
+        ArchiveEntry undefined;
+        undefined.path = "undefined.txt";
+        undefined.size = -1;
+        undefined.packedSize = -1;
+        undefined.properties.insert("Checksum", "data:1024");
+        CMyComPtr<IFolderFolder> folder;
+        QCOMPARE(CreateArchiveFolder({huge, undefined}, UString("7z"), &folder, owner), S_OK);
         NWindows::NCOM::CPropVariant size, packed;
-        QCOMPARE(opening.Folder->GetProperty(0, kpidSize, &size), HRESULT(S_OK));
+        QCOMPARE(folder->GetProperty(0, kpidSize, &size), HRESULT(S_OK));
         QCOMPARE(size.vt, VARTYPE(VT_UI8));
         QCOMPARE(size.uhVal.QuadPart, UInt64(-1));
-        QCOMPARE(opening.Folder->GetProperty(0, kpidPackSize, &packed), HRESULT(S_OK));
+        QCOMPARE(folder->GetProperty(0, kpidPackSize, &packed), HRESULT(S_OK));
         QCOMPARE(packed.vt, VARTYPE(VT_UI8));
         QCOMPARE(packed.uhVal.QuadPart, UInt64(0));
-        QCOMPARE(opening.Folder->GetProperty(1, kpidSize, &size), HRESULT(S_OK));
+        QCOMPARE(folder->GetProperty(1, kpidSize, &size), HRESULT(S_OK));
         QCOMPARE(size.vt, VARTYPE(VT_EMPTY));
-        QCOMPARE(opening.Folder->GetProperty(1, kpidCRC, &size), HRESULT(S_OK));
+        QCOMPARE(folder->GetProperty(1, kpidCRC, &size), HRESULT(S_OK));
         QCOMPARE(size.vt, VARTYPE(VT_EMPTY));
-        CPanel panel(opening.Folder);
+        CPanel panel(folder);
         CRecordVector<UInt32> indices;
         indices.Add(0);
         PropertyProjection dialog(panel, indices);
@@ -77,7 +86,7 @@ class SourcePropertiesTests final : public QObject {
         PropertyProjection unavailable(panel, indices);
         QCOMPARE(value(unavailable, "Checksum"), QString("data:1024"));
         CMyComPtr<IArchiveGetRawProps> raw;
-        QCOMPARE(opening.Folder.QueryInterface(IID_IArchiveGetRawProps, &raw), HRESULT(S_OK));
+        QCOMPARE(folder.QueryInterface(IID_IArchiveGetRawProps, &raw), HRESULT(S_OK));
         UInt32 count = 99;
         QCOMPARE(raw->GetNumRawProps(&count), HRESULT(S_OK));
         QCOMPARE(count, UInt32(2));
@@ -110,7 +119,7 @@ class SourcePropertiesTests final : public QObject {
         else {
             QProcess creator;
             creator.setWorkingDirectory(fixture.path());
-            creator.start(QStandardPaths::findExecutable("7zz"), {"a", "-tzip", "--", path, file});
+            creator.start(QStandardPaths::findExecutable("7z"), {"a", "-tzip", "--", path, file});
             QVERIFY(creator.waitForFinished(10000));
             QCOMPARE(creator.exitCode(), 0);
         }
@@ -238,21 +247,5 @@ class SourcePropertiesTests final : public QObject {
             UiInspection::writeReport(dialog, QString("source-properties-%1").arg(size.width())));
     }
 };
-int main(int argc, char **argv) {
-    if (qEnvironmentVariableIsSet("SEVENZIP_PROPERTIES_FIXTURE")) {
-        QCoreApplication app(argc, argv);
-        const QByteArray listing =
-            "Type = 7z\nPhysical Size = 17\nComment = \n{\n" + fullValue().toUtf8() +
-            "\n}\n----------\nPath = huge.txt\nSize = 18446744073709551615\nPacked Size = 0\n"
-            "SHA-1 = 0000000000000000000000000000000000000000\n"
-            "SHA-256 = abababababababababababababababababababababababababababababababab\n\n"
-            "Path = undefined.txt\nSize = \nPacked Size = \nCRC = invalid\nChecksum = "
-            "data:1024\n\n";
-        std::fwrite(listing.constData(), 1, size_t(listing.size()), stdout);
-        return 0;
-    }
-    QApplication app(argc, argv);
-    SourcePropertiesTests tests;
-    return QTest::qExec(&tests, argc, argv);
-}
+QTEST_MAIN(SourcePropertiesTests)
 #include "source_properties_tests.moc"

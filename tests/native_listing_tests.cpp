@@ -1,4 +1,5 @@
 #include "archive_reader_fixture.h"
+#include "native_archive_fixture.h"
 #include <QtEndian>
 
 class NativeListingTests final : public ArchiveReaderFixture {
@@ -48,13 +49,11 @@ class NativeListingTests final : public ArchiveReaderFixture {
         QSignalSpy finished(backend_.get(), &ArchiveBackend::finished);
         QSignalSpy entries(backend_.get(), &ArchiveBackend::entriesReady);
         QSignalSpy info(backend_.get(), &ArchiveBackend::infoReady);
-        QSignalSpy processes(backend_.get(), &ArchiveBackend::engineStarted);
         backend_->list(path);
         QTRY_COMPARE(finished.size(), 1);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         QCOMPARE(entries.size(), 1);
         QCOMPARE(info.size(), 1);
-        QCOMPARE(processes.size(), 0);
         const auto actual = qvariant_cast<QList<ArchiveEntry>>(entries[0][0]);
         QCOMPARE(actual.size(), 1);
         const auto &entry = actual.first();
@@ -242,33 +241,29 @@ class NativeListingTests final : public ArchiveReaderFixture {
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         QCOMPARE(info.size(), 1);
         QVERIFY(qvariant_cast<ArchiveInfo>(info[0][0]).containerLevels >= 2);
-        QSignalSpy processes(backend_.get(), &ArchiveBackend::engineStarted);
-        const QList<std::function<void()>> changes = {
-            [&] { backend_->add(path, {dir.filePath(name_)}); },
-            [&] { backend_->remove(path, {name_}); },
-            [&] { backend_->renameEntry(path, name_, "renamed.txt"); },
-            [&] { backend_->replaceEntry(path, name_, dir.path()); }};
-        for (const auto &change : changes) {
-            finished.clear();
-            change();
-            QTRY_COMPARE(finished.size(), 1);
-            QVERIFY(!finished[0][0].toBool());
-            QVERIFY(!backend_->busy());
-            QCOMPARE(Bytes(path), original);
-        }
-        QCOMPARE(processes.size(), 0);
-        // The same listing contract still permits first-container updates.
+        QSignalSpy catalogReady(backend_.get(), &ArchiveBackend::codecCatalogReady);
+        QVERIFY(backend_->discoverCodecCatalog());
+        QTRY_COMPARE(catalogReady.size(), 1);
+        QVERIFY(catalogReady[0][0].toBool());
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QCOMPARE(backend_->openNativeArchive(path, "*:r.MBR", nullptr, reader), S_OK);
+        QVERIFY(reader);
+        QCOMPARE(backend_->setNativeArchiveProperties(reader, nullptr, nullptr, 0), E_NOTIMPL);
+        QCOMPARE(backend_->updateNativeArchive(reader, nullptr, 0, nullptr), E_NOTIMPL);
+        QCOMPARE(Bytes(path), original);
+        reader.reset();
+        QCOMPARE(backend_->openNativeArchive(inner, "zip", nullptr, reader), S_OK);
+        QVERIFY(reader);
+        const QString updatedPath = dir.filePath("updated.zip");
+        CMyComPtr2_Create<IOutStream, COutFileStream> output;
+        QVERIFY(output->Create_NEW(us2fs(updatedPath.toStdWString().c_str())));
+        CMyComPtr<IArchiveUpdateCallback> callback =
+            new NativeArchiveFixture::CWriter({{"renamed.txt", payload_}}, {});
+        QCOMPARE(backend_->updateNativeArchive(reader, output, 1, callback), S_OK);
+        QCOMPARE(output->Close(), S_OK);
+        QVERIFY(Make(dir.path(), {"t", "--", updatedPath}));
         finished.clear();
-        backend_->list(inner);
-        QTRY_COMPARE(finished.size(), 1);
-        QVERIFY(finished[0][0].toBool());
-        finished.clear();
-        backend_->renameEntry(inner, name_, "renamed.txt");
-        QTRY_COMPARE(finished.size(), 1);
-        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
-        QVERIFY(Make(dir.path(), {"t", "--", inner}));
-        finished.clear();
-        backend_->list(inner);
+        backend_->list(updatedPath);
         QTRY_COMPARE(finished.size(), 1);
         QVERIFY(finished[0][0].toBool());
         const auto updated = qvariant_cast<QList<ArchiveEntry>>(entries.last()[0]);

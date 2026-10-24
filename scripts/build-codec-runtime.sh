@@ -18,7 +18,7 @@ mkdir -p "$artifact_dir"
 python3 - "$artifact_dir" <<'PY'
 import json, pathlib, sys
 directory = pathlib.Path(sys.argv[1])
-files = [directory / name for name in ("7z", "7zz", "7z.so", "runtime.json", "LICENSE.txt")]
+files = [directory / name for name in ("7z", "7z.so", "runtime.json", "LICENSE.txt")]
 if any(path.exists() or path.is_symlink() for path in files):
     if any(path.is_symlink() for path in files):
         raise SystemExit("Refusing to replace a symlink codec runtime")
@@ -44,7 +44,7 @@ fi
 if [[ "$(uname -s)" == Darwin ]]; then
   export CCACHE_DIR="${CCACHE_DIR:-/private/tmp/sevenzip-desktop-ccache}"
 fi
-for source in CPP/7zip/UI/Console CPP/7zip/Bundles/Format7zF CPP/7zip/Bundles/Alone2; do
+for source in CPP/7zip/UI/Console CPP/7zip/Bundles/Format7zF; do
   make -s -C "$snapshot/$source" -f sevenzip-runtime.gcc.mak \
     CC="$task_runtime_cc" CXX="$task_runtime_cxx" LFLAGS_STRIP= -j4
 done
@@ -53,7 +53,6 @@ import hashlib, json, pathlib, platform, re, shutil, sys
 baseline = json.loads(pathlib.Path(sys.argv[1]).read_text())
 snapshot, output = map(pathlib.Path, sys.argv[2:])
 sources = {"7z": "CPP/7zip/UI/Console/_o/7z",
-           "7zz": "CPP/7zip/Bundles/Alone2/_o/7zz",
            "7z.so": "CPP/7zip/Bundles/Format7zF/_o/7z.so"}
 header = (snapshot / "C/7zVersion.h").read_text()
 major, minor = [int(re.search(r"#define MY_VER_" + name + r"\s+(\d+)", header)[1])
@@ -65,6 +64,22 @@ manifest = {"schema": 1, "producer": "sevenzip-desktop/build-codec-runtime",
             "system": platform.system(), "architecture": platform.machine(),
             "adapted_sources": json.loads((snapshot / "runtime-adaptations.json").read_text()),
             "version": (major << 16) | minor, "files": files}
+previous = output / "runtime.json"
+retired = []
+if previous.is_file():
+    record = json.loads(previous.read_text())
+    if record.get("producer") != "sevenzip-desktop/build-codec-runtime":
+        raise SystemExit("Refusing to retire artifacts from an unowned runtime")
+    for name, metadata in record.get("files", {}).items():
+        if name in sources:
+            continue
+        path = output / name
+        if pathlib.Path(name).name != name or path.is_symlink():
+            raise SystemExit("Unsafe retired runtime artifact")
+        if path.exists():
+            if hashlib.sha256(path.read_bytes()).hexdigest() != metadata.get("sha256"):
+                raise SystemExit("Refusing to remove a modified retired runtime artifact")
+            retired.append(path)
 for name, source in sources.items():
     staged = snapshot / name
     shutil.copy2(snapshot / source, staged)
@@ -73,6 +88,8 @@ shutil.copy2(snapshot / "DOC/License.txt", output / "LICENSE.txt")
 record = snapshot / "runtime.json"
 record.write_text(json.dumps(manifest, indent=2) + "\n")
 record.replace(output / record.name)
+for path in retired:
+    path.unlink()
 print("Prepared official external-codec runtime:", output)
 print("Upstream:", baseline["revision"], "version:", f"{major}.{minor:02}")
 PY

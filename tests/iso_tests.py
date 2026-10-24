@@ -18,7 +18,7 @@ class IsoTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-iso-runtime-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX,
+        for name in ("7z" + SUFFIX,
                      "7z.dll" if sys.platform == "win32" else "7z.so"):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
         (cls.runtime / "Formats").mkdir()
@@ -46,7 +46,7 @@ class IsoTests(unittest.TestCase):
                      "xar-directory", "multi", "multi-directory", "unknown-descriptor",
                      "foreign-descriptor", "no-terminator", "unit-no-gap", "big-endian-mirror", "iso-hs-collision"):
             image, files = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 for name, expected in files.items():
                     with self.subTest(kind=kind, engine=engine, name=name):
                         result = self.run_image(engine, image, name)
@@ -56,7 +56,7 @@ class IsoTests(unittest.TestCase):
     def test_bad_mapping_never_returns_bytes(self):
         for kind in ("outside-volume", "xar-outside-volume", "short-source", "missing-final",
                      "misaligned-section", "interleave"):
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     result = self.run_image(engine, volume(kind)[0], "ALPHA.BIN")
                     self.assertNotEqual(result.returncode, 0)
@@ -84,7 +84,7 @@ class IsoTests(unittest.TestCase):
 
     def test_deep_tree_bytes_and_cycle(self):
         image, files = volume("tree-clear")
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for name, expected in files.items():
                 with self.subTest(engine=engine):
                     result = self.run_image(engine, image, name)
@@ -94,7 +94,7 @@ class IsoTests(unittest.TestCase):
 
     def test_invalid_directory_is_rejected(self):
         for kind in ("bad-directory", "cycle", "bad-name-length", "short-record"):
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     self.assertNotEqual(self.run_image(engine, volume(kind)[0]).returncode, 0)
 

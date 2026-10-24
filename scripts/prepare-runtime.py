@@ -43,7 +43,7 @@ def fingerprint(root):
 
 
 def artifact_paths(windows):
-    runtime = ["7z.exe", "7zz.exe", "7z.dll"] if windows else ["7z", "7zz", "7z.so"]
+    runtime = ["7z.exe", "7z.dll"] if windows else ["7z", "7z.so"]
     sfx = ["7z.sfx", "7z.sfx.json", "7z-LICENSE.txt"] if windows else [
         "7zCon.sfx", "7zCon.sfx.json", "7zCon-LICENSE.txt"]
     return ["codec-runtime/" + name for name in runtime + ["runtime.json", "LICENSE.txt"]] + [

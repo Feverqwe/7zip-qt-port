@@ -4,6 +4,7 @@
 #include "dot_path_cpio_fixture.h"
 #include "fixtures/progress_dialog.h"
 #include "mainwindow.h"
+#include "native_archive_fixture.h"
 
 #include <QAction>
 #include <QFile>
@@ -21,7 +22,10 @@
 class NestedBackend : public ArchiveBackend {
   public:
     bool discoverCodecCatalog(const QString & = {}) override { return false; }
-    NestedBackend() : ArchiveBackend(nullptr, "/missing/7zz") {}
+    NestedBackend() : ArchiveBackend(nullptr, "/missing/7z") {}
+    bool supportsArchiveUpdate(const QString &format) const override {
+        return format == "zip" || format == "7z";
+    }
 
     HRESULT lastResult() const override { return cancelExtraction ? E_ABORT : E_FAIL; }
     void openFolder(const QString &archive, const QString &,
@@ -120,7 +124,7 @@ class NestedArchiveTests : public QObject {
         const auto make = [&](const QStringList &arguments) {
             QProcess process;
             process.setWorkingDirectory(fixture.path());
-            process.start(QStandardPaths::findExecutable("7zz"), arguments);
+            process.start(QStandardPaths::findExecutable("7z"), arguments);
             return process.waitForFinished(30000) && process.exitCode() == 0;
         };
         QVERIFY(make({"a", "-tgzip", "temp.pkg/Payload.gz", "Payload~"}));
@@ -194,14 +198,10 @@ class NestedArchiveTests : public QObject {
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         const QString zip = dir.filePath("inner.zip");
         const QString unknown = dir.filePath("inner.bin");
-        backend.create(zip, {source});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(zip, {source}));
         QVERIFY(QFile::rename(zip, unknown));
         const QString outer = dir.filePath("outer.7z");
-        backend.create(outer, {unknown});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(outer, {unknown}));
 
         MainWindow window(&backend);
         window.show();
@@ -257,9 +257,9 @@ class NestedArchiveTests : public QObject {
         source.write("tar payload");
         source.close();
         const QString archive = dir.filePath("sample.tar");
-        QString executable = QStandardPaths::findExecutable("7zz");
+        QString executable = QStandardPaths::findExecutable("7z");
         if (executable.isEmpty())
-            executable = "/opt/homebrew/bin/7zz";
+            executable = "/opt/homebrew/bin/7z";
         QProcess creator;
         creator.setWorkingDirectory(dir.path());
         creator.start(executable, {"a", "-ttar", "--", archive, sourceName});
@@ -333,12 +333,8 @@ class NestedArchiveTests : public QObject {
         const QString inner = dir.filePath(QStringLiteral("вложенный архив.zip"));
         const QString outer = dir.filePath("outer.7z");
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(inner, {source});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
-        backend.create(outer, {inner});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(inner, {source}));
+        QVERIFY(NativeArchiveFixture::WriteFiles(outer, {inner}));
 
         MainWindow window(&backend);
         window.show();

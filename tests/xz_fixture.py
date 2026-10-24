@@ -142,7 +142,7 @@ def volume(kind, producer=None):
         image = encode(payload, filter_id=filters[kind])
     elif kind in ("arm64", "riscv"):
         if not producer:
-            raise ValueError("The pinned 7zz producer is required for newer BCJ filters")
+            raise ValueError("The pinned 7z producer is required for newer BCJ filters")
         payload = bytes.fromhex("000000940000009400000090ef0000006f000000") * 800
         with tempfile.TemporaryDirectory(prefix="sevenzip-xz-producer-") as temporary:
             temporary = Path(temporary)

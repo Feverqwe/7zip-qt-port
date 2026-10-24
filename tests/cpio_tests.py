@@ -18,7 +18,7 @@ class CpioTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-cpio-runtime-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX,
+        for name in ("7z" + SUFFIX,
                      "7z.dll" if sys.platform == "win32" else "7z.so"):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
         (cls.runtime / "Formats").mkdir()
@@ -36,7 +36,7 @@ class CpioTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix="sevenzip-cpio-") as temporary:
                 path = Path(temporary) / "архив 空.cpio"
                 path.write_bytes(image)
-                for engine in ("7z", "7zz"):
+                for engine in ("7z",):
                     with self.subTest(kind=kind, engine=engine):
                         listing = self.command(engine, path, "l", "-slt", forced=False)
                         self.assertEqual(listing.returncode, 0, listing.stdout + listing.stderr)
@@ -68,7 +68,7 @@ class CpioTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix="sevenzip-cpio-invalid-") as temporary:
                 path = Path(temporary) / "bad.cpio"
                 path.write_bytes(image)
-                for engine in ("7z", "7zz"):
+                for engine in ("7z",):
                     with self.subTest(kind=kind, engine=engine):
                         result = self.command(engine, path, "t")
                         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)

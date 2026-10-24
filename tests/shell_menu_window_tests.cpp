@@ -141,7 +141,7 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official native runtime unavailable; native shell menu remains unverified");
 #else
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine_.isEmpty());
         module_ = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
         ArchiveBackend backend(nullptr, engine_);
@@ -474,7 +474,6 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
         auto *view = table(window);
         QTRY_VERIFY(rowNamed(window, archiveName) >= 0);
         view->selectRow(rowNamed(window, archiveName));
-        QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
         QStringList errors;
         bool passwordCanceled = false;
         QTimer dismissal;
@@ -517,7 +516,6 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
         }
         dismissal.stop();
         QVERIFY(invoked);
-        QCOMPARE(started.size(), 0); // The caller's backend remains independent.
         MainWindow *receiver = nullptr;
         for (auto *widget : QApplication::topLevelWidgets())
             if (widget->objectName() == "shellArchiveWindow")

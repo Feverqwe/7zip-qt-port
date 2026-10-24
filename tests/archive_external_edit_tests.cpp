@@ -16,19 +16,8 @@ using namespace ExternalEditorFixture;
 
 class UpdateBackend final : public ArchiveBackend {
   public:
-    bool Fail = false;
-    bool Started = false;
     bool HoldBusy = false;
     bool busy() const override { return HoldBusy || ArchiveBackend::busy(); }
-    void updateSourceFile(const QString &archive, const QString &entry, const QString &root,
-                          const QString &output, const QString &format,
-                          const QString &password) override {
-        Started = true;
-        if (Fail)
-            emit finished(false, QStringLiteral("Controlled external update failure."));
-        else
-            ArchiveBackend::updateSourceFile(archive, entry, root, output, format, password);
-    }
 };
 
 class ArchiveExternalEditTests final : public QObject, protected MainWindowTestSupport {
@@ -198,163 +187,6 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         QCOMPARE(contents(archive, name), QByteArray("original"));
         QVERIFY(QDir(temporaryDirectory).removeRecursively());
     }
-    void refusedUpdateRetainsEditedCopy_data() {
-        QTest::addColumn<int>("outcome");
-        QTest::addColumn<unsigned>("pane");
-        QTest::addColumn<bool>("russian");
-        QTest::addColumn<bool>("icons");
-        QTest::addColumn<bool>("alternative");
-        for (int outcome : {1, 2, 3})
-            for (unsigned pane : {0u, 1u})
-                for (bool russian : {false, true})
-                    for (bool icons : {false, true})
-                        for (bool alternative : {false, true})
-                            QTest::newRow(qPrintable(QString("%1-%2-%3-%4-%5")
-                                                         .arg(outcome)
-                                                         .arg(pane)
-                                                         .arg(russian)
-                                                         .arg(icons)
-                                                         .arg(alternative)))
-                                << outcome << pane << russian << icons << alternative;
-    }
-    void refusedUpdateRetainsEditedCopy() {
-        QFETCH(int, outcome);
-        QFETCH(unsigned, pane);
-        QFETCH(bool, russian);
-        QFETCH(bool, icons);
-        QFETCH(bool, alternative);
-        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
-        SaveRegLang(UString(russian ? L"ru" : L"-"), settings);
-        ReloadLang(settings);
-        QTemporaryDir fixture;
-        const QString name = QStringLiteral("сохранить правку.txt");
-        const QString format = outcome == 3 ? "tar" : "zip";
-        const QString archive = fixture.filePath("original." + format);
-        QVERIFY(write(fixture.filePath(name), "original"));
-        QVERIFY(createArchive(fixture.path(), archive, name, format));
-        const QByteArray originalArchive = read(archive);
-        const QString control = fixture.filePath("control");
-        const auto stopEditor = qScopeGuard([&] { write(control + ".exit", "exit"); });
-        configure(control);
-        UpdateBackend backend;
-        backend.Fail = outcome == 1;
-        connect(&backend, &ArchiveBackend::engineStarted, &backend, [&] {
-            if (outcome == 2 && backend.Started)
-                backend.cancel();
-        });
-        MainWindow window(&backend);
-        window.show();
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
-        action(window, "twoPanelsAction")->trigger();
-        auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *list = static_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"));
-        owner->findChild<QLineEdit *>("archivePath")->setFocus();
-        window.openArchive(archive);
-        QTRY_COMPARE(list->rowCount(), 1);
-        action(window, icons ? "viewMode0Action" : "viewMode3Action")->trigger();
-        list->selectRow(0);
-        list->sourcePanel->SetAlternativeSelection(alternative);
-        list->sourcePanel->Set_AutoRefresh_Mode(false);
-        CMyComPtr<IFolderFolder> provider = list->sourcePanel->GetFolder();
-        auto *peer = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *peerList = static_cast<FileTable *>(peer->findChild<QTableWidget *>("archiveTable"));
-        peerList->sourcePanel->Set_AutoRefresh_Mode(false);
-        CMyComPtr<IFolderFolder> peerProvider = peerList->sourcePanel->GetFolder();
-        const int peerRows = peerList->rowCount();
-        QVERIFY(action(window, "editFileAction")->isEnabled());
-        bool error = false;
-        QEventLoop errorDelivery;
-        QPointer<QMessageBox> closingMessage;
-        QString previousModalState;
-        QTimer responder;
-        widgetDialogs_.connectResponder(responder, &window, [&] {
-            if (closingMessage)
-                return;
-            auto *modal = widgetDialogs_.activeDialog();
-            if (modal) {
-                const auto *button = modal->findChild<QPushButton *>("IDCANCEL");
-                const QString state =
-                    QString("%1/%2/%3")
-                        .arg(modal->metaObject()->className(), modal->objectName(),
-                             button ? button->text() : QString());
-                if (state != previousModalState) {
-                    previousModalState = state;
-                    qInfo().noquote() << "External update modal:" << state;
-                    if (auto *messages = modal->findChild<QTreeWidget *>("IDL_PROGRESS_MESSAGES"))
-                        for (int row = 0; row < messages->topLevelItemCount(); ++row)
-                            qInfo().noquote()
-                                << "Progress message:" << messages->topLevelItem(row)->text(1);
-                }
-            }
-            if (auto *box = qobject_cast<QMessageBox *>(modal)) {
-                closingMessage = box;
-                qInfo().noquote() << "External update message:" << box->text();
-                if (box->objectName() == "externalUpdatePrompt")
-                    box->done(QMessageBox::Yes);
-                else {
-                    error |= box->objectName() == "externalUpdateError";
-                    if (error)
-                        connect(box, &QObject::destroyed, &errorDelivery, &QEventLoop::quit);
-                    box->accept();
-                }
-            } else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
-                auto *close = progress->findChild<QPushButton *>("IDCANCEL");
-                if (close && close->text() == ToQString(LangString(IDS_CLOSE)))
-                    QTimer::singleShot(0, progress, [this, progress, close] {
-                        // Source sets the Close caption before presenting its
-                        // final error. Allow that transition to finish before
-                        // simulating input; never click through a child modal.
-                        if (widgetDialogs_.activeDialog() == progress)
-                            close->click();
-                    });
-            }
-        });
-        responder.start(1);
-        action(window, "editFileAction")->trigger();
-        QTRY_VERIFY(QFileInfo(control + ".ready").size() > 0);
-        const QString temporary = QString::fromUtf8(read(control + ".ready"));
-        auto *peerAddress = peer->findChild<QLineEdit *>("archivePath");
-        peerAddress->setFocus();
-        QWidget *const focused = window.focusWidget();
-        QVERIFY(focused && peer->isAncestorOf(focused));
-        QSignalSpy refreshed(list->model(), &QAbstractItemModel::rowsRemoved);
-        QVERIFY(write(control, "change"));
-        QVERIFY(write(control + ".exit", "exit"));
-        QTimer::singleShot(5000, &errorDelivery, &QEventLoop::quit);
-        errorDelivery.exec();
-        QVERIFY(error);
-        responder.stop();
-        QCOMPARE(backend.Started, outcome != 3);
-        QVERIFY(!backend.busy());
-        QCOMPARE(read(temporary), modified);
-        QCOMPARE(read(archive), originalArchive);
-        QCOMPARE(contents(archive, name), QByteArray("original"));
-        QCOMPARE(refreshed.isEmpty(), outcome == 3);
-        QCOMPARE(list->rowCount(), 1);
-        QCOMPARE(list->selectionModel()->selectedRows().size(), 1);
-        CRecordVector<UInt32> marks;
-        list->sourcePanel->Get_ItemIndices_Selected(marks);
-        QCOMPARE(marks.Size(), 1u);
-        QVERIFY(list->updatesEnabled());
-        QVERIFY(list->isEnabled());
-        QCOMPARE(list->sourcePanel->GetFolder(), (IFolderFolder *)provider);
-        QCOMPARE(peerList->sourcePanel->GetFolder(), (IFolderFolder *)peerProvider);
-        QCOMPARE(peerList->rowCount(), peerRows);
-        QTRY_COMPARE(window.focusWidget(), focused);
-        QWidget *visible =
-            icons ? static_cast<QWidget *>(owner->findChild<QListView *>("iconList")) : list;
-        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
-            window.resize(size);
-            QApplication::processEvents();
-            QVERIFY(UiInspection::fullyVisible(*visible, window));
-            QVERIFY(UiInspection::fullyVisible(*peerList, window));
-            QVERIFY(UiInspection::writeReport(
-                window,
-                QString("external-refresh-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));
-        }
-        QVERIFY(QDir(QFileInfo(temporary).absolutePath()).removeRecursively());
-    }
     void deferredUpdateAndOwnerChanges_data() {
         QTest::addColumn<int>("outcome");
         QTest::newRow("wait-for-idle") << 0;
@@ -418,13 +250,13 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         QVERIFY(write(control + ".exit", "exit"));
         QTRY_VERIFY(QFileInfo(control + ".finished").exists());
         QTest::qWait(100);
-        QVERIFY(!asked && !backend.Started);
+        QVERIFY(!asked);
         QVERIFY(QFileInfo(temporary).isFile());
         if (outcome == 1) {
             window.reset();
             backend.HoldBusy = false;
             QApplication::processEvents();
-            QVERIFY(!asked && !backend.Started);
+            QVERIFY(!asked);
         } else {
             if (outcome == 2) {
                 auto *address = leftPanel->findChild<QLineEdit *>("archivePath");

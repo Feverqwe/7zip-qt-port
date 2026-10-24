@@ -274,8 +274,8 @@ columns, preserving visibility, width, order and sort between openings. Name
 cannot be hidden. The shared list remains fully visible in all four modes at
 980×620 and 640×400. `panel_columns` writes eight `source-columns-*` JSON
 reports for those states. These establish the Qt structure and usability; they
-do not establish rendered Windows parity or availability of binary raw metadata
-from the external `7zz` backend (P1-10).
+do not establish rendered Windows parity. Native raw-metadata coverage is
+recorded separately under P1-10.
 
 ### Time precision and UTC (P0-06.3)
 

@@ -3,6 +3,7 @@
 #include "copydialog.h"
 #include "fixtures/window_activation.h"
 #include "layout_inspection.h"
+#include "native_archive_fixture.h"
 #include "window_state_support.h"
 #include <QProcess>
 #include <QStandardPaths>
@@ -21,11 +22,7 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QCOMPARE(file.write(bytes), qint64(bytes.size()));
     }
     static void createArchive(const QString &path, const QStringList &files) {
-        ArchiveBackend backend;
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(path, files);
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(path, files));
     }
     static int row(QTableWidget &view, const QString &name) {
         for (int i = 0; i < view.rowCount(); ++i)
@@ -388,7 +385,7 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
             QCOMPARE(static_cast<FileTable *>(targetView)->sourcePanel->GetFolder(),
                      targetProvider.Interface());
         if (targetArchive) {
-            const QString engine = QStandardPaths::findExecutable("7zz");
+            const QString engine = QStandardPaths::findExecutable("7z");
             QVERIFY(!engine.isEmpty());
             QProcess verifier;
             verifier.start(engine, {"x", "-y", "-o" + output, "--", target});

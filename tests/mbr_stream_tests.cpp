@@ -214,7 +214,7 @@ class MbrStreamTests final : public QObject {
         const QString engine = runtime.filePath("7z");
         const QString mainModule = runtime.filePath("7z.so");
 #endif
-        QVERIFY(probe.Start(engine, mainModule, [&](auto result) {
+        QVERIFY(probe.Start(mainModule, [&](auto result) {
             catalog = result.catalog;
             ready = true;
         }));

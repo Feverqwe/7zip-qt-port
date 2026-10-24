@@ -28,8 +28,8 @@ void ArchiveBackend::finishSourceExtractOperation(const QtArchiveReadOperation &
     if (partial)
         lastResult_ = S_FALSE;
     if (operation.OutputCreated && lastResult_ != S_OK &&
-        (!partial || QFileInfo(createTemporary_).size() <= 0))
-        QFile::remove(createTemporary_);
+        (!partial || QFileInfo(sourceExtractOutput_).size() <= 0))
+        QFile::remove(sourceExtractOutput_);
 }
 
 void ArchiveBackend::extractSourceEntry(const QString &archive, const QString &entry,
@@ -51,7 +51,7 @@ void ArchiveBackend::extractSourceEntry(const QString &archive, const QString &e
     archive_ = QFileInfo(archive).absoluteFilePath();
     sourceExtractEntry_ = entry;
     sourceExtractAltStream_ = isAltStream;
-    createTemporary_ = QFileInfo(output).absoluteFilePath();
+    sourceExtractOutput_ = QFileInfo(output).absoluteFilePath();
     sourceExtractRecovery_ = IsArchiveRecoveryFormat(format);
     if (format.isEmpty() && hasListedSourceArchive(archive_))
         sourceExtractRecovery_ =

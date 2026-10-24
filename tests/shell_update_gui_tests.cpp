@@ -244,7 +244,7 @@ class ShellUpdateGuiTests final : public QObject {
         QVERIFY(dismissal.Errors.isEmpty());
         QProcess verify;
         verify.setWorkingDirectory(fixture.path());
-        verify.start(QStandardPaths::findExecutable("7zz"), {"t", "--", target});
+        verify.start(QStandardPaths::findExecutable("7z"), {"t", "--", target});
         QVERIFY(verify.waitForFinished(10000));
         QCOMPARE(verify.exitCode(), 0);
         QCOMPARE(SourceExtractFixture::readFile(fixture.filePath(name)), QByteArray("abc"));

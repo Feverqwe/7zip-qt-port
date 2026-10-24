@@ -41,7 +41,7 @@ class ArchiveRecoveryUiTests final : public QObject {
 #else
         module_ = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
 #endif
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine_.isEmpty());
         QVERIFY(settings_.isValid());
         previousSettings_ = qgetenv("SEVENZIP_SETTINGS_PATH");

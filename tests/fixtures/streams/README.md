@@ -14,7 +14,7 @@ $name = 'файл δ with space.bin'
 [IO.File]::WriteAllBytes($name, [Text.Encoding]::UTF8.GetBytes('main bytes'))
 Set-Content -LiteralPath $name -Stream 'поток δ' -Encoding Byte `
     -Value ([Text.Encoding]::UTF8.GetBytes('archive stream bytes'))
-7zz.exe a -twim -sns -- unicode-ads.wim $name
+7z.exe a -twim -sns -- unicode-ads.wim $name
 ```
 
 Use a new output file: timestamps make regenerated archive hashes differ.

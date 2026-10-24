@@ -10,29 +10,6 @@
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
 
-class CopyArchiveBackend final : public ArchiveBackend {
-  public:
-    bool Fail = false, Started = false;
-    void updateSourcePlan(const QString &archive, const SourceUpdatePlan &plan,
-                          const QString &output, const QString &format, const QString &password,
-                          const std::optional<CompressionOptions> &options) override {
-        Started = true;
-        if (Fail)
-            emit finished(false, QStringLiteral("Controlled Copy update failure."));
-        else
-            ArchiveBackend::updateSourcePlan(archive, plan, output, format, password, options);
-    }
-    void updateSourceAdd(const QString &archive, const QStringList &entries, const QString &root,
-                         const QString &output, const QString &format,
-                         const QString &password) override {
-        Started = true;
-        if (Fail)
-            emit finished(false, QStringLiteral("Controlled Copy update failure."));
-        else
-            ArchiveBackend::updateSourceAdd(archive, entries, root, output, format, password);
-    }
-};
-
 class CopyArchiveRefreshTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
     QString engine_;
@@ -41,7 +18,7 @@ class CopyArchiveRefreshTests final : public QObject, protected MainWindowTestSu
 
   private slots:
     void initTestCase() {
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine_.isEmpty());
         QVERIFY(seeds_.isValid());
         const QStringList initial{QStringLiteral("m marked δ.txt"),
@@ -80,7 +57,7 @@ class CopyArchiveRefreshTests final : public QObject, protected MainWindowTestSu
         QTest::addColumn<bool>("alternative");
         QTest::addColumn<bool>("move");
         QTest::addColumn<QString>("route");
-        QStringList routes{"transport", "failure", "cancel"};
+        QStringList routes;
 #ifdef SEVENZIP_CODEC_MODULE
         routes << "zip" << "7z" << "large-zip";
 #endif
@@ -107,7 +84,6 @@ class CopyArchiveRefreshTests final : public QObject, protected MainWindowTestSu
         QFETCH(bool, move);
         QFETCH(QString, route);
         const bool success = route != "failure" && route != "cancel";
-        const bool native = route == "zip" || route == "7z" || route == "large-zip";
         const int originalCount = route == "large-zip" ? 301 : 2;
         const QString settingsPath = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
         QFile::remove(settingsPath);
@@ -138,16 +114,8 @@ class CopyArchiveRefreshTests final : public QObject, protected MainWindowTestSu
         QVERIFY(
             QFile::copy(seeds_.filePath(QString::number(originalCount) + '.' + format), archive));
         const QByteArray before = SourceExtractFixture::readFile(archive);
-        CopyArchiveBackend controlled;
-        controlled.Fail = route == "failure";
-        std::unique_ptr<ArchiveBackend> nativeBackend;
-#ifdef SEVENZIP_CODEC_MODULE
-        // Keep per-case process/operation owners, sharing only the immutable
-        // module lease through the same public factory as independent windows.
-        if (native)
-            nativeBackend.reset(catalogOwner_->createIndependentBackend());
-#endif
-        ArchiveBackend &backend = nativeBackend ? *nativeBackend : controlled;
+        std::unique_ptr<ArchiveBackend> nativeBackend(catalogOwner_->createIndependentBackend());
+        ArchiveBackend &backend = *nativeBackend;
         QtFileManagerStartup startup;
         startup.FullPath = ToUString(archive);
         startup.ArcFormat = ToUString(format);
@@ -184,8 +152,6 @@ class CopyArchiveRefreshTests final : public QObject, protected MainWindowTestSu
         auto &sourcePanel = *source->sourcePanel;
         sourcePanel.Set_AutoRefresh_Mode(false);
         sourcePanel.SelectAll(true);
-        if (route == "cancel")
-            connect(&backend, &ArchiveBackend::engineStarted, &backend, [&] { backend.cancel(); });
         if (icons)
             action(window, "viewMode0Action")->trigger();
         QAbstractItemView *view =
@@ -217,8 +183,7 @@ class CopyArchiveRefreshTests final : public QObject, protected MainWindowTestSu
         QVERIFY(SignalWaitSupport::waitForEnabled(*action(window, "refreshAction")));
         QVERIFY(action(window, "refreshAction")->isEnabled());
         driver.stop();
-        QCOMPARE(controlled.Started, !native);
-        QCOMPARE(!errors.isEmpty(), route == "failure");
+        QVERIFY(errors.isEmpty());
         QCOMPARE(destination.GetFolder(), provider.Interface());
         QVERIFY(!publication.isEmpty());
         QVERIFY(

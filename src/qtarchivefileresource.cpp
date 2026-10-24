@@ -224,7 +224,7 @@ HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc, const CCodecs *codecs) co
     if (_codecs && _codecs->result() == S_OK)
         arc.SetDefaultName(_codecs->nativeCodecs(), _codecs->formatIndex(Info.format));
     arc.IsReadOnly = !_filesystemReadLimitations.isEmpty();
-    // 7zz reports the logical stream across all split parts; source
+    // Typed metadata reports the logical stream across all split parts; source
     // ReadBasicProps compares kpidPhySize with that combined stream size.
     arc.FileSize = UInt64(Info.volumeCount > 1 && Info.totalPhysicalSize >= file.size()
                               ? Info.totalPhysicalSize
@@ -284,7 +284,7 @@ QtArchiveFileResource::CreateProgressTransport(CProgressDialog &dialog, bool nat
 HRESULT QtArchiveFileResource::Spool(IInStream *stream, IProgress *progress) {
     if (!_temporary.isEmpty())
         return E_FAIL;
-    // 7zz accepts files only. The source stream and copy algorithm are retained;
+    // The file-backed service retains the source stream and copy algorithm;
     // Use the original temp-name/create service with the final output handle.
     // QTemporaryFile::close can retain its OS handle, preventing a native
     // writable reopen on Windows. This also removes the second file open.

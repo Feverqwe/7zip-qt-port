@@ -55,7 +55,7 @@ class SourceLinkExtractTests final : public QObject {
     bool createTar(const QString &directory, const QString &archive, const QStringList &names) {
         QProcess process;
         process.setWorkingDirectory(directory);
-        process.start(QStandardPaths::findExecutable("7zz"),
+        process.start(QStandardPaths::findExecutable("7z"),
                       QStringList{"a", "-ttar", "-snl", "-snh", "--", archive} + names);
         return process.waitForFinished(10000) && process.exitCode() == 0;
     }
@@ -93,7 +93,7 @@ class SourceLinkExtractTests final : public QObject {
         const QString archive = fixture.filePath("native reparse.wim");
         QProcess creator;
         creator.setWorkingDirectory(fixture.path());
-        creator.start(QStandardPaths::findExecutable("7zz"),
+        creator.start(QStandardPaths::findExecutable("7z"),
                       {"a", "-twim", "-snl", "--", archive, rootName});
         QVERIFY(creator.waitForFinished(10000));
         QCOMPARE(creator.exitCode(), 0);

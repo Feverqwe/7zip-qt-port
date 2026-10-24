@@ -17,7 +17,7 @@ class LzmaTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-lzma-runtime-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX,
+        for name in ("7z" + SUFFIX,
                      "7z.dll" if sys.platform == "win32" else "7z.so"):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
 
@@ -33,7 +33,7 @@ class LzmaTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix="sevenzip-lzma-") as temporary:
                 path = Path(temporary) / "архив 空.bin"
                 path.write_bytes(image)
-                for engine in ("7z", "7zz"):
+                for engine in ("7z",):
                     with self.subTest(kind=kind, engine=engine):
                         # LZMA86 has no identifying signature; explicit type is its public entry point.
                         result = self.command(engine, path, "l", format_name, "-slt",
@@ -53,7 +53,7 @@ class LzmaTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix="sevenzip-lzma-invalid-") as temporary:
                 path = Path(temporary) / "bad.bin"
                 path.write_bytes(image)
-                for engine in ("7z", "7zz"):
+                for engine in ("7z",):
                     with self.subTest(kind=kind, engine=engine):
                         result = self.command(engine, path, "t", format_name)
                         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)

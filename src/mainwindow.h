@@ -390,7 +390,7 @@ class MainWindow : public QMainWindow {
     bool updatingArchive_ = false;
     enum class ArchiveMoveStage { None, Extracting, Removing };
     ArchiveMoveStage archiveMoveStage_ = ArchiveMoveStage::None;
-    QStringList archiveMovePaths_;
+    CRecordVector<UInt32> archiveMoveIndices_;
     std::optional<unsigned> transferDestinationPanel_;
     QList<ArchiveEntry> entries_;
     ArchiveInfo info_;

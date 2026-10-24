@@ -2,7 +2,6 @@
 #include "window_state_support.h"
 #include <QElapsedTimer>
 #include <QScopeGuard>
-#include <QTextStream>
 
 class LifecycleBackend : public ControlledBackend {
   public:
@@ -86,32 +85,6 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(!backend.busy());
         QCOMPARE(finished.size(), 1);
         QVERIFY(!finished.first().at(0).toBool());
-    }
-
-    void transportStopsBeforeCancelAndWaitReturns() {
-        QTemporaryDir temporary;
-        QVERIFY(temporary.isValid());
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
-        QSignalSpy output(&backend, &ArchiveBackend::outputReceived);
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        for (int iteration = 0; iteration < 2; ++iteration) {
-            const int previousOutput = output.size();
-            backend.list(temporary.filePath("controlled-process.zip"));
-            QTRY_VERIFY(output.size() > previousOutput);
-            QVERIFY(backend.busy());
-            QCOMPARE(output.last().at(0).toString(), QString("Fixture process ready."));
-            QElapsedTimer elapsed;
-            elapsed.start();
-            backend.cancelAndWait();
-            QVERIFY(elapsed.elapsed() < 5000);
-            QVERIFY(!backend.busy());
-            QCOMPARE(finished.size(), iteration + 1);
-            QVERIFY(!finished.last().at(0).toBool());
-            QVERIFY(!finished.last().at(1).toString().isEmpty());
-            QCOMPARE(backend.lastResult(), E_ABORT);
-            backend.cancelAndWait();
-            QCOMPARE(finished.size(), iteration + 1);
-        }
     }
 
     void destroyingWindowAfterSourceHashJoinsReleasesItsSpool() {
@@ -228,38 +201,24 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
         QTRY_VERIFY(table(window)->isEnabled());
         selectAndForge(window);
         const int requests = backend.extractCalls;
-        bool resultsShown = false;
-        QTimer closeResults;
-        connect(&closeResults, &QTimer::timeout, &window, [&] {
-            if (auto *dialog = qobject_cast<CListViewDialog *>(QApplication::activeModalWidget())) {
-                resultsShown = true;
-                dialog->accept();
-            }
-        });
-        closeResults.start(1);
+        backend.GuiRequests.clear();
         action(window, "hashSHA256Action")->trigger();
-        closeResults.stop();
-        QVERIFY(resultsShown);
-        QCOMPARE(backend.hashCalls, 0); // Filesystem CalculateCrc2 reads the bound source path.
+        QCOMPARE(backend.GuiRequests.size(), 1);
+        const auto &hash = backend.GuiRequests.first();
+        QCOMPARE(hash.Operation, QtOperationMessage::Command::Hash);
+        QCOMPARE(hash.HashMethod, QString("SHA256"));
+        QStringList sources;
+        for (const auto &path : hash.Paths)
+            sources.append(QDir::cleanPath(QDir(hash.HashBasePrefix).absoluteFilePath(path)));
+        QCOMPARE(sources.size(), 1);
+        QCOMPARE(sources.first().normalized(QString::NormalizationForm_C),
+                 diskPath.normalized(QString::NormalizationForm_C));
+        QCOMPARE(backend.hashCalls, 0); // The filesystem request uses the rebound source path.
         QCOMPARE(backend.extractCalls, requests);
         backend.cancel();
         action(window, "flatViewAction")->setChecked(false);
     }
 };
 
-int main(int argc, char **argv) {
-    // Controlled process fixture: ArchiveBackend's list command invokes this
-    // executable instead of 7zz. No shell, real archive or service is involved.
-    if (argc > 1 && QByteArray(argv[1]) == "l") {
-        QCoreApplication app(argc, argv);
-        QTextStream output(stdout);
-        output << "Fixture process ready.\n";
-        output.flush();
-        QTimer::singleShot(30000, &app, &QCoreApplication::quit);
-        return app.exec();
-    }
-    QApplication app(argc, argv);
-    BindingLifecycleTests tests;
-    return QTest::qExec(&tests, argc, argv);
-}
+QTEST_MAIN(BindingLifecycleTests)
 #include "binding_lifecycle_tests.moc"

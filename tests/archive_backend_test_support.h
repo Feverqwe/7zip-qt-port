@@ -12,13 +12,6 @@
 #include <QTimer>
 #include <QtTest>
 
-#include <cstdio>
-
-static void writeOutput(const QByteArray &text) {
-    std::fwrite(text.constData(), 1, size_t(text.size()), stdout);
-    std::fflush(stdout);
-}
-
 class ArchiveBackendTestSupport {
   protected:
     static void writeFile(const QString &path, const QByteArray &data) {
@@ -33,51 +26,3 @@ class ArchiveBackendTestSupport {
         QCOMPARE(spy.takeFirst().at(0).toBool(), expected);
     }
 };
-
-inline int backendTestMain(int argc, char **argv, QObject *tests) {
-    QCoreApplication app(argc, argv);
-    const QByteArray mode = qgetenv("SEVENZIP_TEST_HELPER");
-    if (!mode.isEmpty()) {
-        if (mode == "fragment") {
-            writeOutput("  4");
-            QThread::msleep(20);
-            writeOutput("2%\b\b    \b\b+ папка/имя с пробелом.txt\r");
-            writeOutput("ERROR: incomplete tail");
-            return 2;
-        }
-        if (mode == "memoryoption") {
-            const auto arguments = QCoreApplication::arguments();
-            const int separator = arguments.indexOf("--");
-            if (separator < 0 || separator + 1 >= arguments.size())
-                return 2;
-            QFile output(arguments[separator + 1]);
-            if (!output.open(QIODevice::WriteOnly))
-                return 2;
-            output.write("fixture");
-            const bool requested = QCoreApplication::arguments().contains("-slp");
-            writeOutput("LargePagesRequested = " + QByteArray(requested ? "1" : "0") +
-                        "\n----------\nPath = payload.txt\nSize = 1\n\n");
-            return 0;
-        }
-        if (mode == "createpartial" || mode == "createfail") {
-            const QStringList arguments = QCoreApplication::arguments();
-            const int separator = arguments.indexOf("--");
-            if (separator < 0 || separator + 1 >= arguments.size())
-                return 3;
-            QFile partial(arguments.at(separator + 1));
-            if (!partial.open(QIODevice::WriteOnly))
-                return 4;
-            partial.write("incomplete archive");
-            partial.close();
-            writeOutput("started\n");
-            if (mode == "createfail")
-                return 2;
-            QThread::msleep(30000);
-            return 0;
-        }
-        writeOutput("started\npartial");
-        QThread::msleep(30000);
-        return 0;
-    }
-    return QTest::qExec(tests, argc, argv);
-}

@@ -41,7 +41,7 @@ class NativeArchivePropertiesTests final : public QObject {
         QSKIP("Official module unavailable; native archive properties unverified");
 #else
         module_ = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine_.isEmpty());
         ArchiveCodecCatalog probe(module_, 0);
         QCOMPARE(probe.result(), S_OK);
@@ -75,7 +75,7 @@ class NativeArchivePropertiesTests final : public QObject {
 
         // Opening and listing must use the retained official reader even when
         // the separate command-line executable is unavailable.
-        ArchiveBackend backend(nullptr, fixture.filePath("missing 7zz executable"));
+        ArchiveBackend backend(nullptr, fixture.filePath("missing 7z executable"));
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
         auto catalog = backend.codecCatalog();
         std::weak_ptr<const ArchiveCodecCatalog> retained = catalog;

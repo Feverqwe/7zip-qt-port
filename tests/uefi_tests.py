@@ -17,7 +17,7 @@ class UefiTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-uefi-runtime-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX,
+        for name in ("7z" + SUFFIX,
                      "7z.dll" if sys.platform == "win32" else "7z.so"):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
 
@@ -37,7 +37,7 @@ class UefiTests(unittest.TestCase):
                 path = Path(temporary) / ("образ 空.bin" if known else
                                           "образ 空.uefif" if fmt == "UEFIf" else "образ 空.cap")
                 path.write_bytes(image)
-                for engine in ("7z", "7zz"):
+                for engine in ("7z",):
                     with self.subTest(kind=kind, engine=engine):
                         result = self.command(engine, path, "l", "-slt", fmt=fmt, forced=False)
                         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -56,7 +56,7 @@ class UefiTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix="sevenzip-uefi-invalid-") as temporary:
                 path = Path(temporary) / "bad.cap"
                 path.write_bytes(image)
-                for engine in ("7z", "7zz"):
+                for engine in ("7z",):
                     with self.subTest(kind=kind, engine=engine):
                         result = self.command(engine, path, "t")
                         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)

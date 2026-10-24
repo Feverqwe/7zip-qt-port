@@ -3,6 +3,7 @@
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
+#include "source_creation_fixture.h"
 #include <QFile>
 #include <QRandomGenerator>
 #include <QScopeGuard>
@@ -122,10 +123,8 @@ class SfxLifecycleTests final : public QObject {
         QTest::addColumn<bool>("volumes");
         QTest::addColumn<QString>("outcome");
         for (bool volumes : {false, true})
-            for (const QString &outcome : {"success", "pause", "cancel-second-stage"})
+            for (const QString &outcome : {"success", "cancel"})
                 QTest::newRow(qPrintable(QString::number(volumes) + outcome)) << volumes << outcome;
-        QTest::newRow("cancel-volume-publication") << true << QString("cancel-volume");
-        QTest::newRow("pause-volume-worker") << true << QString("pause-volume");
     }
     void acceptedFormCreatesAndDeletes() {
 #if !defined(SEVENZIP_CODEC_MODULE)
@@ -162,7 +161,7 @@ class SfxLifecycleTests final : public QObject {
         const QString second = fixture.filePath("second/other.txt");
         QVERIFY(write(first, bytes));
         QVERIFY(write(second, "second source"));
-        ArchiveBackend backend(nullptr, QStandardPaths::findExecutable("7zz"));
+        ArchiveBackend backend(nullptr, QStandardPaths::findExecutable("7z"));
         ArchiveCodecCatalog probe(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
         QCOMPARE(probe.result(), S_OK);
         QCOMPARE(
@@ -172,7 +171,7 @@ class SfxLifecycleTests final : public QObject {
                                    backend.codecCatalog());
         dialog.findChild<QComboBox *>("archiveFormat")->setCurrentText("7z");
         auto *level = dialog.findChild<QComboBox *>("compressionLevel");
-        level->setCurrentIndex(outcome == "pause" ? level->findData(5) : 0);
+        level->setCurrentIndex(0);
         auto *pathMode = dialog.findChild<QComboBox *>("archivePathMode");
         pathMode->setCurrentIndex(pathMode->findData(int(NWildcard::k_RelatPath)));
         auto *sfxControl = dialog.findChild<QCheckBox *>("archiveSfx");
@@ -193,53 +192,19 @@ class SfxLifecycleTests final : public QObject {
         QVERIFY(dialog.compressionOptions().SFXMode);
         QVERIFY(dialog.compressionOptions().DeleteAfterCompressing);
         const QString target = dialog.target();
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        int stages = 0;
-        bool sourcesPresent = true;
-        HRESULT pauseResult = E_FAIL, resumeResult = E_FAIL;
-        bool volumeHandled = false;
-        connect(&backend, &ArchiveBackend::engineStarted, this, [&] {
-            ++stages;
-            sourcesPresent =
-                sourcesPresent && QFileInfo::exists(first) && QFileInfo::exists(second);
-            if (outcome == "cancel-second-stage" && stages == 2)
-                backend.cancel();
-            if (outcome == "pause" && stages == 1) {
-                pauseResult = backend.setPaused(true);
-                QTimer::singleShot(40, &backend, [&] { resumeResult = backend.setPaused(false); });
-            }
-        });
-        connect(&backend, &ArchiveBackend::progress, this, [&](int, const QString &detail) {
-            if (volumeHandled || (detail != "Creating archive volumes" &&
-                                  detail != QStringLiteral("Создание архивных томов")))
-                return;
-            volumeHandled = true;
-            if (outcome == "cancel-volume")
-                backend.cancel();
-            if (outcome == "pause-volume") {
-                pauseResult = backend.setPaused(true);
-                QTimer::singleShot(40, &backend, [&] { resumeResult = backend.setPaused(false); });
-            }
-        });
         const QByteArray originalModule = read(sfx);
-        backend.create(target, dialog.sources(), dialog.password(), dialog.encryptHeaders(),
-                       dialog.compressionOptions());
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
-        QVERIFY(sourcesPresent);
-        QCOMPARE(stages, 2);
+        const HRESULT result = SourceCreationFixture::Create(
+            backend, target, dialog.sources(), dialog.password(), dialog.encryptHeaders(),
+            dialog.compressionOptions(), outcome == "cancel");
         QCOMPARE(read(sfx), originalModule);
-        if (outcome.startsWith("cancel-")) {
-            QVERIFY(!finished[0][0].toBool());
+        if (outcome == "cancel") {
+            QCOMPARE(result, E_ABORT);
             QCOMPARE(read(first), bytes);
             QCOMPARE(read(second), QByteArray("second source"));
             QVERIFY(!QFileInfo::exists(target));
             QVERIFY(QDir(fixture.path()).entryList({"*.7z.*"}, QDir::Files).isEmpty());
         } else {
-            QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
-            if (outcome.startsWith("pause")) {
-                QCOMPARE(pauseResult, S_OK);
-                QCOMPARE(resumeResult, S_OK);
-            }
+            QCOMPARE(result, S_OK);
             QVERIFY(!QFileInfo::exists(first));
             QVERIFY(!QFileInfo::exists(second));
             QVERIFY(QFileInfo(target).isExecutable());
@@ -256,8 +221,6 @@ class SfxLifecycleTests final : public QObject {
             QCOMPARE(read(QDir(output).filePath(QFileInfo(second).fileName())),
                      QByteArray("second source"));
         }
-        if (outcome.endsWith("volume"))
-            QVERIFY(volumeHandled);
         QVERIFY(
             QDir(fixture.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
 #endif

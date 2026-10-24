@@ -1,6 +1,7 @@
 #include "7zip/Common/StreamObjects.h"
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
+#include "source_creation_fixture.h"
 #ifdef Q_OS_WIN
 #include "Windows/FileIO.h"
 #endif
@@ -163,9 +164,8 @@ class ExternalCodecTests final : public QObject {
         options.format = "7z";
         options.Options = L"0=SevenzipFixtureCopy";
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, archive, {source}, {}, false, options),
+                 S_OK);
         CArchiveLink leased;
         QCOMPARE(retained->openArchive(leased, archive, type, nullptr), S_OK);
         if (globalOnly) {
@@ -308,9 +308,8 @@ class ExternalCodecTests final : public QObject {
         options.format = "zip";
         options.Method = "BZip2";
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {input}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, archive, {input}, {}, false, options),
+                 S_OK);
         CArchiveLink link;
         QCOMPARE(backend.codecCatalog()->openArchive(link, archive, "zip", nullptr), S_OK);
         CMyComPtr2_Create<IArchiveExtractCallback, CExtractToMemory> callback;
@@ -358,9 +357,8 @@ class ExternalCodecTests final : public QObject {
         options.format = "7z";
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         if (console) {
-            backend.create(archive, {source}, {}, false, options);
-            QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-            QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+            QCOMPARE(SourceCreationFixture::Create(backend, archive, {source}, {}, false, options),
+                     S_OK);
         } else {
             QProcess creator;
             creator.start(engine_, {"a", "-t7z", "--", archive, source});
@@ -450,22 +448,23 @@ class ExternalCodecTests final : public QObject {
     }
     void defaultBackendUsesSelectedRuntime() {
         QFETCH(bool, missing);
-        const QByteArray previous = qgetenv("SEVENZIP_ENGINE_PATH");
+        const QByteArray previous = qgetenv("SEVENZIP_CODEC_MODULE_PATH");
         const auto restore = qScopeGuard([&] {
             if (previous.isNull())
-                qunsetenv("SEVENZIP_ENGINE_PATH");
+                qunsetenv("SEVENZIP_CODEC_MODULE_PATH");
             else
-                qputenv("SEVENZIP_ENGINE_PATH", previous);
+                qputenv("SEVENZIP_CODEC_MODULE_PATH", previous);
         });
-        qputenv("SEVENZIP_ENGINE_PATH",
-                (missing ? runtime_.filePath("missing engine") : engine_).toUtf8());
+        qputenv("SEVENZIP_CODEC_MODULE_PATH",
+                (missing ? runtime_.filePath("missing module") : module_).toUtf8());
         ArchiveBackend backend;
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog());
         QTRY_COMPARE(ready.size(), 1);
-        QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
-        QCOMPARE(backend.codecCatalog()->nativeCodecs().Libs.Size(), 2u);
+        QCOMPARE(ready[0][0].toBool(), !missing);
+        if (!missing)
+            QCOMPARE(backend.codecCatalog()->nativeCodecs().Libs.Size(), 2u);
     }
 };
-QTEST_GUILESS_MAIN(ExternalCodecTests)
+QTEST_MAIN(ExternalCodecTests)
 #include "external_codec_tests.moc"

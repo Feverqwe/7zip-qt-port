@@ -8,39 +8,6 @@
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
 
-class InterarchiveBackend final : public ArchiveBackend {
-  public:
-    bool FailUpdate = false, FailDelete = false, UpdateStarted = false, DeleteStarted = false;
-    void updateSourceAdd(const QString &archive, const QStringList &entries, const QString &root,
-                         const QString &output, const QString &format,
-                         const QString &password) override {
-        UpdateStarted = true;
-        if (FailUpdate)
-            emit finished(false, QStringLiteral("Controlled destination update failure."));
-        else
-            ArchiveBackend::updateSourceAdd(archive, entries, root, output, format, password);
-    }
-    void updateSourcePlan(const QString &archive, const SourceUpdatePlan &plan,
-                          const QString &output, const QString &format, const QString &password,
-                          const std::optional<CompressionOptions> &options) override {
-        UpdateStarted = true;
-        if (FailUpdate)
-            emit finished(false, QStringLiteral("Controlled destination update failure."));
-        else
-            ArchiveBackend::updateSourcePlan(archive, plan, output, format, password, options);
-    }
-    void updateSourceMutation(const QString &archive, const QString &output, const QString &format,
-                              SourceMutation operation, const QStringList &paths,
-                              const QString &root, const QString &password) override {
-        DeleteStarted = operation == SourceMutation::Delete;
-        if (FailDelete && DeleteStarted)
-            emit finished(false, QStringLiteral("Controlled source delete failure."));
-        else
-            ArchiveBackend::updateSourceMutation(archive, output, format, operation, paths, root,
-                                                 password);
-    }
-};
-
 class InterarchiveRefreshTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
     QString engine_;
@@ -68,7 +35,7 @@ class InterarchiveRefreshTests final : public QObject, protected MainWindowTestS
 
   private slots:
     void initTestCase() {
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine_.isEmpty());
 #ifdef SEVENZIP_CODEC_MODULE
         ArchiveCodecCatalog catalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
@@ -83,8 +50,7 @@ class InterarchiveRefreshTests final : public QObject, protected MainWindowTestS
         QTest::addColumn<bool>("alternative");
         QTest::addColumn<bool>("move");
         QTest::addColumn<QString>("route");
-        QStringList routes{"transport",     "failure",        "cancel",       "delete-no",
-                           "delete-refuse", "delete-failure", "delete-cancel"};
+        QStringList routes{"delete-no", "delete-refuse"};
 #ifdef SEVENZIP_CODEC_MODULE
         routes << "zip" << "7z" << "large-zip";
 #endif
@@ -114,8 +80,7 @@ class InterarchiveRefreshTests final : public QObject, protected MainWindowTestS
         QFETCH(bool, move);
         QFETCH(QString, route);
         const bool rollback = route.startsWith("delete-");
-        const bool success = !rollback && route != "failure" && route != "cancel";
-        const bool native = route == "zip" || route == "7z" || route == "large-zip";
+        const bool success = !rollback;
         const int originalCount = route == "large-zip" ? 301 : 2;
         const QString settingsPath = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
         QFile::remove(settingsPath);
@@ -143,22 +108,11 @@ class InterarchiveRefreshTests final : public QObject, protected MainWindowTestS
         createArchive(targetArchive, fixture.path(), targetNames);
         const QByteArray sourceBefore = SourceExtractFixture::readFile(sourceArchive);
         const QByteArray targetBefore = SourceExtractFixture::readFile(targetArchive);
-        InterarchiveBackend backend;
-        backend.FailUpdate = route == "failure";
-        backend.FailDelete = route == "delete-failure";
+        ArchiveBackend backend;
 #ifdef SEVENZIP_CODEC_MODULE
-        if (native)
-            QCOMPARE(backend.loadCodecCatalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), version_),
-                     S_OK);
+        QCOMPARE(backend.loadCodecCatalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), version_),
+                 S_OK);
 #endif
-        bool cancelRequested = false;
-        connect(&backend, &ArchiveBackend::engineStarted, &backend, [&] {
-            if (!cancelRequested && ((route == "cancel" && backend.UpdateStarted) ||
-                                     (route == "delete-cancel" && backend.DeleteStarted))) {
-                cancelRequested = true;
-                backend.cancel();
-            }
-        });
         MainWindow window(&backend);
         window.show();
         QVERIFY(QTest::qWaitForWindowActive(&window));
@@ -240,14 +194,9 @@ class InterarchiveRefreshTests final : public QObject, protected MainWindowTestS
         QTRY_COMPARE(target->rowCount(), originalCount + (success ? 1 : 0));
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
         driver.stop();
-        QCOMPARE(backend.UpdateStarted, !native);
         QCOMPARE(deleteConfirmed, move && (success || rollback));
         QCOMPARE(destinationCommitted, deleteConfirmed);
-        QCOMPARE(cancelRequested, route == "cancel" || route == "delete-cancel");
-        QCOMPARE(backend.DeleteStarted,
-                 !native && move &&
-                     (success || route == "delete-failure" || route == "delete-cancel"));
-        QCOMPARE(!errors.isEmpty(), route == "failure" || route == "delete-failure");
+        QVERIFY(errors.isEmpty());
         QCOMPARE(sourcePanel.GetFolder(), sourceProvider.Interface());
         if (rollback)
             QVERIFY(destination.GetFolder() != targetProvider.Interface());

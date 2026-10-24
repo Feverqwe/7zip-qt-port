@@ -89,7 +89,7 @@ class NativeFolderOpeningTests final : public QObject {
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official module unavailable; native application opening unverified");
 #else
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         if (engine_.isEmpty())
             QSKIP("Official engine unavailable; native application opening unverified");
         module_ = QString::fromUtf8(SEVENZIP_CODEC_MODULE);

@@ -28,15 +28,13 @@ class ArchiveCodecCatalog final {
 
   public:
     enum class Scope { Module, Deployment };
-    ArchiveCodecCatalog(const QString &module, UInt32 expectedVersion, Scope scope = Scope::Module,
-                        const QString &engine = {});
+    ArchiveCodecCatalog(const QString &module, UInt32 expectedVersion, Scope scope = Scope::Module);
     ~ArchiveCodecCatalog();
     ArchiveCodecCatalog(const ArchiveCodecCatalog &) = delete;
     ArchiveCodecCatalog &operator=(const ArchiveCodecCatalog &) = delete;
     HRESULT result() const { return result_; }
     QString error() const { return error_; }
     UInt32 version() const { return version_; }
-    QString runtimeEngine() const;
     const CCodecs &nativeCodecs() const { return *codecs_; }
     void getUserCodecs(CObjectVector<CCodecInfoUser> &codecs) const;
     int formatIndex(const QString &type) const;

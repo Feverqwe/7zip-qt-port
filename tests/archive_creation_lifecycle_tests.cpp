@@ -3,6 +3,7 @@
 #include "archivebackend.h"
 #include "native_link_fixture.h"
 #include "qtarchivedeleteinputs.h"
+#include "source_creation_fixture.h"
 #include <QDir>
 #include <QFile>
 #include <QSignalSpy>
@@ -68,82 +69,6 @@ class ArchiveCreationLifecycleTests final : public QObject {
         QVERIFY(QFileInfo(skipped).isSymLink());
         QCOMPARE(readFile(changed), QByteArray("replacement file"));
         QCOMPARE(readFile(target), QByteArray("outside bytes"));
-    }
-    void createStoredLinksDeletesAfterPublication_data() {
-        QTest::addColumn<QString>("format");
-        QTest::addColumn<int>("outcome");
-        QTest::addColumn<bool>("selectedLeaves");
-        for (const QString &format : {QString("7z"), QString("zip")}) {
-#ifdef Q_OS_WIN
-            QTest::newRow(qPrintable(format + "-unproved-link-capability-refusal"))
-                << format << 3 << false;
-#else
-            QTest::newRow(qPrintable(format + "-success")) << format << 0 << false;
-            QTest::newRow(qPrintable(format + "-selected")) << format << 0 << true;
-            QTest::newRow(qPrintable(format + "-cancel")) << format << 1 << false;
-            QTest::newRow(qPrintable(format + "-failure")) << format << 2 << false;
-#endif
-        }
-    }
-    void createStoredLinksDeletesAfterPublication() {
-        QFETCH(QString, format);
-        QFETCH(int, outcome);
-        QFETCH(bool, selectedLeaves);
-        QTemporaryDir fixture;
-        QVERIFY(fixture.isValid());
-        const QString target = fixture.filePath("outside/цель.txt");
-        QVERIFY(QDir().mkpath(QFileInfo(target).absolutePath()));
-        QVERIFY(writeFile(target, "outside bytes"));
-        const QString root = fixture.filePath("source folder");
-        QVERIFY(QDir().mkpath(root));
-        QVERIFY(CreateNativeSymbolicLink(root + "/file link", target));
-        QVERIFY(
-            CreateNativeSymbolicLink(root + "/directory link", QFileInfo(target).absolutePath()));
-        QVERIFY(
-            CreateNativeSymbolicLink(root + "/dangling link", fixture.filePath("missing target")));
-        const QString archive = fixture.filePath("result." + format);
-        CompressionOptions options;
-        options.SymLinks.SetTrueTrue();
-        if (selectedLeaves)
-            options.SymLinks.Def = false;
-        options.DeleteAfterCompressing = true;
-        ArchiveBackend backend(nullptr,
-                               outcome == 2 ? fixture.filePath("missing-engine") : QString());
-        if (outcome == 1)
-            connect(&backend, &ArchiveBackend::engineStarted, this, [&] { backend.cancel(); });
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
-        const QStringList sources = selectedLeaves
-                                        ? QStringList{root + "/file link", root + "/directory link",
-                                                      root + "/dangling link"}
-                                        : QStringList{root};
-        backend.create(archive, sources, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
-        QCOMPARE(finished.last().first().toBool(), outcome == 0);
-        if (outcome == 3)
-            QCOMPARE(started.size(), 0);
-        QCOMPARE(readFile(target), QByteArray("outside bytes"));
-        if (outcome != 0) {
-            QVERIFY(QFileInfo(root + "/file link").isSymLink());
-            QVERIFY(QFileInfo(root + "/directory link").isSymLink());
-            QVERIFY(QFileInfo(root + "/dangling link").isSymLink());
-            QVERIFY(!QFileInfo::exists(archive));
-            return;
-        }
-        if (selectedLeaves)
-            QVERIFY(QDir(root).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).isEmpty());
-        else
-            QVERIFY(!QFileInfo::exists(root));
-        const QString extracted = fixture.filePath("extracted");
-        QProcess engine;
-        engine.start("7zz", {"x", "-y", "-snld", "-o" + extracted, "--", archive});
-        QVERIFY(engine.waitForFinished(15000));
-        QCOMPARE(engine.exitCode(), 0);
-        for (const QString &name :
-             {QString("file link"), QString("directory link"), QString("dangling link")})
-            QVERIFY2(QFileInfo(extracted + (selectedLeaves ? "/" : "/source folder/") + name)
-                         .isSymLink(),
-                     qPrintable(name));
     }
     void nativeProcessedAndChangedFiles() {
         QTemporaryDir fixture;
@@ -237,7 +162,7 @@ class ArchiveCreationLifecycleTests final : public QObject {
                 deletedDirectories.indexOf(root + "/nested"));
         QCOMPARE(deletedDirectories.last(), root);
     }
-    void createDeletesOnlyAfterPublication_data() {
+    void sourceCreationRemovesArchivedInputs_data() {
         QTest::addColumn<QString>("format");
         QTest::addColumn<bool>("volumes");
         QTest::newRow("zip") << QString("zip") << false;
@@ -245,7 +170,7 @@ class ArchiveCreationLifecycleTests final : public QObject {
         QTest::newRow("zip-volumes") << QString("zip") << true;
         QTest::newRow("7z-volumes") << QString("7z") << true;
     }
-    void createDeletesOnlyAfterPublication() {
+    void sourceCreationRemovesArchivedInputs() {
         QFETCH(QString, format);
         QFETCH(bool, volumes);
         QTemporaryDir fixture;
@@ -262,25 +187,18 @@ class ArchiveCreationLifecycleTests final : public QObject {
         if (volumes)
             options.VolumeSizes.Add(2048);
         ArchiveBackend backend;
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        bool sourceExistedDuringEngine = false;
-        connect(&backend, &ArchiveBackend::engineStarted, this,
-                [&] { sourceExistedDuringEngine = QFileInfo::exists(input); });
-        backend.create(archive, {root}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
-        QVERIFY2(finished.last().first().toBool(), qPrintable(finished.last().at(1).toString()));
-        QVERIFY(sourceExistedDuringEngine);
+        QCOMPARE(SourceCreationFixture::Create(backend, archive, {root}, {}, false, options), S_OK);
         QVERIFY(!QFileInfo::exists(root));
         const QString result = volumes ? archive + ".001" : archive;
         QVERIFY(QFileInfo::exists(result));
         QProcess engine;
         const QString extracted = fixture.filePath("extracted");
-        engine.start("7zz", {"x", "-y", "-o" + extracted, "--", result});
+        engine.start("7z", {"x", "-y", "-o" + extracted, "--", result});
         QVERIFY(engine.waitForFinished(15000));
         QCOMPARE(engine.exitCode(), 0);
         QCOMPARE(readFile(extracted + "/source folder/файл с пробелом.txt"), bytes);
     }
-    void cancelledSecondStagePreservesEverySource() {
+    void cancelledNativeCreationPreservesEverySource() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         QVERIFY(QDir().mkpath(fixture.filePath("a")) && QDir().mkpath(fixture.filePath("b")));
@@ -289,97 +207,13 @@ class ArchiveCreationLifecycleTests final : public QObject {
         ArchiveBackend backend;
         CompressionOptions options;
         options.DeleteAfterCompressing = true;
-        int stages = 0;
-        connect(&backend, &ArchiveBackend::engineStarted, this, [&] {
-            if (++stages == 2)
-                backend.cancel();
-        });
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
         const QString archive = fixture.filePath("result.7z");
-        backend.create(archive, {a, b}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
-        QCOMPARE(stages, 2);
-        QVERIFY(!finished.last().first().toBool());
+        QCOMPARE(SourceCreationFixture::Create(backend, archive, {a, b}, {}, false, options, true),
+                 E_ABORT);
         QCOMPARE(readFile(a), QByteArray("a"));
         QCOMPARE(readFile(b), QByteArray("b"));
         QVERIFY(!QFileInfo::exists(archive));
     }
-    void changedInputAndPublicationFailureRetainSources_data() {
-        QTest::addColumn<bool>("occupiedVolume");
-        QTest::newRow("changed-input") << false;
-        QTest::newRow("occupied-volume") << true;
-    }
-    void changedInputAndPublicationFailureRetainSources() {
-        QFETCH(bool, occupiedVolume);
-        QTemporaryDir fixture;
-        QVERIFY(fixture.isValid());
-        const QString source = fixture.filePath("source.txt");
-        const QString archive = fixture.filePath("result.7z");
-        QVERIFY(writeFile(source, "old bytes"));
-        ArchiveBackend backend;
-        CompressionOptions options;
-        options.DeleteAfterCompressing = true;
-        if (occupiedVolume)
-            options.VolumeSizes.Add(128);
-        bool changed = false;
-        connect(&backend, &ArchiveBackend::engineStarted, this, [&] {
-            changed = writeFile(occupiedVolume ? archive + ".001" : source,
-                                occupiedVolume ? "occupied" : "changed larger bytes");
-        });
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
-        QVERIFY(changed);
-        QCOMPARE(finished.last().first().toBool(), !occupiedVolume);
-        QCOMPARE(readFile(source),
-                 occupiedVolume ? QByteArray("old bytes") : QByteArray("changed larger bytes"));
-        if (occupiedVolume) {
-            QCOMPARE(readFile(archive + ".001"), QByteArray("occupied"));
-            QVERIFY(!QFileInfo::exists(archive));
-        } else
-            QVERIFY(QFileInfo::exists(archive));
-    }
-    void preparationCancelAndUnsupportedMode() {
-        QTemporaryDir fixture;
-        QVERIFY(fixture.isValid());
-        const QString source = fixture.filePath("source.txt");
-        QVERIFY(writeFile(source, "original"));
-        ArchiveBackend backend;
-        CompressionOptions options;
-        options.DeleteAfterCompressing = true;
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
-        backend.create(fixture.filePath("cancelled.7z"), {source}, {}, false, options);
-        backend.cancelAndWait();
-        QCOMPARE(finished.size(), 1);
-        QVERIFY(!finished.last().first().toBool());
-        QCOMPARE(started.size(), 0);
-        QCOMPARE(readFile(source), QByteArray("original"));
-        finished.clear();
-        options.UpdateMode = NCompressDialog::NUpdateMode::kFresh;
-        backend.create(fixture.filePath("unsupported.7z"), {source}, {}, false, options);
-        QCOMPARE(finished.size(), 1);
-        QVERIFY(!finished.last().first().toBool());
-        QCOMPARE(started.size(), 0);
-        QCOMPARE(readFile(source), QByteArray("original"));
-    }
-    void engineStartFailureKeepsInput() {
-        QTemporaryDir fixture;
-        QVERIFY(fixture.isValid());
-        const QString source = fixture.filePath("source.txt");
-        QVERIFY(writeFile(source, "original"));
-        ArchiveBackend backend(nullptr, fixture.filePath("missing-engine"));
-        CompressionOptions options;
-        options.DeleteAfterCompressing = true;
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(fixture.filePath("result.7z"), {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
-        QVERIFY(!finished.last().first().toBool());
-        QCOMPARE(readFile(source), QByteArray("original"));
-        QVERIFY(!QFileInfo::exists(fixture.filePath("result.7z")));
-        QVERIFY(
-            QDir(fixture.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
-    }
 };
-QTEST_GUILESS_MAIN(ArchiveCreationLifecycleTests)
+QTEST_MAIN(ArchiveCreationLifecycleTests)
 #include "archive_creation_lifecycle_tests.moc"

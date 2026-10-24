@@ -24,7 +24,7 @@ using namespace SourceExtractFixture;
 bool runEngine(const QString &directory, const QStringList &arguments) {
     QProcess process;
     process.setWorkingDirectory(directory);
-    process.start(QStandardPaths::findExecutable("7zz"), arguments);
+    process.start(QStandardPaths::findExecutable("7z"), arguments);
     return process.waitForFinished(10000) && process.exitCode() == 0;
 }
 // A failed native worker displays its source final message. Dismiss only those

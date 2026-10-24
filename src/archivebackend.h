@@ -4,7 +4,6 @@ struct CProperty;
 class CArc;
 
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
-#include "processpause.h"
 
 #include <QDateTime>
 #include <QHash>
@@ -12,18 +11,14 @@ class CArc;
 #include <QMutex>
 #include <QObject>
 #include <QPair>
-#include <QProcess>
 #include <QStringList>
 #include <QTimer>
 #include <functional>
 #include <memory>
 #include <optional>
-class QtArchiveVolumeOutput;
-class QtArchiveCreationLifecycle;
 class QtArchiveHashOperation;
 class QtArchiveReadOperation;
 class QtOperationLauncher;
-class QtArchiveCopyPreparation;
 class ArchiveCodecCatalog;
 class ArchiveSfxModule;
 class ArchiveCodecProbe;
@@ -101,7 +96,7 @@ class ArchiveBackend : public QObject {
     Q_OBJECT
 
   public:
-    explicit ArchiveBackend(QObject *parent = nullptr, QString executable = QString());
+    explicit ArchiveBackend(QObject *parent = nullptr, QString runtimeLocation = QString());
     ~ArchiveBackend() override;
     virtual bool busy() const;
     virtual HRESULT lastResult() const;
@@ -119,7 +114,7 @@ class ArchiveBackend : public QObject {
     bool discoveringCodecs() const { return codecDiscoveryActive_; }
     void cancelCodecDiscovery();
     QString openDialogFilter() const;
-    bool supportsArchiveUpdate(const QString &format) const;
+    virtual bool supportsArchiveUpdate(const QString &format) const;
     static bool compressionProperties(const QString &format, const QString &password,
                                       bool encryptHeaders, const CompressionOptions &options,
                                       CObjectVector<CProperty> *properties, QString *error);
@@ -198,45 +193,8 @@ class ArchiveBackend : public QObject {
     void hashMethods(const QStringList &paths, const QStringList &methods);
     HRESULT loadHashProviders(CExternalCodecs &providers) const;
     HRESULT loadBenchmarkProviders(CExternalCodecs &providers) const;
-    virtual void create(const QString &archive, const QStringList &sources,
-                        const QString &password = {}, bool encryptHeaders = false,
-                        const CompressionOptions &options = {});
-    virtual void add(const QString &archive, const QStringList &sources);
     std::unique_ptr<QtArchiveTransferBackup>
     saveArchiveTransferDestination(const QString &path) const;
-    virtual void remove(const QString &archive, const QStringList &paths);
-    virtual void renameEntry(const QString &archive, const QString &oldPath,
-                             const QString &newPath);
-    virtual void replaceEntry(const QString &archive, const QString &entry,
-                              const QString &sourceRoot);
-    // Source IOutArchive transport writes a new archive; native WorkDir owns publication.
-    virtual void updateSourceFile(const QString &archive, const QString &entry,
-                                  const QString &sourceRoot, const QString &output,
-                                  const QString &format, const QString &password);
-    virtual void updateSourceAdd(const QString &archive, const QStringList &entries,
-                                 const QString &sourceRoot, const QString &output,
-                                 const QString &format, const QString &password);
-    struct SourceUpdatePlan {
-        QStringList removed;
-        QStringList removedDirectories;
-        QStringList retainedPaths;
-        QStringList files;
-        QStringList directories;
-        QList<QPair<QString, QString>> renames;
-        bool allowAbsolute = false;
-        bool allowProtected = false;
-        QString fileRoot;
-        QString directoryRoot;
-    };
-    virtual void updateSourcePlan(const QString &archive, const SourceUpdatePlan &plan,
-                                  const QString &output, const QString &format,
-                                  const QString &password,
-                                  const std::optional<CompressionOptions> &options = std::nullopt);
-    enum class SourceMutation { Delete, Rename, CreateFolder };
-    virtual void updateSourceMutation(const QString &archive, const QString &output,
-                                      const QString &format, SourceMutation operation,
-                                      const QStringList &paths, const QString &sourceRoot,
-                                      const QString &password = {});
     // Extract one literal member into a private spool. Source callbacks own
     // the final output stream and filesystem presentation.
     virtual void extractSourceEntry(const QString &archive, const QString &entry,
@@ -258,11 +216,8 @@ class ArchiveBackend : public QObject {
     static bool validateExtractionStreamOutput(const QString &destination, const QString &path,
                                                QString *error);
     static bool sourceUpdatePathIsSafe(const QString &path, bool allowAbsolute = false);
-    static bool prepareSourceSelection(const QString &archive, const QStringList &sources,
-                                       QString *root, QStringList *relativePaths, QString *error,
-                                       bool storeLinks = false);
     virtual void cancel();
-    // Native controls affect only this backend's live engine child.
+    // Native controls affect only this backend's active worker.
     virtual HRESULT setPaused(bool paused);
     // Stop the transport before callers release its source/destination resources.
     void cancelAndWait();
@@ -278,7 +233,6 @@ class ArchiveBackend : public QObject {
     void passwordRequired();
     void overwriteRequired(const QString &existing, const ArchiveEntry &incoming);
     void dismissOverwriteRequested();
-    void engineStarted();
     void phaseStarted();
     void codecCatalogReady(bool success, const QString &message);
 
@@ -294,105 +248,25 @@ class ArchiveBackend : public QObject {
         unsigned ContainerLevels = 1;
         bool ReadOnly = false;
     };
-    enum class Job {
-        None,
-        List,
-        Extract,
-        Test,
-        Hash,
-        Create,
-        CreatePrepare,
-        CopyPrepare,
-        CreateDeleteInputs,
-        CreateVolumes,
-        Add,
-        Delete,
-        Rename,
-        ReplaceDelete,
-        ReplaceAdd,
-        SourceUpdate,
-        SourcePlanDelete,
-        SourcePlanFiles,
-        SourcePlanDirectories,
-        SourcePlanRename,
-        SourceMutation,
-        SourceExtract
-    };
-    void start(Job job, const QStringList &arguments, const QString &workingDirectory = {});
-    std::shared_ptr<QProcess> makeProcess(const QString &executable);
-    HRESULT processControlResult(HRESULT result) const;
-    void complete(int exitCode, QProcess::ExitStatus status);
-    bool advanceProcessJob(Job completed);
-    bool failProcessJob(Job completed, int exitCode, QProcess::ExitStatus status);
-    bool publishProcessMutation();
+    enum class Job { None, List, Extract, Test, Hash, SourceExtract };
     void finishSourceExtractOperation(const QtArchiveReadOperation &operation);
-    void consumeOutput(const QByteArray &chunk, bool flush = false);
-    void consumeLine(const QByteArray &line);
     static bool safePath(const QString &path);
-    bool prepareMutation(const QString &archive);
-    void prepareArchiveCopy(const QString &source, const QString &output,
-                            std::function<void()> continuation);
-    void finishCopyPreparation();
-    void reportCopyPreparation();
-    void startSourcePlanStage(Job stage);
-    bool startKeepNameSourcePlan(const QString &archive, const SourceUpdatePlan &plan,
-                                 const QString &output, const QString &format,
-                                 const QString &password, const QStringList &switches);
-    bool validateSourcePlan(const QString &archive, const SourceUpdatePlan &plan,
-                            const QString &output, const QString &format, const QString &password,
-                            const std::optional<CompressionOptions> &options);
-    static bool checkVolumeTargets(const QString &archive, QString *error);
-    void startVolumeOutput();
-    void finishVolumeOutput();
-    void finishCreationLifecycle();
-    bool startCreationDeletion();
-    static bool compressionSwitches(const QString &format, const QString &password,
-                                    bool encryptHeaders, const CompressionOptions &options,
-                                    QStringList *switches, QString *error);
-    bool selectCreationFormat(const QString &archive, const QStringList &sources,
-                              const CompressionOptions &options, QString &format,
-                              QString &error) const;
     bool restoreListedArchive(const QString &archive, bool allowLimited = true);
     void startListing(const QString &archive, const QString &password, const QString &format);
 
-    std::shared_ptr<QProcess> process_;
-    QString configuredEngine_;
+    QString configuredModule_;
     std::shared_ptr<const ArchiveCodecCatalog> codecCatalog_;
     std::unique_ptr<ArchiveCodecProbe> codecProbe_;
     bool codecDiscoveryActive_ = false;
     bool codecDiscoveryCancelled_ = false;
-    CProcessPause processPause_;
     Job job_ = Job::None;
-    QString output_;
-    QByteArray pendingOutput_;
     QString archive_;
-    QString createTarget_;
-    bool createNativeSfx_ = false;
-    QString createSfxModule_;
-    QString createVolumeTarget_;
-    QString createTemporary_;
-    bool createSetArcMTime_ = false;
-    struct CreateStage {
-        QString directory;
-        QStringList arguments;
-    };
-    QList<CreateStage> createStages_;
-    QString createPassword_;
-    CRecordVector<UInt64> createVolumeSizes_;
-    std::unique_ptr<QtArchiveVolumeOutput> volumeOutput_;
-    std::unique_ptr<QtArchiveCreationLifecycle> creationLifecycle_;
+    QString sourceExtractOutput_;
     std::unique_ptr<QtArchiveHashOperation> hashOperation_;
     std::unique_ptr<QtArchiveReadOperation> readOperation_;
     std::shared_ptr<NativeArchiveListing> nativeListing_;
     quint64 readGeneration_ = 0;
-    std::unique_ptr<QtArchiveCopyPreparation> copyPreparation_;
-    std::function<void()> copyContinuation_;
-    QTimer copyProgressTimer_{this};
-    QString copyProgressDetail_;
-    quint64 copyGeneration_ = 0;
     quint64 hashGeneration_ = 0;
-    quint64 creationGeneration_ = 0;
-    quint64 volumeGeneration_ = 0;
     QTimer workerProgressTimer_{this};
     QMutex workerProgressMutex_;
     quint64 workerProgressGeneration_ = 0;
@@ -411,13 +285,6 @@ class ArchiveBackend : public QObject {
     void finishReadOperation();
     static HRESULT validateNativeHashReads(const ArchiveNativeOpen &reader, const UInt32 *indices,
                                            UInt32 count);
-    QString addBackup_;
-    QString replacementEntry_;
-    QString replacementRoot_;
-    SourceUpdatePlan sourcePlan_;
-    QString sourcePlanPassword_;
-    QString sourcePlanFormat_;
-    QStringList sourcePlanSwitches_;
     QList<ArchiveEntry> entries_;
     QHash<QString, ListedSourceSnapshot> listedSourceArchives_;
     bool listed_ = false;

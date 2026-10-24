@@ -108,7 +108,7 @@ def runtime_header_dependencies(snapshot, members, overlays):
             if pathlib.PurePosixPath(current).suffix in (".c", ".cpp"):
                 dependencies.setdefault(pathlib.PurePosixPath(current).stem, set()).add(header)
             pending.extend(reverse.get(current, ()))
-    for directory in ("CPP/7zip/UI/Console", "CPP/7zip/Bundles/Format7zF", "CPP/7zip/Bundles/Alone2"):
+    for directory in ("CPP/7zip/UI/Console", "CPP/7zip/Bundles/Format7zF"):
         for windows, original, generated in ((False, "makefile.gcc", "sevenzip-runtime.gcc.mak"),
                                               (True, "makefile", "sevenzip-runtime.mak")):
             bundle = snapshot / directory

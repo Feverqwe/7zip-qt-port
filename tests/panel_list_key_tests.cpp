@@ -37,7 +37,7 @@ class PanelListKeyTests final : public QObject, protected MainWindowTestSupport 
         QVERIFY(input.open(QIODevice::WriteOnly));
         QCOMPARE(input.write("protected bytes"), qint64(15));
         input.close();
-        const QString engine = QStandardPaths::findExecutable("7zz");
+        const QString engine = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine.isEmpty());
         const QString archive = fixture.filePath(QStringLiteral("archive 空.zip"));
         QProcess create;

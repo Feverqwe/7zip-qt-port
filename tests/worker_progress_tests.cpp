@@ -10,13 +10,7 @@
 class WorkerProgressTests final : public QObject {
     Q_OBJECT
   private slots:
-    void destructionDoesNotStartPipelineContinuation_data() {
-        QTest::addColumn<bool>("copy");
-        QTest::newRow("copy-preparation") << true;
-        QTest::newRow("hash") << false;
-    }
     void destructionDoesNotStartPipelineContinuation() {
-        QFETCH(bool, copy);
         QTemporaryDir fixture;
         const QString path = fixture.filePath(QStringLiteral("источник 空.zip"));
         QFile file(path);
@@ -32,10 +26,7 @@ class WorkerProgressTests final : public QObject {
             next.setPaused(true);
         });
         const QString output = fixture.filePath("cancelled.zip");
-        if (copy)
-            backend->updateSourcePlan(path, {}, output, "zip", {});
-        else
-            backend->hashMethods({path}, {"SHA256"});
+        backend->hashMethods({path}, {"SHA256"});
         QCOMPARE(backend->setPaused(true), HRESULT(S_OK));
         backend.reset();
         QCOMPARE(continuations, 0);
@@ -44,7 +35,7 @@ class WorkerProgressTests final : public QObject {
         QVERIFY(file.open(QIODevice::ReadOnly));
         QCOMPARE(file.readAll(), QByteArray("123456789"));
     }
-    void joinedCopyCancellationDoesNotJoinReplacementHash() {
+    void joinedHashCancellationDoesNotJoinReplacementHash() {
         QTemporaryDir fixture;
         const QString source = fixture.filePath("source.zip");
         QFile file(source);
@@ -57,7 +48,7 @@ class WorkerProgressTests final : public QObject {
             if (completed.size() == 1)
                 backend.hashMethods({source}, {"CRC32"});
         });
-        backend.updateSourcePlan(source, {}, fixture.filePath("cancelled.zip"), "zip", {});
+        backend.hashMethods({source}, {"SHA256"});
         backend.cancelAndWait();
         QCOMPARE(completed.size(), 1);
         QVERIFY(!completed.first().first().toBool());
@@ -67,13 +58,7 @@ class WorkerProgressTests final : public QObject {
         QVERIFY(!backend.busy());
         QCOMPARE(backend.lastResult(), HRESULT(S_OK));
     }
-    void joinedCancellationMayReleaseBackend_data() {
-        QTest::addColumn<bool>("copy");
-        QTest::newRow("copy-preparation") << true;
-        QTest::newRow("hash") << false;
-    }
     void joinedCancellationMayReleaseBackend() {
-        QFETCH(bool, copy);
         QTemporaryDir fixture;
         const QString source = fixture.filePath("source.zip");
         QFile file(source);
@@ -90,10 +75,7 @@ class WorkerProgressTests final : public QObject {
         connect(backend.get(), &ArchiveBackend::phaseStarted, this,
                 [&] { backend->cancelAndWait(); });
         const QString output = fixture.filePath("cancelled.zip");
-        if (copy)
-            backend->updateSourcePlan(source, {}, output, "zip", {});
-        else
-            backend->hashMethods({source}, {"CRC32"});
+        backend->hashMethods({source}, {"CRC32"});
         QVERIFY(!backend);
         QCOMPARE(completions, 1);
         QVERIFY(!QFileInfo::exists(output));
@@ -144,59 +126,6 @@ class WorkerProgressTests final : public QObject {
         QVERIFY(completed.last().first().toBool());
         QVERIFY(!backend.busy());
         QVERIFY(backend.lastResult() != S_OK);
-    }
-    void preparationProgressRetainsDetailAcrossJoinedCancellation() {
-        QTemporaryDir fixture;
-        const QString source = fixture.filePath(QStringLiteral("source 空 with spaces.zip"));
-        QFile file(source);
-        QVERIFY(file.open(QIODevice::WriteOnly));
-        QCOMPARE(file.write("original"), qint64(8));
-        file.close();
-        ArchiveBackend backend(nullptr, fixture.filePath("missing-engine"));
-        QSignalSpy completed(&backend, &ArchiveBackend::finished);
-        QString before, after;
-        connect(&backend, &ArchiveBackend::progress, this, [&](int, const QString &detail) {
-            before = detail;
-            backend.cancelAndWait();
-        });
-        connect(&backend, &ArchiveBackend::progress, this,
-                [&](int, const QString &detail) { after = detail; });
-        const QString output = fixture.filePath("cancelled.zip");
-        backend.updateSourcePlan(source, {}, output, "zip", {});
-        QCOMPARE(completed.size(), 1);
-        QVERIFY(!completed.first().first().toBool());
-        QVERIFY(before.contains(source));
-        QCOMPARE(after, before);
-        QCOMPARE(backend.lastResult(), HRESULT(E_ABORT));
-        QVERIFY(!backend.busy());
-        QVERIFY(!QFileInfo::exists(output));
-    }
-    void volumeProgressMayReleaseBackendBeforeWorkerLaunch() {
-        QTemporaryDir fixture;
-        const QString path = fixture.filePath(QStringLiteral("источник.txt"));
-        QFile file(path);
-        QVERIFY(file.open(QIODevice::WriteOnly));
-        QCOMPARE(file.write("123456789"), qint64(9));
-        file.close();
-        auto backend = std::make_unique<ArchiveBackend>();
-        QPointer<ArchiveBackend> retained(backend.get());
-        connect(backend.get(), &ArchiveBackend::progress, this, [&](int, const QString &detail) {
-            if (detail ==
-                QCoreApplication::translate("archivebackend_volumes", "Creating archive volumes"))
-                backend.reset();
-        });
-        CompressionOptions options;
-        options.Level = 0;
-        options.VolumeSizes.Add(64);
-        backend->create(fixture.filePath("cancelled.7z"), {path}, {}, false, options);
-        QTRY_VERIFY_WITH_TIMEOUT(retained.isNull(), 15000);
-        QVERIFY(QDir(fixture.path()).entryList({"cancelled.7z*"}, QDir::Files).isEmpty());
-        QVERIFY(
-            QDir(fixture.path())
-                .entryList({".sevenzip-*"}, QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot)
-                .isEmpty());
-        QVERIFY(file.open(QIODevice::ReadOnly));
-        QCOMPARE(file.readAll(), QByteArray("123456789"));
     }
     void hashBurstKeepsResultsAndBoundsGuiDelivery() {
         QTemporaryDir fixture;

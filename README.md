@@ -56,7 +56,7 @@ git clone https://github.com/ip7z/7zip.git ../7zip-upstream
 ```
 
 You need C and C++17 compilers, CMake, Ninja, Qt 6 Widgets, `clang-format`
-and the official `7zz`. macOS builds use the official Qt SDK and target macOS
+and the official 7-Zip sources. macOS builds use the official Qt SDK and target macOS
 14.4 or later. Follow the [dependency setup](docs/development.md#dependencies)
 for your platform.
 
@@ -84,9 +84,9 @@ To build a Release package without test executables:
 On macOS, the resulting application is `dist/Sevenzip.app`.
 Intermediate build files remain in `build/`.
 
-Put `7zz` on `PATH` for reference tools and fixtures. The application needs the
-prepared official native runtime for reading archives; standalone `7zz` alone
-is insufficient.
+The application uses the prepared native codec runtime and its own `7zG` process.
+The official `7z` client is included as a separate command-line tool and is also
+used for reference tests. The File Manager and GUI operations do not invoke it.
 See the [development guide](docs/development.md) for platform dependencies,
 codec and self-extracting runtime preparation, engine selection and focused
 build commands. Local builds and tests do not require access to the maintainer's

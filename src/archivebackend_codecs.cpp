@@ -69,7 +69,7 @@ HRESULT ValidateNativeUpdatePaths(UInt32 count, IArchiveUpdateCallback *callback
 } // namespace
 
 ArchiveBackend *ArchiveBackend::createIndependentBackend(QObject *parent) const {
-    auto *backend = new ArchiveBackend(parent, configuredEngine_);
+    auto *backend = new ArchiveBackend(parent, configuredModule_);
     // A new File Manager window owns its process/operation state. Only the
     // immutable module lease is shared, as with existing native readers.
     std::atomic_store(&backend->codecCatalog_, codecCatalog());
@@ -119,7 +119,6 @@ HRESULT ArchiveBackend::loadCodecCatalog(const QString &module, quint32 engineVe
     std::shared_ptr<const ArchiveCodecCatalog> catalog =
         std::make_shared<ArchiveCodecCatalog>(module, engineVersion);
     const HRESULT result = catalog->result();
-    process_->setProgram(configuredEngine_);
     std::atomic_store(&codecCatalog_, std::move(catalog));
     return result;
 }
@@ -248,18 +247,14 @@ bool ArchiveBackend::discoverCodecCatalog(const QString &module) {
     try {
         if (!codecProbe_)
             codecProbe_ = std::make_unique<ArchiveCodecProbe>();
-        const bool started =
-            codecProbe_->Start(configuredEngine_, module, [this](ArchiveCodecProbeResult result) {
+        const bool started = codecProbe_->Start(
+            module.isEmpty() ? configuredModule_ : module, [this](ArchiveCodecProbeResult result) {
                 // Keep UI receivers outside the probe's completion frame so
                 // closing the backend cannot invalidate that delivery's owner.
                 QMetaObject::invokeMethod(
                     this,
                     [this, result = std::move(result)] {
                         codecDiscoveryActive_ = false;
-                        process_->setProgram(!codecDiscoveryCancelled_ && result.result == S_OK &&
-                                                     !result.catalog->runtimeEngine().isEmpty()
-                                                 ? result.catalog->runtimeEngine()
-                                                 : configuredEngine_);
                         std::atomic_store(&codecCatalog_,
                                           codecDiscoveryCancelled_
                                               ? std::shared_ptr<const ArchiveCodecCatalog>()
@@ -327,66 +322,12 @@ QString ArchiveBackend::openDialogFilter() const {
 }
 
 bool ArchiveBackend::supportsArchiveUpdate(const QString &format) const {
-    // Callers supply the detected native type. Standalone compatibility has
-    // only its previous ZIP/7z services; catalog consumers use source flags.
     const auto catalog = codecCatalog();
-    return catalog ? catalog->result() == S_OK && catalog->canUpdate(format)
-                   : !format.compare("zip", Qt::CaseInsensitive) ||
-                         !format.compare("7z", Qt::CaseInsensitive);
+    return catalog && catalog->result() == S_OK && catalog->canUpdate(format);
 }
 
 ArchiveSfxModule ArchiveBackend::sfxModule(const QString &path) const {
     const auto catalog = codecCatalog();
     return catalog && catalog->result() == S_OK ? catalog->sfxModule(path)
                                                 : ArchiveSfxModule::Read({});
-}
-
-bool ArchiveBackend::selectCreationFormat(const QString &archive, const QStringList &sources,
-                                          const CompressionOptions &options, QString &format,
-                                          QString &error) const {
-    const auto catalog = codecCatalog();
-    if (!catalog) {
-        // Existing standalone callers retain their implemented typed transports.
-        format = options.format.isEmpty() ? QFileInfo(archive).suffix().toLower()
-                                          : options.format.toLower();
-        if ((format == "7z" || format == "zip")
-#ifdef Q_OS_WIN
-            // These handlers do not advertise source GUI link storage. The
-            // standalone engine loses directory reparse metadata; require a
-            // catalog-backed handler before allowing Windows link storage.
-            && !options.SymLinks.Val
-#endif
-            && !options.HardLinks.Val && !options.AltStreams.Val && !options.NtSecurity.Val)
-            return true;
-    } else if (catalog->result() != S_OK) {
-        error = catalog->error();
-        return false;
-    } else {
-        const auto &codecs = catalog->nativeCodecs();
-        const int index =
-            options.format.isEmpty()
-                ? codecs.FindFormatForArchiveName(UString(archive.toStdWString().c_str()))
-                : catalog->formatIndex(options.format);
-        if (index >= 0 && !codecs.Formats[unsigned(index)].Flags_HashHandler() &&
-            (!options.SymLinks.Val || codecs.Formats[unsigned(index)].Flags_SymLinks()) &&
-            (!options.HardLinks.Val || codecs.Formats[unsigned(index)].Flags_HardLinks()) &&
-            (!options.AltStreams.Val || codecs.Formats[unsigned(index)].Flags_AltStreams()) &&
-            (!options.NtSecurity.Val || codecs.Formats[unsigned(index)].Flags_NtSecurity())) {
-            CObjectVector<NWildcard::CCensorPath> censor;
-            for (const QString &path : sources)
-                censor.AddNew().Path = path.toStdWString().c_str();
-            CCompressDialog selection;
-            selection.Info.FormatIndex = index;
-            if (NCompressDialog::PrepareFormatSelection(selection, codecs, censor) == S_OK &&
-                selection.ArcIndices.FindInSorted(unsigned(index)) >= 0) {
-                format =
-                    QString::fromWCharArray(codecs.Formats[unsigned(index)].Name.Ptr()).toLower();
-                return true;
-            }
-        }
-    }
-    error = QCoreApplication::translate(
-        "archivebackend_codecs",
-        "No archive creation engine is available for this format and selection.");
-    return false;
 }

@@ -35,7 +35,7 @@ class NativeArchiveOpeningTests final : public QObject {
         QSKIP("Official module unavailable; source native opening remains unverified");
 #else
         module_ = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         if (engine_.isEmpty())
             QSKIP("Official engine unavailable; source native opening remains unverified");
 #endif

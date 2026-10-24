@@ -1,4 +1,5 @@
 #include "archivecodecprobe.h"
+#include "fixtures/slow_codec.h"
 #include <QFile>
 #include <QFileInfo>
 #include <QScopeGuard>
@@ -9,62 +10,20 @@
 class CodecProbeTests : public QObject {
     Q_OBJECT
 
-    static QString Fixture(const QTemporaryDir &temporary, const QString &mode) {
-        const QFileInfo source(QString::fromUtf8(CODEC_PROBE_FIXTURE));
-        const QString suffix = source.suffix().isEmpty() ? QString() : "." + source.suffix();
-        const QString target = temporary.filePath("probe й " + mode + suffix);
-        return QFile::copy(source.absoluteFilePath(), target) ? target : QString();
-    }
-    class SlowModule {
-        const QByteArray entered_ = qgetenv("SEVENZIP_SLOW_CODEC_ENTERED");
-        const QByteArray finished_ = qgetenv("SEVENZIP_SLOW_CODEC_FINISHED");
-        const QByteArray delay_ = qgetenv("SEVENZIP_SLOW_CODEC_DELAY");
-        static void Restore(const char *key, const QByteArray &value) {
-            if (value.isNull())
-                qunsetenv(key);
-            else
-                qputenv(key, value);
-        }
-
-      public:
-        const QString Entered, Finished, Path;
-        const bool Valid;
-        SlowModule(const QTemporaryDir &temporary, int delay)
-            : Entered(temporary.filePath(QStringLiteral("начало 空"))),
-              Finished(temporary.filePath(QStringLiteral("конец 空"))),
-              Path(temporary.filePath(QFileInfo(QString::fromUtf8(SLOW_CODEC_FIXTURE)).fileName())),
-              Valid(QFile::copy(QString::fromUtf8(SLOW_CODEC_FIXTURE), Path)) {
-            qputenv("SEVENZIP_SLOW_CODEC_ENTERED", Entered.toUtf8().toBase64());
-            qputenv("SEVENZIP_SLOW_CODEC_FINISHED", Finished.toUtf8().toBase64());
-            qputenv("SEVENZIP_SLOW_CODEC_DELAY", QByteArray::number(delay));
-        }
-        ~SlowModule() {
-            Restore("SEVENZIP_SLOW_CODEC_ENTERED", entered_);
-            Restore("SEVENZIP_SLOW_CODEC_FINISHED", finished_);
-            Restore("SEVENZIP_SLOW_CODEC_DELAY", delay_);
-        }
-    };
-
   private slots:
-    void nativeDiscoveryDoesNotRequireAConsole_data() {
-        QTest::addColumn<QString>("mode");
-        for (const QString &mode : {"missing", "hang", "wrong-version"})
-            QTest::newRow(qPrintable(mode)) << mode;
-    }
     void nativeDiscoveryDoesNotRequireAConsole() {
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official module unavailable; native discovery remains unverified");
 #else
-        QFETCH(QString, mode);
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
-        const QString engine =
-            mode == "missing" ? temporary.filePath("missing engine") : Fixture(temporary, mode);
-        QVERIFY(!engine.isEmpty());
+        const QString source = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
+        const QString module = temporary.filePath(QFileInfo(source).fileName());
+        QVERIFY(QFile::copy(source, module));
         ArchiveCodecProbe probe;
         int calls = 0;
         ArchiveCodecProbeResult result;
-        QVERIFY(probe.Start(engine, QString::fromUtf8(SEVENZIP_CODEC_MODULE), [&](auto value) {
+        QVERIFY(probe.Start(module, [&](auto value) {
             QCOMPARE(QThread::currentThread(), thread());
             result = std::move(value);
             ++calls;
@@ -72,7 +31,7 @@ class CodecProbeTests : public QObject {
         QTRY_COMPARE(calls, 1);
         QCOMPARE(result.result, S_OK);
         QVERIFY2(result.catalog, qPrintable(result.error));
-        // A hanging/misreporting console must not prevent real native opening.
+        // The selected module supplies the native opening interface directly.
         CArchiveLink opened;
         const QString input = temporary.filePath("not an archive.zip");
         QFile file(input);
@@ -81,20 +40,19 @@ class CodecProbeTests : public QObject {
         file.close();
         QCOMPARE(result.catalog->openArchive(opened, input, "zip", nullptr), S_FALSE);
         QVERIFY(!probe.active());
-        QVERIFY(!QFileInfo::exists(engine + ".finished"));
 #endif
     }
 
     void deadlineDoesNotDependOnGuiTimerDelivery() {
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
-        SlowModule module(temporary, 2100);
+        SlowCodecModuleFixture module(temporary, 2100);
         QVERIFY(module.Valid);
         ArchiveCodecProbe probe;
         int calls = 0;
         ArchiveCodecProbeResult result;
         QVERIFY(probe.Start(
-            temporary.filePath("absent console"), module.Path,
+            module.Path,
             [&](auto value) {
                 QCOMPARE(QThread::currentThread(), thread());
                 result = std::move(value);
@@ -124,7 +82,7 @@ class CodecProbeTests : public QObject {
         QFETCH(QString, mode);
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
-        SlowModule module(temporary, mode == "deadline" ? 2100 : 600);
+        SlowCodecModuleFixture module(temporary, mode == "deadline" ? 2100 : 600);
         QVERIFY(module.Valid);
         auto probe = std::make_unique<ArchiveCodecProbe>();
         ArchiveCodecProbeResult result;
@@ -140,9 +98,8 @@ class CodecProbeTests : public QObject {
             previous = now;
         });
         heartbeat.start();
-        const QString engine = temporary.filePath("absent console");
         QVERIFY(probe->Start(
-            engine, module.Path,
+            module.Path,
             [&](auto value) {
                 QCOMPARE(QThread::currentThread(), thread());
                 result = std::move(value);
@@ -152,7 +109,7 @@ class CodecProbeTests : public QObject {
         QTRY_VERIFY(QFileInfo::exists(module.Entered));
         QVERIFY(probe->active());
         QVERIFY(!QFileInfo::exists(module.Finished));
-        QVERIFY(!probe->Start(engine, "unused", {}));
+        QVERIFY(!probe->Start("unused", {}));
         if (mode == "destroy") {
             heartbeat.stop();
             probe.reset();
@@ -172,7 +129,7 @@ class CodecProbeTests : public QObject {
         QVERIFY(!result.error.isEmpty());
         if (mode != "failure")
             QVERIFY(!result.catalog);
-        QVERIFY(probe->Start(engine, temporary.filePath("missing module"), [&](auto) { ++calls; }));
+        QVERIFY(probe->Start(temporary.filePath("missing module"), [&](auto) { ++calls; }));
         QTRY_COMPARE(calls, 2);
         QVERIFY(!probe->active());
     }
@@ -181,11 +138,11 @@ class CodecProbeTests : public QObject {
         ArchiveCodecProbe probe;
         int calls = 0;
         ArchiveCodecProbeResult result;
-        QVERIFY(probe.Start(temporary.filePath("missing console"), "unused", [&](auto value) {
+        QVERIFY(probe.Start("unused", [&](auto value) {
             result = std::move(value);
             ++calls;
         }));
-        QVERIFY(!probe.Start("unused", "unused", {}));
+        QVERIFY(!probe.Start("unused", {}));
         probe.Cancel();
         QTRY_COMPARE(calls, 1);
         QCOMPARE(result.result, E_ABORT);

@@ -201,7 +201,7 @@ struct CPanelItem {
     CObjectVector<CPanelProperty> ArchiveProperties;
     std::optional<UInt32> Crc;
     QMap<PROPID, QByteArray> RawProperties;
-    // Unparsed 7zz timestamp compatibility text; native FILETIME parsing remains P0-03/P0-04.
+    // Timestamp compatibility text; native FILETIME properties take precedence.
     QString MTimeText;
 };
 
@@ -663,7 +663,8 @@ class CPanel : public QObject {
     bool OnBeginLabelEdit(int row);
     HRESULT OnEndLabelEdit(UInt32 realIndex, const UString &enteredName);
     HRESULT DeleteItems(bool toRecycleBin, class IQtTrashService &trash, CSelectedState &selection,
-                        const CRecordVector<UInt32> *explicitIndices = nullptr);
+                        const CRecordVector<UInt32> *explicitIndices = nullptr,
+                        bool confirm = true);
     bool CanComment() const;
     void ChangeComment();
     bool IsDeviceDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\.\\"); }

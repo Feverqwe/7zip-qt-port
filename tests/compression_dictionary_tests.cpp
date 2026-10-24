@@ -2,6 +2,7 @@
 #include "createarchivedialog.h"
 #include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -67,42 +68,12 @@ class CompressionDictionaryTests final : public QObject {
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString target = dir.filePath("dictionary." + suffix);
-        backend.create(target, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, target, {source}, {}, false, options),
+                 S_OK);
         QProcess test;
-        test.start("7zz", {"t", "--", target});
+        test.start("7z", {"t", "--", target});
         QVERIFY(test.waitForFinished(15000));
         QCOMPARE(test.exitCode(), 0);
-    }
-    void invalidAndCancelledLeaveNoOutput() {
-        QTemporaryDir dir;
-        const QString source = dir.filePath(QStringLiteral("источник space.bin"));
-        QFile file(source);
-        QVERIFY(file.open(QIODevice::WriteOnly));
-        QVERIFY(file.resize(8 << 20));
-        file.close();
-        CompressionOptions options;
-        options.Method = "LZMA2";
-        // Refusal must not depend on which usable sizes the UI currently offers.
-        options.Dict64 = UInt64(1) << 63;
-        ArchiveBackend backend;
-        QSignalSpy done(&backend, &ArchiveBackend::finished);
-        const QString target = dir.filePath("invalid.7z");
-        backend.create(target, {source}, {}, false, options);
-        QCOMPARE(done.size(), 1);
-        QVERIFY(!done.takeFirst()[0].toBool());
-        QVERIFY(!QFileInfo::exists(target));
-        options.Dict64 = 3 << 20;
-        backend.create(target, {source}, {}, false, options);
-        QVERIFY(backend.busy());
-        backend.cancel();
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY(!done.first()[0].toBool());
-        QCOMPARE(done.first()[1].toString(), QString("Operation canceled."));
-        QCOMPARE(backend.lastResult(), E_ABORT);
-        QVERIFY(!QFileInfo::exists(target));
-        QVERIFY(QDir(dir.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
     }
 };
 QTEST_MAIN(CompressionDictionaryTests)

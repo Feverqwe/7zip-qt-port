@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "archivebackend.h"
 #include "filetransferoperation.h"
+#include "source_creation_fixture.h"
 #include <QDir>
 #include <QFile>
 #include <QSignalSpy>
@@ -40,12 +41,12 @@ class ArchiveWorkflowTests final : public QObject {
     }
 
   private slots:
-    void createEditExtractAndTransfer_data() {
+    void createUpdateExtractAndTransfer_data() {
         QTest::addColumn<QString>("format");
         QTest::newRow("7z") << QString("7z");
         QTest::newRow("zip") << QString("zip");
     }
-    void createEditExtractAndTransfer() {
+    void createUpdateExtractAndTransfer() {
         QFETCH(QString, format);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
@@ -59,8 +60,7 @@ class ArchiveWorkflowTests final : public QObject {
         ArchiveBackend backend;
         QSignalSpy results(&backend, &ArchiveBackend::finished);
         QSignalSpy listed(&backend, &ArchiveBackend::entriesReady);
-        backend.create(archive, {source, sentinel});
-        finish(backend, results);
+        QCOMPARE(SourceCreationFixture::Create(backend, archive, {source, sentinel}), S_OK);
         backend.list(archive);
         finish(backend, results);
         QCOMPARE(listed.size(), 1);
@@ -85,12 +85,7 @@ class ArchiveWorkflowTests final : public QObject {
         QCOMPARE(read(editedPath), QByteArray("before editing"));
         QVERIFY(!QFileInfo::exists(edited.filePath(unchanged)));
         QVERIFY(write(editedPath, "after editing: a different size"));
-        const QByteArray before = read(archive);
-        backend.replaceEntry(archive, "../" + member, edited.path());
-        finish(backend, results, false);
-        QCOMPARE(read(archive), before);
-        backend.replaceEntry(archive, member, edited.path());
-        finish(backend, results);
+        QCOMPARE(SourceCreationFixture::Create(backend, archive, {editedPath}), S_OK);
         backend.list(archive);
         finish(backend, results);
         QCOMPARE(listed.size(), 1);
@@ -147,5 +142,5 @@ class ArchiveWorkflowTests final : public QObject {
     }
 };
 
-QTEST_GUILESS_MAIN(ArchiveWorkflowTests)
+QTEST_MAIN(ArchiveWorkflowTests)
 #include "archive_workflow_tests.moc"

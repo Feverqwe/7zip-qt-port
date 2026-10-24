@@ -16,7 +16,7 @@ class NativeZoneCopyTests final : public QObject, protected MainWindowTestSuppor
 
   private slots:
     void initTestCase() {
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine_.isEmpty());
         const QString module = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
         ArchiveCodecCatalog catalog(module, 0);

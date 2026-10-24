@@ -15,7 +15,6 @@ check_command git
 check_command cmake
 check_command ninja
 check_command c++
-check_command 7zz
 check_command clang-format
 
 if [[ -d ../7zip-upstream/.git ]]; then

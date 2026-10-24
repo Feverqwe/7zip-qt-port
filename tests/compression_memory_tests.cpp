@@ -2,6 +2,7 @@
 #include "createarchivedialog.h"
 #include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -131,15 +132,14 @@ class CompressionMemoryTests final : public QObject {
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString target = dir.filePath("memory." + formatName);
-        backend.create(target, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done.takeFirst()[0].toBool(), "Archive creation failed");
+        QCOMPARE(SourceCreationFixture::Create(backend, target, {source}, {}, false, options),
+                 S_OK);
         QProcess process;
-        process.start("7zz", {"t", "--", target});
+        process.start("7z", {"t", "--", target});
         QVERIFY(process.waitForFinished(15000));
         QCOMPARE(process.exitCode(), 0);
         const QString extracted = dir.filePath("unpacked");
-        process.start("7zz", {"x", "-o" + extracted, "--", target});
+        process.start("7z", {"x", "-o" + extracted, "--", target});
         QVERIFY(process.waitForFinished(15000));
         QCOMPARE(process.exitCode(), 0);
         QFile restored(QDir(extracted).filePath(QFileInfo(source).fileName()));
@@ -147,21 +147,16 @@ class CompressionMemoryTests final : public QObject {
         QCOMPARE(restored.readAll(), contents);
         const QString invalid = dir.filePath("invalid." + formatName);
         options.Dict64 = UInt64(1) << 63;
-        backend.create(invalid, {source}, {}, false, options);
-        QCOMPARE(done.size(), 1);
-        QVERIFY(!done.takeFirst()[0].toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, invalid, {source}, {}, false, options) !=
+                S_OK);
         QVERIFY(!QFileInfo::exists(invalid));
         QVERIFY(file.open(QIODevice::WriteOnly));
         QVERIFY(file.resize(8 << 20));
         file.close();
         options.Dict64 = validSize ? validSize : UInt64(-1);
-        backend.create(invalid, {source}, {}, false, options);
-        QVERIFY(backend.busy());
-        backend.cancel();
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY(!done.first()[0].toBool());
-        QCOMPARE(done.first()[1].toString(), QString("Operation canceled."));
-        QCOMPARE(backend.lastResult(), E_ABORT);
+        QCOMPARE(
+            SourceCreationFixture::Create(backend, invalid, {source}, {}, false, options, true),
+            E_ABORT);
         QVERIFY(!QFileInfo::exists(invalid));
         QVERIFY(QFileInfo::exists(target));
         QVERIFY(QDir(dir.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());

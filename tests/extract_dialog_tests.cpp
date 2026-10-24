@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "extractdialog.h"
 #include "layout_inspection.h"
+#include "native_archive_fixture.h"
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFile>
@@ -239,9 +240,7 @@ class ExtractDialogTests final : public QObject {
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString archive = dir_.filePath("fixture.zip");
-        backend.create(archive, {source});
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         done.clear();
         backend.list(archive);
         QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);

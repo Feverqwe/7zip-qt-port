@@ -1,4 +1,4 @@
-// Qt/7zz input adapters for source-owned read-only folder locations.
+// Qt/native input adapters for source-owned read-only folder locations.
 #pragma once
 #include "7zip/UI/FileManager/IFolder.h"
 #include "Common/MyString.h"

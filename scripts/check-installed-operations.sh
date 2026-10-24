@@ -18,6 +18,7 @@ if [[ "${OS:-}" == Windows_NT ]]; then
     install="$PWD/build/windows-package"
     gui="$install/bin/7zG.exe"
     fm="$install/bin/7zFM.exe"
+    console="$install/bin/7z.exe"
     native=windows
     if "$interpreter" -c 'import ctypes, sys; sys.exit(0 if ctypes.windll.shell32.IsUserAnAdmin() else 1)'; then
         entry_targets=(file_manager_startup_tests)
@@ -31,8 +32,8 @@ if [[ "${OS:-}" == Windows_NT ]]; then
     fi
 else
     case "$(uname -s)" in
-        Darwin) gui="$install/Sevenzip.app/Contents/MacOS/7zG"; fm="$install/Sevenzip.app/Contents/MacOS/7zFM"; native=cocoa ;;
-        Linux) gui="$install/bin/7zG"; fm="$install/bin/7zFM"; native=xcb ;;
+        Darwin) gui="$install/Sevenzip.app/Contents/MacOS/7zG"; fm="$install/Sevenzip.app/Contents/MacOS/7zFM"; console="$install/Sevenzip.app/Contents/Resources/7zip/7z"; native=cocoa ;;
+        Linux) gui="$install/bin/7zG"; fm="$install/bin/7zFM"; console="$install/bin/7z"; native=xcb ;;
         *) printf 'Unsupported native runtime platform.\n' >&2; exit 2 ;;
     esac
     entry_targets=(unix_gui_entry_tests)
@@ -59,4 +60,28 @@ if [[ "$native" == windows ]]; then
     export NATIVE_SHELL_TEST_INSTALL_DIR="$install" NATIVE_SHELL_TEST_REGISTER=1
 fi
 QT_QPA_PLATFORM="$native" "$fm" --smoke-test
+"$interpreter" - "$console" <<'PY'
+import pathlib
+import subprocess
+import sys
+import tempfile
+
+client = str(pathlib.Path(sys.argv[1]).resolve())
+with tempfile.TemporaryDirectory(prefix="sevenzip-installed-sidecar-") as directory:
+    root = pathlib.Path(directory)
+    source = root / "данные с пробелом 空.txt"
+    payload = "Independent console sidecar: Unicode 密碼\n".encode()
+    source.write_bytes(payload)
+    archive = root / "архив с пробелом.7z"
+    output = root / "извлечено 空"
+    for arguments in (["a", str(archive), str(source)], ["t", str(archive)],
+                      ["x", str(archive), "-o" + str(output)]):
+        result = subprocess.run([client, *arguments], cwd=root, capture_output=True, timeout=30)
+        if result.returncode:
+            sys.stderr.buffer.write(result.stdout + result.stderr)
+            raise SystemExit(result.returncode)
+    if (output / source.name).read_bytes() != payload:
+        raise SystemExit("Installed console extraction differs from its source")
+print("Installed 7z sidecar: create/test/extract with Unicode and spaces PASS")
+PY
 ./scripts/ctest.sh --preset dev -R "^($tests)$" --output-on-failure

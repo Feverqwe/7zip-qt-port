@@ -25,7 +25,7 @@ class AgentCapabilityTests : public QObject {
         QFile file(path);
         QVERIFY(file.open(QIODevice::WriteOnly));
         file.close();
-        ArchiveBackend backend(nullptr, QStringLiteral("/missing/7zz"));
+        ArchiveBackend backend(nullptr, QStringLiteral("/missing/7z"));
         auto *resourceSpec = new QtArchiveFileResource(path);
         CMyComPtr<IUnknown> resource = resourceSpec;
         CMyComPtr<IFolderFolder> metadata;

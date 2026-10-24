@@ -46,7 +46,6 @@ class NativeArchiveTestTests final : public ArchiveReaderFixture {
             QTRY_COMPARE(finished.size(), 1);
             QVERIFY(finished.takeFirst()[0].toBool());
         }
-        QSignalSpy processes(backend_.get(), &ArchiveBackend::engineStarted);
         QSignalSpy phases(backend_.get(), &ArchiveBackend::phaseStarted);
         if (listed)
             backend_->test(path);
@@ -57,7 +56,6 @@ class NativeArchiveTestTests final : public ArchiveReaderFixture {
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         QCOMPARE(backend_->lastResult(), S_OK);
         QVERIFY(!backend_->busy());
-        QCOMPARE(processes.size(), 0);
         QCOMPARE(phases.size(), 1);
         QCOMPARE(Bytes(path), original);
         QCOMPARE(QDir(dir.path()).entryList(QDir::Files).size(), 2);
@@ -78,7 +76,6 @@ class NativeArchiveTestTests final : public ArchiveReaderFixture {
         QVERIFY(!path.isEmpty());
         const QByteArray original = Bytes(path);
         QSignalSpy finished(backend_.get(), &ArchiveBackend::finished);
-        QSignalSpy processes(backend_.get(), &ArchiveBackend::engineStarted);
         unsigned questions = 0;
         const auto prompt = connect(backend_.get(), &ArchiveBackend::passwordRequired, this, [&] {
             ++questions;
@@ -102,7 +99,6 @@ class NativeArchiveTestTests final : public ArchiveReaderFixture {
         else
             QCOMPARE(backend_->lastResult() == S_OK, answer.startsWith("correct"));
         QVERIFY(!backend_->busy());
-        QCOMPARE(processes.size(), 0);
         QCOMPARE(Bytes(path), original);
     }
     void corruptEntryDoesNotBecomeSuccessfulTest() {
@@ -115,14 +111,12 @@ class NativeArchiveTestTests final : public ArchiveReaderFixture {
         QVERIFY(Put(path, image));
         QSignalSpy finished(backend_.get(), &ArchiveBackend::finished);
         QSignalSpy errors(backend_.get(), &ArchiveBackend::outputReceived);
-        QSignalSpy processes(backend_.get(), &ArchiveBackend::engineStarted);
         backend_->testSourceArchive(path, {});
         QTRY_COMPARE(finished.size(), 1);
         QVERIFY(!finished[0][0].toBool());
         QCOMPARE(backend_->lastResult(), E_FAIL);
         QVERIFY(!errors.isEmpty());
         QVERIFY(finished[0][1].toString().contains(errors[0][0].toString()));
-        QCOMPARE(processes.size(), 0);
         QCOMPARE(Bytes(path), image);
     }
     void storedRarUsesAlreadyAllowedMemory_data() {
@@ -139,12 +133,10 @@ class NativeArchiveTestTests final : public ArchiveReaderFixture {
         const auto image = RarMemoryFixture::archive(0, RarMemoryFixture::name(), dictionaryBits);
         QVERIFY(Put(path, image));
         QSignalSpy finished(backend_.get(), &ArchiveBackend::finished);
-        QSignalSpy processes(backend_.get(), &ArchiveBackend::engineStarted);
         backend_->testSourceArchive(path, {});
         QTRY_COMPARE(finished.size(), 1);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         QCOMPARE(backend_->lastResult(), S_OK);
-        QCOMPARE(processes.size(), 0);
         QCOMPARE(Bytes(path), image);
     }
     void pausedWorkerCanBeCancelledAndJoined() {

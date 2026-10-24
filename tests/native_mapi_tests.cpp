@@ -18,7 +18,7 @@ class NativeMAPITests final : public QObject {
 
   private slots:
     void initTestCase() {
-        engine = QStandardPaths::findExecutable("7zz");
+        engine = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine.isEmpty());
     }
     void sourceEmail_data() {

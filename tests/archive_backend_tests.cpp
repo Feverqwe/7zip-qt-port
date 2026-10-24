@@ -15,8 +15,7 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
     void rejectedRequestDoesNotReusePreviousResult_data() {
         QTest::addColumn<QString>("operation");
         QTest::addColumn<bool>("cancelled");
-        for (const char *operation :
-             {"create", "extract", "test", "add", "remove", "rename", "replace"})
+        for (const char *operation : {"extract", "test"})
             for (bool cancelled : {false, true})
                 QTest::newRow(qPrintable(
                     QString("%1-after-%2").arg(operation, cancelled ? "cancel" : "success")))
@@ -46,20 +45,10 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
             QCOMPARE(backend.lastResult(), E_ABORT);
         }
         QSignalSpy refused(&backend, &ArchiveBackend::finished);
-        if (operation == "create")
-            backend.create(archive, {archive}); // Refuse an occupied output.
-        else if (operation == "extract")
+        if (operation == "extract")
             backend.extract(archive, fixture.filePath("output"), {"missing.txt"});
-        else if (operation == "test")
-            backend.test(fixture.filePath("unlisted.zip"));
-        else if (operation == "add")
-            backend.add(archive, {});
-        else if (operation == "remove")
-            backend.remove(archive, {"missing.txt"});
-        else if (operation == "rename")
-            backend.renameEntry(archive, "missing.txt", "renamed.txt");
         else
-            backend.replaceEntry(archive, "missing.txt", fixture.path());
+            backend.test(fixture.filePath("unlisted.zip"));
         QCOMPARE(refused.size(), 1);
         QVERIFY(!refused[0][0].toBool());
         QVERIFY(FAILED(backend.lastResult()));
@@ -104,14 +93,12 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         ArchiveBackend backend;
         QSignalSpy prompt(&backend, &ArchiveBackend::passwordRequired);
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        QSignalSpy processes(&backend, &ArchiveBackend::engineStarted);
         connect(&backend, &ArchiveBackend::passwordRequired, &backend,
                 [&] { backend.providePassword("fixture-only-password"); });
         backend.list(archive);
         QTRY_COMPARE(finished.size(), 1);
         QCOMPARE(prompt.size(), 1);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
-        QVERIFY(processes.isEmpty());
     }
     void alternateStreamOutputValidation_data() {
         QTest::addColumn<QString>("base");
@@ -168,6 +155,12 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         ArchiveBackend backend;
         const QString archive = fixture.filePath("fixture.zip");
         QVERIFY(NativeArchiveFixture::Write(archive, {{entry}}, "zip"));
+        QString listedPath;
+        connect(&backend, &ArchiveBackend::entriesReady, this,
+                [&](const QList<ArchiveEntry> &entries) {
+                    if (!entries.isEmpty())
+                        listedPath = entries.first().path;
+                });
         for (const char *language : {"-", "ru", "-"}) {
             SaveRegLang(UString(language), languageSettings);
             ReloadLang(languageSettings);
@@ -195,126 +188,10 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
                      (QString(language) == "ru"
                           ? QStringLiteral("Архив содержит небезопасный путь или ссылку: ")
                           : QString("Archive contains an unsafe path or link: ")) +
-                         entry);
+                         listedPath);
             QVERIFY(!backend.busy());
             QVERIFY(!QFileInfo::exists(fixture.filePath("путь с пробелом 密碼.txt")));
         }
-    }
-    void creationUsesWorkingDirectoryAndRejectsUnavailablePath() {
-        QTemporaryDir fixture;
-        const QString settings = fixture.filePath("working.ini");
-        const QByteArray original = qgetenv("SEVENZIP_SETTINGS_PATH");
-        qputenv("SEVENZIP_SETTINGS_PATH", settings.toUtf8());
-        const auto restore = qScopeGuard([&] {
-            if (original.isNull())
-                qunsetenv("SEVENZIP_SETTINGS_PATH");
-            else
-                qputenv("SEVENZIP_SETTINGS_PATH", original);
-        });
-        const QString source = fixture.filePath("источник с пробелом.txt");
-        writeFile(source, "contents");
-        const QString work = fixture.filePath("рабочая папка");
-        NWorkDir::CInfo info;
-        info.SetDefault();
-        info.Mode = NWorkDir::NMode::kSpecified;
-        info.ForRemovableOnly = false;
-        info.Path = us2fs(work.toStdWString().c_str());
-        info.Save(settings);
-        QVERIFY(!QFileInfo::exists(work));
-        ArchiveBackend backend;
-        const QString archive = fixture.filePath("created.zip");
-        backend.create(archive, {source});
-        await(backend, true);
-        QVERIFY(QFileInfo::exists(archive));
-        QVERIFY(QFileInfo(work).isDir());
-        QVERIFY(QDir(work).entryList(QDir::Files | QDir::Hidden).isEmpty());
-        const QString blocked = fixture.filePath("occupied-file");
-        writeFile(blocked, "occupied");
-        info.Path = us2fs((blocked + "/child").toStdWString().c_str());
-        info.Save(settings);
-        const QString failed = fixture.filePath("failed.zip");
-        backend.create(failed, {source});
-        await(backend, false);
-        QVERIFY(!backend.busy());
-        QVERIFY(!QFileInfo::exists(failed));
-        QVERIFY(
-            QDir(fixture.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
-        QFile unchanged(source);
-        QVERIFY(unchanged.open(QIODevice::ReadOnly));
-        QCOMPARE(unchanged.readAll(), QByteArray("contents"));
-    }
-    void largePagesSettingReachesEngineOnlyWithPlatformCapability() {
-        QTemporaryDir fixture;
-        const QString settings = fixture.filePath("memory.ini");
-        const QByteArray originalSettings = qgetenv("SEVENZIP_SETTINGS_PATH");
-        qputenv("SEVENZIP_SETTINGS_PATH", settings.toUtf8());
-        qputenv("SEVENZIP_TEST_HELPER", "memoryoption");
-        const auto restore = qScopeGuard([&] {
-            if (originalSettings.isNull())
-                qunsetenv("SEVENZIP_SETTINGS_PATH");
-            else
-                qputenv("SEVENZIP_SETTINGS_PATH", originalSettings);
-            qunsetenv("SEVENZIP_TEST_HELPER");
-        });
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
-        QString requested;
-        connect(&backend, &ArchiveBackend::outputReceived, this, [&](const QString &text) {
-            if (text.startsWith("LargePagesRequested = "))
-                requested = text.mid(QString("LargePagesRequested = ").size());
-        });
-        for (bool enable : {false, true, false}) {
-            SaveLockMemoryEnable(enable, settings);
-            QCOMPARE(ReadLockMemoryEnable(settings), enable);
-            const QString output = fixture.filePath("fixture.zip");
-            QFile::remove(output);
-            backend.create(output, {settings});
-            await(backend, true);
-            const QtMemoryLockServices memoryLock;
-            QCOMPARE(requested, QString(IsLargePageSupported() && enable &&
-                                                memoryLock.Get_LargePages_RiskLevel() == 0
-                                            ? "1"
-                                            : "0"));
-        }
-    }
-    void commandsUseTheirListedArchiveAcrossTwoPanels() {
-        QTemporaryDir temp;
-        QVERIFY(temp.isValid());
-        const QString firstSource = temp.filePath(QStringLiteral("δ first file.txt"));
-        const QString secondSource = temp.filePath(QStringLiteral("second file.txt"));
-        const QString addedSource = temp.filePath(QStringLiteral("added file.txt"));
-        const QString firstArchive = temp.filePath(QStringLiteral("first.zip"));
-        const QString secondArchive = temp.filePath(QStringLiteral("second.zip"));
-        const QString destination = temp.filePath(QStringLiteral("extracted"));
-        writeFile(firstSource, "first contents");
-        writeFile(secondSource, "second contents");
-        writeFile(addedSource, "added contents");
-        QVERIFY(QDir().mkpath(destination));
-        ArchiveBackend backend;
-        backend.create(firstArchive, {firstSource});
-        await(backend, true);
-        backend.create(secondArchive, {secondSource});
-        await(backend, true);
-        backend.list(firstArchive);
-        await(backend, true);
-        backend.list(secondArchive);
-        await(backend, true);
-
-        backend.test(firstArchive);
-        await(backend, true);
-        backend.extract(firstArchive, destination, {QStringLiteral("δ first file.txt")});
-        await(backend, true);
-        QFile extracted(QDir(destination).filePath(QStringLiteral("δ first file.txt")));
-        QVERIFY(extracted.open(QIODevice::ReadOnly));
-        QCOMPARE(extracted.readAll(), QByteArray("first contents"));
-
-        backend.add(firstArchive, {addedSource});
-        await(backend, true);
-        QSignalSpy stale(&backend, &ArchiveBackend::finished);
-        backend.test(firstArchive);
-        QCOMPARE(stale.size(), 1);
-        QVERIFY(!stale.takeFirst().at(0).toBool());
-        backend.test(secondArchive);
-        await(backend, true);
     }
     void roundTrip_data() {
         QTest::addColumn<QString>("format");
@@ -331,8 +208,7 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         writeFile(source + "/вложено/δ space.txt", "nested");
         ArchiveBackend backend;
         const QString archive = temp.path() + "/archive." + format;
-        backend.create(archive, {source});
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         QVERIFY(QFileInfo::exists(archive));
 
         QList<ArchiveEntry> entries;
@@ -385,15 +261,8 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QVERIFY(QDir().mkpath(destination));
         ArchiveBackend backend;
         QSignalSpy output(&backend, &ArchiveBackend::outputReceived);
-        if (format == "zip") {
-            QSignalSpy rejected(&backend, &ArchiveBackend::finished);
-            backend.create(archive, {source}, QStringLiteral("test-only-δ-пароль"));
-            QCOMPARE(rejected.size(), 1);
-            QVERIFY(!rejected.takeFirst().at(0).toBool());
-            QVERIFY(!QFileInfo::exists(archive));
-        }
-        backend.create(archive, {source}, fixturePassword, format == "7z");
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}, format, fixturePassword,
+                                                 format == "7z"));
         QVERIFY(QFileInfo::exists(archive));
         QSignalSpy info(&backend, &ArchiveBackend::infoReady);
         if (format == "7z") {
@@ -438,24 +307,6 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         for (const auto &line : output)
             QVERIFY(!line.at(0).toString().contains(fixturePassword));
     }
-    void encryptedCreationLaunchFailure() {
-        QTemporaryDir temp;
-        QVERIFY(temp.isValid());
-        const QString source = temp.filePath(QStringLiteral("δ source.txt"));
-        const QString archive = temp.filePath("encrypted.7z");
-        const QString password = QStringLiteral("disposable-δ-password");
-        writeFile(source, "content");
-        ArchiveBackend missing(nullptr, "/definitely/missing/7zz");
-        QSignalSpy result(&missing, &ArchiveBackend::finished);
-        missing.create(archive, {source}, password, true);
-        QTRY_VERIFY_WITH_TIMEOUT(!result.isEmpty(), 3000);
-        const auto failure = result.takeFirst();
-        QVERIFY(!failure.at(0).toBool());
-        QVERIFY(!failure.at(1).toString().contains(password));
-        QVERIFY(!missing.busy());
-        QVERIFY(!QFileInfo::exists(archive));
-        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
-    }
     void testAndArchiveInfo_data() {
         QTest::addColumn<QString>("format");
         QTest::newRow("7z") << QStringLiteral("7z");
@@ -469,8 +320,7 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         const QString archive = temp.path() + "/archive." + format;
         writeFile(source, "verified");
         ArchiveBackend backend;
-        backend.create(archive, {source});
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         QSignalSpy info(&backend, &ArchiveBackend::infoReady);
         backend.list(archive);
         await(backend, true);
@@ -505,8 +355,8 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         writeFile(source + "/occupied.txt", "old");
         writeFile(source + "/chosen.txt", "yes");
         ArchiveBackend backend;
-        backend.create(archive, {source + "/occupied.txt", source + "/chosen.txt"});
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(
+            archive, {source + "/occupied.txt", source + "/chosen.txt"}));
         backend.list(archive);
         await(backend, true);
         QSignalSpy result(&backend, &ArchiveBackend::finished);
@@ -544,8 +394,8 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QVERIFY(spy.wait(30000));
         QVERIFY(!spy.takeFirst().at(0).toBool());
     }
-    void missingExecutable() {
-        ArchiveBackend backend(nullptr, "/no/such/7zz");
+    void missingNativeModule() {
+        ArchiveBackend backend(nullptr, "/no/such/7z");
         QSignalSpy spy(&backend, &ArchiveBackend::finished);
         backend.list("/no/such/archive.7z");
         QTRY_VERIFY_WITH_TIMEOUT(!spy.isEmpty(), 30000);
@@ -636,7 +486,7 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         writeFile(source, "unsafe");
         QVERIFY(QDir().mkpath(destination));
         QProcess maker;
-        maker.start("7zz", {"a", "-tzip", "-spf", archive, source});
+        maker.start("7z", {"a", "-tzip", "-spf", archive, source});
         QVERIFY(maker.waitForFinished(30000));
         QCOMPARE(maker.exitCode(), 0);
         ArchiveBackend backend;
@@ -695,8 +545,7 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         const QString archive = temp.path() + "/safe.zip";
         writeFile(source, "original");
         ArchiveBackend backend;
-        backend.create(archive, {source});
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         backend.list(archive);
         await(backend, true);
 
@@ -747,9 +596,13 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         writeFile(source, QByteArray(8 * 1024 * 1024, 'x'));
         ArchiveBackend backend;
         QSignalSpy spy(&backend, &ArchiveBackend::finished);
-        backend.create(temp.path() + "/cancel.7z", {source});
-        QVERIFY(backend.busy());
-        backend.cancel();
+        const QString archive = temp.filePath("cancel.7z");
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
+        backend.list(archive);
+        await(backend, true);
+        spy.clear();
+        connect(&backend, &ArchiveBackend::phaseStarted, &backend, &ArchiveBackend::cancel);
+        backend.test(archive);
         QVERIFY(spy.wait(30000));
         const auto result = spy.takeFirst();
         QVERIFY(!result.at(0).toBool());
@@ -757,32 +610,8 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
                                                            : QString("Operation canceled."));
         QCOMPARE(backend.lastResult(), E_ABORT);
         QVERIFY(!backend.busy());
-        QVERIFY(!QFileInfo::exists(temp.path() + "/cancel.7z"));
+        QVERIFY(QFileInfo::exists(archive));
         QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
-    }
-    void createFailureAndRetry() {
-        QTemporaryDir temp;
-        QVERIFY(temp.isValid());
-        const QString source = temp.filePath(QStringLiteral("источник с пробелом.txt"));
-        writeFile(source, "hello");
-        const QString target = temp.filePath("new.zip");
-        ArchiveBackend missing(nullptr, "/definitely/missing/7zz");
-        QSignalSpy missingResult(&missing, &ArchiveBackend::finished);
-        missing.create(target, {source});
-        QTRY_VERIFY_WITH_TIMEOUT(!missingResult.isEmpty(), 3000);
-        QVERIFY(!missingResult.takeFirst().at(0).toBool());
-        QVERIFY(!QFileInfo::exists(target));
-        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
-
-        ArchiveBackend backend;
-        backend.create(target, {source});
-        await(backend, true);
-        QVERIFY(QFileInfo::exists(target));
-        QSignalSpy occupied(&backend, &ArchiveBackend::finished);
-        backend.create(target, {source});
-        QCOMPARE(occupied.size(), 1);
-        QVERIFY(!occupied.takeFirst().at(0).toBool());
-        QVERIFY(QFileInfo::exists(target));
     }
     void mixedSources() {
         QTemporaryDir temp;
@@ -794,8 +623,7 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         writeFile(folder + "/nested.txt", "nested");
         ArchiveBackend backend;
         const QString target = temp.filePath("mixed.7z");
-        backend.create(target, {source, folder});
-        await(backend, true);
+        QVERIFY(NativeArchiveFixture::WriteFiles(target, {source, folder}));
         QList<ArchiveEntry> entries;
         connect(&backend, &ArchiveBackend::entriesReady, this,
                 [&](const QList<ArchiveEntry> &value) { entries = value; });
@@ -811,8 +639,5 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
     }
 };
 
-int main(int argc, char **argv) {
-    ArchiveBackendTests tests;
-    return backendTestMain(argc, argv, &tests);
-}
+QTEST_GUILESS_MAIN(ArchiveBackendTests)
 #include "archive_backend_tests.moc"

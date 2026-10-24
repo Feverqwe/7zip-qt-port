@@ -1025,3 +1025,102 @@ Live streams/devices and parent-update chains retain the intentional direct
 boundary; source transfer completeness and the focused runtime scope are recorded
 separately above. This completion does not extend to full engine isolation,
 the deferred lightweight executable, a full/slow gate or release distribution.
+
+## 2026-10-24 — retire console transport, retain official `7z` sidecar
+
+This iteration removes the old `ArchiveBackend` console creation/mutation,
+source-plan reconstruction, process parsing/pause and temporary-volume transport.
+The authoritative operation implementations remain the original GUI/Common and
+FileManager/Agent modules documented above. Their source baseline remains
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f` from
+<https://github.com/ip7z/7zip>, with the existing per-module mixed-revision records;
+no upstream algorithms or archive handlers are replaced in this cleanup.
+
+Source comparison covered `CPP/7zip/UI/Agent/AgentOut.cpp`,
+`CPP/7zip/UI/FileManager/PanelCopy.cpp`, `PanelOperations.cpp` and
+`CPP/7zip/UI/GUI/UpdateGUI.cpp`, their callers, callback types and native resource
+owners. Archive-to-filesystem Move now reaches the ported `CPanel::DeleteItems`
+after successful native extraction. The narrow Qt adaptation skips its second
+confirmation after the user has already confirmed Move and retains the captured
+native indices. `CAgent::CopyTo(moveMode)` itself remains unsupported upstream;
+this adapter does not claim otherwise.
+
+The official Console build (`CPP/7zip/UI/Console`) produces dynamic `7z` beside
+its format module. It is installed as an independent user-facing utility, as in
+the official distribution. Neither manager nor operation GUI invokes it. The
+Alone2/`7zz` target is no longer built or published. Runtime manifest retirement
+removes a previously owned, hash-matching published artifact; private compiler
+outputs and caches are not reset. Module discovery uses a module path, including
+`SEVENZIP_CODEC_MODULE_PATH`, without searching PATH for a console executable.
+
+Tests that seeded archives through removed console APIs now use the official
+`IOutArchive` interface or the existing GUI update worker. Compression properties,
+volumes, SFX, encryption, cancellation and publication remain observable checks.
+Obsolete fake-process-only suites and event assertions are retired; native Agent
+transaction, renderer, external-edit and operation-process regressions own those
+behaviors. Frontend selection tests capture the public `7zG` request and leave
+actual child/native execution to the operation suites. This source review is
+separate from the runtime acceptance evidence below.
+
+The native ZIP extraction callback may truncate an accepted overwrite destination
+before detecting a wrong password. The migrated regression checks the error,
+unchanged archive source and correct-password overwrite retry; it does not promise
+rollback of an existing destination. This cleanup does not change the upstream
+extraction algorithm or provide a destination transaction.
+
+### Validation and coverage boundary for console retirement
+
+The dynamic sidecar shares the prepared module deployment and can load its
+selected format extensions. Tests no longer require the limitations of the
+retired static Alone2 executable. The last synthetic console stdout fixtures
+for cancellation and properties were replaced by native worker coverage and
+typed property projection, including undefined sizes, the unsigned 64-bit range
+and raw checksums. Menu/toolbar tests observe public operation requests; actual
+child creation, formats, SFX, passwords and cancellation remain covered by the
+independent operation and native update suites. Source-bound drag tests observe
+published spool ownership rather than a backend process-start event.
+
+Runtime evidence on 2026-10-24:
+
+- macOS: all targets compiled incrementally. Installed Cocoa entry and six
+  operation consumers passed; the updated entry-only wrapper also passed.
+  Installed `7z` independently created, tested and extracted a Unicode/spaces
+  archive with exact output bytes. The retired published and private build
+  executable was removed; object files and compiler caches were retained.
+- Linux: focused native backend, source update, discovery, publication,
+  progress, volumes/SFX and copy routing passed (12 suites). Installed X11
+  entry/operations and the independent sidecar round-trip passed. Follow-up
+  source-update, backend, SFX and typed-property checks passed with one build job
+  after an earlier compiler process was killed for insufficient memory; the
+  existing build and ccache were reused.
+- Windows: installed native interactive operation/shell entry checks passed
+  (8 suites), including the independent sidecar round-trip. Focused backend,
+  discovery/publication, progress and volumes checks passed. Copy routing needed
+  the interactive desktop; its session-0 activation failures do not establish
+  a product failure. The interactive copy-routing retry, native path diagnostic
+  and SFX naming checks passed. Final directory-sync fixture and elevated startup
+  follow-ups also passed; their receipts are listed below.
+
+The initial macOS default run passed 429 of 459 suites before the test-fixture
+follow-ups above; it is not a passing full gate. `check.sh` itself stopped on
+formatting in the unchanged `src/crypto/ecrdsa_defs.h`. The untouched source/UI
+scenarios with unresolved results from that run are `ntfs_stream`, `udf_stream`,
+`iso_stream`, `language_dialog`, `panel_navigation`, `ui_layout`,
+`compression_encryption`, `panel_creation_path`, `panel_activation`, `panel_key`,
+`ui_parity_system`, `root_command` and `archive_recovery_ui`. They include native
+filesystem extraction diagnostics/names, dialog/profile expectations, navigation
+and two startup segmentation faults. This iteration does not establish a
+pre-change runtime baseline for those failures or claim their acceptance.
+Focused retries of the retired-transport consumers and benchmark passed without
+repeating the full run. Suites labeled `slow` were excluded; manual appearance
+acceptance remains unverified by the user's choice.
+
+Final follow-ups passed on all three platforms: native directory synchronization
+uses the same native writer seed and relative source paths, and the installed
+sidecar round-trip runs from its own temporary working directory. Windows
+startup/symlink acceptance passed separately with an elevated interactive token.
+The final guest receipts are `20261024T054044Z-1f69eae2` (source update) and
+`20261024T054217Z-b1ad34d7` (entry/sidecar). Earlier installed operation receipts
+are `20261024T050918Z-087dae69` (Linux) and
+`20261024T051558Z-510c8938` (Windows). This does not change the full-gate limits
+listed above.

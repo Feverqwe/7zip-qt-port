@@ -52,7 +52,7 @@ git diff --no-index /tmp/7zip-update-review/CPP/7zip/UI/FileManager/NetFolder.cp
 The report lists changed recorded files and marks exact versus adapted owners.
 For each changed adapted module, inspect the upstream diff, current local
 deviations, callers and changed dependencies before transferring the relevant
-source change. Keep Qt/platform/`7zz` adapters and local fixes; do not replace
+source change. Keep Qt/platform/native-module adapters and local fixes; do not replace
 adapted files wholesale. For unchanged vendors, copy exact new bytes only after
 reviewing dependent code. Check omitted functions and branches in the audit as
 well: a change there can still affect a copied dependency. Update the audit

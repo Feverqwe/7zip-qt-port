@@ -1,4 +1,5 @@
 #include "archivebackend.h"
+#include "fixtures/slow_codec.h"
 #include "fixtures/widget_dialogs.h"
 #include "mainwindow.h"
 #include "qtassociationfileopen.h"
@@ -34,7 +35,7 @@ class AssociatedWindowTests final : public QObject {
         const QString archive = fixture.filePath(QStringLiteral("архив 空 with spaces.zip"));
         QProcess engine;
         engine.setWorkingDirectory(fixture.path());
-        engine.start(QStandardPaths::findExecutable("7zz"), {"a", "-tzip", archive, name});
+        engine.start(QStandardPaths::findExecutable("7z"), {"a", "-tzip", archive, name});
         QVERIFY(engine.waitForFinished(10000));
         QCOMPARE(engine.exitCode(), 0);
         const auto original = SourceExtractFixture::readFile(archive);
@@ -78,28 +79,28 @@ class AssociatedWindowTests final : public QObject {
     void closeDuringDiscoveryJoinsAndDoesNotOpenAnArchive() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
-        const QString suffix = QFileInfo(QString::fromUtf8(CODEC_PROBE_FIXTURE)).suffix();
-        const QString engine =
-            fixture.filePath("probe hang" + (suffix.isEmpty() ? "" : "." + suffix));
-        QVERIFY(QFile::copy(QString::fromUtf8(CODEC_PROBE_FIXTURE), engine));
-        const QByteArray previous = qgetenv("SEVENZIP_ENGINE_PATH");
-        const bool wasSet = qEnvironmentVariableIsSet("SEVENZIP_ENGINE_PATH");
+        SlowCodecModuleFixture slow(fixture, 300);
+        QVERIFY(slow.Valid);
+        const QByteArray previous = qgetenv("SEVENZIP_CODEC_MODULE_PATH");
+        const bool wasSet = qEnvironmentVariableIsSet("SEVENZIP_CODEC_MODULE_PATH");
         const auto restore = qScopeGuard([&] {
             if (wasSet)
-                qputenv("SEVENZIP_ENGINE_PATH", previous);
+                qputenv("SEVENZIP_CODEC_MODULE_PATH", previous);
             else
-                qunsetenv("SEVENZIP_ENGINE_PATH");
+                qunsetenv("SEVENZIP_CODEC_MODULE_PATH");
         });
-        qputenv("SEVENZIP_ENGINE_PATH", engine.toUtf8());
+        qputenv("SEVENZIP_CODEC_MODULE_PATH", slow.Path.toUtf8());
         QPointer<MainWindow> window =
             OpenSevenzipAssociatedFile(fixture.filePath("not-opened.zip"));
         windows_.append(window);
         auto *backend = window->findChild<ArchiveBackend *>();
         QVERIFY(backend);
         QVERIFY(backend->busy());
+        QTRY_VERIFY(QFileInfo::exists(slow.Entered));
         QSignalSpy completed(backend, &ArchiveBackend::finished);
         QVERIFY(window->close());
         QTRY_VERIFY(window.isNull());
+        QVERIFY(QFileInfo::exists(slow.Finished));
         QCOMPARE(completed.count(), 0);
         QVERIFY(!QFileInfo::exists(fixture.filePath("not-opened.zip")));
     }
@@ -107,15 +108,15 @@ class AssociatedWindowTests final : public QObject {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const auto closeWindows = qScopeGuard([this] { cleanup(); });
-        const QByteArray previous = qgetenv("SEVENZIP_ENGINE_PATH");
-        const bool wasSet = qEnvironmentVariableIsSet("SEVENZIP_ENGINE_PATH");
+        const QByteArray previous = qgetenv("SEVENZIP_CODEC_MODULE_PATH");
+        const bool wasSet = qEnvironmentVariableIsSet("SEVENZIP_CODEC_MODULE_PATH");
         const auto restore = qScopeGuard([&] {
             if (wasSet)
-                qputenv("SEVENZIP_ENGINE_PATH", previous);
+                qputenv("SEVENZIP_CODEC_MODULE_PATH", previous);
             else
-                qunsetenv("SEVENZIP_ENGINE_PATH");
+                qunsetenv("SEVENZIP_CODEC_MODULE_PATH");
         });
-        qputenv("SEVENZIP_ENGINE_PATH", fixture.filePath("missing-engine").toUtf8());
+        qputenv("SEVENZIP_CODEC_MODULE_PATH", fixture.filePath("missing-engine").toUtf8());
         QString message;
         QObject responder;
         dialogs_.respond(responder, [&](QDialog &dialog) {

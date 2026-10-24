@@ -20,7 +20,7 @@ inline QString makeArchive(const QString &directory, const QByteArray &bytes) {
         return {};
     QProcess process;
     process.setWorkingDirectory(directory);
-    process.start(QStandardPaths::findExecutable("7zz"), {"a", "-tzip", "input.zip", kName});
+    process.start(QStandardPaths::findExecutable("7z"), {"a", "-tzip", "input.zip", kName});
     if (!process.waitForFinished(10000) || process.exitCode() != 0)
         return {};
     return QDir(directory).filePath("input.zip");

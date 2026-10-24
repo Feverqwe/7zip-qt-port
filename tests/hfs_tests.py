@@ -1,4 +1,4 @@
-"""Fork bytes, metadata failures and volume boundaries through both engines."""
+"""Fork bytes, metadata failures and volume boundaries through the dynamic engine."""
 from pathlib import Path
 import shutil
 import subprocess
@@ -19,7 +19,7 @@ class HfsTests(unittest.TestCase):
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
         core = "7z.dll" if sys.platform == "win32" else "7z.so"
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX, core):
+        for name in ("7z" + SUFFIX, core):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
@@ -82,7 +82,7 @@ class HfsTests(unittest.TestCase):
         for kind in ("base", "preallocated", "empty-preallocated", "overflow-leaves", "boot-blocks",
                      "hfsx", "wrapped", "wrapped-hfsx"):
             image, files = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 for name, expected in files.items():
                     with self.subTest(kind=kind, engine=engine, name=name):
                         result = self.run_image(engine, image, name)
@@ -144,7 +144,7 @@ class HfsTests(unittest.TestCase):
 
     def test_bad_forks_never_read_appended_bytes(self):
         for kind in ("extent-over-volume", "allocation-tail-over-volume"):
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     result = self.run_image(engine, volume(kind)[0], "HfsFixture/alpha")
                     self.assertNotEqual(result.returncode, 0)
@@ -168,15 +168,7 @@ class HfsTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
 
-    def test_standalone_does_not_extract_hardlink_stubs_as_empty_success(self):
-        result = self.run_image("7zz", volume("modern")[0], "HfsFixture/alpha")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(result.stdout, b"")
 
-    def test_standalone_does_not_claim_classic_hfs(self):
-        result = self.run_image("7zz", volume("classic")[0], "HfsFixture/alpha")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(result.stdout, b"")
 
     def test_linux_metadata_and_thread_failures(self):
         for kind in ("modern-invalid-file-mode", "modern-invalid-dir-mode", "modern-thread-parent",
@@ -188,7 +180,7 @@ class HfsTests(unittest.TestCase):
         for kind in ("metadata-short-map", "leaf-height", "leaf-backlink", "leaf-offset",
                      "leaf-tail", "leaf-count", "root-depth", "key-format",
                      "parent-cycle", "volume-truncated"):
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     self.assertNotEqual(self.run_image(engine, volume(kind)[0]).returncode, 0)
 

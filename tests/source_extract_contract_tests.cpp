@@ -85,7 +85,7 @@ class SourceExtractContractTests final : public QObject {
         QProcess process;
         process.setWorkingDirectory(directory.path());
         const QString archiveName = "input." + format;
-        process.start(QStandardPaths::findExecutable("7zz"),
+        process.start(QStandardPaths::findExecutable("7z"),
                       {"a", "-t" + format, "-mx=0", archiveName, "broken.txt", "healthy.txt"});
         QVERIFY(process.waitForFinished(10000));
         QCOMPARE(process.exitCode(), 0);
@@ -163,7 +163,7 @@ class SourceExtractContractTests final : public QObject {
         QVERIFY(writeFile(directory.filePath(other), second));
         QProcess process;
         process.setWorkingDirectory(directory.path());
-        process.start(QStandardPaths::findExecutable("7zz"), {"a", "input.zip", other});
+        process.start(QStandardPaths::findExecutable("7z"), {"a", "input.zip", other});
         QVERIFY(process.waitForFinished(10000));
         QCOMPARE(process.exitCode(), 0);
         ArchiveBackend backend;

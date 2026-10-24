@@ -46,7 +46,7 @@ class CompoundStreamTests(unittest.TestCase):
         image, files = volume()
         with tempfile.TemporaryDirectory(prefix="sevenzip-compound-") as temporary:
             path = Path(temporary) / "потоки 空.doc"
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 for truncated in (False, True):
                     source = image[:-211] if truncated else image
                     path.write_bytes(source)

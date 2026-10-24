@@ -21,7 +21,7 @@ class FatTests(unittest.TestCase):
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
         core = "7z.dll" if sys.platform == "win32" else "7z.so"
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX, core):
+        for name in ("7z" + SUFFIX, core):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
@@ -60,7 +60,7 @@ class FatTests(unittest.TestCase):
             return result
 
     def test_fragmented_variants_and_sector_boundaries(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for bits, sector, spc in ((12, 512, 1), (16, 512, 1), (32, 512, 1),
                                       (16, 4096, 1), (32, 4096, 128)):
                 with self.subTest(engine=engine, bits=bits, sector=sector, spc=spc):
@@ -76,7 +76,7 @@ class FatTests(unittest.TestCase):
                     for bootstrap in (b"\xeb\x58\x90", bytes(3), b"\xeb\x00\x90", b"\xe9\x00\x00")
                     for signature in (0, 0x28, 0x29)]
         variants.append((bytes(3), 0, 0))
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for bits in (12, 16, 32):
                 for bootstrap, signature, identity in variants:
                     with self.subTest(engine=engine, bits=bits, bootstrap=bootstrap,
@@ -96,7 +96,7 @@ class FatTests(unittest.TestCase):
     def test_fat16_table_capacity_precedes_maximum_cluster_limit(self):
         for kind in ("capped16", "maximum16", "overflow16"):
             volume = capacity_volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     result = self.run_image(volume, engine)
                     if kind == "overflow16":
@@ -106,7 +106,7 @@ class FatTests(unittest.TestCase):
                         self.assertEqual(result.stdout, PAYLOAD)
 
     def test_inode_size_stops_before_unused_chain_tail(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for bits in (12, 16, 32):
                 with self.subTest(engine=engine, bits=bits):
                     volume = Volume(bits)
@@ -152,7 +152,7 @@ class FatTests(unittest.TestCase):
                     self.assertNotIn(b"FAT directories could not be read completely", listing.stdout)
 
     def test_active_fat_and_invalid_index_fallback(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for active in (1, 2, 15):
                 with self.subTest(engine=engine, active=active):
                     volume = Volume(32)
@@ -229,7 +229,7 @@ class FatTests(unittest.TestCase):
                 self.assertIn("Modified = " + expected, result.stdout.decode("utf-8"))
 
     def test_free_space_recounts_fat_and_excludes_reserved_entries(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for bits in (12, 16, 32):
                 with self.subTest(engine=engine, bits=bits):
                     v = Volume(bits)
@@ -245,7 +245,7 @@ class FatTests(unittest.TestCase):
                     self.assertIn("Free Space = " + str(free), result.stdout.decode("utf-8"))
 
     def test_bpb_geometry_does_not_require_bootstrap_code(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for bits in (12, 16, 32):
                 with self.subTest(engine=engine, bits=bits):
                     volume = Volume(bits, fats=5)
@@ -262,7 +262,7 @@ class FatTests(unittest.TestCase):
                     self.assert_contents(volume, engine)
 
     def test_lfn_reserved_fields_and_escaped_alias_checksum(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             volume = Volume()
             alias = b"\x05ATA~1  BIN"
             volume.records = long_entries(LONG_NAME, alias) + [entry(alias, volume.chain[0], len(PAYLOAD))]
@@ -273,7 +273,7 @@ class FatTests(unittest.TestCase):
             self.assert_contents(volume, engine)
 
     def test_lfn_damage_resynchronizes_without_hiding_files(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for fault in ("invalid-id", "orphan", "restart", "checksum", "bad-order", "volume"):
                 with self.subTest(engine=engine, fault=fault):
                     volume = Volume()
@@ -302,7 +302,7 @@ class FatTests(unittest.TestCase):
                     self.assert_contents(volume, engine, name)
 
     def test_invalid_geometry_and_short_chains_report_errors(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for fault in ("zero-fats", "metadata-overflow", "invalid-sector", "free-chain", "early-eof",
                           "cycle", "oversized-file", "fat-truncated", "truncated"):
                 with self.subTest(engine=engine, fault=fault):
@@ -329,15 +329,14 @@ class FatTests(unittest.TestCase):
                     self.assertIn(result.returncode, (1, 2), result.stderr.decode(errors="replace"))
 
     def test_incomplete_file_chains_preserve_prefix_and_report_error(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for bits in (12, 16, 32):
                 for mode in ("free", "eof", "bad", "range", "self", "cycle", "metadata", "metadata-start",
                              "start", "oversized", "tail", "shared"):
                     with self.subTest(engine=engine, bits=bits, mode=mode):
                         volume = chain_volume(f"{mode}-{bits}")
                         result = self.run_image(volume, engine)
-                        expected = (getattr(volume, "legacy_file_prefix", volume.expected_files[LONG_NAME])
-                                    if engine == "7zz" else volume.expected_files[LONG_NAME])
+                        expected = volume.expected_files[LONG_NAME]
                         self.assertEqual(result.stdout, expected)
                         if volume.file_limited:
                             self.assertNotEqual(result.returncode, 0)

@@ -52,8 +52,7 @@ QStringList MainWindow::archivePathsForIndices(const CRecordVector<UInt32> &indi
         return paths;
     auto *folder = static_cast<CAgentFolder *>(panel.GetFolder());
     CUIntVector realIndices;
-    // Preserve the 7zz selected-directory transport policy until source Extract
-    // integration (P0-12); the original engine Extract passes false here.
+    // Capture full logical paths, including descendants of selected directories.
     folder->GetRealIndices(indices.ConstData(), indices.Size(), false, true, realIndices);
     FOR_VECTOR(i, realIndices) {
         UString path;

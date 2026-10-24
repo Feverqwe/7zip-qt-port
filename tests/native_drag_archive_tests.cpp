@@ -100,7 +100,7 @@ class NativeDragArchiveTests final : public QObject {
         QCOMPARE(input.write(payload), qint64(payload.size()));
         input.close();
         const QString archive = fixture.filePath("source.zip");
-        const QString engine = QStandardPaths::findExecutable("7zz");
+        const QString engine = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine.isEmpty());
         QProcess create;
         create.setWorkingDirectory(fixture.path());
@@ -124,7 +124,7 @@ class NativeDragArchiveTests final : public QObject {
         receiver.outcome = outcome;
         app.Panels[0].AttachDragServices(&receiver);
         int starts = 0;
-        connect(&backend, &ArchiveBackend::engineStarted, &list, [&] {
+        connect(&backend, &ArchiveBackend::phaseStarted, &list, [&] {
             ++starts;
             if (outcome == 3)
                 backend.cancel();

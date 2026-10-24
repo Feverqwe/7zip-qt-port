@@ -1,4 +1,4 @@
-// File-only 7zz opener for the source Common/Extract.cpp archive loop.
+// File-only native opener for the source Common/Extract.cpp archive loop.
 #pragma once
 #include "7zip/UI/FileManager/IFolder.h"
 #include "CPP/7zip/UI/Common/OpenArchive.h"

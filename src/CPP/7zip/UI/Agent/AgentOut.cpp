@@ -314,7 +314,7 @@ Z7_COM7F_IMF(CAgent::DoOperation(FStringVector *requestedPaths, FStringVector *p
     if (GetArchive()) {
         RINOK(GetArchive()->QueryInterface(IID_IOutArchive, (void **)&outArchive))
     } else {
-        // New archive creation belongs to the separate Qt/7zz create operation.
+        // New archive creation belongs to the standalone 7zG create operation.
         return E_NOTIMPL;
     }
 

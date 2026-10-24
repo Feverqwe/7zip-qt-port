@@ -36,7 +36,7 @@ class ExtTests(unittest.TestCase):
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
         core = "7z.dll" if sys.platform == "win32" else "7z.so"
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX, core):
+        for name in ("7z" + SUFFIX, core):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
@@ -79,7 +79,7 @@ class ExtTests(unittest.TestCase):
         for kind in ("clean", "recover", "orphan", "orphan-list", "unclean", "errors",
                      "unverified", "combined"):
             volume = readonly_volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     listing = self.run_image(volume, engine, "l")
                     self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
@@ -114,14 +114,13 @@ class ExtTests(unittest.TestCase):
                 self.assertNotEqual(rejected.returncode, 0)
                 self.assertEqual(rejected.stdout, b"")
 
-    def test_extended_inode_times_match_between_engines(self):
+    def test_extended_inode_times(self):
         for layout in ("modern-time", "modern-time-zero"):
             with self.subTest(layout=layout):
                 fixture = subprocess.run([sys.executable, str(Path(__file__).with_name("ext_fixture.py")), layout],
                                          capture_output=True, check=True)
                 volume = SimpleNamespace(data=fixture.stdout)
-                timestamps = []
-                for engine in ("7z", "7zz"):
+                for engine in ("7z",):
                     result = self.run_image(volume, engine=engine, command="l")
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     fields = [line for line in result.stdout.replace(b"\r\n", b"\n").splitlines()
@@ -129,8 +128,6 @@ class ExtTests(unittest.TestCase):
                     self.assertTrue(any(b"2106-" in line for line in fields), fields)
                     if layout == "modern-time-zero":
                         self.assertTrue(any(b"2242-" in line for line in fields), fields)
-                    timestamps.append(fields)
-                self.assertEqual(timestamps[0], timestamps[1])
 
     def test_file_references_cannot_expose_filesystem_metadata(self):
         for mapping in ("direct", "unused-direct", "indirect-index", "indirect-data",
@@ -189,7 +186,7 @@ class ExtTests(unittest.TestCase):
     def test_symlink_cluster_ea_inode_and_huge_block_geometry(self):
         for case in ("bigalloc", "bigalloc-huge", "ea-slow", "ea-fast-extents"):
             volume = SymlinkVolume(case)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(case=case, engine=engine):
                     result = self.run_image(volume, engine, "l", "link")
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
@@ -209,7 +206,7 @@ class ExtTests(unittest.TestCase):
 
     def test_invalid_symlink_flags_and_fast_target_lengths_are_rejected(self):
         for case in ("append", "immutable", "embedded-nul", "unterminated", "empty"):
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(case=case, engine=engine):
                     result = self.run_image(SymlinkVolume(case), engine, "l", None)
                     if engine == "7z":
@@ -281,7 +278,7 @@ class ExtTests(unittest.TestCase):
                 self.assertEqual(result.stdout, b"")
 
     def test_legacy_inode_numbers_and_extra_inode_requirements(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             volume = inode_volume("legacy-control")
             result = self.run_image(volume, engine)
             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
@@ -310,7 +307,7 @@ class ExtTests(unittest.TestCase):
     def test_directory_holes_are_not_checksums_of_zero_metadata(self):
         for mapping in ("indirect", "extent", "unwritten"):
             volume = DirectoryVolume(mapping)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(mapping=mapping, engine=engine):
                     listing = self.run_image(volume, engine, "l", None)
                     self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
@@ -338,7 +335,7 @@ class ExtTests(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "linux", "Linux child address-space limit")
     def test_largedir_reads_past_four_gib_with_bounded_memory(self):
         volume = DirectoryVolume(tail_logical=(1 << 32) // 1024 + 1)
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             with self.subTest(engine=engine):
                 listing = self.run_image(volume, engine, "l", None, memory_limit=512 << 20)
                 self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
@@ -384,7 +381,7 @@ class ExtTests(unittest.TestCase):
                 volume.data[record + 6] = len(name)
                 volume.data[record + 8:record + 8 + len(name)] = name
                 volume.refresh()
-                for engine in (("7z",) if inline else ("7z", "7zz")):
+                for engine in ("7z",):
                     with self.subTest(name=name, inline=inline, engine=engine):
                         result = self.run_image(volume, engine, "l", None)
                         if engine == "7z":
@@ -506,7 +503,7 @@ class ExtTests(unittest.TestCase):
         self.assertEqual(result.stdout, volume.read(0, volume.size))
 
     def test_special_inode_device_encoding_is_not_a_data_block_pointer(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             with self.subTest(engine=engine):
                 empty = self.run_image(inode_volume("special-empty"), engine)
                 self.assertEqual(empty.returncode, 0, empty.stderr.decode(errors="replace"))
@@ -598,7 +595,7 @@ class ExtTests(unittest.TestCase):
             self.assertEqual(result.stdout, volume.files[name])
 
     def test_sparse_indirect_and_extent_reads(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for layout in ("direct", "single", "double-hole", "double-subtree", "sparse-short",
                            "extent", "extent-tree", "extent-depth5", "extent-two-branches"):
                 with self.subTest(engine=engine, layout=layout):
@@ -660,16 +657,14 @@ class ExtTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                 self.assertEqual(result.stdout, expected)
 
-    def test_standalone_cannot_publish_unverified_verity_data(self):
+    def test_corrupt_verity_data_is_not_published(self):
         volume = VerityVolume(size=100)
         volume.data[volume.first_data] ^= 1
-        result = self.run_image(volume, engine="7zz")
+        result = self.run_image(volume, engine="7z")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
 
     def test_modern_metadata_and_full_inline_payload(self):
-        # Linux C readers live in the dynamic format module; standalone 7zz
-        # retains the independent 7-Zip LGPL classic reader.
         for engine in ("7z",):
             for inline, seed, descriptor in ((False, False, 64), (False, True, 128),
                                               (True, False, 64), (True, True, 128)):
@@ -857,7 +852,7 @@ class ExtTests(unittest.TestCase):
     def test_indexed_short_names_and_empty_leaf_checksum_dispatch(self):
         for empty in (False, True):
             volume = ModernVolume(indexed=True, short_leaf=True, empty_leaf=empty)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(empty=empty, engine=engine):
                     for name in ("a", NAME):
                         result = self.run_image(volume, engine, name=name)
@@ -983,7 +978,7 @@ class ExtTests(unittest.TestCase):
                 self.assertEqual(result.stdout, volume.read(0, volume.size))
 
     def test_complete_group_and_fast_symlink_with_xattr(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             v = Volume("direct", full_group=True)
             result = self.run_image(v, engine)
             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
@@ -994,7 +989,7 @@ class ExtTests(unittest.TestCase):
             self.assertIn("Symbolic Link = " + NAME, result.stdout.decode("utf-8"))
 
     def test_invalid_extent_headers_ranges_and_parent_boundaries(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for fault in ("zero-max", "too-large-max", "entries-over-max", "zero-length", "overlap",
                           "physical-range", "child-first", "index-order", "child-overrun",
                           "conflicting-flags", "acl-range", "empty-child"):
@@ -1042,7 +1037,7 @@ class ExtTests(unittest.TestCase):
                     self.assertEqual(result.stdout, expected)
 
     def test_invalid_directory_records_terminate(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for value in (0, 4, 10, 1020):
                 with self.subTest(engine=engine, record_length=value):
                     v = Volume("direct")
@@ -1056,7 +1051,7 @@ class ExtTests(unittest.TestCase):
                         self.assertIn(result.returncode, (1, 2), result.stderr)
 
     def test_directory_records_cannot_cross_blocks_or_use_unaligned_lengths(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for crossing in (False, True):
                 with self.subTest(engine=engine, crossing=crossing):
                     v = Volume("direct")
@@ -1078,7 +1073,7 @@ class ExtTests(unittest.TestCase):
                         self.assertIn(result.returncode, (1, 2), result.stderr)
 
     def test_large_block_directory_empty_record_encodings(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for encoded in (0, 0xFFFF):
                 with self.subTest(engine=engine, encoded=encoded):
                     v = Volume("direct", block_bits=16)

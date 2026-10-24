@@ -131,7 +131,7 @@ class SourceMetadataStorageTests final : public QObject {
         QFETCH(HRESULT, failure);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
-        const QString engine = QStandardPaths::findExecutable("7zz");
+        const QString engine = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine.isEmpty());
         const QString archive = fixture.filePath("native metadata.wim");
         QVERIFY(writeFile(fixture.filePath("keep.txt"), "original"));

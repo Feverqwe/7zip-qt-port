@@ -88,8 +88,8 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
         QFETCH(QString, openType);
         QFETCH(QString, defaultName);
         QFETCH(bool, writable);
-        const QString engine = QStandardPaths::findExecutable("7zz");
-        QVERIFY2(!engine.isEmpty(), "official 7zz fixture engine is required");
+        const QString engine = QStandardPaths::findExecutable("7z");
+        QVERIFY2(!engine.isEmpty(), "official 7z fixture engine is required");
         ArchiveBackend backend(nullptr, engine);
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog());
@@ -226,8 +226,8 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
         QVERIFY(!unsupported);
     }
     void realArchiveAndNotArchive() {
-        const QString engine = QStandardPaths::findExecutable("7zz");
-        QVERIFY2(!engine.isEmpty(), "official 7zz fixture engine is required");
+        const QString engine = QStandardPaths::findExecutable("7z");
+        QVERIFY2(!engine.isEmpty(), "official 7z fixture engine is required");
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         const QString source = temp.filePath(QStringLiteral("имя й с пробелом.txt"));
@@ -302,7 +302,7 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
         QCOMPARE(QByteArray(data, int(count)), bytes);
     }
     void nativeStreamOpeningSkipsPayloadAndRetainsReaders() {
-        const QString engine = QStandardPaths::findExecutable("7zz");
+        const QString engine = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine.isEmpty());
         ArchiveBackend backend(nullptr, engine);
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
@@ -404,8 +404,8 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
         QVERIFY(released);
     }
     void memoryStreamRetainsBoundFolderAfterCallerRelease() {
-        const QString engine = QStandardPaths::findExecutable("7zz");
-        QVERIFY2(!engine.isEmpty(), "official 7zz fixture engine is required");
+        const QString engine = QStandardPaths::findExecutable("7z");
+        QVERIFY2(!engine.isEmpty(), "official 7z fixture engine is required");
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         QVERIFY(QDir().mkdir(temp.filePath("inside")));

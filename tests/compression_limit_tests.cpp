@@ -4,6 +4,7 @@
 #include "createarchivedialog.h"
 #include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -194,26 +195,22 @@ class CompressionLimitTests final : public QObject {
         options.MemUsage.Parse(spec);
         const QString target = dir.filePath("limit." + format);
         QSignalSpy done(&backend, &ArchiveBackend::finished);
-        backend.create(target, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, target, {source}, {}, false, options),
+                 S_OK);
         done.clear();
         QProcess process;
-        process.start("7zz", {"t", "--", target});
+        process.start("7z", {"t", "--", target});
         QVERIFY(process.waitForFinished(15000));
         QCOMPARE(process.exitCode(), 0);
-        process.start("7zz", {"x", "-o" + dir.filePath("out"), "--", target});
+        process.start("7z", {"x", "-o" + dir.filePath("out"), "--", target});
         QVERIFY(process.waitForFinished(15000));
         QCOMPARE(process.exitCode(), 0);
         QFile restored(dir.filePath("out/" + QFileInfo(source).fileName()));
         QVERIFY(restored.open(QIODevice::ReadOnly));
         QCOMPARE(restored.readAll(), bytes);
         options.MemUsage.Parse("1M");
-        backend.create(dir.filePath("rejected." + format), {source}, {}, false, options);
-        QCOMPARE(done.size(), 1);
-        QVERIFY(!done.first()[0].toBool());
-        QVERIFY(done.first()[1].toString().contains(
-            QString::fromWCharArray(LangString(IDS_MEM_USAGE_LIMIT_SET_BY_7ZIP).Ptr())));
+        QVERIFY(SourceCreationFixture::Create(backend, dir.filePath("rejected." + format), {source},
+                                              {}, false, options) != S_OK);
         QVERIFY(!QFileInfo::exists(dir.filePath("rejected." + format)));
         done.clear();
         options.MemUsage.Parse(spec);
@@ -221,10 +218,9 @@ class CompressionLimitTests final : public QObject {
         QVERIFY(file.resize(8 << 20));
         file.close();
         const QString cancelled = dir.filePath("cancelled." + format);
-        backend.create(cancelled, {source}, {}, false, options);
-        backend.cancel();
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY(!done.first()[0].toBool());
+        QCOMPARE(
+            SourceCreationFixture::Create(backend, cancelled, {source}, {}, false, options, true),
+            E_ABORT);
         QVERIFY(!QFileInfo::exists(cancelled));
         QVERIFY(QFileInfo::exists(target));
         QVERIFY(QDir(dir.path()).entryList({"*.stage*"}, QDir::Files | QDir::Hidden).isEmpty());

@@ -122,7 +122,7 @@ class CAgentFolder final : public IFolderFolder,
                         bool includeFolderSubItemsInFlatMode, CUIntVector &realIndices) const;
     unsigned GetNumberOfItems() const;
     CProxyItem GetItem(unsigned index) const;
-    // Read-only 7zz transport boundary for original archive-index Path queries.
+    // Read-only metadata boundary for original archive-index Path queries.
     IInArchive *GetArchiveProperties() const;
     // Resolve archive-index paths with the same defaults as source extraction.
     HRESULT GetArchiveItemPath(UInt32 index, UString &path) const;
@@ -167,7 +167,7 @@ class CAgentFolder final : public IFolderFolder,
     NExtract::NZoneIdMode::EEnum _zoneMode = NExtract::NZoneIdMode::kNone;
     CByteBuffer _zoneBuf;
     CRecordVector<CProxyItem> _items;
-    // Typed 7zz metadata boundary replaces the in-process archive property call.
+    // Typed metadata boundary replaces the in-process archive property call.
     UString _archiveType;
     CMyComPtr<IInFolderArchive> _agent;
     CAgent *_agentSpec = nullptr;

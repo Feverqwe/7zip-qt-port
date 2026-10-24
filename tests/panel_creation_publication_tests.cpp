@@ -33,7 +33,7 @@ class PanelCreationPublicationTests final : public QObject, protected MainWindow
 
   private slots:
     void initTestCase() {
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine_.isEmpty());
 #ifdef SEVENZIP_CODEC_MODULE
         ArchiveCodecCatalog catalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);

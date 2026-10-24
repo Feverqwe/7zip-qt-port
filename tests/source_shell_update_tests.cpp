@@ -32,7 +32,6 @@ class SourceShellUpdateTests final : public QObject {
         ArchiveCodecCatalog probe(module, 0);
         QCOMPARE(probe.result(), S_OK);
         QCOMPARE(backend.loadCodecCatalog(module, probe.version()), S_OK);
-        QSignalSpy processes(&backend, &ArchiveBackend::engineStarted);
         CProgressDialog progress;
         CUpdateCallbackGUI callback;
         callback.ProgressDialog = &progress;
@@ -48,7 +47,6 @@ class SourceShellUpdateTests final : public QObject {
                                                            &callback, &callback, true);
         QCOMPARE(result, cancel ? E_ABORT : S_OK);
         QCOMPARE(SourceExtractFixture::readFile(input), QByteArray("abc"));
-        QCOMPARE(processes.count(), 0);
         QVERIFY(!backend.busy());
         if (cancel) {
             QVERIFY(!QFileInfo::exists(output));
@@ -57,7 +55,7 @@ class SourceShellUpdateTests final : public QObject {
         QVERIFY(QFileInfo::exists(output));
         QProcess verify;
         verify.setWorkingDirectory(fixture.path());
-        verify.start(QStandardPaths::findExecutable("7zz"), {"t", "--", output});
+        verify.start(QStandardPaths::findExecutable("7z"), {"t", "--", output});
         QVERIFY(verify.waitForFinished(10000));
         QCOMPARE(verify.exitCode(), 0);
         if (type == "hash") {

@@ -36,16 +36,16 @@ This setting does not change application language. If stored header dependencies
 appear damaged, collect diagnostics before proposing a cache/build-tree repair;
 follow [cache retention](../AGENTS.md#validation-scope).
 
-Archive reading requires the official native runtime; standalone `7zz` alone
-does not supply its readers. `./scripts/build-codec-runtime.sh [upstream-checkout] [artifact-directory]`
-builds `UI/Console`, `Bundles/Format7zF` and `Bundles/Alone2` from the pinned source
+Archive operations require the official native codec runtime.
+`./scripts/build-codec-runtime.sh [upstream-checkout] [artifact-directory]`
+builds `UI/Console` and `Bundles/Format7zF` from the pinned source
 with the engine adaptations selected in the [baseline](upstream-baseline.json),
-into `build/codec-runtime` on macOS/Linux. It produces `7z`, `7zz`, `7z.so`,
+into `build/codec-runtime` on macOS/Linux. It produces the reference `7z`, `7z.so`,
 license and source/version/SHA records, and refuses unowned artifacts. The Debug
 app uses this prepared runtime when present; deployed builds look beside the app
-or in `Resources/7zip`. `SEVENZIP_ENGINE_PATH` explicitly selects an engine;
-a selected deployment can contain only modules for reading and extraction.
-Writes still require the console while their migration continues.
+or in `Resources/7zip`. `SEVENZIP_CODEC_MODULE_PATH` explicitly selects a native
+module. The console is shipped as an independent sidecar and used by reference
+tests; neither 7zFM nor 7zG invokes it.
 Codecs/Formats discovery and ABI checks follow original LoadCodecs in the selected
 deployment, without executing or parsing console information output.
 The immutable codec image uses Qt's selected temporary directory to copy and
@@ -63,8 +63,8 @@ artifacts alone does not replace an already cached system-module path.
 Completed package evidence and its limits are linked from [acceptance](ux-port-audit.md).
 On Windows, `scripts/build-codec-runtime.ps1 -Architecture arm64` (or `x64`/`x86`)
 uses a matching developer environment and the same optional source/output arguments
-as the SFX builder. It compiles unchanged Console/Format7zF/Alone2 makefiles and
-produces `7z.exe`, `7z.dll`, `7zz.exe`, license and runtime manifest.
+as the SFX builder. It compiles unchanged Console/Format7zF makefiles and
+produces the reference client, native module, license and runtime manifest.
 Both codec-runtime builders retain their source/build directory across runs,
 preserve unchanged source timestamps and use the existing compiler cache when
 available. Runtime provenance records the adapted-source hashes; changing one
@@ -75,8 +75,8 @@ Do not install test-only codec fixtures in a production runtime. Earlier ARM64
 builder samples are retained in [the tooling archive](archive/qt-port/workflow-evidence.md).
 
 Windows CMake installation places the Qt application, original7zFM/7zG entry
-aliases, project shell DLL and official `7z.exe`/`7z.dll` runtime together in `bin`.
-The prepared standalone `7zz.exe` is a development fallback and is not installed.
+aliases, project shell DLL, official `7z.dll` and the independent `7z.exe` sidecar
+together in `bin`.
 `cmake --install build/dev --prefix <private-directory>` deploys Qt runtime,
 platform plugins and compiler runtime using Qt's own deployment script. It
 first checks the prepared runtime's producer, repository, pinned revision,
@@ -108,7 +108,7 @@ These checks do not establish rendered pixel parity or release acceptance.
   Qt Base translations, Git, clang-format
 - Python 3.9+ for CTest UI-reference checks (standard library only); clang/GCC
   additionally for extracting resources, not for comparing stored references
-- Official `7zz`, or the prepared dynamic `7z`/module runtime for external codecs
+- Prepared native codec runtime and its reference `7z` client for tests
 - Qt 6 DBus for the Linux launcher service; Unix launcher regression tests also
   need `dbus-daemon` to create their own private bus. macOS builds with testing
   enabled require Qt DBus and libdbus alongside `dbus-daemon`; Cocoa-only
@@ -174,7 +174,7 @@ triggers normal configuration. Incremental builds retain the same directory.
 Runtime preparation uses `python3 scripts/prepare-runtime.py`: the official
 builders run only when the pinned upstream revision/repository, builder code,
 compiler/toolchain fingerprint or an artifact hash changes. A failed build does
-not publish a cache hit. The Unix runtime builder also supplies pinned `7zz`.
+not publish a cache hit. The builders also prepare the pinned reference client.
 `--skip-runtime` on verify uses the existing runtime instead. When the prepared
 module exists, `build.sh` configures its exact path, replacing a stale cached
 system module. The sibling upstream checkout stays read-only.

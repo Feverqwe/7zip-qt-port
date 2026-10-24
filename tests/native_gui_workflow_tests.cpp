@@ -154,7 +154,7 @@ class NativeGUIWorkflowTests final : public QObject {
 
   private slots:
     void initTestCase() {
-        engine = QStandardPaths::findExecutable("7zz");
+        engine = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine.isEmpty());
         QVERIFY(QFileInfo::exists(QString::fromUtf8(NATIVE_GUI_EXECUTABLE)));
     }

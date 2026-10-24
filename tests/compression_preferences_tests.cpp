@@ -1,4 +1,5 @@
 #include "createarchivedialog.h"
+#include "source_creation_fixture.h"
 #include <QSettings>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -188,14 +189,12 @@ class CompressionPreferencesTests final : public QObject {
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString target = dir_.filePath("restored.zip");
-        backend.create(target, {source_}, {}, false, zip);
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, target, {source_}, {}, false, zip), S_OK);
         QProcess process;
-        process.start("7zz", {"t", "--", target});
+        process.start("7z", {"t", "--", target});
         QVERIFY(process.waitForFinished(15000));
         QCOMPARE(process.exitCode(), 0);
-        process.start("7zz", {"x", "-o" + dir_.filePath("restored-out"), "--", target});
+        process.start("7z", {"x", "-o" + dir_.filePath("restored-out"), "--", target});
         QVERIFY(process.waitForFinished(15000));
         QCOMPARE(process.exitCode(), 0);
         QFile output(dir_.filePath("restored-out/" + QFileInfo(source_).fileName()));

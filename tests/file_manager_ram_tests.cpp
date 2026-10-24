@@ -74,7 +74,7 @@ class FileManagerRamTests final : public QObject {
         QFETCH(bool, broken);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
-        const QString engine = QStandardPaths::findExecutable("7zz");
+        const QString engine = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine.isEmpty());
         const QString first = QStringLiteral("первый 空 with spaces.txt");
         const QString second = QStringLiteral("второй 空 with spaces.txt");

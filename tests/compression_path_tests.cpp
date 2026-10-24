@@ -2,6 +2,7 @@
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 #include <QScopeGuard>
 #include <QScrollArea>
 #include <QSettings>
@@ -395,16 +396,15 @@ class CompressionPathTests final : public QObject {
                  dir_.filePath(QStringLiteral("готовый архив.7z")));
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(dialog.target(), dialog.sources(), {}, false, dialog.compressionOptions());
-        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 30000);
-        const QList<QVariant> created = finished.takeFirst();
-        QVERIFY2(created.at(0).toBool(), qPrintable(created.at(1).toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, dialog.target(), dialog.sources(), {},
+                                               false, dialog.compressionOptions()),
+                 S_OK);
         QProcess process;
-        process.start("7zz", {"t", "--", dialog.target()});
+        process.start("7z", {"t", "--", dialog.target()});
         QVERIFY(process.waitForFinished(30000));
         QCOMPARE(process.exitCode(), 0);
         const QString output = dir_.filePath("extracted");
-        process.start("7zz", {"x", "-o" + output, "--", dialog.target()});
+        process.start("7z", {"x", "-o" + output, "--", dialog.target()});
         QVERIFY(process.waitForFinished(30000));
         QCOMPARE(process.exitCode(), 0);
         QFile extracted(QDir(output).filePath(QFileInfo(source_).fileName()));

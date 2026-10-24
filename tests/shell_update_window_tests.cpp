@@ -62,309 +62,91 @@ class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSup
         QSKIP("Official native runtime unavailable");
 #else
         _module = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
-        _engine = QStandardPaths::findExecutable("7zz");
+        _engine = QStandardPaths::findExecutable("7z");
         QVERIFY(!_engine.isEmpty());
         ArchiveCodecCatalog probe(_module, 0);
         QCOMPARE(probe.result(), S_OK);
         _version = probe.version();
 #endif
     }
-    void actualPopupWritesAndPreservesFailedSelection_data() {
+    void popupAndToolbarPassBoundSelectionToOperationGui_data() {
         QTest::addColumn<QString>("type");
-        QTest::addColumn<bool>("broken");
-        QTest::newRow("7z") << QString("7z") << false;
-        QTest::newRow("zip") << QString("zip") << false;
-        QTest::newRow("sha256") << QString("hash") << false;
-        QTest::newRow("broken-existing-7z") << QString("7z") << true;
-        QTest::newRow("modal-success") << QString("modal") << false;
-        QTest::newRow("modal-broken-existing") << QString("modal") << true;
-        QTest::newRow("modal-cancel") << QString("cancel") << false;
-        QTest::newRow("toolbar-success") << QString("toolbar") << false;
-        QTest::newRow("program-menu-7z") << QString("program-7z") << false;
-        QTest::newRow("program-menu-modal") << QString("program-modal") << false;
-        QTest::newRow("program-menu-cancel") << QString("program-cancel") << false;
-        QTest::newRow("program-menu-broken-existing") << QString("program-7z") << true;
-        QTest::newRow("toolbar-broken-existing") << QString("toolbar") << true;
-        QTest::newRow("toolbar-cancel") << QString("toolbar-cancel") << false;
-        QTest::newRow("toolbar-update-existing") << QString("toolbar-update") << false;
-        QTest::newRow("toolbar-new-parent") << QString("toolbar-nested") << false;
-        QTest::newRow("toolbar-new-parent-cancel") << QString("toolbar-nested-cancel") << false;
-        QTest::newRow("toolbar-sfx") << QString("toolbar-sfx") << false;
-        QTest::newRow("toolbar-sfx-cancel") << QString("toolbar-sfx-cancel") << false;
-        QTest::newRow("toolbar-sfx-broken-existing") << QString("toolbar-sfx") << true;
-        QTest::newRow("toolbar-sfx-protected") << QString("toolbar-sfx-protected") << false;
-        QTest::newRow("toolbar-sfx-volumes") << QString("toolbar-sfx-volumes") << false;
-        QTest::newRow("toolbar-sfx-volumes-cancel")
-            << QString("toolbar-sfx-volumes-cancel") << false;
-        for (const QString &format : {"7z", "zip", "gzip", "bzip2", "xz", "tar", "wim"}) {
-            QTest::newRow(qPrintable("toolbar-create-" + format))
-                << "toolbar-create-" + format << false;
-            QTest::newRow(qPrintable("toolbar-create-" + format + "-cancel"))
-                << "toolbar-create-" + format + "-cancel" << false;
-        }
+        for (const QString &type :
+             {"7z", "zip", "hash", "modal", "toolbar", "program-7z", "program-modal"})
+            QTest::newRow(qPrintable(type)) << type;
     }
-    void actualPopupWritesAndPreservesFailedSelection() {
+    void popupAndToolbarPassBoundSelectionToOperationGui() {
         QFETCH(QString, type);
-        QFETCH(bool, broken);
         QTemporaryDir fixture;
         CCurrentDirectory guard;
-        QString requestedFormat = type.startsWith("toolbar-create-") ? type.mid(15) : QString();
-        if (requestedFormat.endsWith("-cancel"))
-            requestedFormat.chop(7);
-        QString name = QStringLiteral("данные 空 with spaces.bin");
-#ifdef _WIN32
-        // Original gzip headers use CP_ACP for the stored leaf name.
-        if (requestedFormat == "gzip")
-            name = "input with spaces.bin";
-#endif
-        const bool toolbar = type.startsWith("toolbar");
-        const bool program = type.startsWith("program");
-        const bool cancelled = type == "cancel" || type.endsWith("-cancel");
-        const bool modal = type == "modal" || type == "cancel" || toolbar ||
-                           type == "program-modal" || type == "program-cancel";
-        QString target = type == "hash" ? name + ".sha256"
-                                        : name.chopped(4) + '.' + (modal || program ? "7z" : type);
-        if (!requestedFormat.isEmpty()) {
-            const auto catalog = ArchiveCodecCatalog(_module, _version);
-            const int index = catalog.formatIndex(requestedFormat);
-            QVERIFY(index >= 0);
-            target = name + '.' +
-                     ToQString(catalog.nativeCodecs().Formats[unsigned(index)].GetMainExt());
-        }
-        const bool nested = type.startsWith("toolbar-nested");
-        const QString outputFolder = QStringLiteral("новая 空 папка with spaces");
-        if (nested)
-            target = outputFolder + '/' + target;
-        const bool sfx = type.startsWith("toolbar-sfx");
-        const bool sfxVolumes = type.contains("sfx-volumes");
-        const bool protectedSfx = type == "toolbar-sfx-protected";
-        const QByteArray bytes = sfxVolumes ? QByteArray(240 << 10, 'a') : QByteArray("abc");
-        if (sfx) {
-            target = name.chopped(4);
-#ifdef _WIN32
-            target += ".exe";
-#endif
-        }
-        QVERIFY(SourceExtractFixture::writeFile(fixture.filePath(name), bytes));
-        if (type == "toolbar-update") {
-            QVERIFY(SourceExtractFixture::writeFile(fixture.filePath(name), "old"));
-            QProcess create;
-            create.setWorkingDirectory(fixture.path());
-            create.start(_engine, {"a", "-t7z", "--", target, name});
-            QVERIFY(create.waitForFinished(10000));
-            QCOMPARE(create.exitCode(), 0);
-            QVERIFY(SourceExtractFixture::writeFile(fixture.filePath(name), "abc"));
-        }
-        if (broken)
-            QVERIFY(SourceExtractFixture::writeFile(fixture.filePath(target), "sentinel"));
+        const QString name = QStringLiteral("данные 空 with spaces.bin");
+        const QString source = fixture.filePath(name);
+        QVERIFY(SourceExtractFixture::writeFile(source, "abc"));
         QVERIFY(QDir::setCurrent(fixture.path()));
         prepareSettings();
-        ArchiveBackend backend(nullptr, _engine);
+        ControlledBackend backend;
         QCOMPARE(backend.loadCodecCatalog(_module, _version), S_OK);
         MainWindow window(&backend);
         window.show();
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *view = table(window);
         QTRY_VERIFY(rowNamed(window, name) >= 0);
         QTRY_VERIFY(view->isEnabled());
         view->setCurrentCell(rowNamed(window, name), 0);
         view->selectRow(rowNamed(window, name));
-        QSignalSpy processes(&backend, &ArchiveBackend::engineStarted);
-        QStringList errors;
-        QTimer dismissal;
-        dialogs_.connectResponder(dismissal, &window, [&] {
-            if (auto *dialog = qobject_cast<CreateArchiveDialog *>(dialogs_.activeDialog())) {
-                const auto dismissOnFailure = qScopeGuard([&] {
-                    if (dialog->isVisible())
-                        dialog->reject();
-                });
-                QVERIFY(QTest::qWaitForWindowActive(dialog));
-                QCOMPARE(dialog->sources(), QStringList{fixture.filePath(name)});
-                if (nested)
-                    dialog->findChild<QLineEdit *>("archiveName")
-                        ->setText(fixture.filePath(target));
-                if (sfx) {
-                    ExpandArchiveSections(*dialog);
-                    auto *control = dialog->findChild<QCheckBox *>("archiveSfx");
-                    if (!control || !control->isEnabled())
-                        dialog->reject();
-                    QVERIFY(control && control->isEnabled());
-                    control->setChecked(true);
-                    dialog->findChild<QLineEdit *>("archiveName")
-                        ->setText(fixture.filePath(target));
-                    QVERIFY(dialog->sourceInfo().SFXMode);
-                    if (protectedSfx) {
-                        dialog->findChild<QLineEdit *>("archivePassword")
-                            ->setText("fixture-password");
-                        dialog->findChild<QLineEdit *>("archivePasswordConfirmation")
-                            ->setText("fixture-password");
-                        dialog->findChild<QCheckBox *>("archiveEncryptHeaders")->setChecked(true);
-                    }
-                    if (sfxVolumes) {
-                        auto *level = dialog->findChild<QComboBox *>("compressionLevel");
-                        level->setCurrentIndex(level->findData(0u));
-                        dialog->findChild<QComboBox *>("archiveVolumeSize")->setEditText("100K");
-                    }
-                    dialog->resize(cancelled ? QSize(640, 480) : QSize(760, 720));
-                    QCoreApplication::processEvents();
-                    QVERIFY(UiInspection::writeReport(*dialog, "source-" + type));
-                    auto *scroll = dialog->findChild<QScrollArea *>("archiveOptionsScrollArea");
-                    QVERIFY(scroll);
-                    scroll->ensureWidgetVisible(control);
-                    QCoreApplication::processEvents();
-                    QVERIFY(UiInspection::fullyVisible(*control, *dialog));
-                    QVERIFY(UiInspection::writeReport(*dialog, "source-" + type + "-bottom"));
-                    if (protectedSfx) {
-                        auto *headers = dialog->findChild<QCheckBox *>("archiveEncryptHeaders");
-                        scroll->ensureWidgetVisible(headers);
-                        QCoreApplication::processEvents();
-                        QVERIFY(UiInspection::fullyVisible(*headers, *dialog));
-                        QVERIFY(UiInspection::writeReport(*dialog, "source-" + type + "-password"));
-                    } else {
-                        QVERIFY(
-                            !dialog->findChild<QCheckBox *>("archivePasswordEnabled")->isChecked());
-                        QVERIFY(dialog->password().isEmpty());
-                    }
-                }
-                if (!requestedFormat.isEmpty()) {
-                    auto *format = dialog->findChild<QComboBox *>("archiveFormat");
-                    format->setCurrentText(requestedFormat);
-                    QCOMPARE(format->currentText(), requestedFormat);
-                    dialog->findChild<QLineEdit *>("archiveName")
-                        ->setText(fixture.filePath(target));
-                    dialog->resize(cancelled ? QSize(640, 480) : QSize(760, 720));
-                    QCoreApplication::processEvents();
-                    QVERIFY(UiInspection::writeReport(*dialog, QString("source-toolbar-add-%1-%2")
-                                                                   .arg(requestedFormat)
-                                                                   .arg(dialog->width())));
-                }
-                if (cancelled)
-                    dialog->reject();
-                else
-                    dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
-                return;
-            }
-            if (auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog())) {
-                errors.append(box->text());
-                box->accept();
-                return;
-            }
-            if (auto *progress = dynamic_cast<CProgressDialog *>(dialogs_.activeDialog())) {
-                auto *button = progress->findChild<QPushButton *>("IDCANCEL");
-                if (button && button->property("languageID").toUInt() == IDS_CLOSE)
-                    button->click();
-            }
-        });
-        dismissal.start(5);
-        bool invoked = false;
+        const bool toolbar = type == "toolbar";
+        const bool modal = type.endsWith("modal") || toolbar;
+        const bool program = type.startsWith("program-");
+        const QString verb = modal            ? "SevenZipCompress"
+                             : type == "hash" ? "SevenZip.Checksum.Generate.SHA256"
+                             : type == "zip"  ? "SevenZipCompressToZip"
+                                              : "SevenZipCompressTo7z";
         if (toolbar) {
-            auto *add = action(window, "toolbarAddAction");
-            QVERIFY(add->isEnabled());
-            invoked = true;
+            QVERIFY(action(window, "toolbarAddAction")->isEnabled());
             view->setFocus();
-            QTRY_VERIFY(view->hasFocus());
             PanelKeys::command(view, Qt::Key_A, Qt::ControlModifier | Qt::ShiftModifier);
         } else if (program) {
             auto *menu = window.findChild<QMenu *>("fileMenu");
             QVERIFY(menu);
             QVERIFY(QMetaObject::invokeMethod(menu, "aboutToShow", Qt::DirectConnection));
-            const QString verb = modal ? "SevenZipCompress" : "SevenZipCompressTo7z";
             auto *command = findVerb(*menu, verb);
             QVERIFY(command && command->isEnabled());
-            invoked = true;
             command->trigger();
-            // Source ExecuteFileCommand releases the context after invoke.
-            // The retained QAction must neither dangle nor re-invoke it.
-            command->trigger();
+            command->trigger(); // A released menu command must be safe to invoke again.
         } else {
-            QTimer::singleShot(0, [&] {
+            bool invoked = false;
+            QTimer::singleShot(0, &window, [&] {
                 auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
                 QVERIFY(menu);
-                const QString verb = modal            ? "SevenZipCompress"
-                                     : type == "hash" ? "SevenZip.Checksum.Generate.SHA256"
-                                     : type == "7z"   ? "SevenZipCompressTo7z"
-                                                      : "SevenZipCompressToZip";
-                auto *action = findVerb(*menu, verb);
-                QVERIFY2(action, qPrintable(verb));
-                QVERIFY(action->isEnabled());
+                auto *command = findVerb(*menu, verb);
+                QVERIFY(command && command->isEnabled());
                 menu->close();
                 invoked = true;
-                action->trigger();
+                command->trigger();
             });
             QVERIFY(QMetaObject::invokeMethod(
                 view, "customContextMenuRequested", Qt::DirectConnection,
                 Q_ARG(QPoint, view->visualItemRect(view->item(view->currentRow(), 0)).center())));
+            QVERIFY(invoked);
         }
-        dismissal.stop();
-        QVERIFY(invoked);
-        QCOMPARE(processes.size(), 0);
-        QCOMPARE(view->selectionModel()->selectedRows().size(),
-                 toolbar || broken || cancelled ? 1 : 0);
-        QCOMPARE(SourceExtractFixture::readFile(fixture.filePath(name)), bytes);
+        QTRY_COMPARE(backend.GuiRequests.size(), 1);
+        const auto &job = backend.GuiRequests.first();
+        QCOMPARE(job.Operation, QtOperationMessage::Command::Compress);
+        QCOMPARE(job.ShowDialog, modal);
+        if (!modal)
+            QCOMPARE(job.ArchiveType, type == "hash"  ? QString("hash")
+                                      : type == "zip" ? QString("zip")
+                                                      : QString("7z"));
+        QCOMPARE(job.Paths.size(), 1);
+        const QDir base(fixture.path());
+        QCOMPARE(QDir::cleanPath(base.absoluteFilePath(job.Paths.first()))
+                     .normalized(QString::NormalizationForm_C),
+                 source.normalized(QString::NormalizationForm_C));
+        QTRY_VERIFY(action(window, "toolbarAddAction")->isEnabled());
+        QCOMPARE(view->selectionModel()->selectedRows().size(), toolbar ? 1 : 0);
+        QCOMPARE(SourceExtractFixture::readFile(source), QByteArray("abc"));
         QVERIFY(!backend.busy());
-        if (cancelled) {
-            QVERIFY(errors.isEmpty());
-            QVERIFY(!QFileInfo::exists(fixture.filePath(target)));
-            if (nested)
-                QVERIFY(!QFileInfo::exists(fixture.filePath(outputFolder)));
-            if (sfxVolumes)
-                QVERIFY(QDir(fixture.path()).entryList({"*.001", "*.002"}, QDir::Files).isEmpty());
-        } else if (broken) {
-            QCOMPARE(errors.size(), 1);
-            QCOMPARE(SourceExtractFixture::readFile(fixture.filePath(target)),
-                     QByteArray("sentinel"));
-        } else {
-            QVERIFY(errors.isEmpty());
-            QTRY_VERIFY(rowNamed(window, nested ? outputFolder : target) >= 0);
-            QProcess verify;
-            verify.setWorkingDirectory(fixture.path());
-            QString archive = target;
-            if (sfxVolumes) {
-#ifdef _WIN32
-                archive.chop(4); // Source GetFinalVolPath replaces .exe with .7z.
-#endif
-                archive += ".7z.001";
-                QVERIFY(QFileInfo::exists(fixture.filePath(archive.chopped(3) + "002")));
-                QCOMPARE(
-                    SourceExtractFixture::readFile(fixture.filePath(target)),
-                    SourceExtractFixture::readFile(backend.codecCatalog()->sfxModule().path()));
-            }
-            QStringList testArgs{"t", "--", archive};
-            if (protectedSfx)
-                testArgs.prepend("-pfixture-password");
-            verify.start(_engine, testArgs);
-            QVERIFY(verify.waitForFinished(10000));
-            QCOMPARE(verify.exitCode(), 0);
-            if (toolbar) {
-                const QString output = fixture.filePath("verify output");
-                QStringList extractArgs{"x", "-y", "-o" + output, "--", archive};
-                if (protectedSfx)
-                    extractArgs.prepend("-pfixture-password");
-                verify.start(_engine, extractArgs);
-                QVERIFY(verify.waitForFinished(10000));
-                QCOMPARE(verify.exitCode(), 0);
-                QCOMPARE(SourceExtractFixture::readFile(QDir(output).filePath(name)), bytes);
-            }
-            if (sfx) {
-                QVERIFY(QFileInfo(fixture.filePath(target)).isExecutable());
-                const QString output = fixture.filePath("native SFX output");
-                QStringList args{"x", "-y", "-o" + output};
-#ifdef _WIN32
-                args.removeFirst(); // Original SfxWin accepts -o/-y/-p, without command.
-#endif
-                if (protectedSfx)
-                    args.append("-pfixture-password");
-                verify.start(fixture.filePath(target), args);
-                QVERIFY(verify.waitForFinished(15000));
-                QCOMPARE(verify.exitStatus(), QProcess::NormalExit);
-                QVERIFY2(verify.exitCode() == 0,
-                         qPrintable(QString::fromUtf8(verify.readAllStandardOutput() +
-                                                      verify.readAllStandardError())));
-                QCOMPARE(SourceExtractFixture::readFile(QDir(output).filePath(name)), bytes);
-            }
-        }
     }
+
     void updateCommandGeometry_data() {
         QTest::addColumn<QString>("language");
         QTest::addColumn<QSize>("size");

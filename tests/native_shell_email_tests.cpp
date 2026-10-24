@@ -67,7 +67,7 @@ class NativeShellEmailTests final : public QObject, protected MainWindowTestSupp
   private slots:
     void initTestCase() {
         module = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
-        engine = QStandardPaths::findExecutable("7zz");
+        engine = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine.isEmpty());
         ArchiveCodecCatalog probe(module, 0);
         QCOMPARE(probe.result(), S_OK);
@@ -135,7 +135,6 @@ class NativeShellEmailTests final : public QObject, protected MainWindowTestSupp
         auto *view = table(window);
         QTRY_VERIFY(rowNamed(window, name) >= 0);
         view->selectRow(rowNamed(window, name));
-        QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
         QStringList errors;
         QTimer dismissal;
         connect(&dismissal, &QTimer::timeout, [&] {
@@ -173,7 +172,6 @@ class NativeShellEmailTests final : public QObject, protected MainWindowTestSupp
         menu->hide();
         email->trigger();
         dismissal.stop();
-        QCOMPARE(started.size(), 0);
         QCOMPARE(QDir::currentPath(), fixture.path());
         QCOMPARE(SourceExtractFixture::readFile(fixture.filePath(name)), bytes);
         if (!cancel && !missing)

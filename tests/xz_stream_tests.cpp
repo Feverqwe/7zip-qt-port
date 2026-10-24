@@ -130,9 +130,9 @@ class XzStreamTests final : public QObject {
                       {QString::fromUtf8(SEVENZIP_XZ_FIXTURE), kind, path,
                        runtimeFile(
 #ifdef Q_OS_WIN
-                           "7zz.exe"
+                           "7z.exe"
 #else
-                           "7zz"
+                           "7z"
 #endif
                            )});
         QVERIFY(process.waitForFinished(10000));

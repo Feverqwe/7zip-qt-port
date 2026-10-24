@@ -51,7 +51,7 @@ class ProcessControl final {
 bool CreateArchive(const QString &directory, const QString &archive, const QString &name) {
     QProcess process;
     process.setWorkingDirectory(directory);
-    process.start(QStandardPaths::findExecutable("7zz"), {"a", "-tzip", "--", archive, name});
+    process.start(QStandardPaths::findExecutable("7z"), {"a", "-tzip", "--", archive, name});
     return process.waitForFinished(10000) && process.exitCode() == 0;
 }
 
@@ -230,7 +230,7 @@ class NativeAssociationTests final : public QObject {
         const QString module = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
         ArchiveCodecCatalog catalog(module, 0);
         QCOMPARE(catalog.result(), S_OK);
-        ArchiveBackend backend(nullptr, QStandardPaths::findExecutable("7zz"));
+        ArchiveBackend backend(nullptr, QStandardPaths::findExecutable("7z"));
         QCOMPARE(backend.loadCodecCatalog(module, catalog.version()), S_OK);
         MainWindow window(&backend);
         window.show();

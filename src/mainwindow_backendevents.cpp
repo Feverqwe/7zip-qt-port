@@ -3,10 +3,13 @@
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "Windows/ErrorMsg.h"
 #include "mainwindow.h"
 #include "qtapppresentation.h"
 #include "qtlangcontrols.h"
+#include "qttrashservice.h"
 #include <QCoreApplication>
+#include <QScopedValueRollback>
 
 void MainWindow::connectBackend() {
     connect(backend_, &ArchiveBackend::overwriteRequired, this,
@@ -100,7 +103,7 @@ void MainWindow::backendFinished(bool ok, const QString &message, HRESULT result
                      message;
     if (archiveMoveStage_ != ArchiveMoveStage::None) {
         archiveMoveStage_ = ArchiveMoveStage::None;
-        archiveMovePaths_.clear();
+        archiveMoveIndices_.Clear();
     }
     if (!ok)
         archivePassword_.clear();
@@ -123,11 +126,20 @@ void MainWindow::backendFinished(bool ok, const QString &message, HRESULT result
 bool MainWindow::startPendingArchiveMove(bool ok) {
     if (archiveMoveStage_ == ArchiveMoveStage::Extracting && ok) {
         archiveMoveStage_ = ArchiveMoveStage::Removing;
-        updatingArchive_ = true;
         closeProgressDialog();
-        begin(QCoreApplication::translate("mainwindow_backendevents", "Deleting moved entries"),
-              archive_);
-        backend_->remove(archive_, archiveMovePaths_);
+        auto &panel = app_.GetFocusedPanel();
+        CSelectedState selected;
+        HRESULT result;
+        {
+            QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
+            result =
+                panel.DeleteItems(false, *trashService_, selected, &archiveMoveIndices_, false);
+        }
+        app_.QtOperations().End();
+        renderBoundFolder();
+        panel.RestoreLoadedSelection(selected);
+        backendFinished(result == S_OK, QString::fromWCharArray(HResultToMessage(result)), result,
+                        result != S_OK);
         return true;
     }
     return false;

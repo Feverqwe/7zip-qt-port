@@ -1,5 +1,6 @@
 #include "archivecodeccatalog.h"
 #include "fixtures/drag_event_position.h"
+#include "native_archive_fixture.h"
 #include "window_state_support.h"
 
 class DragDropAddUiTests final : public QObject {
@@ -37,9 +38,7 @@ class DragDropAddUiTests final : public QObject {
             S_OK);
 #endif
         QSignalSpy created(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {input.fileName()});
-        QVERIFY(created.wait(30000));
-        QVERIFY(created.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {input.fileName()}));
         if (!valid) {
             QFile damaged(archive);
             QVERIFY(damaged.open(QIODevice::WriteOnly | QIODevice::Truncate));

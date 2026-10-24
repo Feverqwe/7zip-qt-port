@@ -231,7 +231,7 @@ class CProgressDialog : public CQtProgressDialog {
     bool eventFilter(QObject *watched, QEvent *event) override;
 
   protected:
-    // External 7zz reports a percentage without byte counters. Do not invent
+    // Percentage-only transports lack byte counters. Do not invent
     // byte/file totals; apply only to the progress/title presentation fallback.
     std::atomic<int> TransportPercent{-1};
     IQtProgressTransport *_transport = nullptr;

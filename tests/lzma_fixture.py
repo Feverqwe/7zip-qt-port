@@ -44,7 +44,7 @@ def volume(kind):
     elif kind == "props-zero":
         image = member(payload, zero_props=True)
     elif kind == "props-max":
-        # Pinned 7zz: 7z container, LZMA:lc=8:lp=4:pb=4:d=4k, mhc=off/ms=off.
+        # Pinned 7z: 7z container, LZMA:lc=8:lp=4:pb=4:d=4k, mhc=off/ms=off.
         # The pack stream is prefixed with its alone properties and known size.
         image = bytes.fromhex("e00010000020000000000000000020ee16000000")
     elif kind in ("empty", "empty-known"):

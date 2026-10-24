@@ -65,7 +65,7 @@ class ArchiveDeviceTests final : public QObject {
         ArchiveCodecProbe probe;
         bool done = false;
         QVERIFY(probe.Start(
-            engine_, module,
+            module,
             [&](auto result) {
                 catalog_ = result.catalog;
                 done = true;

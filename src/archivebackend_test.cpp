@@ -32,10 +32,11 @@ void ArchiveBackend::startNativeRead(
         : job == Job::SourceExtract ? QtArchiveReadOperation::Kind::ExtractEntry
         : job == Job::Extract       ? QtArchiveReadOperation::Kind::ExtractDirectory
                                     : QtArchiveReadOperation::Kind::Test,
-        format, configuredEngine_);
+        format, configuredModule_);
     readOperation_->Directory = std::move(directory);
     if (job == Job::SourceExtract)
-        readOperation_->Output = {sourceExtractEntry_, createTemporary_, sourceExtractAltStream_};
+        readOperation_->Output = {sourceExtractEntry_, sourceExtractOutput_,
+                                  sourceExtractAltStream_};
     const quint64 generation = ++readGeneration_;
     const quint64 progressGeneration = beginWorkerProgress();
     readOperation_->Progress = [this, progressGeneration](quint64 completed, quint64 total,
@@ -102,9 +103,6 @@ void ArchiveBackend::finishReadOperation() {
     if (result != E_ABORT && operation->catalog() && operation->catalog()->result() == S_OK &&
         !codecCatalog()) {
         std::atomic_store(&codecCatalog_, operation->catalog());
-        const QString engine = operation->catalog()->runtimeEngine();
-        if (!engine.isEmpty())
-            process_->setProgram(engine);
     }
     if (result != E_ABORT && !operation->CatalogDiagnostic.isEmpty()) {
         emit outputReceived(operation->CatalogDiagnostic);

@@ -1,3 +1,4 @@
+#include "archivecodelocation.h"
 #include "fixtures/operation_kill.h"
 #include "fixtures/operation_parent.h"
 #include "fixtures/operation_program.h"
@@ -78,8 +79,7 @@ class OperationExtractionTests final : public QObject {
         QVERIFY(QDir().mkpath(deployment));
         const auto module = QStringLiteral(SEVENZIP_CODEC_MODULE);
         QVERIFY(QFile::copy(module, QDir(deployment).filePath(QFileInfo(module).fileName())));
-        Environment engine("SEVENZIP_ENGINE_PATH",
-                           QDir(deployment).filePath("unavailable console"));
+        Environment engine("SEVENZIP_CODEC_MODULE_PATH", FindArchiveModule(deployment));
 #endif
         const auto result =
             Run(NativeOperationProgram(SEVENZIP_NATIVE_GUI), Extract(archive, output));
@@ -152,7 +152,7 @@ class OperationExtractionTests final : public QObject {
         QVERIFY(writeFile(directory.filePath("z-existing.txt"), "incoming replacement"));
         QProcess create;
         create.setWorkingDirectory(directory.path());
-        create.start(QStandardPaths::findExecutable("7zz"),
+        create.start(QStandardPaths::findExecutable("7z"),
                      {"a", "-tzip", "cancel.zip", "a-new.txt", "z-existing.txt"});
         QVERIFY(create.waitForFinished(10000));
         QCOMPARE(create.exitCode(), 0);
@@ -179,7 +179,7 @@ class OperationExtractionTests final : public QObject {
         QVERIFY(writeFile(directory.filePath("bad.txt"), bad));
         QProcess create;
         create.setWorkingDirectory(directory.path());
-        create.start(QStandardPaths::findExecutable("7zz"),
+        create.start(QStandardPaths::findExecutable("7z"),
                      {"a", "-tzip", "-mx=0", "partial.zip", "good.txt", "bad.txt"});
         QVERIFY(create.waitForFinished(10000));
         QCOMPARE(create.exitCode(), 0);
@@ -214,7 +214,7 @@ class OperationExtractionTests final : public QObject {
         QVERIFY(writeFile(directory.filePath("secret.txt"), "protected payload"));
         QProcess create;
         create.setWorkingDirectory(directory.path());
-        create.start(QStandardPaths::findExecutable("7zz"),
+        create.start(QStandardPaths::findExecutable("7z"),
                      {"a", "-t7z", "-pfixture-password", "-mhe=on", "protected.7z", "secret.txt"});
         QVERIFY(create.waitForFinished(10000));
         QCOMPARE(create.exitCode(), 0);
@@ -309,7 +309,7 @@ class OperationExtractionTests final : public QObject {
         const auto archive = makeArchive(directory.path(), "untrusted member bytes");
         QVERIFY(!archive.isEmpty());
         QProcess rename;
-        rename.start(QStandardPaths::findExecutable("7zz"),
+        rename.start(QStandardPaths::findExecutable("7z"),
                      {"rn", archive, kName, "../outside.txt"});
         QVERIFY(rename.waitForFinished(10000));
         QCOMPARE(rename.exitCode(), 0);

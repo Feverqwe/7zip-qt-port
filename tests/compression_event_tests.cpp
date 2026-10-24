@@ -5,6 +5,7 @@
 #include "createarchivedialog.h"
 #include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -258,9 +259,8 @@ class CompressionEventTests final : public QObject {
         QCOMPARE(backend.loadCodecCatalog(module_, catalog_->version()), S_OK);
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString target = fixture_.filePath("event " + language + " 空.xz");
-        backend.create(target, {input_}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, target, {input_}, {}, false, options),
+                 S_OK);
         QList<ArchiveEntry> entries;
         connect(&backend, &ArchiveBackend::entriesReady, this,
                 [&](const QList<ArchiveEntry> &value) { entries = value; });
@@ -284,17 +284,14 @@ class CompressionEventTests final : public QObject {
         auto invalid = options;
         invalid.NumThreads = 999999;
         done.clear();
-        backend.create(failed, {input_}, {}, false, invalid);
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY(!done.first()[0].toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, failed, {input_}, {}, false, invalid) !=
+                S_OK);
         QVERIFY(!QFileInfo::exists(failed));
         const QString cancelled = fixture_.filePath("cancel " + language + ".xz");
         done.clear();
-        backend.create(cancelled, {input_}, {}, false, options);
-        backend.cancel();
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY(!done.first()[0].toBool());
-        QCOMPARE(backend.lastResult(), E_ABORT);
+        QCOMPARE(
+            SourceCreationFixture::Create(backend, cancelled, {input_}, {}, false, options, true),
+            E_ABORT);
         QVERIFY(!QFileInfo::exists(cancelled));
         QCOMPARE(contents(input_), bytes_);
     }

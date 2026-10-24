@@ -1,3 +1,4 @@
+#include "archivecodelocation.h"
 #include "fixtures/operation_kill.h"
 #include "fixtures/operation_parent.h"
 #include "fixtures/operation_temp_cleanup.h"
@@ -37,7 +38,8 @@ class OperationBenchmarkTests final : public QObject {
         const QString module = QStringLiteral(SEVENZIP_CODEC_MODULE);
         QVERIFY(QFile::copy(module, directory.filePath(QFileInfo(module).fileName())));
 #endif
-        ScopedTestEnvironment console("SEVENZIP_ENGINE_PATH", directory.filePath("no console"));
+        ScopedTestEnvironment console("SEVENZIP_CODEC_MODULE_PATH",
+                                      FindArchiveModule(directory.path()));
         ScopedTestEnvironment bounded("SEVENZIP_OPERATION_BENCHMARK_PROFILE", profile);
         const auto report = directory.filePath("benchmark.json");
         ScopedTestEnvironment output("SEVENZIP_OPERATION_BENCHMARK_REPORT", report);

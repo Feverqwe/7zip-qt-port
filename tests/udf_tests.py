@@ -33,7 +33,7 @@ class UdfTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-udf-runtime-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX,
+        for name in ("7z" + SUFFIX,
                      "7z.dll" if sys.platform == "win32" else "7z.so"):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
         (cls.runtime / "Formats").mkdir()
@@ -58,7 +58,7 @@ class UdfTests(unittest.TestCase):
     def test_allocation_bytes(self):
         for kind in CASES:
             image, files = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     result = self.run_image(engine, image)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -71,7 +71,7 @@ class UdfTests(unittest.TestCase):
         for kind in ("recorded-outside", "bad-partition", "continuation",
                      "inline-length-mismatch"):
             image, _ = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     self.assertNotEqual(self.run_image(engine, image).returncode, 0)
 
@@ -88,11 +88,6 @@ class UdfTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual(result.stdout, expected, name)
 
-    def test_standalone_metadata_bootstrap_bounds(self):
-        for kind in ("metadata-hole", "metadata-outside"):
-            image, _ = volume(kind)
-            with self.subTest(kind=kind):
-                self.assertNotEqual(self.run_image("7zz", image).returncode, 0)
 
     def test_damaged_continuation_chains(self):
         for kind in ("ad-cycle", "ad-limit-17", "ad-outside", "ad-bad-partition",
@@ -161,7 +156,7 @@ class UdfTests(unittest.TestCase):
     def test_deep_directory_streams(self):
         for kind in TRAVERSAL_CASES:
             image, files = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     result = self.run_image(engine, image)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -170,7 +165,7 @@ class UdfTests(unittest.TestCase):
                         self.assertEqual(result.returncode, 0, result.stderr)
                         self.assertEqual(result.stdout, expected)
         for kind in TRAVERSAL_BAD:
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     self.assertEqual(self.run_image(engine, volume(kind)[0]).returncode, 2)
 

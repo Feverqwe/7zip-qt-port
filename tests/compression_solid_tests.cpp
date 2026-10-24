@@ -2,6 +2,7 @@
 #include "createarchivedialog.h"
 #include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -112,20 +113,18 @@ class CompressionSolidTests final : public QObject {
         options.SolidBlockSize = blockSize;
         const QString target = dir.filePath("block.7z");
         QSignalSpy done(&backend, &ArchiveBackend::finished);
-        backend.create(target, sources, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, target, sources, {}, false, options), S_OK);
         QProcess process;
-        process.start("7zz", {"l", "-slt", "--", target});
+        process.start("7z", {"l", "-slt", "--", target});
         QVERIFY(process.waitForFinished(15000));
         QCOMPARE(process.exitCode(), 0);
         const QString listing = QString::fromUtf8(process.readAllStandardOutput()).remove('\r');
         QVERIFY2(listing.contains(QString("\nBlocks = %1\n").arg(blocks)), qPrintable(listing));
-        process.start("7zz", {"t", "--", target});
+        process.start("7z", {"t", "--", target});
         QVERIFY(process.waitForFinished(15000));
         QCOMPARE(process.exitCode(), 0);
         const QString extracted = dir.filePath("out");
-        process.start("7zz", {"x", "-o" + extracted, "--", target});
+        process.start("7z", {"x", "-o" + extracted, "--", target});
         QVERIFY(process.waitForFinished(15000));
         QCOMPARE(process.exitCode(), 0);
         for (const QString &source : sources) {
@@ -151,24 +150,16 @@ class CompressionSolidTests final : public QObject {
         const QString target = dir.filePath("invalid.7z");
         options.Level = 0;
         options.Dict64 = UInt64(-1);
-        backend.create(target, {source}, {}, false, options);
-        QCOMPARE(done.size(), 1);
-        QVERIFY(!done.takeFirst()[0].toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, target, {source}, {}, false, options) !=
+                S_OK);
         options.Level = 5;
         options.Method = "Deflate";
         const QString zip = dir.filePath("invalid.zip");
-        backend.create(zip, {source}, {}, false, options);
-        QCOMPARE(done.size(), 1);
-        QVERIFY(!done.takeFirst()[0].toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, zip, {source}, {}, false, options) != S_OK);
         QVERIFY(!QFileInfo::exists(zip));
         options.Method = "LZMA2";
-        backend.create(target, {source}, {}, false, options);
-        QVERIFY(backend.busy());
-        backend.cancel();
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY(!done.first()[0].toBool());
-        QCOMPARE(done.first()[1].toString(), QString("Operation canceled."));
-        QCOMPARE(backend.lastResult(), E_ABORT);
+        QCOMPARE(SourceCreationFixture::Create(backend, target, {source}, {}, false, options, true),
+                 E_ABORT);
         QVERIFY(!QFileInfo::exists(target));
         QVERIFY(QDir(dir.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
     }

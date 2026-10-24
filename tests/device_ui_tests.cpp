@@ -91,7 +91,7 @@ class DeviceUiTests final : public QObject {
         );
         ArchiveCodecProbe probe;
         bool done = false;
-        QVERIFY(probe.Start(engine_, module_, [&](auto result) {
+        QVERIFY(probe.Start(module_, [&](auto result) {
             catalog_ = result.catalog;
             done = true;
         }));

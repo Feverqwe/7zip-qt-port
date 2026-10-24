@@ -18,7 +18,7 @@ class TarTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-tar-runtime-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX,
+        for name in ("7z" + SUFFIX,
                      "7z.dll" if sys.platform == "win32" else "7z.so"):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
 
@@ -35,7 +35,7 @@ class TarTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix="sevenzip-tar-") as temporary:
                 path = Path(temporary) / "образ 空.bin"
                 path.write_bytes(image)
-                for engine in ("7z", "7zz"):
+                for engine in ("7z",):
                     with self.subTest(kind=kind, engine=engine):
                         result = self.command(engine, path, "l", "-slt", *options,
                                               forced=meta["linkdata"])
@@ -55,7 +55,7 @@ class TarTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix="sevenzip-tar-invalid-") as temporary:
                 path = Path(temporary) / "bad.tar"
                 path.write_bytes(image)
-                for engine in ("7z", "7zz"):
+                for engine in ("7z",):
                     with self.subTest(kind=kind, engine=engine):
                         result = self.command(engine, path, "t")
                         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
@@ -64,7 +64,7 @@ class TarTests(unittest.TestCase):
     def test_update_preserves_existing_extensions_and_data(self):
         for kind in ("gnu", "pax", "sparse-extended", "linkdata-directory"):
             original, meta = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine), tempfile.TemporaryDirectory(
                         prefix="sevenzip-tar-update-") as temporary:
                     path = Path(temporary) / "update.tar"

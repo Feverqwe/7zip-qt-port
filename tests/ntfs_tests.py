@@ -1,4 +1,4 @@
-"""Read results and rejection of malformed NTFS through both delivered engines."""
+"""Read results and rejection of malformed NTFS through the delivered dynamic engine."""
 from pathlib import Path
 import shutil
 import subprocess
@@ -23,7 +23,7 @@ class NtfsTests(unittest.TestCase):
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
         core = "7z.dll" if sys.platform == "win32" else "7z.so"
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX, core):
+        for name in ("7z" + SUFFIX, core):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
@@ -105,7 +105,7 @@ class NtfsTests(unittest.TestCase):
     def test_standard_information_layout_and_presence_in_both_engines(self):
         for kind in STANDARD_VALID:
             image, files = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     name = "gamma" if "gamma" in files else "alpha"
                     result = self.run_image(engine, image, "x", name)
@@ -113,7 +113,7 @@ class NtfsTests(unittest.TestCase):
                     self.assertEqual(result.stdout, files[name])
         for kind in STANDARD_BAD:
             image, files = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     result = self.run_image(engine, image, "x", "gamma")
                     if engine == "7z" and kind != "standard-record-total":
@@ -177,8 +177,6 @@ class NtfsTests(unittest.TestCase):
                     self.assertNotEqual(result.returncode, 0)
                     self.assertTrue(complete[name].startswith(result.stdout))
                     self.assertLess(len(result.stdout), len(complete[name]))
-        image, _ = volume("source-prefix")
-        self.assertNotEqual(self.run_image("7zz", image, "l").returncode, 0)
 
     def test_deleted_metadata_does_not_hide_live_files(self):
         from ntfs_deleted_fixture import CASES, UNREADABLE, volume as deleted_volume
@@ -203,10 +201,10 @@ class NtfsTests(unittest.TestCase):
                     self.assertNotEqual(result.returncode, 0)
                     self.assertEqual(result.stdout, b"")
 
-    def test_classic_read_paths_in_both_engines(self):
+    def test_classic_read_paths(self):
         for kind in ("base", "sparse", "hole-first", "initialized", "compressed", "sector4k", "boot-reserved", "backup-boot"):
             image, files = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 for name, expected in files.items():
                     with self.subTest(kind=kind, engine=engine, name=name):
                         result = self.run_image(engine, image, "x", name)
@@ -222,7 +220,7 @@ class NtfsTests(unittest.TestCase):
     def test_runlist_sentinel_overflow_and_signed_deltas(self):
         for kind in ("run-sentinel-overflow", "run-sentinel", "run-negative", "hole-first"):
             image, files = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     result = self.run_image(engine, image, "x", "alpha")
                     if "alpha" in files:
@@ -240,7 +238,7 @@ class NtfsTests(unittest.TestCase):
         for kind in ("mft-list-named-only", "mft-list-nul-name", "mft-list-named-decoy",
                      "mft-list-nul-decoy", "mft-list-nul-extension"):
             image, files = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     result = self.run_image(engine, image, "x", "alpha")
                     if kind.endswith("decoy") or engine == "7z":
@@ -433,12 +431,6 @@ class NtfsTests(unittest.TestCase):
             self.assertEqual(str(link.readlink()), "alpha")
             self.assertEqual(image.read_bytes(), data)
 
-    def test_standalone_refuses_missing_linux_read_features(self):
-        for kind in ("mft-list", "wof-xpress4k", "wof-lzx32k"):
-            with self.subTest(kind=kind):
-                result = self.run_image("7zz", volume(kind)[0], "x", "gamma")
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(result.stdout, b"")
 
     def test_wof_unknown_initialized_data_is_unsupported(self):
         for kind in ("wof-xpress4k-unknown-initialized", "wof-xpress4k-unknown-high-initialized",
@@ -456,7 +448,7 @@ class NtfsTests(unittest.TestCase):
     def test_corrupt_or_encrypted_data_never_reports_success(self):
         for kind in ("run-over-volume", "run-underflow", "normal-virtual-over-volume", "invalid-initialized", "encrypted", "wof", "wof-empty", "bad-compressed"):
             image, _ = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     result = self.run_image(engine, image, "x", "gamma" if kind.startswith("wof") else "alpha")
                     self.assertNotEqual(result.returncode, 0)

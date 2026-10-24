@@ -42,7 +42,7 @@ belong in [the audit](upstream-port-audit.md).
 | focus/marks/keyboard/mouse | PanelSelect/PanelKey; shared hover adapter | `panel_key`, `panel_key_source`, `panel_selection`, `list_settings_runtime`, `list_activation` |
 | two-panel focus/persistence | CApp/Panel; MainWindow projection | `panel_focus`, `panel_runtime`, `window_info`, `ui_copy_same` |
 | menu/toolbar/context/status | MyLoadMenu/PanelMenu/PanelListNotify; Qt presentation | `main_shell`, `view_menu`, `panel_shell`, `native_toolbar_state`, `file_menu_policy` |
-| progress/pause/background/cancel | CProgressDialog/CProgressSync; process/worker transport | `progress_dialog`, `progress_cancel`, `progress_priority_failure`, `process_pause`, `worker_checkpoint` |
+| progress/pause/background/cancel | CProgressDialog/CProgressSync; native worker and child-operation transport | `progress_dialog`, `progress_cancel`, `progress_priority_failure`, `worker_checkpoint` |
 | conflict decisions/rollback | OverwriteDialog/AutoRenamePath/FSFolderCopy; transaction | `extract_prompt`, `file_transfer`, `file_transfer_direct` |
 | selected/root/batch Ask | ExtractGUI/ExtractCallback/PanelCopy; ArchiveBackend path guard | `source_extract_backend`, `source_extract_contract`, `extraction_options`, `ui_operations` |
 | toolbar Extract/Test in both panes, archive Copy To, one/multiple filesystem archives, Cancel, corrupt archive, caption/language/focus | CApp/CPanel ExtractArchives/TestArchives; CompressCall2/ExtractGUI/ExtractDialog; QtShellArchiveServices backend bridge | `toolbar_archive_workflow`, `shell_archive_services`, `language_dialog`, `ui_navigation`, `ui_archive_states`, Windows `native_gui_workflow` |
@@ -51,7 +51,7 @@ belong in [the audit](upstream-port-audit.md).
 | bound filesystem Copy/Move publication, both panes and deferred lists | CApp::OnCopy/OnReload; retained CFSFolder worker and per-pane scan guards | `ui_copy_routing`, `filesystem_scanner`, `filesystem_reload` |
 | copy/merge/cross-volume Move | FSFolderCopy/CCopyStateIO; exclusive transaction | `fs_folder_copy`, `file_transfer`, `file_transfer_direct`, `worker_window_progress` |
 | create/rename/delete/trash/comments | Panel/FSFolder/FileDir; native trash service | `filesystem_operations`, `native_fs_operations`, `ui_operations`, `filesystem_comment` |
-| archive mutation/publish | ArchiveFolder/AgentOut; ArchiveBackend native/CLI transport | `source_update_backend`, `archive_mutation`, `codec_update`, `ui_archive_states` |
+| archive mutation/publish | ArchiveFolder/AgentOut; native writer and publication | `source_update_backend`, `codec_update`, `ui_archive_states` |
 | native F2 Rename writer/publication/retry and guarded periodic status | PanelOperations::OnEndLabelEdit; Agent RenameItem/CommonUpdate; Qt rename/timer/status projection | `native_rename_2`, `native_rename_301`, `panel_rename_state`, `panel_processing`, `panel_refresh_completion` |
 | Add/update/path modes | CompressDialog/UpdateGUI/UpdatePair; Qt controls/backend | `source_compress_dialog`, `shell_update_window`, `ui_update_modes`, `source_update_backend` |
 | archive volumes | CArchiveLink/CMultiOutStream; leased volume publication | `archive_volume_creation`, `volume_workflow`, `ui_archive_volumes` |
@@ -77,7 +77,7 @@ belong in [the audit](upstream-port-audit.md).
 | absolute/ElimDup/security extraction | ArchiveExtractCallback/FileDir; backend bounded-path/link guard | `source_extract_advanced`, `source_link_extract`, `extraction_options`, `archive_metadata_ui` |
 | associations/open events | RegistryAssociations/SystemPage; per-user native APIs; native handler image and pending/Apply/Cancel/conflict preservation | `association_services`, `association_file_open`, `system_page`, Linux `linux_system_page_*`/`linux_association_clear_*`, `file_manager_startup` |
 | native shell/menu/GUI integration | ContextMenu/MyLoadMenu/CompressCall; COM/HMENU/process services | `shell_context`, `shell_menu_window`, `shell_update_gui`, `shell_registry`; Windows `native_menu_integration`, `native_shell_data`, `native_system_menu`, `native_gui_workflow` |
-| bounded progress/list/lifetime | Source enumeration/copy/hash/split; Qt worker scheduling | `large_list_window`, `worker_progress`, `worker_window_progress`, `archive_preparation`, `archive_volume_creation` |
+| bounded progress/list/lifetime | Source enumeration/copy/hash/split; Qt worker scheduling | `large_list_window`, `worker_progress`, `worker_window_progress`, `archive_volume_creation` |
 | one authoritative implementation | Source DTO/properties/volumes/Sync; reviewed integration boundaries | Direct consumers in [the glue register](archive/qt-port/upstream-port-audit.md#explicit-root-file-scope-258-paths-reviewed-component-register); all-target compilation |
 
 
@@ -85,20 +85,20 @@ belong in [the audit](upstream-port-audit.md).
 
 | Critical failure / security property | Concrete public regression |
 | --- | --- |
-| Wrong password/refusal followed by retry; no partial output or password in output | `archive_backend::encryptedRoundTrip/encryptedCreationLaunchFailure`; `source_update_backend::protectedPlanWrongPasswordAndCancelKeepOriginal`; `archive_external_security` |
-| Invalid/traversal/absolute names cannot publish | `archive_backend::unsafePath/unsafeListing/unsafeDestination`; `codec_update::unsafeNativeMutationDoesNotPublish`; `native_update_path`; `source_update_backend::absolutePlanRejectsTraversalAlias` |
+| Wrong password/refusal followed by retry; no partial output or password in output | `archive_backend::encryptedRoundTrip`; `source_update_backend::wrongPasswordAndCancellationKeepProtectedArchive`; `archive_external_security` |
+| Invalid/traversal/absolute names cannot publish | `archive_backend::unsafePath/unsafeListing/unsafeDestination`; `codec_update::unsafeNativeMutationDoesNotPublish`; `native_update_path`; `source_update_backend::sourceNamesRequiringCorrectionAreRejected` |
 | Linked destination and native links/ADS cannot escape bounded output | `extraction_options::skipRejectsLinkedDestination`; `source_link_extract`; `source_extract_advanced`; `temp_cleanup`; `native_update_path` |
-| Case/Unicode equivalence and duplicate names do not prove native indices | `codec_update::canonicallyEquivalentMetadataDoesNotProveNativeIndexes/duplicateNamesDoNotProveNativeIndexes`; `extraction_options::flatNameCollision`; `archive_mutation::renameImplicitZipFolderAndRejectCollision` |
-| Interrupted update/cancel preserves original and permits reuse | `archive_mutation::cancelledReplacementPreservesArchive/addFailureAndCancellation`; `source_update_backend::cancellationInNativeTransactionKeepsOriginalArchive`; `owned_temp_publication`; `archive_workflow` |
+| Case/Unicode equivalence and duplicate names do not prove native indices | `codec_update::canonicallyEquivalentMetadataDoesNotProveNativeIndexes/duplicateNamesDoNotProveNativeIndexes`; `extraction_options::flatNameCollision`; `source_update_backend::implicitFolderRenameAndDelete` |
+| Interrupted update/cancel preserves original and permits reuse | `source_update_backend::cancellationInNativeTransactionKeepsOriginalArchive`; `owned_temp_publication`; `archive_workflow` |
 | CopyFrom into archived ADS preserves main/other streams; directory/failure/Cancel cannot publish | `agent_stream_update` (official WIM writer, all-platform ordinary input and Windows filesystem ADS prefix); `native_update_path` (malformed ADS paths) |
 | Archive proxy replacement cannot query old focused rows during peer publication | `agent_stream_copy_ui` (FS/ZIP→WIM ADS, F5/F6/Cancel, Delete Cancel/rollback, marks/focus, both panes/languages); `copy_archive_refresh`; `interarchive_recovery`; `ui_copy_routing` |
 | GUI early errors retain source messages/question suppression before work | `gui_error_policy` (missing writer/recovery Cancel, both invalid Extract paths, EN/RU, source flag on/off, unchanged bytes and fitted message/OK JSON); `shell_update_gui`; `source_extract_backend/advanced/contract` |
 | Partial Move/overwrite failure cannot silently discard sources | `file_transfer::crossVolumeDeleteFailureReportsPartialMove/directoryMergeCancelRestoresOriginalTree`; `ui_operations::archivePanelsCopyAndMoveThroughStaging`; `interarchive_recovery_native` (native reopen failure/Cancel/restore); full `interarchive_recovery::rollbackFailureAndRetry` is slow; `archive_transfer_backup` (including refused close/retry) |
 | Device image Copy/Cancel/failure preserves its read-only source | Windows `fs_drives_device::sourceCopyUsesReadOnlyPrivateDevice(cancel/failure/skip/move)`; `fs_drives_device_ui::sourceDeviceNamespaceAndF5` |
 | Namespace Hash availability; private device SHA256 success/Cancel/refusal/recovery and ADS digest | `namespace_hash` (all-platform capability guard; Windows native read-only VHD/ADS, EN/RU result geometry and unchanged input) |
-| Native read provider failure; remaining write process startup/error/fragmented output/reset | `archive_backend::missingExecutable/createFailureAndRetry`; `archive_mutation::fragmentedOutputAndError`; `codec_probe`; `agent_opening::readCancellationJoinsInitialCodecLoading` |
+| Native provider discovery failure/cancellation and independent operation startup/failure | `codec_probe`; `operation_launcher`; `operation_creation`; `agent_opening::readCancellationJoinsInitialCodecLoading` |
 | External child/temp lifetime and pending modal close | `archive_external_lifetime`, `archive_external_security`, `temp_detached_launch`, `owned_temp` |
-| Window destruction joins workers and rejects obsolete callbacks | `worker_window_progress`, `large_list_window`, `app_lifecycle_window`, `binding_lifecycle`, `archive_preparation` |
+| Window destruction joins workers and rejects obsolete callbacks | `worker_window_progress`, `large_list_window`, `app_lifecycle_window`, `binding_lifecycle` |
 | Nested error/wrong-password rollback and read-only refusal | `nested_edit_chain::rejectedInnerPasswordRestoresParent/readOnlyLevelPreventsChainWrites`; `nested_update` |
 | Reports omit editable values, including shown passwords | `compression_encryption::methodsAndShowPassword` verifies shown and masked report dumps omit both inputs; `tests/layout_inspection.cpp` report schema; current report/log scan in P3-02 evidence |
 | Create source validation order, suppressible errors, unconditional memory/small-volume refusal and real writer recovery | `compression_error_policy` (EN/RU, disabled password controls, unknown-RAM fallback, unchanged settings/input and normal/compact message geometry); `source_archive_browse`, `compression_encryption`, `compression_limit`, `gui_error_policy` |

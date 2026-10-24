@@ -2,6 +2,7 @@
 #include "createarchivedialog.h"
 #include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -160,11 +161,10 @@ class CompressionOrderTests final : public QObject {
         options.Order = word;
         const QString target = dir.filePath("word." + suffix);
         QSignalSpy done(&backend, &ArchiveBackend::finished);
-        backend.create(target, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, target, {source}, {}, false, options),
+                 S_OK);
         QProcess test;
-        test.start("7zz", {"t", "--", target});
+        test.start("7z", {"t", "--", target});
         QVERIFY(test.waitForFinished(15000));
         QCOMPARE(test.exitCode(), 0);
     }
@@ -194,18 +194,12 @@ class CompressionOrderTests final : public QObject {
         options.Order = invalidWord;
         const QString target = dir.filePath("cancel." + suffix);
         QSignalSpy done(&backend, &ArchiveBackend::finished);
-        backend.create(target, {source}, {}, false, options);
-        QCOMPARE(done.size(), 1);
-        QVERIFY(!done.takeFirst()[0].toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, target, {source}, {}, false, options) !=
+                S_OK);
         QVERIFY(!QFileInfo::exists(target));
         options.Order = validWord;
-        backend.create(target, {source}, {}, false, options);
-        QVERIFY(backend.busy());
-        backend.cancel();
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY(!done.first()[0].toBool());
-        QCOMPARE(done.first()[1].toString(), QString("Operation canceled."));
-        QCOMPARE(backend.lastResult(), E_ABORT);
+        QCOMPARE(SourceCreationFixture::Create(backend, target, {source}, {}, false, options, true),
+                 E_ABORT);
         QVERIFY(!QFileInfo::exists(target));
         QVERIFY(QDir(dir.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
     }

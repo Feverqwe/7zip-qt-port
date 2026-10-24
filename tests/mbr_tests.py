@@ -1,4 +1,4 @@
-"""MBR/EBR partition geometry and byte-accurate reads via both engines."""
+"""MBR/EBR partition geometry and byte-accurate reads via the dynamic engine."""
 from pathlib import Path
 import shutil
 import subprocess
@@ -22,7 +22,7 @@ class MbrTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-mbr-runtime-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX,
+        for name in ("7z" + SUFFIX,
                      "7z.dll" if sys.platform == "win32" else "7z.so"):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
         (cls.runtime / "Formats").mkdir()
@@ -34,7 +34,7 @@ class MbrTests(unittest.TestCase):
                               capture_output=True, timeout=15)
 
     def test_readable_partitions(self):
-        variants = [(kind, volume(kind), False, ("7z", "7zz")) for kind in CASES]
+        variants = [(kind, volume(kind), False, ("7z",)) for kind in CASES]
         variants += [(kind, subtype_volume(kind)[:2], True, ("7z",)) for kind in SUBTYPES]
         variants += [(kind, classification_volume(kind)[:2], False, ("7z",))
                      for kind in CLASSIFICATIONS if not classification_volume(kind)[2]]
@@ -71,7 +71,7 @@ class MbrTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix="sevenzip-mbr-") as temporary:
                 path = Path(temporary) / "bad.mbr"
                 path.write_bytes(image)
-                for engine in ("7z", "7zz"):
+                for engine in ("7z",):
                     with self.subTest(kind=kind, engine=engine):
                         result = self.run_engine(engine, ["l", "-tMBR", "--", str(path)])
                         self.assertEqual(result.returncode, 2)

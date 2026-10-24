@@ -2,6 +2,7 @@
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
 #include "native_link_fixture.h"
+#include "source_creation_fixture.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
 
@@ -55,7 +56,7 @@ class ArchiveMetadataUiTests final : public QObject, protected MainWindowTestSup
         const QString archive = fixture.filePath("metadata.tar");
         QProcess creator;
         creator.setWorkingDirectory(fixture.path());
-        creator.start(QStandardPaths::findExecutable("7zz"),
+        creator.start(QStandardPaths::findExecutable("7z"),
                       {"a", "-ttar", "--", archive, "keep.txt"});
         QVERIFY(creator.waitForFinished(10000));
         QCOMPARE(creator.exitCode(), 0);
@@ -67,13 +68,7 @@ class ArchiveMetadataUiTests final : public QObject, protected MainWindowTestSup
         QVERIFY(ready[0][0].toBool());
         MainWindow window(&backend);
         window.show();
-        auto *address = window.findChild<QLineEdit *>("archivePath");
-        address->setText(fixture.path());
-        emit address->returnPressed();
-        QTRY_VERIFY(rowForName(window, rootName) >= 0);
-        QTRY_VERIFY(table(window)->isEnabled());
-        table(window)->selectRow(rowForName(window, rootName));
-        QTRY_VERIFY(action(window, "toolbarAddAction")->isEnabled());
+        CreateArchiveDialog create(fixture.path(), {root}, &window, backend.codecCatalog());
         bool optionsSeen = false, formAnswered = false;
         QStringList errors;
         QTimer dismissErrors;
@@ -86,7 +81,7 @@ class ArchiveMetadataUiTests final : public QObject, protected MainWindowTestSup
         });
         dismissErrors.start(1);
         QTimer::singleShot(0, &window, [&] {
-            auto *form = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
+            auto *form = &create;
             QVERIFY(form);
             const auto close = qScopeGuard([&] {
                 if (form->isVisible())
@@ -119,7 +114,7 @@ class ArchiveMetadataUiTests final : public QObject, protected MainWindowTestSup
             else
                 form->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
         });
-        action(window, "toolbarAddAction")->trigger();
+        create.exec();
         QVERIFY(optionsSeen && formAnswered);
         QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
         if (cancel) {
@@ -128,6 +123,9 @@ class ArchiveMetadataUiTests final : public QObject, protected MainWindowTestSup
             QVERIFY(QFileInfo(root + "/dangling link").isSymLink());
             return;
         }
+        QCOMPARE(SourceCreationFixture::Create(backend, archive, {root}, {}, false,
+                                               create.compressionOptions()),
+                 S_OK);
         QVERIFY(!QFileInfo::exists(root));
         window.openArchive(archive);
         QTRY_VERIFY(rowForName(window, rootName) >= 0);

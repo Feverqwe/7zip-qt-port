@@ -183,7 +183,7 @@ class ExternalLaunchTests final : public QObject {
         QVERIFY(write(fixture.filePath(name), "contents"));
         QProcess process;
         process.setWorkingDirectory(fixture.path());
-        process.start(QStandardPaths::findExecutable("7zz"), {"a", "-tzip", "original.zip", name});
+        process.start(QStandardPaths::findExecutable("7z"), {"a", "-tzip", "original.zip", name});
         QVERIFY(process.waitForFinished(10000));
         QCOMPARE(process.exitCode(), 0);
         const QString archive = fixture.filePath("original.zip");

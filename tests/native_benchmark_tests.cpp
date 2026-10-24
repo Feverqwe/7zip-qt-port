@@ -37,7 +37,7 @@ class BenchResults final : public IBenchCallback {
 
 class NativeBenchmarkTests final : public QObject {
     Q_OBJECT
-    ArchiveBackend backend_{nullptr, QStandardPaths::findExecutable("7zz")};
+    ArchiveBackend backend_{nullptr, QStandardPaths::findExecutable("7z")};
     static CObjectVector<CProperty> boundedProperties() {
         CObjectVector<CProperty> props;
         for (const auto &pair : {qMakePair(L"mt", L"1"), qMakePair(L"d18", L""),

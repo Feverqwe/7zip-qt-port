@@ -7,6 +7,7 @@
 #include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
+#include "source_creation_fixture.h"
 #include <QCryptographicHash>
 #include <QFile>
 #include <QJsonDocument>
@@ -38,7 +39,7 @@ class SfxCreationTests final : public QObject {
 #if !defined(SEVENZIP_CODEC_MODULE)
         QSKIP("Official native SFX fixture unavailable; platform SFX consumer unverified");
 #else
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine_.isEmpty());
         module_ = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
         sfx_ = QString::fromUtf8(SEVENZIP_SFX_FIXTURE);
@@ -96,12 +97,8 @@ class SfxCreationTests final : public QObject {
         options.format = "7z";
         options.SFXMode = true;
         options.SfxModule = path;
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
-        backend.create(target, {source}, {}, false, options);
-        QTRY_COMPARE(finished.size(), 1);
-        QVERIFY(!finished[0][0].toBool());
-        QVERIFY(started.isEmpty());
+        QVERIFY(SourceCreationFixture::Create(backend, target, {source}, {}, false, options) !=
+                S_OK);
         QVERIFY(!QFileInfo::exists(target));
         QCOMPARE(read(source), QByteArray("source bytes"));
         QCOMPARE(read(path), bytes);
@@ -150,11 +147,9 @@ class SfxCreationTests final : public QObject {
             QVERIFY(write(occupied, "foreign output"));
         const QByteArray originalModule = read(sfx_);
         const QString password = multiRoot ? QStringLiteral("local fixture password") : QString();
-        backend.create(target, sources, password, multiRoot, options);
-        if (outcome == "cancel")
-            backend.cancel();
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        QCOMPARE(finished[0][0].toBool(), outcome == "success");
+        const HRESULT result = SourceCreationFixture::Create(
+            backend, target, sources, password, multiRoot, options, outcome == "cancel");
+        QCOMPARE(result == S_OK, outcome == "success");
         QCOMPARE(read(fixture.filePath(name)), bytes);
         QCOMPARE(read(sfx_), originalModule);
         if (outcome != "success") {

@@ -4,6 +4,7 @@
 #include "createarchivedialog.h"
 #include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 #include <QCryptographicHash>
 #include <QElapsedTimer>
 #include <QFile>
@@ -21,7 +22,7 @@
 #include <QtTest>
 
 namespace {
-QString engine() { return QStandardPaths::findExecutable("7zz"); }
+QString engine() { return QStandardPaths::findExecutable("7z"); }
 bool writeFile(const QString &path, const QByteArray &bytes) {
     QDir().mkpath(QFileInfo(path).absolutePath());
     QFile file(path);
@@ -79,117 +80,6 @@ class ArchiveVolumeCreationTests final : public QObject {
                     << format << true << russian;
             }
     }
-    void volumeBurstBoundsGuiDeliveryAndKeepsArchiveBytes() {
-        QTemporaryDir fixture;
-        QVERIFY(fixture.isValid());
-        const QString source = fixture.filePath(QStringLiteral("источник с пробелом.bin"));
-        QFile file(source);
-        QVERIFY(file.open(QIODevice::WriteOnly));
-        const QByteArray block(8 << 20, 'v');
-        for (int i = 0; i < 16; ++i)
-            QCOMPARE(file.write(block), qint64(block.size()));
-        file.close();
-        const QString target = fixture.filePath("output.7z");
-        CompressionOptions options;
-        options.Level = 0;
-        options.VolumeSizes.Add(32 << 20);
-        ArchiveBackend backend(nullptr, engine());
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        QElapsedTimer elapsed;
-        int deliveries = 0;
-        int queuedDeliveries = -1;
-        connect(&backend, &ArchiveBackend::progress, &backend, [&](int, const QString &detail) {
-            if (detail != "Creating archive volumes")
-                return;
-            if (++deliveries == 1) {
-                elapsed.start();
-                // The worker starts after this initial signal returns. Occupy
-                // the GUI on its next turn while source CopyCoder keeps running.
-                QTimer::singleShot(0, &backend, [&] {
-                    const int before = deliveries;
-                    QTest::qSleep(200);
-                    QCoreApplication::sendPostedEvents(&backend, QEvent::MetaCall);
-                    queuedDeliveries = deliveries - before;
-                });
-            }
-        });
-        backend.create(target, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 30000);
-        QVERIFY2(finished.first().first().toBool(), qPrintable(finished.first().at(1).toString()));
-        QVERIFY(deliveries > 0);
-        QVERIFY2(
-            queuedDeliveries >= 0 && queuedDeliveries <= 2,
-            qPrintable(
-                QString("%1 queued volume callbacks after GUI occupation").arg(queuedDeliveries)));
-        const qint64 limit = elapsed.elapsed() / 20 + 4;
-        QVERIFY2(deliveries <= limit, qPrintable(QString("%1 volume deliveries in %2 ms; limit %3")
-                                                     .arg(deliveries)
-                                                     .arg(elapsed.elapsed())
-                                                     .arg(limit)));
-        const int delivered = deliveries;
-        QTest::qWait(50);
-        QCOMPARE(deliveries, delivered);
-        QVERIFY(!backend.busy());
-        const QString extracted = fixture.filePath("extracted");
-        QVERIFY(runEngine({"x", "-y", "-o" + extracted, "--", target + ".001"}));
-        QFile output(QDir(extracted).filePath(QFileInfo(source).fileName()));
-        QVERIFY(file.open(QIODevice::ReadOnly));
-        QVERIFY(output.open(QIODevice::ReadOnly));
-        QCOMPARE(output.size(), file.size());
-        QCryptographicHash sourceHash(QCryptographicHash::Sha256),
-            outputHash(QCryptographicHash::Sha256);
-        QVERIFY(sourceHash.addData(&file));
-        QVERIFY(outputHash.addData(&output));
-        QCOMPARE(outputHash.result(), sourceHash.result());
-        QVERIFY(
-            QDir(fixture.path())
-                .entryList({".sevenzip-*"}, QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot)
-                .isEmpty());
-    }
-    void joinedVolumeCancelThenRestartKeepsNewCompletion() {
-        QTemporaryDir fixture;
-        QVERIFY(fixture.isValid());
-        const QString source = fixture.filePath(QStringLiteral("источник с пробелом.bin"));
-        const QByteArray bytes(500000, 'r');
-        QVERIFY(writeFile(source, bytes));
-        const QString cancelled = fixture.filePath("cancelled.7z"),
-                      restarted = fixture.filePath("restarted.7z");
-        CompressionOptions options;
-        options.Level = 0;
-        options.VolumeSizes.Add(64 << 10);
-        ArchiveBackend backend(nullptr, engine());
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        bool paused = false;
-        connect(&backend, &ArchiveBackend::progress, &backend, [&](int, const QString &detail) {
-            if (paused || detail != "Creating archive volumes")
-                return;
-            paused = true;
-            QCOMPARE(backend.setPaused(true), HRESULT(S_OK));
-            QTimer::singleShot(20, &backend, [&] {
-                backend.cancelAndWait();
-                backend.create(restarted, {source}, {}, false, options);
-            });
-        });
-        backend.create(cancelled, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 2, 30000);
-        QVERIFY(paused);
-        QVERIFY(!finished.first().first().toBool());
-        QCOMPARE(finished.first().at(1).toString(), QString("Operation canceled."));
-        QVERIFY2(finished.last().first().toBool(), qPrintable(finished.last().at(1).toString()));
-        QCOMPARE(backend.lastResult(), HRESULT(S_OK));
-        QTest::qWait(100);
-        QCOMPARE(finished.count(), 2);
-        QVERIFY(!backend.busy());
-        QVERIFY(QDir(fixture.path()).entryList({"cancelled.7z.*"}, QDir::Files).isEmpty());
-        QVERIFY(
-            runEngine({"x", "-y", "-o" + fixture.filePath("extracted"), "--", restarted + ".001"}));
-        QCOMPARE(readFile(fixture.filePath("extracted/" + QFileInfo(source).fileName())), bytes);
-        QCOMPARE(readFile(source), bytes);
-        QVERIFY(
-            QDir(fixture.path())
-                .entryList({".sevenzip-*"}, QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot)
-                .isEmpty());
-    }
     void createVariableVolumes() {
         QFETCH(QString, format);
         QFETCH(bool, protectedArchive);
@@ -213,12 +103,9 @@ class ArchiveVolumeCreationTests final : public QObject {
         const QString password = protectedArchive ? QStringLiteral("fixture password") : QString();
         ArchiveBackend backend(nullptr, engine());
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(target, {first, second}, password, format == "7z", options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 30000);
-        const auto result = finished.takeFirst();
-        QVERIFY2(result.first().toBool(), qPrintable(result.at(1).toString()));
-        QCOMPARE(result.at(1).toString(), russian ? QStringLiteral("Архивные тома созданы.")
-                                                  : QString("Archive volumes created."));
+        QCOMPARE(SourceCreationFixture::Create(backend, target, {first, second}, password,
+                                               format == "7z", options),
+                 S_OK);
         QVERIFY(!backend.busy());
         QVERIFY(!QFileInfo::exists(target));
         const QStringList volumes =
@@ -258,106 +145,6 @@ class ArchiveVolumeCreationTests final : public QObject {
         QCOMPARE(readFile(QDir(extracted).filePath(QFileInfo(second).fileName())), b);
         QCOMPARE(readFile(first), a);
         QCOMPARE(readFile(second), b);
-        QVERIFY(
-            QDir(fixture.path())
-                .entryList({".sevenzip-*"}, QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot)
-                .isEmpty());
-    }
-    void occupiedAndCancelledStagesLeaveNoOutputs_data() {
-        QTest::addColumn<int>("mode");
-        QTest::addColumn<bool>("russian");
-        const char *names[] = {"occupied-preflight", "occupied-after-compression",
-                               "cancel-compression", "cancel-volume-worker",
-                               "pause-cancel-and-join"};
-        for (bool russian : {false, true})
-            for (int mode = 0; mode < 5; ++mode)
-                QTest::newRow(
-                    qPrintable(QString::fromLatin1(names[mode]) + (russian ? "-ru" : "-en")))
-                    << mode << russian;
-    }
-    void invalidSizesAndMissingEngineProduceNoVolumes() {
-        QTemporaryDir fixture;
-        QVERIFY(fixture.isValid());
-        const QString source = fixture.filePath("source.bin");
-        QVERIFY(writeFile(source, "source"));
-        const QString target = fixture.filePath("output.7z");
-        ArchiveBackend backend(nullptr, fixture.filePath("missing-7zz"));
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        CompressionOptions options;
-        options.VolumeSizes.Add(0);
-        backend.create(target, {source}, {}, false, options);
-        QCOMPARE(finished.count(), 1);
-        QVERIFY(!finished.takeFirst().first().toBool());
-        options.VolumeSizes[0] = 65536;
-        backend.create(target, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 10000);
-        QVERIFY(!finished.takeFirst().first().toBool());
-        QVERIFY(!backend.busy());
-        QCOMPARE(readFile(source), QByteArray("source"));
-        QCOMPARE(QDir(fixture.path()).entryList(QDir::Files), QStringList{"source.bin"});
-        QVERIFY(
-            QDir(fixture.path())
-                .entryList({".sevenzip-*"}, QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot)
-                .isEmpty());
-    }
-    void occupiedAndCancelledStagesLeaveNoOutputs() {
-        QFETCH(int, mode);
-        QFETCH(bool, russian);
-        SaveRegLang(UString(russian ? "ru" : "-"), settings_);
-        ReloadLang(settings_);
-        QTemporaryDir fixture;
-        QVERIFY(fixture.isValid());
-        const QString source = fixture.filePath(QStringLiteral("источник с пробелом.bin"));
-        const QByteArray bytes(500000, 'x');
-        QVERIFY(writeFile(source, bytes));
-        const QString target = fixture.filePath("output.7z");
-        const QString occupied = target + ".002";
-        if (mode == 0)
-            QVERIFY(writeFile(occupied, "occupied"));
-        CompressionOptions options;
-        options.Level = 0;
-        options.VolumeSizes.Add(64 << 10);
-        ArchiveBackend backend(nullptr, engine());
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
-        if (mode == 2)
-            connect(&backend, &ArchiveBackend::engineStarted, &backend, &ArchiveBackend::cancel);
-        bool handled = false;
-        connect(&backend, &ArchiveBackend::progress, &backend, [&](int, const QString &detail) {
-            if (handled || detail != (russian ? QStringLiteral("Создание архивных томов")
-                                              : QString("Creating archive volumes")))
-                return;
-            handled = true;
-            if (mode == 1)
-                QVERIFY(writeFile(occupied, "occupied"));
-            if (mode == 3)
-                backend.cancel();
-            if (mode == 4) {
-                QCOMPARE(backend.setPaused(true), S_OK);
-                QTimer::singleShot(20, &backend, [&] { backend.cancelAndWait(); });
-            }
-        });
-        backend.create(target, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 30000);
-        const auto result = finished.takeFirst();
-        QVERIFY(!result.first().toBool());
-        QCOMPARE(result.at(1).toString(), mode < 2
-                                              ? (russian ? QStringLiteral("Том уже существует: %1")
-                                                         : QString("Volume already exists: %1"))
-                                                    .arg(occupied)
-                                              : (russian ? QStringLiteral("Операция отменена.")
-                                                         : QString("Operation canceled.")));
-        QVERIFY(!backend.busy());
-        QCOMPARE(readFile(source), bytes);
-        QVERIFY(!QFileInfo::exists(target));
-        if (mode < 2)
-            QCOMPARE(readFile(occupied), QByteArray("occupied"));
-        const QStringList volumes = QDir(fixture.path()).entryList({"output.7z.*"}, QDir::Files);
-        QCOMPARE(volumes.size(), mode < 2 ? 1 : 0);
-        if (mode == 0)
-            QCOMPARE(started.count(), 0);
-        else if (mode >= 2)
-            QCOMPARE(backend.lastResult(), E_ABORT);
         QVERIFY(
             QDir(fixture.path())
                 .entryList({".sevenzip-*"}, QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot)

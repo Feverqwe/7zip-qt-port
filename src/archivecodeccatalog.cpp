@@ -16,8 +16,8 @@ IOutArchive *CreateSourceZipWriter() { return new NArchive::NZip::CHandler; }
 IInArchive *CreateSourceRarReader() { return new NArchive::NRar5::CHandler; }
 } // namespace
 
-ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedVersion, Scope scope,
-                                         const QString &engine) {
+ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedVersion,
+                                         Scope scope) {
     codecs_ = new CCodecs;
     owner_ = codecs_;
     bool loaded = false;
@@ -25,7 +25,7 @@ ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedV
     const bool deployment = scope == Scope::Deployment;
     if (deployment) {
         image_ = std::make_unique<ArchiveCodecImage>();
-        if (!image_->prepare(module, engine)) {
+        if (!image_->prepare(module)) {
             error_ = QCoreApplication::translate("archivecodeccatalog",
                                                  "Could not prepare the codec runtime snapshot.");
             return;
@@ -54,8 +54,8 @@ ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedV
         version_ = codecs_->Libs[0].Version;
         if (!version_ || (expectedVersion && version_ != expectedVersion)) {
             result_ = E_FAIL;
-            error_ = QCoreApplication::translate(
-                "archivecodeccatalog", "7zz and the codec module have different versions.");
+            error_ = QCoreApplication::translate("archivecodeccatalog",
+                                                 "The codec module has an unexpected version.");
         }
     }
     if (result_ != S_OK) {
@@ -89,10 +89,6 @@ ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedV
 ArchiveCodecCatalog::~ArchiveCodecCatalog() {
     codecs_->Formats.Clear();
     codecs_->CloseLibs();
-}
-
-QString ArchiveCodecCatalog::runtimeEngine() const {
-    return result_ == S_OK && image_ ? image_->engine() : QString();
 }
 
 HRESULT ArchiveCodecCatalog::loadDeploymentPlugins() {

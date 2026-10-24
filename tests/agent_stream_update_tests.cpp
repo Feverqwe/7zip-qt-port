@@ -61,7 +61,7 @@ class AgentStreamUpdateTests final : public QObject {
 #endif
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
-        const QString engine = QStandardPaths::findExecutable("7zz");
+        const QString engine = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine.isEmpty());
         const QString owner = QStringLiteral("файл δ with space.bin");
         const QString existing = QStringLiteral("поток δ");

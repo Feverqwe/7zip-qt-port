@@ -33,7 +33,7 @@ class NativeCommentUiTests final : public QObject, protected MainWindowTestSuppo
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official module unavailable; actual comment command UX unverified");
 #else
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine_.isEmpty());
         module_ = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
         ArchiveBackend backend(nullptr, engine_);

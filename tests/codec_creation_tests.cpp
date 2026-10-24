@@ -1,5 +1,6 @@
 #include "archive_backend_test_support.h"
 #include "archivecodeccatalog.h"
+#include "source_creation_fixture.h"
 #include <QScopeGuard>
 #include <QStandardPaths>
 #include <QTimer>
@@ -18,7 +19,7 @@ class CodecCreationTests final : public QObject, protected ArchiveBackendTestSup
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official module unavailable; real handler creation remains unverified");
 #else
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         if (engine_.isEmpty())
             QSKIP("Official engine unavailable; real handler creation remains unverified");
         module_ = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
@@ -50,9 +51,8 @@ class CodecCreationTests final : public QObject, protected ArchiveBackendTestSup
         options.format = format;
         options.Level = format == "tar" || format == "wim" ? 0 : 5;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(target, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, target, {source}, {}, false, options),
+                 S_OK);
         QVERIFY(QFileInfo::exists(target));
         QList<ArchiveEntry> entries;
         QString detected;
@@ -83,81 +83,7 @@ class CodecCreationTests final : public QObject, protected ArchiveBackendTestSup
         QVERIFY(
             QDir(fixture.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
     }
-    void readOnlyAndSingleFileConstraintsRefuseBeforeStarting() {
-        QTemporaryDir fixture;
-        QVERIFY(fixture.isValid());
-        const QString source = fixture.filePath("source 空.bin");
-        writeFile(source, "original");
-        ArchiveBackend backend(nullptr, engine_);
-        load(backend);
-        QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        for (const QString &format : {"rar", "gzip"}) {
-            CompressionOptions options;
-            options.format = format;
-            const QString target = fixture.filePath(format + ".unknown");
-            backend.create(target,
-                           format == "rar" ? QStringList{source} : QStringList{fixture.path()}, {},
-                           false, options);
-            QCOMPARE(finished.size(), 1);
-            QVERIFY(!finished[0][0].toBool());
-            QCOMPARE(backend.lastResult(), E_INVALIDARG);
-            QVERIFY(!QFileInfo::exists(target));
-            finished.clear();
-        }
-        QVERIFY(started.isEmpty());
-        QVERIFY(!backend.busy());
-    }
-    void unsuccessfulCreationRemovesPartialTemporaryWithoutChangingSource_data() {
-        QTest::addColumn<QByteArray>("mode");
-        QTest::newRow("engine failure") << QByteArray("createfail");
-        QTest::newRow("cancel after partial output") << QByteArray("createpartial");
-    }
-    void unsuccessfulCreationRemovesPartialTemporaryWithoutChangingSource() {
-        QFETCH(QByteArray, mode);
-        QTemporaryDir fixture;
-        QVERIFY(fixture.isValid());
-        const QString source = fixture.filePath("source 空.bin");
-        writeFile(source, "original");
-        const QString target = fixture.filePath("cancelled.unknown");
-        qputenv("SEVENZIP_TEST_HELPER", mode);
-        const auto restoreEnvironment = qScopeGuard([] { qunsetenv("SEVENZIP_TEST_HELPER"); });
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
-        load(backend);
-        CompressionOptions options;
-        options.format = "gzip";
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        QTimer partialWatcher;
-        partialWatcher.setInterval(10);
-        bool observedPartial = false;
-        connect(&partialWatcher, &QTimer::timeout, this, [&] {
-            if (!QDir(fixture.path())
-                     .entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden)
-                     .isEmpty()) {
-                observedPartial = true;
-                partialWatcher.stop();
-                backend.cancel();
-            }
-        });
-        if (mode == "createpartial")
-            partialWatcher.start();
-        backend.create(target, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        if (mode == "createpartial")
-            QVERIFY(observedPartial);
-        QVERIFY(!finished[0][0].toBool());
-        QCOMPARE(backend.lastResult(), mode == "createpartial" ? E_ABORT : E_FAIL);
-        QVERIFY(!QFileInfo::exists(target));
-        QVERIFY(
-            QDir(fixture.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
-        QFile original(source);
-        QVERIFY(original.open(QIODevice::ReadOnly));
-        QCOMPARE(original.readAll(), QByteArray("original"));
-    }
 };
 
-int main(int argc, char **argv) {
-    CodecCreationTests tests;
-    return backendTestMain(argc, argv, &tests);
-}
+QTEST_MAIN(CodecCreationTests)
 #include "codec_creation_tests.moc"

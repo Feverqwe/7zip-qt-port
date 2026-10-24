@@ -37,63 +37,82 @@
     <context>
         <name>ArchiveRedesign</name>
         <message>
+            <location filename="../src/createarchivedialog_language.cpp" line="+60" />
             <source>Metadata settings…</source>
             <translation>Настройки метаданных…</translation>
         </message>
         <message>
+            <location line="-11" />
             <source>Password</source>
             <translation>Пароль</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>Repeat password</source>
             <translation>Повтор пароля</translation>
         </message>
         <message>
+            <location line="-27" />
             <source>Archive name</source>
             <translation>Имя архива</translation>
         </message>
         <message>
+            <location filename="../src/createarchivedialog.cpp" line="+244" />
+            <location line="+2" />
+            <location line="+57" />
             <source>Destination folder</source>
             <translation>Папка назначения</translation>
         </message>
         <message>
+            <location line="-73" />
             <source>Browse…</source>
             <translation>Обзор…</translation>
         </message>
         <message>
+            <location filename="../src/createarchivedialog_language.cpp" line="+15" />
+            <location line="+2" />
+            <location line="+4" />
             <source>Compression memory limit:</source>
             <translation>Лимит памяти для сжатия:</translation>
         </message>
         <message>
+            <location filename="../src/createarchivedialog_compression.cpp" line="+59" />
             <source>Compression:</source>
             <translation>Сжатие:</translation>
         </message>
         <message>
+            <location line="+15" />
             <source>Extraction:</source>
             <translation>Распаковка:</translation>
         </message>
         <message>
+            <location filename="../src/createarchivedialog_advanced.cpp" line="+40" />
             <source>Compression settings</source>
             <translation>Параметры сжатия</translation>
         </message>
         <message>
+            <location line="+8" />
             <source>File settings</source>
             <translation>Параметры файлов</translation>
         </message>
         <message>
+            <location line="+4" />
             <source>Split to volumes</source>
             <translation>Разделение на тома</translation>
         </message>
         <message>
+            <location line="+4" />
             <source>Command-line settings</source>
             <translation>Параметры командной строки</translation>
         </message>
         <message>
+            <location filename="../src/CPP/7zip/UI/GUI/ExtractDialog.cpp" line="+332" />
+            <location filename="../src/createarchivedialog_advanced.cpp" line="+126" />
             <source>Modified</source>
             <translation>Изменено</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/ExtractDialog.cpp" line="+72" />
+            <location line="-259" />
             <location filename="../src/mainwindow_language.cpp" line="+120" />
             <source>Extract</source>
             <translation>Распаковать</translation>
@@ -110,12 +129,11 @@
         </message>
         <message>
             <location line="+35" />
-            <location filename="../src/createarchivedialog.cpp" line="+273" />
             <source>Advanced settings</source>
             <translation>Дополнительные параметры</translation>
         </message>
         <message>
-            <location filename="../src/createarchivedialog.cpp" line="+46" />
+            <location filename="../src/createarchivedialog.cpp" line="+101" />
             <source>Create archive</source>
             <translation>Создать архив</translation>
         </message>
@@ -290,7 +308,7 @@
             <translation>Итого:</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/BenchmarkDialog.cpp" line="+1075" />
+            <location filename="../src/CPP/7zip/UI/GUI/BenchmarkDialog.cpp" line="+1094" />
             <source>Compr Decompr Total   CPU</source>
             <translation>Сжат. Распак. Всего  ЦП</translation>
         </message>
@@ -337,7 +355,7 @@
     <context>
         <name>CommandMenus</name>
         <message>
-            <location filename="../src/mainwindow_menus.cpp" line="+88" />
+            <location filename="../src/mainwindow_menus.cpp" line="+90" />
             <location filename="../src/qtpanelcontextmenu.cpp" line="+108" />
             <source>Checksums</source>
             <translation>Контрольные суммы</translation>
@@ -349,7 +367,7 @@
             <translation>Формат времени</translation>
         </message>
         <message>
-            <location line="+144" />
+            <location line="+148" />
             <source>Presentation</source>
             <translation>Представление</translation>
         </message>
@@ -359,7 +377,7 @@
             <translation>Сортировка</translation>
         </message>
         <message>
-            <location filename="../src/qtprogramfilemenu.cpp" line="+105" />
+            <location filename="../src/qtprogramfilemenu.cpp" line="+106" />
             <source>Open as</source>
             <translation>Открыть как</translation>
         </message>
@@ -382,9 +400,132 @@
     <context>
         <name>CreateArchiveDialog</name>
         <message>
-            <location filename="../src/createarchivedialog.cpp" line="+49" />
+            <location filename="../src/createarchivedialog.cpp" line="+51" />
             <source>Incorrect archive path</source>
             <translation>Неверный путь к архиву</translation>
+        </message>
+    </context>
+    <context>
+        <name>DeviceSelectionDialog</name>
+        <message>
+            <location filename="../src/deviceselectiondialog.cpp" line="+231" />
+            <source>Read access was not authorized. You can try again.</source>
+            <translation>Доступ на чтение не разрешён. Можно попробовать снова.</translation>
+        </message>
+        <message>
+            <location line="-182" />
+            <source>Open device</source>
+            <translation>Открыть устройство</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>Read supported filesystems without modifying the device. Copy files to another disk.</source>
+            <translation>Чтение поддерживаемых файловых систем без изменения устройства. Копируйте файлы на другой диск.</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Devices and partitions</source>
+            <translation>Устройства и разделы</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <location line="+111" />
+            <location line="+18" />
+            <source>Name</source>
+            <translation>Имя</translation>
+        </message>
+        <message>
+            <location line="-129" />
+            <location line="+111" />
+            <location line="+18" />
+            <source>Size</source>
+            <translation>Размер</translation>
+        </message>
+        <message>
+            <location line="-129" />
+            <location line="+111" />
+            <source>Status</source>
+            <translation>Состояние</translation>
+        </message>
+        <message>
+            <location line="-94" />
+            <source>Refresh</source>
+            <translation>Обновить</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Back</source>
+            <translation>Назад</translation>
+        </message>
+        <message>
+            <location line="+29" />
+            <source>Canceling…</source>
+            <translation>Отмена…</translation>
+        </message>
+        <message>
+            <location line="+51" />
+            <source>Looking for external devices…</source>
+            <translation>Поиск внешних устройств…</translation>
+        </message>
+        <message>
+            <location line="+18" />
+            <source>In use</source>
+            <translation>Используется</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Read only</source>
+            <translation>Только чтение</translation>
+        </message>
+        <message>
+            <location line="+5" />
+            <source>No external devices found. Connect a device and refresh.</source>
+            <translation>Внешние устройства не найдены. Подключите устройство и обновите список.</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Select a device. Volumes in use must be unmounted first.</source>
+            <translation>Выберите устройство. Используемые тома нужно сначала размонтировать.</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Partition type</source>
+            <translation>Тип раздела</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Select a partition to open read only.</source>
+            <translation>Выберите раздел для открытия только на чтение.</translation>
+        </message>
+        <message>
+            <location line="+18" />
+            <source>Could not list external devices.</source>
+            <translation>Не удалось получить список внешних устройств.</translation>
+        </message>
+        <message>
+            <location line="+14" />
+            <source>Device access canceled. You can try again.</source>
+            <translation>Доступ к устройству отменён. Можно попробовать снова.</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>This device is in use. Unmount its volumes and try again.</source>
+            <translation>Устройство используется. Размонтируйте его тома и попробуйте снова.</translation>
+        </message>
+        <message>
+            <location line="+5" />
+            <source>Could not read this device. It may have been disconnected.</source>
+            <translation>Не удалось прочитать устройство. Возможно, оно было отключено.</translation>
+        </message>
+        <message>
+            <location line="+13" />
+            <source>Opening device… System authorization may be required.</source>
+            <translation>Открытие устройства… Может потребоваться разрешение системы.</translation>
+        </message>
+        <message>
+            <location line="+21" />
+            <source>Could not open this partition.</source>
+            <translation>Не удалось открыть этот раздел.</translation>
         </message>
     </context>
     <context>
@@ -438,22 +579,22 @@
             <translation>Пропустить все</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/PasswordDialog.cpp" line="+33" />
+            <location filename="../src/CPP/7zip/UI/FileManager/PasswordDialog.cpp" line="+34" />
             <source>Continue</source>
             <translation>Продолжить</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/SplitDialog.cpp" line="+41" />
+            <location filename="../src/CPP/7zip/UI/FileManager/SplitDialog.cpp" line="+42" />
             <source>Split</source>
             <translation>Разделить</translation>
         </message>
         <message>
-            <location filename="../src/qtlinkcontrols.cpp" line="+155" />
+            <location filename="../src/qtlinkcontrols.cpp" line="+156" />
             <source>Create link</source>
             <translation>Создать ссылку</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/ComboDialog.cpp" line="+85" />
+            <location filename="../src/CPP/7zip/UI/FileManager/ComboDialog.cpp" line="+86" />
             <source>Create</source>
             <translation>Создать</translation>
         </message>
@@ -468,7 +609,7 @@
             <translation>Снять выделение</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/BrowseDialog.cpp" line="+168" />
+            <location filename="../src/CPP/7zip/UI/FileManager/BrowseDialog.cpp" line="+170" />
             <source>Choose folder</source>
             <translation>Выбрать папку</translation>
         </message>
@@ -486,7 +627,7 @@
             <translation>Открыть</translation>
         </message>
         <message>
-            <location filename="../src/qtprogresscontrols.cpp" line="+183" />
+            <location filename="../src/qtprogresscontrols.cpp" line="+179" />
             <source>Details</source>
             <translation>Подробности</translation>
         </message>
@@ -680,6 +821,89 @@
         </message>
     </context>
     <context>
+        <name>FscryptKeyDialog</name>
+        <message>
+            <location filename="../src/fscryptkeydialog.cpp" line="+41" />
+            <source>Open encrypted filesystem</source>
+            <translation>Открыть зашифрованную файловую систему</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Browse without keys</source>
+            <translation>Просмотреть без ключей</translation>
+        </message>
+        <message>
+            <location line="+5" />
+            <source>This ext filesystem uses fscrypt encryption. Enter raw master keys from its administrator or key backup. A login password or disk-encryption password cannot be used here.</source>
+            <translation>Эта файловая система ext зашифрована с помощью fscrypt. Введите мастер-ключи, полученные у администратора или из резервной копии ключей. Пароль входа в систему или шифрования диска здесь не подойдёт.</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>You can browse without keys, but encrypted names will be hidden and encrypted files cannot be copied.</source>
+            <translation>Без ключей можно просматривать содержимое, но зашифрованные имена будут скрыты, а зашифрованные файлы нельзя будет скопировать.</translation>
+        </message>
+        <message>
+            <location line="+13" />
+            <source>Add another key</source>
+            <translation>Добавить ещё ключ</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>Show keys</source>
+            <translation>Показать ключи</translation>
+        </message>
+        <message>
+            <location line="+31" />
+            <source>Key version:</source>
+            <translation>Версия ключа:</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>32–128 hexadecimal characters</source>
+            <translation>32–128 шестнадцатеричных символов</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Master key (hex):</source>
+            <translation>Мастер-ключ (hex):</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <source>16 hexadecimal characters</source>
+            <translation>16 шестнадцатеричных символов</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Key descriptor (hex):</source>
+            <translation>Дескриптор ключа (hex):</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <source>Remove key</source>
+            <translation>Удалить ключ</translation>
+        </message>
+        <message>
+            <location line="+35" />
+            <source>Key %1: enter 32–128 hexadecimal characters (16–64 bytes). Spaces are allowed.</source>
+            <translation>Ключ %1: введите 32–128 шестнадцатеричных символов (16–64 байта). Пробелы допустимы.</translation>
+        </message>
+        <message>
+            <location line="+7" />
+            <source>Key %1: the v1 descriptor must contain 16 hexadecimal characters.</source>
+            <translation>Ключ %1: дескриптор v1 должен содержать 16 шестнадцатеричных символов.</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Key %1: this v1 descriptor is already used by another key.</source>
+            <translation>Ключ %1: этот дескриптор v1 уже указан для другого ключа.</translation>
+        </message>
+        <message>
+            <location line="+14" />
+            <source>Key %1</source>
+            <translation>Ключ %1</translation>
+        </message>
+    </context>
+    <context>
         <name>LangPage</name>
         <message>
             <location filename="../src/CPP/7zip/UI/FileManager/LangPage.cpp" line="+78" />
@@ -783,7 +1007,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>OptionsDialog</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/OptionsDialog.cpp" line="+200" />
+            <location filename="../src/CPP/7zip/UI/FileManager/OptionsDialog.cpp" line="+214" />
             <source>7-Zip</source>
             <translation>7-Zip</translation>
         </message>
@@ -829,6 +1053,114 @@ Are you sure you want to split archive into such volumes?</source>
         </message>
     </context>
     <context>
+        <name>QtOperation</name>
+        <message>
+            <location filename="../src/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp" line="+117" />
+            <source>The archive changed on disk. Refresh it before editing.</source>
+            <translation>Архив изменился на диске. Обновите его перед редактированием.</translation>
+        </message>
+        <message>
+            <location filename="../src/qtarchivewritelease.cpp" line="+71" />
+            <source>Could not lock the archive for writing.</source>
+            <translation>Не удалось заблокировать архив для записи.</translation>
+        </message>
+        <message>
+            <location line="+15" />
+            <source>Another operation is writing to this archive.</source>
+            <translation>Архив уже открыт другой операцией для записи.</translation>
+        </message>
+        <message>
+            <location filename="../src/qtoperationprotocol.cpp" line="+281" />
+            <source>Invalid operation message.</source>
+            <translation>Некорректное сообщение операции.</translation>
+        </message>
+        <message>
+            <location line="+5" />
+            <source>Operation message is too large.</source>
+            <translation>Сообщение операции слишком велико.</translation>
+        </message>
+        <message>
+            <location line="+27" />
+            <source>Invalid operation frame size.</source>
+            <translation>Некорректный размер сообщения операции.</translation>
+        </message>
+        <message>
+            <location line="+10" />
+            <source>Unsupported or malformed operation message.</source>
+            <translation>Неподдерживаемое или повреждённое сообщение операции.</translation>
+        </message>
+        <message>
+            <location filename="../src/qtoperationprocess.cpp" line="+94" />
+            <source>An operation process is already running.</source>
+            <translation>Процесс операции уже запущен.</translation>
+        </message>
+        <message>
+            <location line="+11" />
+            <source>Invalid operation process or channel.</source>
+            <translation>Некорректный путь процесса или канал связи.</translation>
+        </message>
+        <message>
+            <location line="+7" />
+            <source>Cannot launch operation process (%1).</source>
+            <translation>Не удалось запустить процесс операции (%1).</translation>
+        </message>
+        <message>
+            <location line="+36" />
+            <source>Cannot observe operation process (%1).</source>
+            <translation>Не удалось получить состояние процесса операции (%1).</translation>
+        </message>
+        <message>
+            <location filename="../src/qtoperationlauncher.cpp" line="+41" />
+            <source>Operation startup acknowledgement was not received.</source>
+            <translation>Не получено подтверждение приёма задания.</translation>
+        </message>
+        <message>
+            <location line="+34" />
+            <source>GUI operations require the application owner thread.</source>
+            <translation>Операции GUI должны запускаться из главного потока приложения.</translation>
+        </message>
+        <message>
+            <location line="+16" />
+            <source>An operation observer cannot be reused.</source>
+            <translation>Нельзя повторно использовать наблюдатель операции.</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>Expected an operation job.</source>
+            <translation>Ожидалось задание операции.</translation>
+        </message>
+        <message>
+            <location line="+77" />
+            <source>Could not transfer the operation job.</source>
+            <translation>Не удалось передать задание операции.</translation>
+        </message>
+        <message>
+            <location line="+27" />
+            <source>Unexpected operation protocol message.</source>
+            <translation>Неожиданное сообщение протокола операции.</translation>
+        </message>
+        <message>
+            <location line="+30" />
+            <source>The operation process terminated unexpectedly.</source>
+            <translation>Процесс операции аварийно завершился.</translation>
+        </message>
+        <message>
+            <location line="+14" />
+            <source>Operation result and process exit disagree.</source>
+            <translation>Результат операции не совпадает с кодом завершения процесса.</translation>
+        </message>
+        <message>
+            <location line="+5" />
+            <source>Operation process exited without a complete result.</source>
+            <translation>Процесс операции завершился без передачи полного результата.</translation>
+        </message>
+        <message>
+            <location filename="../src/qtoperationendpoint.cpp" line="+154" />
+            <source>Expected one operation job.</source>
+            <translation>Ожидалось одно задание операции.</translation>
+        </message>
+    </context>
+    <context>
         <name>RootFolder</name>
         <message>
             <location filename="../src/CPP/7zip/UI/FileManager/RootFolder.cpp" line="+87" />
@@ -839,98 +1171,123 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SettingsRedesign</name>
         <message>
+            <location filename="../src/qtfmoptionslayout.cpp" line="+168" />
             <source>Interface language</source>
             <translation>Язык интерфейса</translation>
         </message>
         <message>
+            <location line="-103" />
             <source>This computer: %1 GB</source>
             <translation>На этом компьютере: %1 ГБ</translation>
         </message>
         <message>
+            <location line="+133" />
             <source>Choose where to keep temporary files when working with archives.</source>
             <translation>Выберите, где хранить временные файлы при работе с архивами.</translation>
         </message>
         <message>
+            <location line="+4" />
             <source>Applications for viewing, editing and comparing archived files.</source>
             <translation>Программы для просмотра, редактирования и сравнения файлов из архива.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>You can specify an application and command-line arguments.</source>
             <translation>Можно указать программу и аргументы командной строки.</translation>
         </message>
         <message>
+            <location line="-13" />
             <source>Opening files</source>
             <translation>Открытие файлов</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>Memory</source>
             <translation>Память</translation>
         </message>
         <message>
+            <location line="+6" />
             <source>Applications</source>
             <translation>Приложения</translation>
         </message>
         <message>
+            <location line="+6" />
             <source>File list</source>
             <translation>Список файлов</translation>
         </message>
         <message>
+            <location line="+23" />
+            <location line="+18" />
             <source>Settings sections</source>
             <translation>Разделы настроек</translation>
         </message>
         <message>
+            <location filename="../src/CPP/7zip/UI/FileManager/OptionsDialog.cpp" line="-68" />
             <source>Save</source>
             <translation>Сохранить</translation>
         </message>
         <message>
+            <location filename="../src/qtfmoptionslayout.cpp" line="-160" />
             <source>Display</source>
             <translation>Отображение</translation>
         </message>
         <message>
+            <location line="+1" />
             <source>Controls</source>
             <translation>Управление</translation>
         </message>
         <message>
+            <location line="-45" />
             <source>Limit memory when extracting large archives.</source>
             <translation>Ограничьте использование памяти при распаковке больших архивов.</translation>
         </message>
         <message>
+            <location line="+6" />
             <source>Set a memory limit</source>
             <translation>Задать лимит памяти</translation>
         </message>
         <message>
+            <location line="+7" />
             <source>Limit, GB</source>
             <translation>Лимит, ГБ</translation>
         </message>
         <message>
+            <location line="+122" />
             <source>Information about the installed translation</source>
             <translation>Сведения об установленном переводе</translation>
         </message>
         <message>
+            <location filename="../src/qtsystempagepresentation.cpp" line="+119" />
             <source>Choose file types to open with Sevenzip.</source>
             <translation>Выберите типы файлов, которые нужно открывать в Sevenzip.</translation>
         </message>
         <message>
+            <location line="+6" />
             <source>Search formats</source>
             <translation>Поиск формата</translation>
         </message>
         <message>
+            <location line="-34" />
             <source>Search by name or extension</source>
             <translation>Поиск по названию или расширению</translation>
         </message>
         <message>
+            <location line="+60" />
             <source>Open .%1 with Sevenzip</source>
             <translation>Открывать .%1 в Sevenzip</translation>
         </message>
         <message>
+            <location line="+16" />
             <source>No matching formats. Try another name or extension.</source>
             <translation>Форматы не найдены. Попробуйте другое название или расширение.</translation>
         </message>
         <message>
+            <location line="+8" />
             <source>Select all formats</source>
             <translation>Выбрать все</translation>
         </message>
         <message>
+            <location line="+1" />
             <source>Clear selection</source>
             <translation>Снять выбор</translation>
         </message>
@@ -955,78 +1312,33 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Тёмное</translation>
         </message>
         <message>
-            <location filename="../src/qtfmoptionslayout.cpp" line="+61" />
-            <source>Standard settings</source>
-            <translation>Стандартные настройки</translation>
-        </message>
-        <message>
-            <location line="+2" />
-            <location filename="../src/qtsystempagepresentation.cpp" line="+50" />
-            <location line="+5" />
+            <location filename="../src/qtfmoptionslayout.cpp" line="+109" />
+            <location filename="../src/qtsystempagepresentation.cpp" line="-79" />
             <source>Changed</source>
             <translation>Изменено</translation>
         </message>
         <message>
-            <location line="+20" />
+            <location line="-105" />
             <source>About translation</source>
             <translation>О переводе</translation>
         </message>
         <message>
-            <location line="+2" />
+            <location line="+3" />
             <source>General</source>
             <translation>Основные</translation>
         </message>
         <message>
-            <location line="+11" />
+            <location line="+25" />
             <source>File Explorer commands</source>
             <translation>Команды Проводника</translation>
         </message>
         <message>
-            <location line="+6" />
-            <source>Integration</source>
-            <translation>Интеграция</translation>
-        </message>
-        <message>
-            <location line="+9" />
-            <source>Memory for extraction</source>
-            <translation>Память для распаковки</translation>
-        </message>
-        <message>
-            <location line="+2" />
+            <location line="-14" />
             <source>Temporary files</source>
             <translation>Временные файлы</translation>
         </message>
-        <message>
-            <location line="+2" />
-            <source>External applications</source>
-            <translation>Внешние приложения</translation>
-        </message>
-        <message>
-            <location line="+2" />
-            <source>Familiar behavior</source>
-            <translation>Привычное поведение</translation>
-        </message>
-        <message>
-            <location line="+2" />
-            <source>Advanced</source>
-            <translation>Дополнительно</translation>
-        </message>
-        <message>
-            <location line="+11" />
-            <source>Memory limit: %1 GB</source>
-            <translation>Лимит памяти: %1 ГБ</translation>
-        </message>
         <message numerus="yes">
-            <location line="+35" />
-            <source>%n commands</source>
-            <translation>
-                <numerusform>%n команда</numerusform>
-                <numerusform>%n команды</numerusform>
-                <numerusform>%n команд</numerusform>
-            </translation>
-        </message>
-        <message numerus="yes">
-            <location filename="../src/qtsystempagepresentation.cpp" line="-3" />
+            <location filename="../src/qtsystempagepresentation.cpp" line="-11" />
             <source>%n selected formats</source>
             <translation>
                 <numerusform>Выбран %n формат</numerusform>
@@ -1035,7 +1347,7 @@ Are you sure you want to split archive into such volumes?</source>
             </translation>
         </message>
         <message>
-            <location line="+15" />
+            <location line="+23" />
             <source>Change selected</source>
             <translation>Изменить выбранные</translation>
         </message>
@@ -1045,17 +1357,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Все пользователи</translation>
         </message>
         <message>
-            <location line="+7" />
-            <source>Open archives with Sevenzip</source>
-            <translation>Открывать архивы в Sevenzip</translation>
-        </message>
-        <message>
-            <location line="+23" />
-            <source>Other formats</source>
-            <translation>Другие форматы</translation>
-        </message>
-        <message>
-            <location line="+6" />
+            <location line="+79" />
             <source>Advanced associations</source>
             <translation>Дополнительные параметры ассоциаций</translation>
         </message>
@@ -3838,347 +4140,432 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZipDiagnostics</name>
         <message>
+            <location filename="../src/qtdiagnostictext.cpp" line="+175" />
             <source>Some FAT table entries could not be read. Free space is unknown; some files or directories may be incomplete or unreadable.</source>
             <translation>Часть таблицы FAT прочитать не удалось. Свободное место неизвестно; некоторые файлы и каталоги могут быть неполными или недоступными.</translation>
         </message>
         <message>
+            <location line="-115" />
             <source>Some FAT files share clusters with directories. File contents may include directory entries or unrelated data. Copying remains available but reports an error.</source>
             <translation>Некоторые файлы FAT используют общие кластеры с каталогами. Содержимое файлов может включать записи каталогов или посторонние данные. Копирование доступно, но будет сообщено об ошибке.</translation>
         </message>
         <message>
+            <location line="+4" />
             <source>The FAT file shares clusters with a directory. Its contents are unverified.</source>
             <translation>Файл FAT использует общие кластеры с каталогом. Его содержимое не проверено.</translation>
         </message>
         <message>
+            <location line="+117" />
             <source>Some FAT file chains are incomplete. Only readable prefixes of affected files are available; copying them reports an error.</source>
             <translation>Цепочки некоторых файлов FAT повреждены. Можно прочитать только доступное начало этих файлов; копирование завершится с ошибкой.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The FAT file chain is incomplete. Only the readable prefix is available.</source>
             <translation>Цепочка файла FAT повреждена. Доступно только начало файла.</translation>
         </message>
         <message>
+            <location line="-6" />
             <source>Some FAT directories could not be read completely. Files or names may be missing. Readable files remain accessible.</source>
             <translation>Некоторые каталоги FAT прочитаны не полностью. Часть файлов или имён может отсутствовать. Доступные файлы можно копировать.</translation>
         </message>
         <message>
+            <location line="+30" />
             <source>Some exFAT directories could not be read completely. Files or names may be missing. Readable files remain accessible.</source>
             <translation>Некоторые каталоги exFAT прочитаны не полностью. Часть файлов или имён может отсутствовать. Доступные файлы можно копировать.</translation>
         </message>
         <message>
+            <location line="+4" />
             <source>The ext source is shorter than the declared volume. Some files may be incomplete or unreadable.</source>
             <translation>Источник ext короче заявленного размера тома. Некоторые файлы могут быть неполными или недоступными для чтения.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>Some ext group descriptors or allocation metadata are unavailable or unverified. Files may be missing, outdated or reused; free space is unknown.</source>
             <translation>Некоторые дескрипторы групп или метаданные занятости ext недоступны или не проверены. Часть файлов может отсутствовать, быть устаревшей или содержать переиспользованные данные. Свободное место неизвестно.</translation>
         </message>
         <message>
+            <location line="+4" />
             <source>The ext journal metadata could not be read. Files may be outdated or inconsistent; no journal replay was performed.</source>
             <translation>Метаданные журнала ext не удалось прочитать. Файлы могут быть устаревшими или несогласованными. Журнал не воспроизводился.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The ext root directory is incomplete or unavailable. Some original names and paths are missing.</source>
             <translation>Корневой каталог ext неполон или недоступен. Часть исходных имён и путей отсутствует.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The ext root directory could not be read. No readable entries were found.</source>
             <translation>Корневой каталог ext не удалось прочитать. Доступных записей не найдено.</translation>
         </message>
         <message>
+            <location line="-37" />
             <source>The FAT root directory could not be read. No readable entries were found.</source>
             <translation>Корневой каталог FAT не удалось прочитать. Доступных записей не найдено.</translation>
         </message>
         <message>
+            <location line="+5" />
             <source>The exFAT source is shorter than the declared volume. Some files may be incomplete or unreadable.</source>
             <translation>Источник exFAT короче заявленного размера тома. Некоторые файлы могут быть неполными или недоступными для чтения.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The exFAT boot region could not be verified. Files or metadata may be unreliable.</source>
             <translation>Загрузочную область exFAT не удалось проверить. Данные файлов или метаданные могут быть недостоверными.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The exFAT allocation bitmap is unavailable. Free space and cluster allocation are unverified.</source>
             <translation>Карта занятости exFAT недоступна. Свободное место и распределение кластеров не проверены.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>The exFAT root directory is marked unallocated. Allocation metadata may be inconsistent.</source>
             <translation>Корневой каталог exFAT помечен как свободный. Метаданные распределения кластеров могут быть несогласованными.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>The exFAT volume label could not be read and has been omitted.</source>
             <translation>Метку тома exFAT не удалось прочитать, поэтому она не показана.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>The exFAT root directory could not be read. No readable entries were found.</source>
             <translation>Корневой каталог exFAT не удалось прочитать. Доступных записей не найдено.</translation>
         </message>
         <message>
+            <location line="-14" />
             <source>The exFAT directory could not be read completely.</source>
             <translation>Каталог exFAT прочитан не полностью.</translation>
         </message>
         <message>
+            <location line="+60" />
             <source>Some SquashFS extended attributes are unavailable. Readable file data and attributes remain accessible.</source>
             <translation>Некоторые расширенные атрибуты SquashFS недоступны. Читаемые данные файлов и атрибуты можно копировать.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>Some SquashFS extended attributes are unavailable.</source>
             <translation>Некоторые расширенные атрибуты SquashFS недоступны.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>Some SquashFS ownership metadata is unavailable. User or group IDs may be unknown. Readable file data remains accessible.</source>
             <translation>Некоторые сведения о владельцах SquashFS недоступны. ID пользователя или группы могут быть неизвестны. Читаемые данные файлов можно копировать.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>SquashFS user or group IDs are unavailable.</source>
             <translation>ID пользователя или группы SquashFS недоступны.</translation>
         </message>
         <message>
+            <location line="+1" />
             <source>Some SquashFS file fragments are unavailable. Only readable prefixes of affected files are available; copying them reports an error.</source>
             <translation>Некоторые фрагменты файлов SquashFS недоступны. Можно прочитать только доступное начало этих файлов; копирование завершится с ошибкой.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The SquashFS file fragment is unavailable. Only the readable prefix is available.</source>
             <translation>Фрагмент файла SquashFS недоступен. Доступно только начало файла.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>Some SquashFS directories could not be read completely. Files or names may be missing. Readable files remain accessible.</source>
             <translation>Некоторые каталоги SquashFS прочитаны не полностью. Часть файлов или имён может отсутствовать. Доступные файлы можно копировать.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The SquashFS directory could not be read completely.</source>
             <translation>Каталог SquashFS прочитан не полностью.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>The SquashFS inode is unavailable. File data and metadata could not be read.</source>
             <translation>Inode SquashFS недоступен. Данные и метаданные файла прочитать не удалось.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>Some SquashFS directory references are unavailable. Files recovered by inode number may be misidentified or outdated.</source>
             <translation>Некоторые ссылки каталогов SquashFS недоступны. Файлы, найденные по номеру inode, могут быть неверно определены или устаревшими.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The SquashFS inode-number mapping is unverified.</source>
             <translation>Соответствие номера inode SquashFS не проверено.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>Some SquashFS inode records are unavailable. Files or metadata may be missing. Inode identities are unverified.</source>
             <translation>Некоторые записи inode SquashFS недоступны. Часть файлов или метаданных может отсутствовать. Идентификаторы inode не проверены.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>Some SquashFS metadata indexes are unavailable. File data, ownership or extended attributes may be incomplete.</source>
             <translation>Некоторые индексы метаданных SquashFS недоступны. Данные файлов, сведения о владельцах или расширенные атрибуты могут быть неполными.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>Some SquashFS file block lists are unavailable. Only readable portions of affected files can be copied; incomplete copies report an error.</source>
             <translation>Некоторые списки блоков файлов SquashFS недоступны. Можно скопировать только читаемые части затронутых файлов; при неполном копировании будет сообщено об ошибке.</translation>
         </message>
         <message>
+            <location line="-218" />
             <source>The CramFS volume origin is ambiguous. File names or contents may belong to another candidate volume. Results from the selected origin are unverified.</source>
             <translation>Не удалось однозначно определить начало тома CramFS. Имена или содержимое файлов могут относиться к другому варианту тома. Результаты чтения с выбранного начала не проверены.</translation>
         </message>
         <message>
+            <location line="+4" />
             <source>Some CramFS file block tables are incomplete. Only readable portions of affected files can be copied; incomplete copies report an error.</source>
             <translation>Некоторые таблицы блоков файлов CramFS неполны. Можно скопировать только читаемые части затронутых файлов; при неполном копировании будет сообщено об ошибке.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The declared CramFS volume size does not bound all file references reliably. Reading uses the available source bounds. Some files may be damaged or unreadable.</source>
             <translation>Объявленный размер тома CramFS не позволяет надёжно определить границы данных файлов. Чтение ограничено доступным источником. Некоторые файлы могут быть повреждены или недоступны.</translation>
         </message>
         <message>
+            <location line="+4" />
             <source>Some CramFS directories could not be read completely. Files or names may be missing. Readable files remain accessible.</source>
             <translation>Некоторые каталоги CramFS прочитаны не полностью. Файлы или имена могут отсутствовать. Читаемые файлы остаются доступны.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The CramFS directory could not be read completely.</source>
             <translation>Каталог CramFS прочитан не полностью.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>The CramFS volume checksum could not be verified. Some files may be damaged or unreadable.</source>
             <translation>Не удалось проверить контрольную сумму тома CramFS. Некоторые файлы могут быть повреждены или недоступны для чтения.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The CramFS volume checksum does not match. Some files may be damaged.</source>
             <translation>Контрольная сумма тома CramFS не совпадает. Некоторые файлы могут быть повреждены.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>The CramFS source is shorter than the declared volume. Some files may be incomplete or unreadable.</source>
             <translation>Размер источника CramFS меньше заявленного размера тома. Некоторые файлы могут быть неполными или недоступны для чтения.</translation>
         </message>
         <message>
+            <location line="+200" />
             <source>Some SquashFS file block-list metadata is unavailable.</source>
             <translation>Часть метаданных списка блоков файла SquashFS недоступна.</translation>
         </message>
         <message>
+            <location line="-101" />
             <source>The FAT directory could not be read completely.</source>
             <translation>Каталог FAT прочитан не полностью.</translation>
         </message>
         <message>
+            <location line="+24" />
             <source>The ext directory could not be read completely.</source>
             <translation>Каталог ext прочитан не полностью.</translation>
         </message>
         <message>
+            <location line="+17" />
             <source>Some ext file data is outside the reader's logical address range.</source>
             <translation>Часть данных файла ext находится за пределами поддерживаемого диапазона адресов.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>Some ext file data is outside the reader's logical address range. Only addressable data is available; copying affected files reports an error.</source>
             <translation>Часть данных файлов ext находится за пределами поддерживаемого диапазона адресов. Доступны только данные в этом диапазоне; копирование затронутых файлов завершится с ошибкой.</translation>
         </message>
         <message>
+            <location line="+4" />
             <source>Some ext inodes could not be read. Files or metadata may be missing; readable files remain accessible.</source>
             <translation>Не удалось прочитать некоторые inode ext. Часть файлов или метаданных может отсутствовать. Доступные файлы можно читать.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>Some extended attributes of this ext item could not be read.</source>
             <translation>Некоторые расширенные атрибуты этого объекта ext недоступны для чтения.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>The ext symbolic-link target could not be read when opening.</source>
             <translation>Не удалось прочитать цель символической ссылки ext при открытии.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>Some ext symbolic-link targets could not be read. Copying affected links may fail; readable files remain accessible.</source>
             <translation>Не удалось прочитать цели некоторых символических ссылок ext. При копировании этих ссылок возможны ошибки. Доступные файлы можно читать.</translation>
         </message>
         <message>
+            <location line="+4" />
             <source>Some ext extended attributes could not be read. Unreadable attributes have been omitted; readable files remain accessible.</source>
             <translation>Некоторые расширенные атрибуты ext недоступны для чтения и пропущены. Доступные файлы можно читать.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>Some ext directories could not be read completely. The file list may be incomplete or outdated.</source>
             <translation>Некоторые каталоги ext прочитаны не полностью. Список файлов может быть неполным или устаревшим.</translation>
         </message>
         <message>
+            <location line="-78" />
             <source>The FAT volume was not properly unmounted. Some data may be corrupt.</source>
             <translation>Том FAT не был корректно отключён. Часть данных может быть повреждена.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>The FAT source is shorter than the declared volume. Some files may be incomplete or unreadable.</source>
             <translation>Источник FAT короче заявленного размера тома. Некоторые файлы могут быть неполными или недоступными для чтения.</translation>
         </message>
         <message>
+            <location line="-56" />
             <source>Some NTFS file metadata is unavailable or unverified. Names, times and permissions may be missing or outdated.</source>
             <translation>Некоторые метаданные файлов NTFS недоступны или не проверены. Имена, время и права доступа могут отсутствовать или быть устаревшими.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>NTFS file metadata is unavailable or unverified.</source>
             <translation>Метаданные файла NTFS недоступны или не проверены.</translation>
         </message>
         <message>
+            <location line="+11" />
             <source>Some NTFS MFT records are unavailable or unverified. Files or metadata may be missing, incomplete or unreadable.</source>
             <translation>Некоторые записи MFT NTFS недоступны или не проверены. Файлы или метаданные могут отсутствовать, быть неполными или нечитаемыми.</translation>
         </message>
         <message>
+            <location line="+4" />
             <source>The NTFS MFT record is unavailable or unverified.</source>
             <translation>Запись MFT NTFS недоступна или не проверена.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>NTFS is being read using a backup MFT record. The primary bootstrap record is unavailable or incomplete.</source>
             <translation>NTFS читается с помощью резервной записи MFT. Первичная запись для открытия таблицы недоступна или неполна.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The declared NTFS MFT mirror is outside the volume. The primary table remains readable.</source>
             <translation>Резервная копия MFT NTFS указана за пределами тома. Первичная таблица остаётся доступной для чтения.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The NTFS boot sectors do not provide usable volume geometry.</source>
             <translation>По загрузочным секторам NTFS не удалось определить допустимую геометрию тома.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>The NTFS MFT bootstrap or mapping could not be read or validated.</source>
             <translation>Не удалось прочитать или проверить начальную запись MFT NTFS либо карту расположения таблицы.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>No readable NTFS MFT records were found in the selected mode.</source>
             <translation>В выбранном режиме не найдено доступных для чтения записей MFT NTFS.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>Some NTFS security descriptors are unavailable or unverified. Permissions may be missing. Readable file data remains accessible.</source>
             <translation>Некоторые дескрипторы безопасности NTFS недоступны или не проверены. Сведения о правах доступа могут отсутствовать. Данные читаемых файлов остаются доступны.</translation>
         </message>
         <message>
+            <location line="+4" />
             <source>The NTFS security descriptor is unavailable or unverified.</source>
             <translation>Дескриптор безопасности NTFS недоступен или не проверен.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>The NTFS source is shorter than the declared volume. Some files may be incomplete or unreadable.</source>
             <translation>Размер источника NTFS меньше заявленного размера тома. Некоторые файлы могут быть неполными или нечитаемыми.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>NTFS is being read using a backup boot sector. The primary sector is invalid.</source>
             <translation>NTFS читается с использованием резервного загрузочного сектора. Основной сектор повреждён.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The backup NTFS boot sector is unavailable or differs from the primary sector.</source>
             <translation>Резервный загрузочный сектор NTFS недоступен или отличается от основного.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>Deleted NTFS records are shown for recovery. Names, metadata and file data may be missing, outdated or reused.</source>
             <translation>Показаны удалённые записи NTFS для восстановления. Имена, метаданные и данные файлов могут отсутствовать, быть устаревшими или уже использоваться другими файлами.</translation>
         </message>
         <message>
+            <location line="+4" />
             <source>NTFS reparse metadata is unavailable. The main file stream cannot be decoded.</source>
             <translation>Метаданные точки повторной обработки NTFS недоступны. Не удалось декодировать основной поток файла.</translation>
         </message>
         <message>
+            <location line="-46" />
             <source>The ext filesystem requires journal recovery. The journal will not be replayed; files may be missing, outdated or unreadable.</source>
             <translation>Файловой системе ext требуется восстановление журнала. Журнал не будет воспроизведён; некоторые файлы могут отсутствовать, быть устаревшими или нечитаемыми.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The ext filesystem requires orphan cleanup. Orphaned files will not be repaired; files may be missing or incomplete.</source>
             <translation>Файловой системе ext требуется обработка потерянных файлов. Восстановление не выполняется; некоторые файлы могут отсутствовать или быть неполными.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>The ext filesystem was not cleanly unmounted or reports errors. Files may be inconsistent.</source>
             <translation>Файловая система ext не была корректно отключена или сообщает об ошибках. Данные файлов могут быть несогласованными.</translation>
         </message>
         <message>
+            <location line="-81" />
             <source>Unverified ext read-only features: %1.</source>
             <translation>Непроверенные возможности ext при чтении: %1.</translation>
         </message>
         <message>
+            <location line="+66" />
             <source>Some NTFS DATA mappings are incomplete or unverified. Files or streams may be outdated, incomplete or unreadable.</source>
             <translation>Расположение некоторых данных NTFS неполно или не проверено. Файлы и потоки могут быть устаревшими, неполными или недоступными для чтения.</translation>
         </message>
         <message>
+            <location line="+3" />
             <source>NTFS DATA mapping is incomplete or unverified.</source>
             <translation>Расположение данных NTFS неполно или не проверено.</translation>
         </message>
         <message>
+            <location line="-6" />
             <source>Some NTFS extended attributes are unavailable. WSL ownership and file types may be unknown. Readable DATA streams remain accessible.</source>
             <translation>Некоторые расширенные атрибуты NTFS недоступны. Владельцы WSL и типы файлов могут быть неизвестны. Доступные потоки DATA можно читать.</translation>
         </message>
         <message>
+            <location line="-3" />
             <source>Some NTFS reparse metadata is unavailable. Unclassified entries expose underlying DATA streams where readable.</source>
             <translation>Метаданные некоторых точек повторной обработки NTFS недоступны. Для объектов неустановленного типа предлагаются доступные потоки DATA.</translation>
         </message>
         <message>
+            <location line="-2" />
             <source>The NTFS volume is marked dirty. Some data may be corrupt.</source>
             <translation>Том NTFS помечен как требующий проверки. Часть данных может быть повреждена.</translation>
         </message>
         <message>
+            <location line="-2" />
             <source>The volume state is unavailable. Files may be inconsistent.</source>
             <translation>Не удалось определить состояние тома. Данные файлов могут быть несогласованными.</translation>
         </message>
         <message>
+            <location line="-2" />
             <source>The free-space count exceeds the volume size. Free space is unknown.</source>
             <translation>Число свободных блоков превышает размер тома. Объём свободного места неизвестен.</translation>
         </message>
         <message>
+            <location line="-3" />
             <source>The HFS wrapper lacks protection flags. Embedded volume data may be inconsistent.</source>
             <translation>У оболочки HFS не установлены защитные флаги. Данные вложенного тома могут быть несогласованными.</translation>
         </message>
         <message>
+            <location line="-4" />
             <source>Volume was not properly unmounted. Some data may be corrupt.</source>
             <translation>Том был некорректно размонтирован. Часть данных может быть повреждена.</translation>
         </message>
         <message>
+            <location line="+2" />
             <source>Medium has reported failures. Some data may be lost.</source>
             <translation>Носитель сообщил об ошибках. Часть данных может быть потеряна.</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/Update.cpp" line="+44" />
+            <location filename="../src/CPP/7zip/UI/Common/Update.cpp" line="+46" />
             <source>SFX file is not specified</source>
             <translation>SFX-модуль не указан</translation>
         </message>
@@ -4189,19 +4576,19 @@ Are you sure you want to split archive into such volumes?</source>
         </message>
         <message>
             <location line="+18" />
-            <location line="+732" />
+            <location line="+734" />
             <source>cannot open SFX module</source>
             <translation>Не удалось открыть SFX-модуль</translation>
         </message>
         <message>
-            <location line="-727" />
-            <location line="+694" />
-            <location line="+45" />
+            <location line="-729" />
+            <location line="+696" />
+            <location line="+46" />
             <source>cannot open file</source>
             <translation>Не удалось открыть файл</translation>
         </message>
         <message>
-            <location line="-624" />
+            <location line="-627" />
             <source>update operations are not supported for this archive</source>
             <translation>Обновление этого архива не поддерживается</translation>
         </message>
@@ -4211,12 +4598,12 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Обновление многотомных архивов не поддерживается</translation>
         </message>
         <message>
-            <location line="+666" />
+            <location line="+672" />
             <source>There are unclosed input files:</source>
             <translation>Остались незакрытые входные файлы:</translation>
         </message>
         <message>
-            <location line="+289" />
+            <location line="+336" />
             <source>type of archive is not specified</source>
             <translation>Тип архива не указан</translation>
         </message>
@@ -4257,12 +4644,8 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Файл уже существует</translation>
         </message>
         <message>
-            <location line="+95" />
-            <source>cannot delete the file</source>
-            <translation>Не удалось удалить файл</translation>
-        </message>
-        <message>
-            <location line="+22" />
+            <location line="-530" />
+            <location line="+632" />
             <source>cannot move the file</source>
             <translation>Не удалось переместить файл</translation>
         </message>
@@ -4439,12 +4822,12 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Не удалось задать атрибут файла</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/Extract.cpp" line="+175" />
+            <location filename="../src/CPP/7zip/UI/Common/Extract.cpp" line="+177" />
             <source>Cannot create output directory</source>
             <translation>Не удалось создать выходную папку</translation>
         </message>
         <message>
-            <location line="+91" />
+            <location line="+96" />
             <location line="+56" />
             <source>Cannot find archive file</source>
             <translation>Не удалось найти файл архива</translation>
@@ -4455,14 +4838,14 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Объект является папкой</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/OpenArchive.cpp" line="+1194" />
+            <location filename="../src/CPP/7zip/UI/Common/OpenArchive.cpp" line="+1235" />
             <location filename="../src/CPP/7zip/UI/FileManager/FM.cpp" line="+185" />
-            <location filename="../src/CPP/7zip/UI/GUI/GUI.cpp" line="+338" />
+            <location filename="../src/CPP/7zip/UI/GUI/GUI.cpp" line="+369" />
             <source>Unknown error</source>
             <translation>Неизвестная ошибка</translation>
         </message>
         <message>
-            <location line="+9" />
+            <location line="+13" />
             <source>Unknown warning</source>
             <translation>Неизвестное предупреждение</translation>
         </message>
@@ -4485,7 +4868,7 @@ Check charset encoding and -scs switch.</source>
         </message>
         <message>
             <location line="+3" />
-            <location filename="../src/CPP/Common/Wildcard.cpp" line="+583" />
+            <location filename="../src/CPP/Common/Wildcard.cpp" line="+644" />
             <source>Empty file path</source>
             <translation>Пустой путь к файлу</translation>
         </message>
@@ -4687,7 +5070,7 @@ Check charset encoding and -scs switch.</source>
             <translation>Не удалось создать модуль вычисления контрольной суммы</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/LoadCodecs.cpp" line="+525" />
+            <location filename="../src/CPP/7zip/UI/Common/LoadCodecs.cpp" line="+527" />
             <source>cannot load file as datafile library</source>
             <translation>Не удалось загрузить файл как библиотеку данных</translation>
         </message>
@@ -4708,7 +5091,7 @@ Check charset encoding and -scs switch.</source>
         </message>
         <message>
             <location line="+296" />
-            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="+1177" />
+            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="+1132" />
             <location filename="../src/CPP/Windows/ErrorMsg.cpp" line="+146" />
             <source>Error #%1</source>
             <translation>Ошибка № %1</translation>
@@ -4737,38 +5120,38 @@ Check charset encoding and -scs switch.</source>
         <message>
             <location filename="../src/CPP/7zip/UI/Explorer/ContextMenu.cpp" line="+1035" />
             <location filename="../src/CPP/7zip/UI/FileManager/FM.cpp" line="+58" />
-            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="-959" />
-            <location line="+961" />
+            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="-915" />
+            <location line="+917" />
             <source>Error</source>
             <translation>Ошибка</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="-189" />
+            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="-185" />
             <source>Progress Error</source>
             <translation>Ошибка выполнения операции</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/GUI.cpp" line="-288" />
+            <location filename="../src/CPP/7zip/UI/GUI/GUI.cpp" line="-318" />
             <source>7-Zip cannot find the code that works with archives.</source>
             <translation>7-Zip не удалось найти модуль для работы с архивами.</translation>
         </message>
         <message>
-            <location line="+35" />
+            <location line="+40" />
             <source>Specify command</source>
             <translation>Укажите команду</translation>
         </message>
         <message>
-            <location line="+44" />
+            <location line="+45" />
             <source>7-Zip cannot load module: </source>
             <translation>Не удалось загрузить модуль 7-Zip: </translation>
         </message>
         <message>
-            <location line="+175" />
+            <location line="+199" />
             <source>Unsupported command</source>
             <translation>Неподдерживаемая команда</translation>
         </message>
         <message>
-            <location filename="../src/archivebackend_codecs.cpp" line="+180" />
+            <location filename="../src/CPP/7zip/UI/Common/Update.cpp" line="-772" />
             <source>Could not make the SFX archive executable</source>
             <translation>Не удалось сделать SFX-архив исполняемым</translation>
         </message>
@@ -4778,7 +5161,7 @@ Check charset encoding and -scs switch.</source>
             <translation>Неверный путь к выходной папке</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/UpdateGUI.cpp" line="+374" />
+            <location filename="../src/CPP/7zip/UI/GUI/UpdateGUI.cpp" line="+377" />
             <source>It must be one command</source>
             <translation>Должна быть указана одна команда</translation>
         </message>
@@ -4848,7 +5231,7 @@ Check charset encoding and -scs switch.</source>
             <location filename="../src/CPP/7zip/UI/FileManager/ExtractCallback.cpp" line="+282" />
             <location filename="../src/CPP/7zip/UI/FileManager/LinkDialog.cpp" line="+51" />
             <location line="+31" />
-            <location filename="../src/CPP/7zip/UI/GUI/BenchmarkDialog.cpp" line="-966" />
+            <location filename="../src/CPP/7zip/UI/GUI/BenchmarkDialog.cpp" line="-972" />
             <source>ERROR: </source>
             <translation>ОШИБКА: </translation>
         </message>
@@ -4920,7 +5303,7 @@ Use `Revert` to recover timestamp.</source>
             <translation>Нет файла для отмены изменений</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/BenchmarkDialog.cpp" line="+430" />
+            <location filename="../src/CPP/7zip/UI/GUI/BenchmarkDialog.cpp" line="+434" />
             <source>Can't create thread</source>
             <translation>Не удалось создать поток</translation>
         </message>
@@ -4940,7 +5323,7 @@ Use `Revert` to recover timestamp.</source>
             <translation>Отмена…</translation>
         </message>
         <message>
-            <location line="+168" />
+            <location line="+170" />
             <source>Thread Wait Error</source>
             <translation>Ошибка ожидания потока</translation>
         </message>
@@ -4955,12 +5338,13 @@ Use `Revert` to recover timestamp.</source>
             <translation>Не удалось найти 7z.dll</translation>
         </message>
         <message>
-            <location line="+624" />
+            <location line="+627" />
             <source>The flaw in benchmark thread code</source>
             <translation>Внутренняя ошибка потока бенчмарка</translation>
         </message>
         <message>
             <location filename="../src/CPP/7zip/UI/GUI/CompressDialog.cpp" line="-1130" />
+            <location filename="../src/createarchivedialog.cpp" line="-86" />
             <source>Incorrect archive path</source>
             <translation>Неверный путь к архиву</translation>
         </message>
@@ -4991,7 +5375,7 @@ Use `Revert` to recover timestamp.</source>
             <translation>Ошибка записи комментария</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp" line="+371" />
+            <location filename="../src/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp" line="+271" />
             <location filename="../src/CPP/7zip/UI/FileManager/PanelListNotify.cpp" line="+303" />
             <source>Error: </source>
             <translation>Ошибка: </translation>
@@ -5032,12 +5416,12 @@ Use `Revert` to recover timestamp.</source>
             <translation>E_INVALIDARG : Один или несколько аргументов недопустимы</translation>
         </message>
         <message>
-            <location filename="../src/qtdiagnostictext.cpp" line="+35" />
+            <location filename="../src/qtdiagnostictext.cpp" line="-39" />
             <source>Missing volume: %1</source>
             <translation>Отсутствует том: %1</translation>
         </message>
         <message>
-            <location line="+4" />
+            <location line="+35" />
             <source>32-bit overflow in headers</source>
             <translation>32-разрядное переполнение в заголовках</translation>
         </message>
@@ -5066,6 +5450,7 @@ Use `Revert` to recover timestamp.</source>
         </message>
         <message>
             <location line="+117" />
+            <location filename="../src/qtsystempagepresentation.cpp" line="-109" />
             <source>%1 Archive</source>
             <translation>Архив %1</translation>
         </message>
@@ -5096,71 +5481,54 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivebackend</name>
         <message>
-            <location filename="../src/archivebackend.cpp" line="+153" />
-            <location line="+105" />
-            <location line="+110" />
+            <location filename="../src/archivebackend.cpp" line="+76" />
+            <location line="+41" />
+            <location line="+66" />
             <location line="+17" />
-            <location filename="../src/archivebackend_process.cpp" line="+81" />
             <source>Another operation is still running.</source>
             <translation>Другая операция ещё выполняется.</translation>
         </message>
         <message>
-            <location line="-77" />
+            <location line="-33" />
             <source>Could not create destination folder: %1</source>
             <translation>Не удалось создать папку назначения: %1</translation>
         </message>
         <message>
-            <location filename="../src/archivebackend_process.cpp" line="-10" />
-            <source>Could not start 7zz. Install official 7zz and add it to PATH.</source>
-            <translation>Не удалось запустить 7zz. Установите официальный 7zz и добавьте его в PATH.</translation>
-        </message>
-        <message>
-            <location filename="../src/archivebackend.cpp" line="-171" />
+            <location line="-107" />
             <source>Invalid archive open type: %1</source>
             <translation>Неверный режим открытия архива: %1</translation>
         </message>
         <message>
-            <location line="+129" />
-            <location line="+109" />
+            <location line="+65" />
+            <location line="+65" />
             <source>Open the archive and inspect its contents first.</source>
             <translation>Сначала откройте архив и проверьте его содержимое.</translation>
         </message>
         <message>
-            <location line="-176" />
-            <location line="+258" />
+            <location filename="../src/archivebackend_test.cpp" line="+186" />
             <source>Operation canceled.</source>
             <translation>Операция отменена.</translation>
         </message>
         <message>
-            <location line="-238" />
-            <source>Overwrite decision is unavailable.</source>
-            <translation>Решение о замене недоступно.</translation>
-        </message>
-        <message>
-            <location line="+74" />
+            <location filename="../src/archivebackend.cpp" line="-38" />
             <source>Selected file is missing from the archive: %1</source>
             <translation>Выбранный файл отсутствует в архиве: %1</translation>
         </message>
         <message>
-            <location line="+100" />
+            <location line="+56" />
             <source>Source archive is unavailable.</source>
             <translation>Исходный архив недоступен.</translation>
         </message>
         <message>
-            <location line="-120" />
+            <location line="-76" />
             <source>These extraction options require the source workflow.</source>
             <translation>Эти параметры извлечения требуют исходного сценария.</translation>
-        </message>
-        <message>
-            <location filename="../src/archivebackend_process.cpp" line="+60" />
-            <source>[hidden]</source>
-            <translation>[скрыто]</translation>
         </message>
     </context>
     <context>
         <name>archivebackend_codecs</name>
         <message>
-            <location filename="../src/archivebackend_codecs.cpp" line="+155" />
+            <location filename="../src/archivebackend_codecs.cpp" line="+311" />
             <source>All files</source>
             <translation>Все файлы</translation>
         </message>
@@ -5170,87 +5538,27 @@ Use `Revert` to recover timestamp.</source>
             <translation>Архивы</translation>
         </message>
         <message>
-            <location line="-59" />
+            <location line="-55" />
             <source>Codec discovery cancelled.</source>
             <translation>Поиск модуля форматов отменён.</translation>
-        </message>
-        <message>
-            <location line="+122" />
-            <source>No archive creation engine is available for this format and selection.</source>
-            <translation>Для этого формата и выбранных источников нет модуля создания архива.</translation>
         </message>
     </context>
     <context>
         <name>archivebackend_completion</name>
         <message>
-            <location filename="../src/archivebackend_completion.cpp" line="+115" />
-            <source>7zz exited with code %1. %2</source>
-            <translation>7zz завершился с кодом %1. %2</translation>
-        </message>
-        <message>
-            <location line="+75" />
-            <source>Archive created.</source>
-            <translation>Архив создан.</translation>
-        </message>
-        <message>
-            <location line="-8" />
+            <location filename="../src/archivebackend_test.cpp" line="-5" />
             <source>Archive opened.</source>
             <translation>Архив открыт.</translation>
         </message>
         <message>
-            <location line="+6" />
-            <source>Checksums calculated.</source>
-            <translation>Контрольные суммы рассчитаны.</translation>
-        </message>
-        <message>
-            <location line="-36" />
-            <source>Could not make the SFX archive executable.</source>
-            <translation>Не удалось назначить SFX-архиву право исполнения.</translation>
-        </message>
-        <message>
-            <location line="+7" />
-            <source>Could not save new archive: %1</source>
-            <translation>Не удалось сохранить новый архив: %1</translation>
-        </message>
-        <message>
-            <location line="+25" />
+            <location line="+2" />
             <source>Extraction completed.</source>
             <translation>Извлечение завершено.</translation>
         </message>
         <message>
-            <location line="+12" />
-            <source>File updated in archive.</source>
-            <translation>Файл обновлён в архиве.</translation>
-        </message>
-        <message>
-            <location line="+1" />
-            <source>Files added.</source>
-            <translation>Файлы добавлены.</translation>
-        </message>
-        <message>
-            <location line="-3" />
-            <source>Item renamed.</source>
-            <translation>Объект переименован.</translation>
-        </message>
-        <message>
-            <location line="-3" />
-            <source>Items deleted from archive.</source>
-            <translation>Объекты удалены из архива.</translation>
-        </message>
-        <message>
-            <location line="-5" />
+            <location line="+2" />
             <source>No errors found.</source>
             <translation>Ошибок при проверке не найдено.</translation>
-        </message>
-        <message>
-            <location line="-96" />
-            <source>Operation canceled.</source>
-            <translation>Операция отменена.</translation>
-        </message>
-        <message>
-            <location line="+23" />
-            <source>Wrong password or damaged encrypted archive.</source>
-            <translation>Неверный пароль или повреждённый защищённый архив.</translation>
         </message>
     </context>
     <context>
@@ -5292,74 +5600,6 @@ Use `Revert` to recover timestamp.</source>
         </message>
     </context>
     <context>
-        <name>archivebackend_creation</name>
-        <message>
-            <location filename="../src/archivebackend_creation.cpp" line="+66" />
-            <source>Another operation is still running.</source>
-            <translation>Другая операция ещё выполняется.</translation>
-        </message>
-        <message>
-            <location line="-21" />
-            <source>Archive created.</source>
-            <translation>Архив создан.</translation>
-        </message>
-        <message>
-            <location line="+174" />
-            <source>Cannot save the archive inside the selected folder.</source>
-            <translation>Нельзя сохранять архив внутри выбранной папки.</translation>
-        </message>
-        <message>
-            <location line="-43" />
-            <source>Could not determine the source root.</source>
-            <translation>Не удалось определить корень источника.</translation>
-        </message>
-        <message>
-            <location line="-122" />
-            <source>Deleting: %1</source>
-            <translation>Удаление: %1</translation>
-        </message>
-        <message>
-            <location line="+62" />
-            <source>Destination folder not found or archive already exists: %1</source>
-            <translation>Папка назначения не найдена или архив уже существует: %1</translation>
-        </message>
-        <message>
-            <location line="+43" />
-            <source>File or folder not found: %1</source>
-            <translation>Файл или папка не найдены: %1</translation>
-        </message>
-        <message>
-            <location line="+30" />
-            <source>Invalid archive path mode.</source>
-            <translation>Недопустимый режим путей архива.</translation>
-        </message>
-        <message>
-            <location line="+7" />
-            <source>Invalid source path: %1</source>
-            <translation>Недопустимый путь источника: %1</translation>
-        </message>
-        <message>
-            <location line="-168" />
-            <source>Operation canceled.</source>
-            <translation>Операция отменена.</translation>
-        </message>
-        <message>
-            <location line="+45" />
-            <source>Select source files or folders.</source>
-            <translation>Выберите файлы или папки для архива.</translation>
-        </message>
-        <message>
-            <location line="+131" />
-            <source>Sources produce the same archive name: %1</source>
-            <translation>Источники дают одинаковое имя в архиве: %1</translation>
-        </message>
-        <message>
-            <location line="-100" />
-            <source>The selected format or method is not supported by SFX.</source>
-            <translation>Выбранный формат или метод не поддерживается SFX.</translation>
-        </message>
-    </context>
-    <context>
         <name>archivebackend_hash</name>
         <message>
             <location filename="../src/archivebackend_hash.cpp" line="+16" />
@@ -5398,280 +5638,22 @@ Use `Revert` to recover timestamp.</source>
         </message>
     </context>
     <context>
-        <name>archivebackend_mutations</name>
-        <message>
-            <location filename="../src/archivebackend_mutations.cpp" line="+44" />
-            <source>Adding to a protected archive is currently unavailable.</source>
-            <translation>Добавление в защищённый архив пока недоступно.</translation>
-        </message>
-        <message>
-            <location line="-12" />
-            <location line="+125" />
-            <location line="+25" />
-            <location line="+34" />
-            <location line="+78" />
-            <source>Another operation is still running.</source>
-            <translation>Другая операция ещё выполняется.</translation>
-        </message>
-        <message>
-            <location line="-95" />
-            <source>Archive item not found: %1</source>
-            <translation>Объект архива не найден: %1</translation>
-        </message>
-        <message>
-            <location line="+146" />
-            <source>Could not replace archive: %1</source>
-            <translation>Не удалось заменить архив: %1</translation>
-        </message>
-        <message>
-            <location line="+12" />
-            <source>Could not restore archive. Backup: %1</source>
-            <translation>Не удалось восстановить архив. Копия: %1</translation>
-        </message>
-        <message>
-            <location line="-3" />
-            <source>Could not save updated archive: %1</source>
-            <translation>Не удалось сохранить обновлённый архив: %1</translation>
-        </message>
-        <message>
-            <location line="-27" />
-            <source>Links in temporary files are not allowed.</source>
-            <translation>Ссылки во временном файле запрещены.</translation>
-        </message>
-        <message>
-            <location line="-9" />
-            <source>Modified file not found.</source>
-            <translation>Изменённый файл не найден.</translation>
-        </message>
-        <message>
-            <location line="-184" />
-            <source>Name already exists in the archive or selection: %1</source>
-            <translation>Имя уже есть в архиве или выборе: %1</translation>
-        </message>
-        <message>
-            <location line="-74" />
-            <source>Only .7z and .zip archives are supported.</source>
-            <translation>Поддерживаются только архивы .7z и .zip.</translation>
-        </message>
-        <message>
-            <location line="-7" />
-            <source>Open an existing archive and select sources.</source>
-            <translation>Откройте существующий архив и выберите источники.</translation>
-        </message>
-        <message>
-            <location line="+113" />
-            <source>Open an unencrypted .7z or .zip archive.</source>
-            <translation>Откройте незашифрованный архив .7z или .zip.</translation>
-        </message>
-        <message>
-            <location line="-127" />
-            <location line="+150" />
-            <location line="+36" />
-            <location line="+76" />
-            <source>Open the archive and inspect its contents first.</source>
-            <translation>Сначала откройте архив и проверьте его содержимое.</translation>
-        </message>
-        <message>
-            <location line="-31" />
-            <source>Renaming this item is unavailable.</source>
-            <translation>Переименование этого объекта недоступно.</translation>
-        </message>
-        <message>
-            <location line="-177" />
-            <source>Source unavailable: %1</source>
-            <translation>Недоступный источник: %1</translation>
-        </message>
-        <message>
-            <location line="+24" />
-            <source>Sources must not contain links: %1</source>
-            <translation>Источники не должны содержать ссылки: %1</translation>
-        </message>
-        <message>
-            <location line="-13" />
-            <source>The archive is inside the selected folder.</source>
-            <translation>Архив находится внутри выбранной папки.</translation>
-        </message>
-        <message>
-            <location line="+154" />
-            <location line="+21" />
-            <source>The name already exists in the archive.</source>
-            <translation>Имя уже есть в архиве.</translation>
-        </message>
-        <message>
-            <location line="+31" />
-            <source>This archive file cannot be replaced.</source>
-            <translation>Этот файл архива нельзя заменить.</translation>
-        </message>
-        <message>
-            <location line="-59" />
-            <source>Unsafe archive item: %1</source>
-            <translation>Небезопасный объект архива: %1</translation>
-        </message>
-        <message>
-            <location line="-124" />
-            <source>Unsafe source name: %1</source>
-            <translation>Небезопасное имя источника: %1</translation>
-        </message>
-    </context>
-    <context>
-        <name>archivebackend_preparation</name>
-        <message>
-            <location filename="../src/archivebackend_preparation.cpp" line="+10" />
-            <source>Another operation is still running.</source>
-            <translation>Другая операция ещё выполняется.</translation>
-        </message>
-        <message>
-            <location line="+52" />
-            <source>Could not prepare a copy of the archive.</source>
-            <translation>Не удалось подготовить копию архива.</translation>
-        </message>
-        <message>
-            <location line="-1" />
-            <source>Operation canceled.</source>
-            <translation>Операция отменена.</translation>
-        </message>
-    </context>
-    <context>
         <name>archivebackend_sourceextract</name>
         <message>
-            <location filename="../src/archivebackend_sourceextract.cpp" line="+11" />
+            <location filename="../src/archivebackend_sourceextract.cpp" line="+39" />
             <source>Another operation is still running.</source>
             <translation>Другая операция ещё выполняется.</translation>
         </message>
         <message>
-            <location line="+34" />
-            <source>Cannot prepare exact archive item selection.</source>
-            <translation>Не удалось подготовить точный выбор элемента архива.</translation>
-        </message>
-        <message>
-            <location line="-27" />
+            <location line="+8" />
             <source>Invalid extraction file or stream.</source>
             <translation>Недопустимый файл или поток извлечения.</translation>
         </message>
     </context>
     <context>
-        <name>archivebackend_sourceplan</name>
-        <message>
-            <location filename="../src/archivebackend_sourceplan.cpp" line="+121" />
-            <source>Another operation is still running.</source>
-            <translation>Другая операция ещё выполняется.</translation>
-        </message>
-        <message>
-            <location line="-98" />
-            <source>Invalid archive update request.</source>
-            <translation>Недопустимый запрос на обновление архива.</translation>
-        </message>
-        <message>
-            <location line="+15" />
-            <source>Prepared sources are unavailable.</source>
-            <translation>Подготовленные источники недоступны.</translation>
-        </message>
-        <message>
-            <location line="-9" />
-            <source>Protected archive update has not been confirmed.</source>
-            <translation>Обновление защищённого архива не подтверждено.</translation>
-        </message>
-        <message>
-            <location line="+136" />
-            <source>The archive does not need updating.</source>
-            <translation>Архив не требует обновления.</translation>
-        </message>
-        <message>
-            <location line="-95" />
-            <source>The update file has not been prepared.</source>
-            <translation>Файл обновления не подготовлен.</translation>
-        </message>
-        <message>
-            <location line="+10" />
-            <source>The update folder has not been prepared.</source>
-            <translation>Папка обновления не подготовлена.</translation>
-        </message>
-        <message>
-            <location line="-35" />
-            <location line="+8" />
-            <source>Unsafe archive update path.</source>
-            <translation>Небезопасный путь обновления архива.</translation>
-        </message>
-        <message>
-            <location line="+8" />
-            <source>Unsafe update rename.</source>
-            <translation>Небезопасное переименование обновления.</translation>
-        </message>
-        <message>
-            <location line="-46" />
-            <source>Updating archive volumes is not supported.</source>
-            <translation>Обновление архивных томов не поддерживается.</translation>
-        </message>
-    </context>
-    <context>
-        <name>archivebackend_sourceupdate</name>
-        <message>
-            <location filename="../src/archivebackend_sourceupdate.cpp" line="+119" />
-            <location line="+34" />
-            <location line="+46" />
-            <source>Another operation is still running.</source>
-            <translation>Другая операция ещё выполняется.</translation>
-        </message>
-        <message>
-            <location line="-36" />
-            <source>Invalid archive add request.</source>
-            <translation>Недопустимый запрос на добавление в архив.</translation>
-        </message>
-        <message>
-            <location line="+60" />
-            <source>Invalid archive mutation plan.</source>
-            <translation>Недопустимый план изменения архива.</translation>
-        </message>
-        <message>
-            <location line="-15" />
-            <source>Invalid archive mutation request.</source>
-            <translation>Недопустимый запрос на изменение архива.</translation>
-        </message>
-        <message>
-            <location line="-81" />
-            <source>Invalid archive update file or path.</source>
-            <translation>Недопустимый файл или путь обновления архива.</translation>
-        </message>
-        <message>
-            <location line="-26" />
-            <source>Sources must not contain links: %1</source>
-            <translation>Источники не должны содержать ссылки: %1</translation>
-        </message>
-        <message>
-            <location line="+78" />
-            <source>The added file has not been prepared.</source>
-            <translation>Файл добавления не подготовлен.</translation>
-        </message>
-        <message>
-            <location line="-89" />
-            <source>The archive is inside the selected folder.</source>
-            <translation>Архив находится внутри выбранной папки.</translation>
-        </message>
-        <message>
-            <location line="+139" />
-            <source>The new folder has not been prepared.</source>
-            <translation>Новая папка не подготовлена.</translation>
-        </message>
-        <message>
-            <location line="-59" />
-            <source>Unsafe archive add path.</source>
-            <translation>Небезопасный путь добавления в архив.</translation>
-        </message>
-        <message>
-            <location line="+45" />
-            <source>Unsafe archive path.</source>
-            <translation>Небезопасный путь в архиве.</translation>
-        </message>
-        <message>
-            <location line="-135" />
-            <source>Update source unavailable: %1</source>
-            <translation>Недоступный источник обновления: %1</translation>
-        </message>
-    </context>
-    <context>
         <name>archivebackend_validation</name>
         <message>
-            <location filename="../src/archivebackend_validation.cpp" line="+246" />
+            <location filename="../src/archivebackend_validation.cpp" line="+290" />
             <source>Already exists in the destination folder: %1</source>
             <translation>В папке назначения уже существует: %1</translation>
         </message>
@@ -5686,110 +5668,66 @@ Use `Revert` to recover timestamp.</source>
             <translation>Архив содержит небезопасный путь или ссылку: %1</translation>
         </message>
         <message>
-            <location line="-54" />
+            <location line="-55" />
             <source>Archive contains an unsafe path: %1</source>
             <translation>Архив содержит небезопасный путь: %1</translation>
         </message>
         <message>
-            <location line="+68" />
+            <location line="+69" />
             <source>Archive contains conflicting names: %1</source>
             <translation>Архив содержит конфликт имён: %1</translation>
         </message>
         <message>
-            <location line="-109" />
+            <location line="-110" />
             <source>Destination path contains a link: %1</source>
             <translation>Путь назначения содержит ссылку: %1</translation>
         </message>
         <message>
-            <location line="-54" />
-            <location line="+180" />
+            <location line="-73" />
+            <location line="+200" />
             <source>Destination path is occupied by a file or link: %1</source>
             <translation>Путь назначения занят файлом или ссылкой: %1</translation>
         </message>
         <message>
-            <location line="-120" />
+            <location line="-121" />
             <source>Destination path is occupied by a file: %1</source>
             <translation>Путь назначения занят файлом: %1</translation>
         </message>
         <message>
-            <location line="-77" />
+            <location line="-96" />
             <source>Extraction path is outside the destination folder: %1</source>
             <translation>Путь извлечения находится вне папки назначения: %1</translation>
         </message>
         <message>
-            <location line="+148" />
+            <location line="+168" />
             <source>Item is outside the current archive folder: %1</source>
             <translation>Объект находится вне текущей папки архива: %1</translation>
         </message>
         <message>
-            <location line="-95" />
+            <location line="-96" />
             <source>Specify a destination folder.</source>
             <translation>Укажите папку назначения.</translation>
         </message>
         <message>
-            <location line="-15" />
+            <location line="-34" />
             <source>Unsafe alternate stream name</source>
             <translation>Небезопасное имя потока</translation>
         </message>
     </context>
     <context>
-        <name>archivebackend_volumes</name>
-        <message>
-            <location filename="../src/archivebackend_volumes.cpp" line="+66" />
-            <source>Archive volumes created.</source>
-            <translation>Архивные тома созданы.</translation>
-        </message>
-        <message>
-            <location line="-33" />
-            <source>Creating archive volumes</source>
-            <translation>Создание архивных томов</translation>
-        </message>
-        <message>
-            <location line="+24" />
-            <source>Operation canceled.</source>
-            <translation>Операция отменена.</translation>
-        </message>
-        <message>
-            <location line="-39" />
-            <source>Volume already exists: %1</source>
-            <translation>Том уже существует: %1</translation>
-        </message>
-    </context>
-    <context>
         <name>archivecodeccatalog</name>
         <message>
-            <location filename="../src/archivecodeccatalog.cpp" line="+54" />
-            <source>7zz and the codec module have different versions.</source>
-            <translation>Версии 7zz и модуля форматов различаются.</translation>
-        </message>
-        <message>
-            <location line="-25" />
+            <location filename="../src/archivecodeccatalog.cpp" line="+29" />
             <source>Could not prepare the codec runtime snapshot.</source>
             <translation>Не удалось подготовить снимок модулей движка.</translation>
         </message>
         <message>
-            <location line="+99" />
-            <source>Engine modules:
-%1
-Application modules:
-%2</source>
-            <translation>Модули движка:
-%1
-Модули приложения:
-%2</translation>
+            <location line="+28" />
+            <source>The codec module has an unexpected version.</source>
+            <translation>Версия модуля форматов не соответствует ожидаемой.</translation>
         </message>
         <message>
-            <location line="-2" />
-            <source>The engine and application loaded different plugins.</source>
-            <translation>Движок и приложение загрузили разные плагины.</translation>
-        </message>
-        <message>
-            <location line="-24" />
-            <source>The engine uses a different codec module.</source>
-            <translation>Движок использует другой модуль форматов.</translation>
-        </message>
-        <message>
-            <location line="-55" />
+            <location line="-7" />
             <source>The official 7-Zip codec module is unavailable.</source>
             <translation>Официальный модуль форматов 7-Zip недоступен.</translation>
         </message>
@@ -5797,7 +5735,7 @@ Application modules:
     <context>
         <name>archivecodecprobe</name>
         <message>
-            <location filename="../src/archivecodecprobe.cpp" line="+245" />
+            <location filename="../src/archivecodecprobe.cpp" line="+121" />
             <source>Codec discovery cancelled.</source>
             <translation>Поиск модуля форматов отменён.</translation>
         </message>
@@ -5806,20 +5744,24 @@ Application modules:
             <source>Codec discovery timed out.</source>
             <translation>Истекло время поиска модуля форматов.</translation>
         </message>
+    </context>
+    <context>
+        <name>archivedevice</name>
         <message>
-            <location line="-98" />
-            <source>Could not determine the version of official 7zz.</source>
-            <translation>Не удалось определить версию официального 7zz.</translation>
+            <location filename="../src/archivedevice.cpp" line="+115" />
+            <location line="+17" />
+            <source>Could not verify the filesystem features for direct reading.</source>
+            <translation>Не удалось проверить возможности файловой системы для прямого чтения.</translation>
         </message>
         <message>
-            <location line="+15" />
-            <source>Could not load codec metadata.</source>
-            <translation>Не удалось загрузить сведения о форматах.</translation>
+            <location line="+7" />
+            <source>Unsupported filesystem features: %1.</source>
+            <translation>Неподдерживаемые возможности файловой системы: %1.</translation>
         </message>
         <message>
-            <location line="+3" />
-            <source>The 7zz version banner is missing or invalid.</source>
-            <translation>Строка версии 7zz отсутствует или некорректна.</translation>
+            <location line="+8" />
+            <source>Limited read-only access: %1.</source>
+            <translation>Чтение с ограничениями: %1.</translation>
         </message>
     </context>
     <context>
@@ -5833,7 +5775,7 @@ Application modules:
     <context>
         <name>createarchivedialog_advanced</name>
         <message>
-            <location filename="../src/createarchivedialog_advanced.cpp" line="+29" />
+            <location filename="../src/createarchivedialog_advanced.cpp" line="-103" />
             <source>File sharing restrictions apply only on Windows.</source>
             <translation>Ограничение совместного доступа к файлам используется только в Windows.</translation>
         </message>
@@ -5877,15 +5819,91 @@ Application modules:
     <context>
         <name>createarchivedialog_volumes</name>
         <message>
-            <location filename="../src/createarchivedialog_volumes.cpp" line="+17" />
+            <location filename="../src/createarchivedialog_volumes.cpp" line="+18" />
             <source>For example: 10M or 10M 20M. Leave empty for a single archive.</source>
             <translation>Например: 10M или 10M 20M. Пустое поле — один архив.</translation>
         </message>
     </context>
     <context>
+        <name>deviceaccess</name>
+        <message>
+            <location filename="../src/deviceauthclient_mac.cpp" line="+109" />
+            <source>macOS denied device access after administrator authorization. Enable Full Disk Access for Sevenzip in System Settings &gt; Privacy &amp; Security, then restart Sevenzip and try again.</source>
+            <translation>macOS запретила доступ к устройству после ввода пароля администратора. Включите Sevenzip в «Системные настройки → Конфиденциальность и безопасность → Полный доступ к диску», затем перезапустите Sevenzip и повторите попытку.</translation>
+        </message>
+        <message>
+            <location filename="../src/deviceaccess_linux.cpp" line="+65" />
+            <source>Could not inspect devices through UDisks2.</source>
+            <translation>Не удалось получить сведения об устройствах через UDisks2.</translation>
+        </message>
+        <message>
+            <location line="+62" />
+            <location filename="../src/deviceaccess_win.cpp" line="+276" />
+            <source>Could not open the selected device.</source>
+            <translation>Не удалось открыть выбранное устройство.</translation>
+        </message>
+        <message>
+            <location line="+41" />
+            <location filename="../src/deviceaccess_mac.mm" line="+112" />
+            <source>The selected device is no longer available.</source>
+            <translation>Выбранное устройство больше недоступно.</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <location filename="../src/deviceaccess_mac.mm" line="+6" />
+            <source>The device is in use. Unmount its volumes before reading it directly.</source>
+            <translation>Устройство используется. Перед прямым чтением размонтируйте его тома.</translation>
+        </message>
+        <message>
+            <location line="+30" />
+            <location line="+11" />
+            <location filename="../src/deviceaccess_mac.mm" line="+31" />
+            <source>The device changed or became unavailable.</source>
+            <translation>Устройство изменилось или стало недоступно.</translation>
+        </message>
+        <message>
+            <location filename="../src/deviceaccess_mac.mm" line="-106" />
+            <location line="+8" />
+            <location filename="../src/deviceaccess_win.cpp" line="-109" />
+            <source>Could not inspect attached devices.</source>
+            <translation>Не удалось получить сведения о подключённых устройствах.</translation>
+        </message>
+        <message>
+            <location filename="../src/deviceaccess_win.cpp" line="-75" />
+            <source>External disk</source>
+            <translation>Внешний диск</translation>
+        </message>
+        <message>
+            <location filename="../src/deviceauthclient_mac.cpp" line="-24" />
+            <source>The device helper did not respond.</source>
+            <translation>Помощник для доступа к устройству не ответил.</translation>
+        </message>
+        <message>
+            <location line="+31" />
+            <source>The device helper returned an invalid response.</source>
+            <translation>Помощник для доступа к устройству вернул некорректный ответ.</translation>
+        </message>
+        <message>
+            <location line="+16" />
+            <source>The Sevenzip device helper is unavailable.</source>
+            <translation>Помощник Sevenzip для доступа к устройствам недоступен.</translation>
+        </message>
+        <message>
+            <location line="+11" />
+            <location filename="../src/deviceauthclient_win.cpp" line="+150" />
+            <source>Could not prepare device authorization.</source>
+            <translation>Не удалось подготовить запрос прав для устройства.</translation>
+        </message>
+        <message>
+            <location filename="../src/deviceauthclient_win.cpp" line="+20" />
+            <source>Could not authorize access to this device.</source>
+            <translation>Не удалось получить разрешение на доступ к устройству.</translation>
+        </message>
+    </context>
+    <context>
         <name>mainwindow</name>
         <message>
-            <location filename="../src/mainwindow.cpp" line="+174" />
+            <location filename="../src/mainwindow.cpp" line="+175" />
             <source> %1 items</source>
             <translation> %1 объектов</translation>
         </message>
@@ -5936,12 +5954,12 @@ Application modules:
     <context>
         <name>mainwindow_archivecommands</name>
         <message>
-            <location filename="../src/mainwindow_archivecommands.cpp" line="+202" />
+            <location filename="../src/mainwindow_archivecommands.cpp" line="+244" />
             <source>Could not create destination folder: %1</source>
             <translation>Не удалось создать папку назначения: %1</translation>
         </message>
         <message>
-            <location line="+30" />
+            <location line="+31" />
             <source>Extraction completed with errors.</source>
             <translation>Извлечение завершено с ошибками.</translation>
         </message>
@@ -5958,9 +5976,10 @@ Application modules:
             <translation>Операция отменена.</translation>
         </message>
         <message>
-            <location line="-137" />
+            <location filename="../src/archivebackend_validation.cpp" line="+19" />
+            <location filename="../src/mainwindow_archivecommands.cpp" line="-145" />
             <location line="+8" />
-            <location line="+153" />
+            <location line="+161" />
             <source>Source extraction is unavailable for this archive.</source>
             <translation>Исходное извлечение для этого архива недоступно.</translation>
         </message>
@@ -5968,17 +5987,17 @@ Application modules:
     <context>
         <name>mainwindow_archiveopening</name>
         <message>
-            <location filename="../src/mainwindow_archiveopening.cpp" line="+113" />
+            <location filename="../src/mainwindow_archiveopening.cpp" line="+116" />
             <source>Archive opened.</source>
             <translation>Архив открыт.</translation>
         </message>
         <message>
-            <location line="-41" />
+            <location line="-44" />
             <source>File not found: </source>
             <translation>Файл не найден: </translation>
         </message>
         <message>
-            <location line="+38" />
+            <location line="+41" />
             <source>Operation canceled.</source>
             <translation>Операция отменена.</translation>
         </message>
@@ -5986,12 +6005,7 @@ Application modules:
     <context>
         <name>mainwindow_backendevents</name>
         <message>
-            <location filename="../src/mainwindow_backendevents.cpp" line="+128" />
-            <source>Deleting moved entries</source>
-            <translation>Удаление перемещённых записей</translation>
-        </message>
-        <message>
-            <location line="-30" />
+            <location filename="../src/mainwindow_backendevents.cpp" line="+101" />
             <source>Files extracted but not deleted from archive. </source>
             <translation>Файлы извлечены, но не удалены из архива. </translation>
         </message>
@@ -6072,7 +6086,7 @@ Application modules:
     <context>
         <name>mainwindow_menus</name>
         <message>
-            <location filename="../src/mainwindow_menus.cpp" line="-309" />
+            <location filename="../src/mainwindow_menus.cpp" line="-313" />
             <source>Archive</source>
             <translation>Архив</translation>
         </message>
@@ -6087,6 +6101,7 @@ Application modules:
             <translation>Открыть архив…</translation>
         </message>
         <message>
+            <location line="+4" />
             <source>Open device…</source>
             <translation>Открыть устройство…</translation>
         </message>
@@ -6094,11 +6109,12 @@ Application modules:
     <context>
         <name>mainwindow_panel</name>
         <message>
+            <location filename="../src/mainwindow_archivelist.cpp" line="+251" />
             <source>Read only · limited access</source>
             <translation>Только чтение · с ограничениями</translation>
         </message>
         <message>
-            <location filename="../src/mainwindow_panel.cpp" line="+123" />
+            <location filename="../src/mainwindow_panel.cpp" line="+137" />
             <location line="+95" />
             <source>File list</source>
             <translation>Список файлов</translation>
@@ -6109,11 +6125,13 @@ Application modules:
             <translation>Родительская папка</translation>
         </message>
         <message>
-            <location line="-216" />
+            <location line="-224" />
             <source>Path to folder or archive</source>
             <translation>Путь к папке или архиву</translation>
         </message>
         <message>
+            <location filename="../src/mainwindow_archivelist.cpp" line="+1" />
+            <location filename="../src/mainwindow_panel.cpp" line="+51" />
             <source>Read only</source>
             <translation>Только чтение</translation>
         </message>
@@ -6137,47 +6155,6 @@ Application modules:
             <location filename="../src/mainwindow_root.cpp" line="+53" />
             <source>Could not read root folder.</source>
             <translation>Не удалось прочитать корневую папку.</translation>
-        </message>
-    </context>
-    <context>
-        <name>qtarchivecreationlifecycle</name>
-        <message>
-            <location filename="../src/qtarchivecreationlifecycle.cpp" line="+90" />
-            <source>Could not process input files.</source>
-            <translation>Не удалось обработать исходные файлы.</translation>
-        </message>
-        <message>
-            <location line="-31" />
-            <source>Deleting inputs after compression is unavailable for sources containing links.</source>
-            <translation>Удаление после сжатия для источников со ссылками пока недоступно.</translation>
-        </message>
-        <message>
-            <location line="+29" />
-            <source>Operation canceled.</source>
-            <translation>Операция отменена.</translation>
-        </message>
-    </context>
-    <context>
-        <name>qtarchivevolumeoutput</name>
-        <message>
-            <location filename="../src/qtarchivevolumeoutput.cpp" line="+142" />
-            <source>Could not create archive volumes.</source>
-            <translation>Не удалось создать архивные тома.</translation>
-        </message>
-        <message>
-            <location line="-32" />
-            <source>Could not save volume: %1</source>
-            <translation>Не удалось сохранить том: %1</translation>
-        </message>
-        <message>
-            <location line="+31" />
-            <source>Operation canceled.</source>
-            <translation>Операция отменена.</translation>
-        </message>
-        <message>
-            <location line="-50" />
-            <source>Volume already exists: %1</source>
-            <translation>Том уже существует: %1</translation>
         </message>
     </context>
     <context>
@@ -6260,9 +6237,43 @@ Application modules:
         </message>
     </context>
     <context>
+        <name>qtdevicecommands</name>
+        <message>
+            <location filename="../src/qtfilesystemreadprompt.cpp" line="+18" />
+            <source>Open read-only with limitations?</source>
+            <translation>Открыть для чтения с ограничениями?</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>You can copy readable files, but unsupported features or unfinished recovery may leave some files missing, outdated or unreadable. Nothing will be written to the source. Sevenzip will not replay the journal, clean up orphaned files or repair the filesystem.</source>
+            <translation>Можно копировать доступные файлы, но из-за неподдерживаемых возможностей или незавершённого восстановления часть файлов может отсутствовать, быть устаревшей или не читаться. Исходные данные не будут изменены. Sevenzip не воспроизводит журнал, не очищает осиротевшие файлы и не исправляет файловую систему.</translation>
+        </message>
+        <message>
+            <location line="+15" />
+            <location line="+102" />
+            <source>Open read-only</source>
+            <translation>Открыть для чтения</translation>
+        </message>
+        <message>
+            <location filename="../src/qtdevicecommands.cpp" line="+34" />
+            <source>This filesystem uses features that are not supported for direct reading.</source>
+            <translation>Эта файловая система использует возможности, которые не поддерживаются при прямом чтении.</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <source>Could not open this partition. It may be unsupported or the device may have been disconnected.</source>
+            <translation>Не удалось открыть раздел. Возможно, он не поддерживается или устройство было отключено.</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>Open device</source>
+            <translation>Открыть устройство</translation>
+        </message>
+    </context>
+    <context>
         <name>qtfilemanagercommandworkflows</name>
         <message>
-            <location filename="../src/qtfilemanagercommandworkflows.cpp" line="+120" />
+            <location filename="../src/qtfilemanagercommandworkflows.cpp" line="+122" />
             <source>Open archive</source>
             <translation>Открыть архив</translation>
         </message>
@@ -6270,7 +6281,7 @@ Application modules:
     <context>
         <name>qtfilemanagershellmenu</name>
         <message>
-            <location filename="../src/qtfilemanagershellmenu.cpp" line="+145" />
+            <location filename="../src/qtfilemanagershellmenu.cpp" line="+173" />
             <source>Open archive in new window</source>
             <translation>Открыть архив в новом окне</translation>
         </message>
@@ -6298,6 +6309,19 @@ Application modules:
             <location line="+118" />
             <source>System</source>
             <translation>Система</translation>
+        </message>
+    </context>
+    <context>
+        <name>qtfilesystemreadprompt</name>
+        <message>
+            <location filename="../src/qtfilesystemreadprompt.cpp" line="-11" />
+            <source>Open archive with limitations?</source>
+            <translation>Открыть архив с ограничениями?</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>The archive may be damaged or incomplete. You can copy readable files, but some files may be missing or unreadable. Extracted data may be incomplete or fail integrity checks. Nothing will be written to the source archive.</source>
+            <translation>Архив может быть повреждён или неполон. Доступные файлы можно скопировать, но часть файлов может отсутствовать или не читаться. Извлечённые данные могут быть неполными или не пройти проверку целостности. Исходный архив не будет изменён.</translation>
         </message>
     </context>
     <context>
@@ -6395,7 +6419,7 @@ Application modules:
     <context>
         <name>qthelpservices</name>
         <message>
-            <location filename="../src/qthelpservices.cpp" line="+253" />
+            <location filename="../src/qthelpservices.cpp" line="+254" />
             <location line="+8" />
             <source>7-Zip Help</source>
             <translation>Справка 7-Zip</translation>
@@ -6414,7 +6438,7 @@ Application modules:
     <context>
         <name>qtlinkcontrols</name>
         <message>
-            <location filename="../src/qtlinkcontrols.cpp" line="-73" />
+            <location filename="../src/qtlinkcontrols.cpp" line="-74" />
             <source>This link type is available only on Windows.</source>
             <translation>Этот тип ссылки доступен только в Windows.</translation>
         </message>
@@ -6445,7 +6469,7 @@ Application modules:
     <context>
         <name>qttempbrowsepresentation</name>
         <message>
-            <location filename="../src/qttempbrowsepresentation.cpp" line="+301" />
+            <location filename="../src/qttempbrowsepresentation.cpp" line="+304" />
             <source>In use by an active operation or session</source>
             <translation>Используется текущей операцией или сеансом</translation>
         </message>
@@ -6548,385 +6572,6 @@ Application modules:
             <location line="-26" />
             <source>Volume size must be positive.</source>
             <translation>Размер тома должен быть положительным.</translation>
-        </message>
-    </context>
-    <context>
-        <name>DeviceSelectionDialog</name>
-        <message>
-            <source>Read access was not authorized. You can try again.</source>
-            <translation>Доступ на чтение не разрешён. Можно попробовать снова.</translation>
-        </message>
-        <message>
-            <source>Open device</source>
-            <translation>Открыть устройство</translation>
-        </message>
-        <message>
-            <source>Read supported filesystems without modifying the device. Copy files to another disk.</source>
-            <translation>Чтение поддерживаемых файловых систем без изменения устройства. Копируйте файлы на другой диск.</translation>
-        </message>
-        <message>
-            <source>Devices and partitions</source>
-            <translation>Устройства и разделы</translation>
-        </message>
-        <message>
-            <source>Name</source>
-            <translation>Имя</translation>
-        </message>
-        <message>
-            <source>Size</source>
-            <translation>Размер</translation>
-        </message>
-        <message>
-            <source>Status</source>
-            <translation>Состояние</translation>
-        </message>
-        <message>
-            <source>Refresh</source>
-            <translation>Обновить</translation>
-        </message>
-        <message>
-            <source>Back</source>
-            <translation>Назад</translation>
-        </message>
-        <message>
-            <source>Canceling…</source>
-            <translation>Отмена…</translation>
-        </message>
-        <message>
-            <source>Looking for external devices…</source>
-            <translation>Поиск внешних устройств…</translation>
-        </message>
-        <message>
-            <source>In use</source>
-            <translation>Используется</translation>
-        </message>
-        <message>
-            <source>Read only</source>
-            <translation>Только чтение</translation>
-        </message>
-        <message>
-            <source>No external devices found. Connect a device and refresh.</source>
-            <translation>Внешние устройства не найдены. Подключите устройство и обновите список.</translation>
-        </message>
-        <message>
-            <source>Select a device. Volumes in use must be unmounted first.</source>
-            <translation>Выберите устройство. Используемые тома нужно сначала размонтировать.</translation>
-        </message>
-        <message>
-            <source>Partition type</source>
-            <translation>Тип раздела</translation>
-        </message>
-        <message>
-            <source>Select a partition to open read only.</source>
-            <translation>Выберите раздел для открытия только на чтение.</translation>
-        </message>
-        <message>
-            <source>Could not list external devices.</source>
-            <translation>Не удалось получить список внешних устройств.</translation>
-        </message>
-        <message>
-            <source>Device access canceled. You can try again.</source>
-            <translation>Доступ к устройству отменён. Можно попробовать снова.</translation>
-        </message>
-        <message>
-            <source>This device is in use. Unmount its volumes and try again.</source>
-            <translation>Устройство используется. Размонтируйте его тома и попробуйте снова.</translation>
-        </message>
-        <message>
-            <source>Could not read this device. It may have been disconnected.</source>
-            <translation>Не удалось прочитать устройство. Возможно, оно было отключено.</translation>
-        </message>
-        <message>
-            <source>Opening device… System authorization may be required.</source>
-            <translation>Открытие устройства… Может потребоваться разрешение системы.</translation>
-        </message>
-        <message>
-            <source>Could not open this partition.</source>
-            <translation>Не удалось открыть этот раздел.</translation>
-        </message>
-    </context>
-    <context>
-        <name>archivedevice</name>
-        <message>
-            <source>Could not verify the filesystem features for direct reading.</source>
-            <translation>Не удалось проверить возможности файловой системы для прямого чтения.</translation>
-        </message>
-        <message>
-            <source>Unsupported filesystem features: %1.</source>
-            <translation>Неподдерживаемые возможности файловой системы: %1.</translation>
-        </message>
-        <message>
-            <source>Limited read-only access: %1.</source>
-            <translation>Чтение с ограничениями: %1.</translation>
-        </message>
-        <message>
-            <source>Encrypted ext filesystems cannot be read directly.</source>
-            <translation>Прямое чтение зашифрованных файловых систем ext не поддерживается.</translation>
-        </message>
-    </context>
-    <context>
-        <name>deviceaccess</name>
-        <message>
-            <source>macOS denied device access after administrator authorization. Enable Full Disk Access for Sevenzip in System Settings &gt; Privacy &amp; Security, then restart Sevenzip and try again.</source>
-            <translation>macOS запретила доступ к устройству после ввода пароля администратора. Включите Sevenzip в «Системные настройки → Конфиденциальность и безопасность → Полный доступ к диску», затем перезапустите Sevenzip и повторите попытку.</translation>
-        </message>
-        <message>
-            <source>Could not inspect devices through UDisks2.</source>
-            <translation>Не удалось получить сведения об устройствах через UDisks2.</translation>
-        </message>
-        <message>
-            <source>Could not open the selected device.</source>
-            <translation>Не удалось открыть выбранное устройство.</translation>
-        </message>
-        <message>
-            <source>The selected device is no longer available.</source>
-            <translation>Выбранное устройство больше недоступно.</translation>
-        </message>
-        <message>
-            <source>The device is in use. Unmount its volumes before reading it directly.</source>
-            <translation>Устройство используется. Перед прямым чтением размонтируйте его тома.</translation>
-        </message>
-        <message>
-            <source>The device changed or became unavailable.</source>
-            <translation>Устройство изменилось или стало недоступно.</translation>
-        </message>
-        <message>
-            <source>Could not inspect attached devices.</source>
-            <translation>Не удалось получить сведения о подключённых устройствах.</translation>
-        </message>
-        <message>
-            <source>External disk</source>
-            <translation>Внешний диск</translation>
-        </message>
-        <message>
-            <source>The device helper did not respond.</source>
-            <translation>Помощник для доступа к устройству не ответил.</translation>
-        </message>
-        <message>
-            <source>The device helper returned an invalid response.</source>
-            <translation>Помощник для доступа к устройству вернул некорректный ответ.</translation>
-        </message>
-        <message>
-            <source>The Sevenzip device helper is unavailable.</source>
-            <translation>Помощник Sevenzip для доступа к устройствам недоступен.</translation>
-        </message>
-        <message>
-            <source>Could not prepare device authorization.</source>
-            <translation>Не удалось подготовить запрос прав для устройства.</translation>
-        </message>
-        <message>
-            <source>Could not authorize access to this device.</source>
-            <translation>Не удалось получить разрешение на доступ к устройству.</translation>
-        </message>
-    </context>
-    <context>
-        <name>qtdevicecommands</name>
-        <message>
-            <source>Open read-only with limitations?</source>
-            <translation>Открыть для чтения с ограничениями?</translation>
-        </message>
-        <message>
-            <source>You can copy readable files, but unsupported features or unfinished recovery may leave some files missing, outdated or unreadable. Nothing will be written to the source. Sevenzip will not replay the journal, clean up orphaned files or repair the filesystem.</source>
-            <translation>Можно копировать доступные файлы, но из-за неподдерживаемых возможностей или незавершённого восстановления часть файлов может отсутствовать, быть устаревшей или не читаться. Исходные данные не будут изменены. Sevenzip не воспроизводит журнал, не очищает осиротевшие файлы и не исправляет файловую систему.</translation>
-        </message>
-        <message>
-            <source>Open read-only</source>
-            <translation>Открыть для чтения</translation>
-        </message>
-        <message>
-            <source>This filesystem uses features that are not supported for direct reading.</source>
-            <translation>Эта файловая система использует возможности, которые не поддерживаются при прямом чтении.</translation>
-        </message>
-        <message>
-            <source>Could not open this partition. It may be unsupported or the device may have been disconnected.</source>
-            <translation>Не удалось открыть раздел. Возможно, он не поддерживается или устройство было отключено.</translation>
-        </message>
-        <message>
-            <source>Open device</source>
-            <translation>Открыть устройство</translation>
-        </message>
-    </context>
-    <context>
-        <name>FscryptKeyDialog</name>
-        <message>
-            <source>Open encrypted filesystem</source>
-            <translation>Открыть зашифрованную файловую систему</translation>
-        </message>
-        <message>
-            <source>Browse without keys</source>
-            <translation>Просмотреть без ключей</translation>
-        </message>
-        <message>
-            <source>This ext filesystem uses fscrypt encryption. Enter raw master keys from its administrator or key backup. A login password or disk-encryption password cannot be used here.</source>
-            <translation>Эта файловая система ext зашифрована с помощью fscrypt. Введите мастер-ключи, полученные у администратора или из резервной копии ключей. Пароль входа в систему или шифрования диска здесь не подойдёт.</translation>
-        </message>
-        <message>
-            <source>You can browse without keys, but encrypted names will be hidden and encrypted files cannot be copied.</source>
-            <translation>Без ключей можно просматривать содержимое, но зашифрованные имена будут скрыты, а зашифрованные файлы нельзя будет скопировать.</translation>
-        </message>
-        <message>
-            <source>Add another key</source>
-            <translation>Добавить ещё ключ</translation>
-        </message>
-        <message>
-            <source>Show keys</source>
-            <translation>Показать ключи</translation>
-        </message>
-        <message>
-            <source>Key version:</source>
-            <translation>Версия ключа:</translation>
-        </message>
-        <message>
-            <source>32–128 hexadecimal characters</source>
-            <translation>32–128 шестнадцатеричных символов</translation>
-        </message>
-        <message>
-            <source>Master key (hex):</source>
-            <translation>Мастер-ключ (hex):</translation>
-        </message>
-        <message>
-            <source>16 hexadecimal characters</source>
-            <translation>16 шестнадцатеричных символов</translation>
-        </message>
-        <message>
-            <source>Key descriptor (hex):</source>
-            <translation>Дескриптор ключа (hex):</translation>
-        </message>
-        <message>
-            <source>Remove key</source>
-            <translation>Удалить ключ</translation>
-        </message>
-        <message>
-            <source>Key %1: enter 32–128 hexadecimal characters (16–64 bytes). Spaces are allowed.</source>
-            <translation>Ключ %1: введите 32–128 шестнадцатеричных символов (16–64 байта). Пробелы допустимы.</translation>
-        </message>
-        <message>
-            <source>Key %1: the v1 descriptor must contain 16 hexadecimal characters.</source>
-            <translation>Ключ %1: дескриптор v1 должен содержать 16 шестнадцатеричных символов.</translation>
-        </message>
-        <message>
-            <source>Key %1: this v1 descriptor is already used by another key.</source>
-            <translation>Ключ %1: этот дескриптор v1 уже указан для другого ключа.</translation>
-        </message>
-        <message>
-            <source>Key %1</source>
-            <translation>Ключ %1</translation>
-        </message>
-    </context>
-    <context>
-        <name>qtfilesystemreadprompt</name>
-        <message>
-            <source>Open archive with limitations?</source>
-            <translation>Открыть архив с ограничениями?</translation>
-        </message>
-        <message>
-            <source>The archive may be damaged or incomplete. You can copy readable files, but some files may be missing or unreadable. Extracted data may be incomplete or fail integrity checks. Nothing will be written to the source archive.</source>
-            <translation>Архив может быть повреждён или неполон. Доступные файлы можно скопировать, но часть файлов может отсутствовать или не читаться. Извлечённые данные могут быть неполными или не пройти проверку целостности. Исходный архив не будет изменён.</translation>
-        </message>
-    </context>
-    <context>
-        <name>QtOperation</name>
-        <message>
-            <source>The archive changed on disk. Refresh it before editing.</source>
-            <translation>Архив изменился на диске. Обновите его перед редактированием.</translation>
-        </message>
-        <message>
-            <source>Could not lock the archive for writing.</source>
-            <translation>Не удалось заблокировать архив для записи.</translation>
-        </message>
-        <message>
-            <source>Another operation is writing to this archive.</source>
-            <translation>Архив уже открыт другой операцией для записи.</translation>
-        </message>
-        <message>
-            <location filename="../src/qtoperationprotocol.cpp" line="+135" />
-            <source>Invalid operation message.</source>
-            <translation>Некорректное сообщение операции.</translation>
-        </message>
-        <message>
-            <location line="+5" />
-            <source>Operation message is too large.</source>
-            <translation>Сообщение операции слишком велико.</translation>
-        </message>
-        <message>
-            <location line="+27" />
-            <source>Invalid operation frame size.</source>
-            <translation>Некорректный размер сообщения операции.</translation>
-        </message>
-        <message>
-            <location line="+10" />
-            <source>Unsupported or malformed operation message.</source>
-            <translation>Неподдерживаемое или повреждённое сообщение операции.</translation>
-        </message>
-        <message>
-            <location filename="../src/qtoperationprocess.cpp" line="+94" />
-            <source>An operation process is already running.</source>
-            <translation>Процесс операции уже запущен.</translation>
-        </message>
-        <message>
-            <location line="+11" />
-            <source>Invalid operation process or channel.</source>
-            <translation>Некорректный путь процесса или канал связи.</translation>
-        </message>
-        <message>
-            <location line="+7" />
-            <source>Cannot launch operation process (%1).</source>
-            <translation>Не удалось запустить процесс операции (%1).</translation>
-        </message>
-        <message>
-            <location line="+36" />
-            <source>Cannot observe operation process (%1).</source>
-            <translation>Не удалось получить состояние процесса операции (%1).</translation>
-        </message>
-        <message>
-            <location filename="../src/qtoperationlauncher.cpp" line="+39" />
-            <source>Operation startup acknowledgement was not received.</source>
-            <translation>Не получено подтверждение приёма задания.</translation>
-        </message>
-        <message>
-            <location line="+34" />
-            <source>GUI operations require the application owner thread.</source>
-            <translation>Операции GUI должны запускаться из главного потока приложения.</translation>
-        </message>
-        <message>
-            <location line="+16" />
-            <source>An operation observer cannot be reused.</source>
-            <translation>Нельзя повторно использовать наблюдатель операции.</translation>
-        </message>
-        <message>
-            <location line="+4" />
-            <source>Expected an operation job.</source>
-            <translation>Ожидалось задание операции.</translation>
-        </message>
-        <message>
-            <location line="+77" />
-            <source>Could not transfer the operation job.</source>
-            <translation>Не удалось передать задание операции.</translation>
-        </message>
-        <message>
-            <location line="+19" />
-            <source>Unexpected operation protocol message.</source>
-            <translation>Неожиданное сообщение протокола операции.</translation>
-        </message>
-        <message>
-            <location line="+23" />
-            <source>The operation process terminated unexpectedly.</source>
-            <translation>Процесс операции аварийно завершился.</translation>
-        </message>
-        <message>
-            <location line="+16" />
-            <source>Operation result and process exit disagree.</source>
-            <translation>Результат операции не совпадает с кодом завершения процесса.</translation>
-        </message>
-        <message>
-            <location line="+5" />
-            <source>Operation process exited without a complete result.</source>
-            <translation>Процесс операции завершился без передачи полного результата.</translation>
-        </message>
-        <message>
-            <location filename="../src/qtoperationendpoint.cpp" line="+99" />
-            <source>Expected one operation job.</source>
-            <translation>Ожидалось одно задание операции.</translation>
         </message>
     </context>
 </TS>

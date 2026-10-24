@@ -22,7 +22,7 @@ class AltStreamsArchiveUiTests final : public QObject, protected MainWindowTestS
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official module unavailable; archive streams UI remains unverified");
 #else
-        engine_ = QStandardPaths::findExecutable("7zz");
+        engine_ = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine_.isEmpty());
         module_ = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
         ArchiveCodecCatalog catalog(module_, 0);

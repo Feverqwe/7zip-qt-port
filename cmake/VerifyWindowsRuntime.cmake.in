@@ -12,7 +12,7 @@ if(NOT runtime_producer STREQUAL "sevenzip-desktop/build-codec-runtime-windows" 
     NOT runtime_architecture STREQUAL "@windows_runtime_architecture@")
     message(FATAL_ERROR "Windows package requires the current pinned official codec runtime")
 endif()
-foreach(runtime_file IN ITEMS 7z.exe 7z.dll 7zz.exe)
+foreach(runtime_file IN ITEMS 7z.exe 7z.dll)
     string(JSON expected_hash GET "${runtime_record}" files "${runtime_file}" sha256)
     file(SHA256 "@SEVENZIP_WINDOWS_RUNTIME@/${runtime_file}" actual_hash)
     if(NOT actual_hash STREQUAL expected_hash)

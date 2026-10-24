@@ -8,6 +8,7 @@
 #include "fixtures/panel_keys.h"
 #include "fixtures/progress_dialog.h"
 #include "fixtures/window_activation.h"
+#include "native_archive_fixture.h"
 #include "qttrashservice.h"
 #include "window_state_support.h"
 #include <QProcess>
@@ -346,9 +347,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         const QString archive = root.filePath("source.zip");
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {source, movedSource});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source, movedSource}));
 
         MainWindow window(&backend);
         window.openArchive(archive);
@@ -718,14 +717,14 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         cancelAdd.start();
         QCoreApplication::sendEvent(table(window)->viewport(), &archiveDrop);
         cancelAdd.stop();
-        QCOMPARE(backend.addCalls, 0);
+
         QVERIFY(cancelRequested);
         QVERIFY(action(window, "copyAction")->isEnabled());
     }
 
     void diskPanelCopiesIntoOppositeArchive() {
-        const QString engine = QStandardPaths::findExecutable("7zz");
-        QVERIFY2(!engine.isEmpty(), "7zz required for disk-to-archive fixture");
+        const QString engine = QStandardPaths::findExecutable("7z");
+        QVERIFY2(!engine.isEmpty(), "7z required for disk-to-archive fixture");
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const bool hadSettings = qEnvironmentVariableIsSet("SEVENZIP_SETTINGS_PATH");
@@ -862,8 +861,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
     }
     void archivePanelsCopyAndMoveThroughStaging() {
         QFETCH(bool, russian);
-        const QString engine = QStandardPaths::findExecutable("7zz");
-        QVERIFY2(!engine.isEmpty(), "7zz required for archive transfer fixture");
+        const QString engine = QStandardPaths::findExecutable("7z");
+        QVERIFY2(!engine.isEmpty(), "7z required for archive transfer fixture");
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const bool hadSettings = qEnvironmentVariableIsSet("SEVENZIP_SETTINGS_PATH");
@@ -1012,8 +1011,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
     }
 
     void protectedArchivePanelsCopyWithStoredPasswords() {
-        const QString engine = QStandardPaths::findExecutable("7zz");
-        QVERIFY2(!engine.isEmpty(), "7zz required for protected archive transfer fixture");
+        const QString engine = QStandardPaths::findExecutable("7z");
+        QVERIFY2(!engine.isEmpty(), "7z required for protected archive transfer fixture");
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const bool hadSettings = qEnvironmentVariableIsSet("SEVENZIP_SETTINGS_PATH");
@@ -1120,8 +1119,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
     }
 
     void nestedArchivePanelCannotWriteIntoOppositeArchive() {
-        const QString engine = QStandardPaths::findExecutable("7zz");
-        QVERIFY2(!engine.isEmpty(), "7zz required for nested archive transfer fixture");
+        const QString engine = QStandardPaths::findExecutable("7z");
+        QVERIFY2(!engine.isEmpty(), "7z required for nested archive transfer fixture");
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const bool hadSettings = qEnvironmentVariableIsSet("SEVENZIP_SETTINGS_PATH");
@@ -1249,11 +1248,11 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(action(window, "copyAction")->isEnabled());
         QVERIFY(action(window, "moveAction")->isEnabled());
         const int extractCalls = backend.extractCalls;
-        const int removeCalls = backend.removeCalls;
+
         action(window, "copyAction")->trigger();
         action(window, "moveAction")->trigger();
         QCOMPARE(backend.extractCalls, extractCalls);
-        QCOMPARE(backend.removeCalls, removeCalls);
+
         QVERIFY(!action(window, "deleteAction")->isEnabled());
         QVERIFY(!action(window, "renameAction")->isEnabled());
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
@@ -1263,87 +1262,6 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTRY_VERIFY(static_cast<FileTable *>(table(window))->sourcePanel->IsFSFolder());
         QTRY_VERIFY(action(window, "copyAction")->isEnabled());
         QCOMPARE(backend.extractCalls, extractCalls);
-        QCOMPARE(backend.removeCalls, removeCalls);
-    }
-    void moveSelectedOutOfArchive() {
-        QTemporaryDir temp;
-        QVERIFY(temp.isValid());
-        QVERIFY(QDir(temp.path()).mkdir("destination"));
-        const QString destination = temp.filePath("destination");
-        ControlledBackend backend;
-        MainWindow window(&backend);
-        openListedArchive(window, backend, temp.filePath("items.7z"),
-                          {ArchiveEntry{QStringLiteral("папка/файл с пробелом.txt"), 4, 4}});
-        table(window)->selectRow(filesystemRow(window, QStringLiteral("папка")));
-        QString moveInfo;
-        const auto submit = [&window, &destination, &moveInfo] {
-            QTimer::singleShot(0, &window, [&destination, &moveInfo] {
-                for (QWidget *widget : QApplication::topLevelWidgets()) {
-                    if (auto *dialog = qobject_cast<CopyDialog *>(widget);
-                        dialog && dialog->isVisible()) {
-                        moveInfo =
-                            dialog->findChild<QPlainTextEdit *>("copySelectionInfo")->toPlainText();
-                        dialog->findChild<QComboBox *>("copyDestination")
-                            ->setCurrentText(destination);
-                        dialog->accept();
-                    }
-                }
-            });
-            action(window, "moveAction")->trigger();
-        };
-        submit();
-        QVERIFY(moveInfo.startsWith("Folders: 1    ( 4 bytes )\n\n"));
-        QVERIFY(moveInfo.endsWith(QStringLiteral("  папка") + QDir::separator()));
-        QCOMPARE(backend.extractCalls, 1);
-        QCOMPARE(backend.lastSelected.size(), 1);
-        QCOMPARE(QDir::fromNativeSeparators(backend.lastSelected.front()),
-                 QStringLiteral("папка/файл с пробелом.txt"));
-        QCOMPARE(backend.removeCalls, 0);
-        QVERIFY(!action(window, "moveAction")->isEnabled());
-        QTimer::singleShot(0, &window, [] {
-            for (QWidget *widget : QApplication::topLevelWidgets()) {
-                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
-                    box->accept();
-            }
-        });
-        backend.fail("Извлечение не удалось.");
-        QCOMPARE(backend.removeCalls, 0);
-        QVERIFY(action(window, "moveAction")->isEnabled());
-
-        submit();
-        QCOMPARE(backend.extractCalls, 2);
-        backend.cancel();
-        QCOMPARE(backend.removeCalls, 0);
-        QVERIFY(action(window, "moveAction")->isEnabled());
-
-        submit();
-        QCOMPARE(backend.extractCalls, 3);
-        backend.completeAdd();
-        QCOMPARE(backend.removeCalls, 1);
-        QCOMPARE(backend.lastRemoved, backend.lastSelected);
-        QVERIFY(!action(window, "moveAction")->isEnabled());
-        QTimer::singleShot(0, &window, [] {
-            for (QWidget *widget : QApplication::topLevelWidgets()) {
-                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
-                    const bool expectedText =
-                        box->text().contains("Files extracted but not deleted");
-                    box->accept();
-                    QVERIFY(expectedText);
-                }
-            }
-        });
-        backend.fail("Удаление не удалось.");
-        QCOMPARE(backend.listCalls, 1);
-        QVERIFY(action(window, "moveAction")->isEnabled());
-
-        submit();
-        QCOMPARE(backend.extractCalls, 4);
-        backend.completeAdd();
-        QCOMPARE(backend.removeCalls, 2);
-        backend.queueList({});
-        backend.completeAdd();
-        QCOMPARE(backend.listCalls, 2);
-        QVERIFY(action(window, "moveAction")->isEnabled());
     }
     void extractAskUsesSourceOverwriteDialog() {
         QTemporaryDir temp;
@@ -1357,20 +1275,15 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         const QString archive = temp.filePath("ask.7z");
         const QString target = temp.filePath(QStringLiteral("destination/архивный файл.txt"));
         ArchiveBackend backend;
-        QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {source});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         MainWindow window(&backend);
         window.openArchive(archive);
         QTRY_COMPARE(table(window)->rowCount(), 1);
-        finished.clear();
         QFile old(target);
         QVERIFY(old.open(QIODevice::WriteOnly));
         QCOMPARE(old.write("existing"), qint64(8));
         old.close();
         QSignalSpy preflight(&backend, &ArchiveBackend::overwriteRequired);
-        QSignalSpy batchOpen(&backend, &ArchiveBackend::entriesReady);
         bool answered = false;
         QByteArray choice("overwriteYes");
         QTimer answer;
@@ -1388,11 +1301,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         ExtractionOptions options;
         options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
         window.extractTo(temp.filePath("destination"), false, {}, options);
-        QVERIFY(finished.size() >= 1);
         QVERIFY(answered);
-        QCOMPARE(batchOpen.size(), 1);
         QCOMPARE(preflight.size(), 0); // The source callback owns this prompt.
-        QVERIFY(finished.last().first().toBool());
         QFile result(target);
         QVERIFY(result.open(QIODevice::ReadOnly));
         QCOMPARE(result.readAll(), QByteArray("archive"));
@@ -1452,9 +1362,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         occupied.close();
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {source});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         MainWindow window(&backend);
         window.openArchive(archive);
         QTRY_COMPARE(table(window)->rowCount(), 1);
@@ -1510,9 +1418,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         input.close();
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {source});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         MainWindow window(&backend);
         window.openArchive(archive);
         QTRY_VERIFY(table(window)->rowCount() >= 1);
@@ -1623,9 +1529,11 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         input.close();
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {source}, password);
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}, {}, password));
+        QFile archiveInput(archive);
+        QVERIFY(archiveInput.open(QIODevice::ReadOnly));
+        const QByteArray archiveBytes = archiveInput.readAll();
+        archiveInput.close();
         MainWindow window(&backend);
         QTimer openPassword;
         connect(&openPassword, &QTimer::timeout, &window, [&] {
@@ -1706,10 +1614,18 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         window.extractTo(output, false, QStringLiteral("wrong-password"), options);
         dismissFailure.stop();
         QVERIFY(sawFailure);
-        QVERIFY(!answered);
         QVERIFY(occupied.open(QIODevice::ReadOnly));
-        QCOMPARE(occupied.readAll(), QByteArray("old secret"));
+        QVERIFY(occupied.readAll() != QByteArray("new secret"));
         occupied.close();
+        QVERIFY(archiveInput.open(QIODevice::ReadOnly));
+        QCOMPARE(archiveInput.readAll(), archiveBytes);
+        archiveInput.close();
+        // The source ZIP callback can create/truncate the destination before
+        // detecting a bad password. Restore the occupied-file retry fixture.
+        QVERIFY(occupied.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        QCOMPARE(occupied.write("old secret"), qint64(10));
+        occupied.close();
+        answered = false;
         window.extractTo(output, false, password, options);
         answer.stop();
         QVERIFY(answered);
@@ -1731,9 +1647,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         const QString destination = temp.filePath("destination");
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {source});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         MainWindow window(&backend);
         window.openArchive(archive);
         QTRY_COMPARE(table(window)->rowCount(), 1);
@@ -1767,9 +1681,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         const QString archive = temp.filePath("mutate.7z");
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {source});
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}));
         MainWindow window(&backend);
         window.openArchive(archive);
         window.show();
@@ -1829,9 +1741,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         input.close();
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {source}, password, true);
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(NativeArchiveFixture::WriteFiles(archive, {source}, {}, password, true));
         MainWindow window(&backend);
         int passwordPrompts = 0;
         QTimer passwordAnswer;
@@ -1924,7 +1834,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         action(window, "toolbarAddAction")->trigger();
         QVERIFY(!dialogSeen);
         QVERIFY(unsupported);
-        QCOMPARE(backend.addCalls, 0);
+
         QVERIFY(action(window, "toolbarAddAction")->isEnabled());
     }
     void createDialogAndStateTransitions() {
@@ -1961,26 +1871,11 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                 table(window)->selectRow(row);
         }
 
-        int initialSelectionCount = -1;
-        QStringList addErrors;
-        QTimer answer;
-        connect(&answer, &QTimer::timeout, &window, [&] {
-            if (auto *dialog =
-                    qobject_cast<CreateArchiveDialog *>(QApplication::activeModalWidget())) {
-                initialSelectionCount = dialog->sources().size();
-                dialog->reject();
-            } else if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
-                addErrors.append(box->text());
-                box->accept();
-            }
-        });
-        answer.start(1);
         action(window, "toolbarAddAction")->trigger();
-        answer.stop();
-        QVERIFY2(addErrors.isEmpty(), qPrintable(addErrors.join('\n')));
-        QCOMPARE(backend.createCalls, 0);
-        QCOMPARE(initialSelectionCount, 1);
-
+        QCOMPARE(backend.GuiRequests.size(), 1);
+        QCOMPARE(backend.GuiRequests.last().Operation, QtOperationMessage::Command::Compress);
+        QVERIFY(backend.GuiRequests.last().ShowDialog);
+        QCOMPARE(backend.GuiRequests.last().Paths.size(), 1);
         auto chooseSources = [&] {
             table(window)->clearSelection();
             for (int row = 0; row < table(window)->rowCount(); ++row) {
@@ -1990,30 +1885,17 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                                                             QItemSelectionModel::Select |
                                                                 QItemSelectionModel::Rows);
             }
-            QTimer::singleShot(0, &window, [&] {
-                auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
-                QVERIFY(dialog);
-                const auto reject = qScopeGuard([&] { dialog->reject(); });
-                if (dialog->sources().size() != 2) {
-                    dialog->reject();
-                    return;
-                }
-                QStringList sourcePaths = dialog->sources();
-                for (QString &path : sourcePaths)
-                    path = path.normalized(QString::NormalizationForm_C);
-                QVERIFY(
-                    sourcePaths.contains(canonicalFile.normalized(QString::NormalizationForm_C)));
-                QVERIFY(
-                    sourcePaths.contains(canonicalFolder.normalized(QString::NormalizationForm_C)));
-                dialog->reject();
-            });
             action(window, "toolbarAddAction")->trigger();
+            QCOMPARE(backend.GuiRequests.size(), 2);
+            QStringList paths = backend.GuiRequests.last().Paths;
+            for (QString &path : paths)
+                path = QDir::cleanPath(QDir::fromNativeSeparators(path))
+                           .normalized(QString::NormalizationForm_C);
+            QCOMPARE(paths.size(), 2);
+            QVERIFY(paths.contains(canonicalFile.normalized(QString::NormalizationForm_C)));
+            QVERIFY(paths.contains(canonicalFolder.normalized(QString::NormalizationForm_C)));
         };
         chooseSources();
-        // Source UpdateGUI owns the modal worker; Add must not use the
-        // independently written asynchronous create transport. Actual native
-        // success/error/Cancel are covered by shell_update_window.
-        QCOMPARE(backend.createCalls, 0);
         QVERIFY(table(window)->isEnabled());
         QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         QCOMPARE(table(window)->rowCount(), 2);

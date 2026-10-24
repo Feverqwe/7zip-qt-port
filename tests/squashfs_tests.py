@@ -1,4 +1,4 @@
-"""Read results and rejection of malformed SquashFS through both delivered engines."""
+"""Read results and rejection of malformed SquashFS through the delivered dynamic engine."""
 from pathlib import Path
 import shutil
 import subprocess
@@ -22,7 +22,7 @@ class SquashfsTests(unittest.TestCase):
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
         core = "7z.dll" if sys.platform == "win32" else "7z.so"
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX, core):
+        for name in ("7z" + SUFFIX, core):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
@@ -45,7 +45,7 @@ class SquashfsTests(unittest.TestCase):
             return result
 
     def test_blocks_fragments_sparse_and_unicode(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for compressed in (False, True):
                 data, files = volume(compressed=compressed)
                 for name, expected in files.items():
@@ -82,7 +82,7 @@ class SquashfsTests(unittest.TestCase):
         variants = ((data, len(data)), (data[:used], used),
                     (data[:used] + b"\0", used), (data[:used] + b"nonzero tail", used),
                     (aligned, len(aligned)))
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for image, expected_size in variants:
                 with self.subTest(engine=engine, size=len(image), physical=expected_size):
                     listing = self.run_image(engine, image, "l")
@@ -120,7 +120,7 @@ class SquashfsTests(unittest.TestCase):
     def test_data_and_fragment_alias_preserve_each_compression_mode(self):
         for fault in ("cache-data-compressed", "cache-fragment-compressed"):
             data, files = volume(fault=fault)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 for name in ("alpha", "данные 空"):
                     with self.subTest(fault=fault, engine=engine, name=name):
                         result = self.run_image(engine, data, "x", name)
@@ -154,11 +154,6 @@ class SquashfsTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
             self.assertEqual(result.stdout, b"value")
 
-    def test_core_only_standalone_rejects_new_decoder_features(self):
-        for codec in ("lz4", "lzo-rle"):
-            result = self.run_image("7zz", volume(codec=codec)[0], "x", "alpha")
-            self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(result.stdout, b"")
 
     def test_compressor_options_reject_invalid_bootstrap_and_versions(self):
         import struct
@@ -185,9 +180,7 @@ class SquashfsTests(unittest.TestCase):
             if "attributes" in records[path.name.removesuffix(".squashfs.zlib")]:
                 continue  # Different payloads are checked by the native-xattr scenario.
             data = zlib.decompress(path.read_bytes())
-            for engine in ("7z", "7zz"):
-                if path.name.startswith("lz4") and engine == "7zz":
-                    continue
+            for engine in ("7z",):
                 for name, expected in (("данные 空", creator_payload()),
                                        ("hardlink", creator_payload()), ("small", b"fragment")):
                     with self.subTest(image=path.name, engine=engine, name=name):
@@ -216,12 +209,12 @@ class SquashfsTests(unittest.TestCase):
         self.assertEqual(result.stdout, files["alpha"])
 
     def test_empty_filesystem_without_fragment_index(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             result = self.run_image(engine, volume(no_fragments=True)[0])
             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
 
     def test_legacy_v3_little_and_big_endian_read_extension(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for endian in ("<", ">"):
                 for compressed in (False, True):
                     with self.subTest(engine=engine, endian=endian, compressed=compressed):
@@ -231,7 +224,7 @@ class SquashfsTests(unittest.TestCase):
                         self.assertEqual(result.stdout, expected)
 
     def test_corrupt_metadata_and_data_boundaries(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for fault in ("fragment-large", "fragment-zero", "data-zero", "fragment-outside", "data-outside", "cross-block-inode",
                           "cycle", "count-wrap", "name-nul", "name-slash", "root-not-directory",
                           "uid-index", "negative-size", "metadata-bomb"):
@@ -275,7 +268,7 @@ class SquashfsTests(unittest.TestCase):
         for name, expected in (("data.bin", bytes(range(100))), ("alias.bin", bytes(range(100))),
                                ("[ROOT]", b"ordinary root name"),
                                ("data.bin:$XATTR.user.comment", b"ordinary colon file")):
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 result = self.run_image(engine, data, "x", name)
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                 self.assertEqual(result.stdout, expected)
@@ -329,7 +322,7 @@ class SquashfsTests(unittest.TestCase):
                     self.assertEqual(result.stdout, files[name])
 
     def test_export_payload_is_independent_of_ordinary_file_reads(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for xattrs in (False, True):
                 for fault in ("export-reference", "export-metadata-zero", "export-compressed-invalid"):
                     data, files = volume(fault, xattrs=xattrs, export=True)
@@ -340,8 +333,6 @@ class SquashfsTests(unittest.TestCase):
                             result = self.run_image(engine, data, "x", name)
                             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                             self.assertEqual(result.stdout, files[name])
-        result = self.run_image("7zz", volume("export-index-outside", export=True)[0], "l")
-        self.assertNotEqual(result.returncode, 0)
 
     def test_partial_directory_entries_preserve_readable_files(self):
         for fault in ("directory-reference", "directory-unavailable", "directory-tail"):
@@ -361,8 +352,6 @@ class SquashfsTests(unittest.TestCase):
                     missing = self.run_image("7z", data, "x", "alpha")
                     self.assertNotEqual(missing.returncode, 0)
                     self.assertEqual(missing.stdout, b"")
-                rejected = self.run_image("7zz", data, "l")
-                self.assertNotEqual(rejected.returncode, 0)
 
     def test_directory_metadata_blocks_do_not_hide_other_directories(self):
         for fault in ("directory-block-clean", "directory-block-header", "directory-block-zlib", "directory-block-span", "directory-block-shared", "directory-block-unused"):
@@ -503,7 +492,7 @@ class SquashfsTests(unittest.TestCase):
             self.assertTrue((output / "alpha").samefile(output / "hardlink"))
 
     def test_shared_fragment_with_nonzero_offset_is_validated_before_read(self):
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             for fault in ("fragment-large", "fragment-outside"):
                 result = self.run_image(engine, volume(fault)[0], "x", "данные 空")
                 self.assertNotEqual(result.returncode, 0)
@@ -551,9 +540,7 @@ class SquashfsTests(unittest.TestCase):
                                           "-processors", "1", "-comp", codec, "-no-progress"],
                                          capture_output=True, timeout=15)
                 self.assertEqual(created.returncode, 0, created.stderr.decode(errors="replace"))
-                for engine in ("7z", "7zz"):
-                    if codec == "lz4" and engine == "7zz":
-                        continue
+                for engine in ("7z",):
                     for name, expected in (("данные 空", payload), ("hardlink", payload),
                                            ("small", b"fragment")):
                         with self.subTest(codec=codec, engine=engine, name=name):

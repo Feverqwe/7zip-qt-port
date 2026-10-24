@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/FileManager/UpdateCallback100.h"
 #include "Common/StringConvert.h"
 #include "archivebackend.h"
+#include "native_archive_fixture.h"
 #include "qtarchivefileresource.h"
 #include "qtownedtempregistry.h"
 #include "qtpanelfolder.h"
@@ -112,7 +113,7 @@ class OwnedTempPublicationTests : public QObject {
     }
     void nativeFolderTransactionRetainsSpoolOwnership() {
         QFETCH(int, outcome);
-        const QString engine = QStandardPaths::findExecutable("7zz");
+        const QString engine = QStandardPaths::findExecutable("7z");
         QVERIFY(!engine.isEmpty());
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
@@ -148,7 +149,17 @@ class OwnedTempPublicationTests : public QObject {
             if (entry.path == spool)
                 oldIdentity = entry.identity;
         QVERIFY(!oldIdentity.isEmpty());
-        ArchiveBackend backend(nullptr, outcome == 1 ? fixture.filePath("missing-engine") : engine);
+        ArchiveBackend backend(nullptr, outcome == 1 ? fixture.filePath("missing-module") : engine);
+        if (outcome != 1) {
+            QCOMPARE(NativeArchiveFixture::Attach(backend), S_OK);
+            std::shared_ptr<ArchiveNativeOpen> reader;
+            QCOMPARE(backend.openNativeArchive(spool, "zip", nullptr, reader), S_OK);
+            QVERIFY(reader);
+            resource->AttachCodecCatalog(backend.codecCatalog());
+            resource->AttachNativeOpen(std::move(reader));
+            resource->UseNativeMetadata();
+        }
+
         resource->AttachUpdateService(backend, "zip");
         resource->AttachReopenService(backend, "zip");
         {
@@ -157,8 +168,7 @@ class OwnedTempPublicationTests : public QObject {
             auto transport = resource->CreateProgressTransport(worker);
             QVERIFY(transport);
             if (outcome == 2)
-                connect(&backend, &ArchiveBackend::engineStarted, &backend,
-                        [&worker] { worker.Sync.Set_Stopped(true); });
+                worker.Sync.Set_Stopped(true);
             QCOMPARE(worker.Create(L"Spool rename", nullptr), S_OK);
             if (outcome == 0)
                 QCOMPARE(worker.Result, S_OK);

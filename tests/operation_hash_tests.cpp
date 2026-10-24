@@ -1,3 +1,4 @@
+#include "archivecodelocation.h"
 #include "fixtures/operation_kill.h"
 #include "fixtures/operation_parent.h"
 #include "fixtures/operation_temp_cleanup.h"
@@ -100,8 +101,7 @@ class OperationHashTests final : public QObject {
 #else
         Q_UNUSED(builtin);
 #endif
-        ScopedTestEnvironment console("SEVENZIP_ENGINE_PATH",
-                                      QDir(deployment).filePath("no console"));
+        ScopedTestEnvironment console("SEVENZIP_CODEC_MODULE_PATH", FindArchiveModule(deployment));
         auto job = Hash(directory.path(),
                         single ? QStringList{name}
                         : flat ? QStringList{"tree", "tree/sub", name}

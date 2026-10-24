@@ -17,7 +17,7 @@ class ApmTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-apm-runtime-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX, "7zz" + SUFFIX,
+        for name in ("7z" + SUFFIX,
                      "7z.dll" if sys.platform == "win32" else "7z.so"):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
 
@@ -39,7 +39,7 @@ class ApmTests(unittest.TestCase):
     def test_geometry_and_payload(self):
         for kind in CASES:
             image, expected, block = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     result = self.run_image(engine, image)
                     self.assertEqual(result.returncode, 0, result.stderr)
@@ -55,7 +55,7 @@ class ApmTests(unittest.TestCase):
 
     def test_automatic_partition_extraction(self):
         image, expected, _ = volume("block-512")
-        for engine in ("7z", "7zz"):
+        for engine in ("7z",):
             with self.subTest(engine=engine):
                 result = self.run_image(engine, image, forced=False)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -64,7 +64,7 @@ class ApmTests(unittest.TestCase):
     def test_invalid_maps_fail_normally(self):
         for kind in BAD:
             image, _, _ = volume(kind)
-            for engine in ("7z", "7zz"):
+            for engine in ("7z",):
                 with self.subTest(kind=kind, engine=engine):
                     self.assertEqual(self.run_image(engine, image).returncode, 2)
 

@@ -6,6 +6,7 @@
 #include "createarchivedialog.h"
 #include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -189,8 +190,9 @@ class CompressionMethodStateTests final : public QObject {
             return result;
         };
         QFile::remove(dialog.target());
-        backend.create(dialog.target(), {_input}, {}, false, options);
-        QVERIFY(completed());
+        QCOMPARE(
+            SourceCreationFixture::Create(backend, dialog.target(), {_input}, {}, false, options),
+            S_OK);
         backend.list(dialog.target());
         QVERIFY(completed());
         backend.test(dialog.target());
@@ -203,19 +205,15 @@ class CompressionMethodStateTests final : public QObject {
         QCOMPARE(output.readAll(), _bytes);
         options.NumThreads = 100000;
         const QString invalid = _fixture.filePath("invalid." + format);
-        backend.create(invalid, {_input}, {}, false, options);
-        QCOMPARE(done.size(), 1);
-        QVERIFY(!done[0][0].toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, invalid, {_input}, {}, false, options) !=
+                S_OK);
         QVERIFY(!QFileInfo::exists(invalid));
         done.clear();
         options.NumThreads = 1;
         const QString cancelled = _fixture.filePath("cancelled." + format);
-        backend.create(cancelled, {_input}, {}, false, options);
-        QVERIFY(backend.busy());
-        backend.cancel();
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY(!done[0][0].toBool());
-        QCOMPARE(backend.lastResult(), E_ABORT);
+        QCOMPARE(
+            SourceCreationFixture::Create(backend, cancelled, {_input}, {}, false, options, true),
+            E_ABORT);
         QVERIFY(!QFileInfo::exists(cancelled));
         QFile input(_input);
         QVERIFY(input.open(QIODevice::ReadOnly));

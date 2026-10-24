@@ -275,7 +275,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
             QCOMPARE(file.readAll(), QByteArray("protected source bytes"));
         }
         QCOMPARE(backend.extractCalls, 0);
-        QCOMPARE(backend.removeCalls, 0);
+
         for (int width : {980, 640}) {
             window.resize(width, width == 980 ? 620 : 400);
             QApplication::processEvents();
@@ -464,7 +464,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
                         Qt::ControlModifier | Qt::AltModifier | Qt::ShiftModifier);
         QCOMPARE(list->item(0, 0)->text(), QString("beta.bin"));
         QCOMPARE(backend.extractCalls, 0);
-        QCOMPARE(backend.removeCalls, 0);
+
         const QString name = QStringLiteral("сохранить 空.txt");
         QFile file(fixture.filePath(name));
         QVERIFY(file.open(QIODevice::WriteOnly));
@@ -502,7 +502,6 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
             QCOMPARE(file.readAll(), QByteArray("unchanged"));
             file.close();
         }
-        QCOMPARE(backend.removeCalls, 0);
     }
 };
 

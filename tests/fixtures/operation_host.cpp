@@ -1,7 +1,7 @@
 #include "7zip/UI/Common/ArchiveCommandLine.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivebackend.h"
-#include "archiveenginelocation.h"
+#include "archivecodelocation.h"
 #include "operation_dialogs.h"
 #include "qtguicommand.h"
 #include "qtoperationendpoint.h"
@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
         if (detail.open(QIODevice::WriteOnly)) {
             detail.write(
                 QJsonDocument(
-                    QJsonObject{{"engine", FindArchiveEngine()},
+                    QJsonObject{{"engine", FindArchiveModule()},
                                 {"archive", qEnvironmentVariable("SEVENZIP_OPERATION_ARCHIVE")},
                                 {"exists", QFileInfo::exists(
                                                qEnvironmentVariable("SEVENZIP_OPERATION_ARCHIVE"))},

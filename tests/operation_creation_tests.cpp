@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/Common/ZipRegistry.h"
 #include "Common/StringConvert.h"
+#include "archivecodelocation.h"
 #include "fixtures/operation_kill.h"
 #include "fixtures/operation_parent.h"
 #include "fixtures/operation_program.h"
@@ -99,8 +100,7 @@ class OperationCreationTests final : public QObject {
         QVERIFY(QDir().mkpath(deployment));
         const QString module = QStringLiteral(SEVENZIP_CODEC_MODULE);
         QVERIFY(QFile::copy(module, QDir(deployment).filePath(QFileInfo(module).fileName())));
-        Environment engine("SEVENZIP_ENGINE_PATH",
-                           QDir(deployment).filePath("unavailable console"));
+        Environment engine("SEVENZIP_CODEC_MODULE_PATH", FindArchiveModule(deployment));
 #endif
         const auto created = Run(NativeOperationProgram(SEVENZIP_NATIVE_GUI),
                                  Compress(archive, {source, keep}, format));

@@ -1,6 +1,7 @@
 #include "7zip/UI/GUI/CompressDialogRes.h"
 #include "archivebackend.h"
 #include "createarchivedialog.h"
+#include "source_creation_fixture.h"
 #include <QLocale>
 #include <QScopeGuard>
 #include <QSignalSpy>
@@ -172,16 +173,15 @@ class CompressionResourceTests final : public QObject {
         options.NumThreads = threads ? UInt32(threads) : UInt32(-1);
         options.Dict64 = dictionary ? dictionary : UInt64(-1);
         const QString target = dir.filePath("threads." + formatName);
-        backend.create(target, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, target, {source}, {}, false, options),
+                 S_OK);
         done.clear();
         QProcess process;
-        process.start("7zz", {"t", "--", target});
+        process.start("7z", {"t", "--", target});
         QVERIFY(process.waitForFinished(15000));
         QCOMPARE(process.exitCode(), 0);
         const QString output = dir.filePath("out");
-        process.start("7zz", {"x", "-o" + output, "--", target});
+        process.start("7z", {"x", "-o" + output, "--", target});
         QVERIFY(process.waitForFinished(15000));
         QCOMPARE(process.exitCode(), 0);
         QFile restored(QDir(output).filePath(QFileInfo(source).fileName()));
@@ -189,21 +189,16 @@ class CompressionResourceTests final : public QObject {
         QCOMPARE(restored.readAll(), contents);
         const QString invalid = dir.filePath("invalid." + formatName);
         options.NumThreads = 999999;
-        backend.create(invalid, {source}, {}, false, options);
-        QCOMPARE(done.size(), 1);
-        QVERIFY(!done.takeFirst()[0].toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, invalid, {source}, {}, false, options) !=
+                S_OK);
         QVERIFY(!QFileInfo::exists(invalid));
         QVERIFY(file.open(QIODevice::WriteOnly));
         QVERIFY(file.resize(8 << 20));
         file.close();
         options.NumThreads = threads ? UInt32(threads) : UInt32(-1);
-        backend.create(invalid, {source}, {}, false, options);
-        QVERIFY(backend.busy());
-        backend.cancel();
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY(!done.first()[0].toBool());
-        QCOMPARE(done.first()[1].toString(), QString("Operation canceled."));
-        QCOMPARE(backend.lastResult(), E_ABORT);
+        QCOMPARE(
+            SourceCreationFixture::Create(backend, invalid, {source}, {}, false, options, true),
+            E_ABORT);
         QVERIFY(!QFileInfo::exists(invalid));
         QVERIFY(QDir(dir.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
     }

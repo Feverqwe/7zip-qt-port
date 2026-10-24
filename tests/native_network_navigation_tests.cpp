@@ -113,7 +113,6 @@ class NativeNetworkNavigationTests final : public QObject, protected MainWindowT
         QCOMPARE(read(fixture.filePath()), NativeNetworkShare::payload());
         QCOMPARE(backend.listCalls, 0);
         QCOMPARE(backend.extractCalls, 0);
-        QCOMPARE(backend.createCalls, 0);
     }
 };
 

@@ -4,6 +4,7 @@
 #include "createarchivedialog.h"
 #include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
+#include "source_creation_fixture.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -317,10 +318,8 @@ class CompressionTests : public QObject {
         options.SolidBlockSize = 0;
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
-        backend.create(target, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        const auto result = done.takeFirst();
-        QVERIFY2(result.at(0).toBool(), qPrintable(result.value(1).toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, target, {source}, {}, false, options),
+                 S_OK);
         QVERIFY(QFile::exists(target));
 
         QSignalSpy listed(&backend, &ArchiveBackend::entriesReady);
@@ -332,7 +331,7 @@ class CompressionTests : public QObject {
         QCOMPARE(entries.first().path, QStringLiteral("данные с пробелом.txt"));
 
         QProcess inspect;
-        inspect.start("7zz", {"l", "-slt", "-sccUTF-8", "--", target});
+        inspect.start("7z", {"l", "-slt", "-sccUTF-8", "--", target});
         QVERIFY(inspect.waitForFinished(15000));
         QCOMPARE(inspect.exitCode(), 0);
         QVERIFY(inspect.readAllStandardOutput().contains("Method = " + method.toUtf8()));
@@ -356,12 +355,11 @@ class CompressionTests : public QObject {
         const QString target = temp.filePath("archive.7z");
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
-        backend.create(target, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done.first().at(0).toBool(), qPrintable(done.first().at(1).toString()));
+        QCOMPARE(SourceCreationFixture::Create(backend, target, {source}, {}, false, options),
+                 S_OK);
 
         QProcess inspect;
-        inspect.start("7zz", {"l", "-slt", "-sccUTF-8", "--", target});
+        inspect.start("7z", {"l", "-slt", "-sccUTF-8", "--", target});
         QVERIFY(inspect.waitForFinished(15000));
         QCOMPARE(inspect.exitCode(), 0);
         const QByteArray listing = inspect.readAllStandardOutput();
@@ -382,9 +380,8 @@ class CompressionTests : public QObject {
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString target = temp.filePath("invalid.7z");
-        backend.create(target, {source}, {}, false, options);
-        QCOMPARE(done.size(), 1);
-        QVERIFY(!done.first().at(0).toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, target, {source}, {}, false, options) !=
+                S_OK);
         QVERIFY(!QFile::exists(target));
     }
 
@@ -400,9 +397,8 @@ class CompressionTests : public QObject {
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString target = temp.filePath("invalid.7z");
-        backend.create(target, {source}, {}, false, options);
-        QCOMPARE(done.size(), 1);
-        QVERIFY(!done.first().at(0).toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, target, {source}, {}, false, options) !=
+                S_OK);
         QVERIFY(!QFile::exists(target));
     }
 };

@@ -1,60 +1,24 @@
 #include "archivebackend.h"
-#include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "archivecodeccatalog.h"
 #include "archivecodecprobe.h"
-#include "archiveenginelocation.h"
-#include "archivesfxmodule.h"
-#include "qtarchivecopypreparation.h"
-#include "qtarchivecreationlifecycle.h"
+#include "archivecodelocation.h"
 #include "qtarchivedirectoryextract.h"
 #include "qtarchivehashoperation.h"
 #include "qtarchivereadoperation.h"
-#include "qtarchivevolumeoutput.h"
-#include "qtlanguageservices.h"
-
-#include "qtownedtempdir.h"
 #include <QCoreApplication>
 #include <QDir>
-#include <QDirIterator>
-#include <QFile>
 #include <QFileInfo>
 #include <QPointer>
-#include <QSet>
-#include <QUuid>
-#ifdef Q_OS_WIN
-#include "Windows/ProcessUtils.h"
-#else
-#include <cerrno>
-#endif
-
-ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(parent) {
-    copyProgressTimer_.setInterval(33);
-    connect(&copyProgressTimer_, &QTimer::timeout, this, &ArchiveBackend::reportCopyPreparation);
+ArchiveBackend::ArchiveBackend(QObject *parent, QString runtimeLocation) : QObject(parent) {
     workerProgressTimer_.setInterval(33);
     connect(&workerProgressTimer_, &QTimer::timeout, this, &ArchiveBackend::reportWorkerProgress);
-    if (executable.isEmpty())
-        executable = FindArchiveEngine();
-    configuredEngine_ = executable;
-    process_ = makeProcess(executable);
-    connect(this, &ArchiveBackend::engineStarted, this, &ArchiveBackend::phaseStarted);
+    configuredModule_ = FindArchiveModule(runtimeLocation);
 }
 
 ArchiveBackend::~ArchiveBackend() {
-    // Joining is cleanup here: finished receivers must not start a continuation
-    // while the backend and its worker owners are being destroyed.
     blockSignals(true);
     codecProbe_.reset();
-    // QProcess can emit readyRead/finished during destruction. Stop callbacks
-    // while their buffers and operation state are still alive.
-    disconnect(process_.get(), nullptr, this, nullptr);
     cancelAndWait();
-    if (process_->state() == QProcess::NotRunning &&
-        (job_ == Job::Create || job_ == Job::Add || job_ == Job::Delete || job_ == Job::Rename ||
-         job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd || job_ == Job::SourceUpdate ||
-         job_ == Job::SourcePlanDelete || job_ == Job::SourcePlanFiles ||
-         job_ == Job::SourcePlanDirectories || job_ == Job::SourceMutation ||
-         job_ == Job::SourcePlanRename))
-        QFile::remove(createTemporary_);
 }
 
 bool ArchiveBackend::busy() const {
@@ -68,47 +32,11 @@ HRESULT ArchiveBackend::setPaused(bool paused) {
         readOperation_->setPaused(paused);
         return S_OK;
     }
-    if (copyPreparation_) {
-        copyPreparation_->setPaused(paused);
-        return S_OK;
-    }
     if (hashOperation_) {
         hashOperation_->setPaused(paused);
         return S_OK;
     }
-    if (creationLifecycle_ && (job_ == Job::CreatePrepare || job_ == Job::CreateDeleteInputs)) {
-        creationLifecycle_->setPaused(paused);
-        return S_OK;
-    }
-    if (volumeOutput_) {
-        volumeOutput_->setPaused(paused);
-        return S_OK;
-    }
-    if (process_->state() != QProcess::Running)
-        return E_FAIL;
-    return processControlResult(processPause_.SetPaused(paused));
-}
-
-HRESULT ArchiveBackend::processControlResult(HRESULT result) const {
-    if (result == S_OK)
-        return S_OK;
-    // A short-lived child can exit before QProcess delivers finished(). There
-    // is no remaining child to control; keep its actual exit result.
-#ifdef Q_OS_WIN
-    const UInt32 pid = UInt32(process_->processId());
-    if (pid != 0) {
-        NWindows::CProcess child;
-        if (child.Open(SYNCHRONIZE, false, pid)) {
-            if (::WaitForSingleObject(child, 0) == WAIT_OBJECT_0)
-                return S_OK;
-        } else if (::GetLastError() == ERROR_INVALID_PARAMETER)
-            return S_OK;
-    }
-#else
-    if (result == HRESULT_FROM_WIN32(ESRCH))
-        return S_OK;
-#endif
-    return result;
+    return E_FAIL;
 }
 
 void ArchiveBackend::provideOverwriteAnswer(int answer) {
@@ -293,41 +221,21 @@ void ArchiveBackend::cancel() {
     if (!busy())
         return;
     cancelled_ = true;
-    if (copyPreparation_)
-        copyPreparation_->cancel();
     if (hashOperation_)
         hashOperation_->cancel();
     if (readOperation_)
         readOperation_->cancel();
-    if (creationLifecycle_)
-        creationLifecycle_->cancel();
-    if (volumeOutput_)
-        volumeOutput_->cancel();
     pendingPassword_.clear();
-    if (overwritePromptActive_) {
-        const QPointer<ArchiveBackend> owner(this);
+    if (overwritePromptActive_)
         emit dismissOverwriteRequested();
-        if (!owner)
-            return;
-    }
-    if (process_->state() != QProcess::NotRunning)
-        process_->kill();
 }
 
 void ArchiveBackend::cancelAndWait() {
     const QPointer<ArchiveBackend> owner(this);
-    const auto transport = process_;
     if (busy())
         cancel();
     if (!owner)
         return;
-    // Finish only the current native phase. Its terminal signal can release
-    // this owner or start another operation, which this call must not join.
-    if (copyPreparation_) {
-        copyPreparation_->wait();
-        finishCopyPreparation();
-        return;
-    }
     if (hashOperation_) {
         hashOperation_->wait();
         finishHashOperation();
@@ -336,28 +244,11 @@ void ArchiveBackend::cancelAndWait() {
     if (readOperation_) {
         readOperation_->wait();
         finishReadOperation();
-        return;
     }
-    if (creationLifecycle_ && (job_ == Job::CreatePrepare || job_ == Job::CreateDeleteInputs)) {
-        creationLifecycle_->wait();
-        finishCreationLifecycle();
-        return;
-    }
-    if (volumeOutput_) {
-        if (!volumeOutput_->isRunning() && !volumeOutput_->isFinished()) {
-            volumeOutput_->Result = E_ABORT;
-            volumeOutput_->Error =
-                QCoreApplication::translate("archivebackend", "Operation canceled.");
-        }
-        volumeOutput_->wait();
-        finishVolumeOutput();
-        return;
-    }
-    if (transport->state() != QProcess::NotRunning) {
-        transport->kill();
-        transport->waitForFinished(-1);
-        if (!owner || process_ != transport)
-            return;
-    }
-    processPause_.ResetAfterExit();
+}
+
+void ArchiveBackend::providePassword(const QString &password) {
+    pendingPassword_ = password;
+    if (readOperation_)
+        readOperation_->providePassword(password);
 }

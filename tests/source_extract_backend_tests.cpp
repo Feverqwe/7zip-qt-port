@@ -353,7 +353,7 @@ class SourceExtractBackendTests final : public QObject {
         QVERIFY(writeFile(directory.filePath(kName), bytes));
         QProcess process;
         process.setWorkingDirectory(directory.path());
-        process.start(QStandardPaths::findExecutable("7zz"),
+        process.start(QStandardPaths::findExecutable("7z"),
                       {"a", "-t7z", "-v2k", "split.7z", kName});
         QVERIFY(process.waitForFinished(30000));
         QCOMPARE(process.exitCode(), 0);

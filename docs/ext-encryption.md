@@ -45,8 +45,8 @@ For example, listing without keys is:
 7z l -tExt -pfscrypt:none -- volume.ext4
 ```
 
-Keep the supplied format modules with the dynamic `7z` engine. Standalone `7zz`
-does not include the GPL fscrypt reader and refuses encrypted file data.
+Keep the supplied format modules with the native codec runtime; they provide
+the GPL fscrypt reader. The GUI does not require the console sidecar.
 Direct device access retains its [read-only and authorization rules](direct-device-reading.md).
 Validation uses synthetic Linux volumes; real encrypted external media have not
 been checked.

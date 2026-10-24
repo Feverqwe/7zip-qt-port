@@ -41,7 +41,8 @@ class QtArchiveReadOperation final : public QThread {
     };
     QtArchiveReadOperation(QString path, QString password,
                            std::shared_ptr<const ArchiveCodecCatalog> catalog, Work work,
-                           Kind kind = Kind::Test, QString format = {}, QString engine = {});
+                           Kind kind = Kind::Test, QString format = {},
+                           QString moduleLocation = {});
     void cancel();
     void setPaused(bool paused);
     void providePassword(const QString &password);
@@ -75,7 +76,7 @@ class QtArchiveReadOperation final : public QThread {
     Work work_;
     const Kind kind_;
     const QString format_;
-    const QString engine_;
+    const QString moduleLocation_;
     QtWorkerProgress progress_;
     QMutex passwordMutex_;
     QWaitCondition passwordReady_;

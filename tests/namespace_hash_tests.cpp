@@ -161,7 +161,6 @@ class NamespaceHashTests final : public QObject, protected MainWindowTestSupport
         view->selectRow(selected);
         auto *hash = action(window, "hashSHA256Action");
         QVERIFY(hash->isEnabled());
-        QSignalSpy engines(&backend, &ArchiveBackend::engineStarted);
         HashModalResponse response("namespace-device-hash-" + language + '-' + outcome);
         response.cancel = outcome == "cancel";
         HANDLE held = INVALID_HANDLE_VALUE;
@@ -199,7 +198,6 @@ class NamespaceHashTests final : public QObject, protected MainWindowTestSupport
                 QCryptographicHash::hash(input, QCryptographicHash::Sha256).toHex())));
         }
         QCOMPARE(disk.readDevice(), input);
-        QCOMPARE(engines.size(), 0);
         QCOMPARE(backend.listCalls, 0);
         QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
         QVERIFY(hash->isEnabled());

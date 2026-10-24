@@ -8,6 +8,7 @@
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
 #include "qtshellarchiveservices.h"
+#include "source_creation_fixture.h"
 #include <QCollator>
 #include <QCryptographicHash>
 #include <QScrollArea>
@@ -233,9 +234,9 @@ class CompressionFormatTests final : public QObject {
         ArchiveBackend backend;
         QCOMPARE(backend.loadCodecCatalog(module_, catalog_->version()), S_OK);
         QSignalSpy done(&backend, &ArchiveBackend::finished);
-        backend.create(dialog.target(), {input_}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        QCOMPARE(
+            SourceCreationFixture::Create(backend, dialog.target(), {input_}, {}, false, options),
+            S_OK);
         QList<ArchiveEntry> entries;
         connect(&backend, &ArchiveBackend::entriesReady, this,
                 [&](const QList<ArchiveEntry> &value) { entries = value; });
@@ -261,17 +262,14 @@ class CompressionFormatTests final : public QObject {
         invalid.NumThreads = 999999;
         done.clear();
         const QString failed = fixture_.filePath("failed.zip");
-        backend.create(failed, {input_}, {}, false, invalid);
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY(!done.first()[0].toBool());
+        QVERIFY(SourceCreationFixture::Create(backend, failed, {input_}, {}, false, invalid) !=
+                S_OK);
         QVERIFY(!QFileInfo::exists(failed));
         done.clear();
         const QString cancelled = fixture_.filePath("cancelled.zip");
-        backend.create(cancelled, {input_}, {}, false, options);
-        backend.cancel();
-        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QCOMPARE(backend.lastResult(), E_ABORT);
-        QVERIFY(!done.first()[0].toBool());
+        QCOMPARE(
+            SourceCreationFixture::Create(backend, cancelled, {input_}, {}, false, options, true),
+            E_ABORT);
         QVERIFY(!QFileInfo::exists(cancelled));
     }
     void hashMethodUpdatesArchiveName_data() {

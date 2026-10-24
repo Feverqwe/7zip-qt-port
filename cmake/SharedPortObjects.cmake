@@ -53,19 +53,12 @@ endfunction()
 
 sevenzip_share_port_objects(sevenzip_archive_backend src/archivebackend.h
     src/archivebackend.cpp
-    src/archivebackend_process.cpp
     src/archivebackend_codecs.cpp
-    src/archivebackend_completion.cpp
     src/archivebackend_compression.cpp
-    src/archivebackend_creation.cpp
     src/archivebackend_hash.cpp
-    src/archivebackend_mutations.cpp
-    src/archivebackend_preparation.cpp
     src/archivebackend_sourceextract.cpp
-    src/archivebackend_sourceplan.cpp
     src/archivebackend_sourceupdate.cpp
     src/archivebackend_validation.cpp
-    src/archivebackend_volumes.cpp
     src/archivebackend_workerprogress.cpp src/archivebackend_transfer.cpp
     src/qtarchivetransferbackup.h)
 

@@ -324,7 +324,7 @@ HRESULT CPanel::OnEndLabelEdit(UInt32 realIndex, const UString &enteredName) {
 }
 
 HRESULT CPanel::DeleteItems(bool toRecycleBin, IQtTrashService &trash, CSelectedState &state,
-                            const CRecordVector<UInt32> *explicitIndices) {
+                            const CRecordVector<UInt32> *explicitIndices, bool confirm) {
     CDisableTimerProcessing disableTimerProcessing(*this);
     CRecordVector<UInt32> indices;
     if (explicitIndices)
@@ -361,9 +361,9 @@ HRESULT CPanel::DeleteItems(bool toRecycleBin, IQtTrashService &trash, CSelected
     const QString message =
         ToQString(indices.Size() == 1 ? MyFormatNew(messageID, messageParam)
                                       : MyFormatNew(messageID, UInt64(indices.Size())));
-    if (QMessageBox::question(GetParent(), title, message,
-                              QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-                              QMessageBox::Yes) != QMessageBox::Yes)
+    if (confirm && QMessageBox::question(GetParent(), title, message,
+                                         QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+                                         QMessageBox::Yes) != QMessageBox::Yes)
         return E_ABORT;
 
     CDisableNotify disableNotify(*this);
