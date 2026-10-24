@@ -175,9 +175,15 @@ class ArchiveBackend : public QObject {
                          const QStringList &selected = {}, const QString &password = {},
                          const ExtractionOptions &options = {});
     virtual void test(const QString &archive, const QString &password = {});
-    // Independent filesystem archives only. The observer belongs to the app;
+    // Independent filesystem operations. The observer belongs to the app;
     // releasing this backend/window does not cancel an accepted GUI operation.
-    virtual QtOperationLauncher *startGuiTest(const QStringList &archives, QString &error);
+    virtual QtOperationLauncher *startGuiTest(const QStringList &archives, QString &error,
+                                              bool hashMode = false);
+    // A nonempty basePrefix retains literal relative panel paths and its
+    // recursion mode. An empty prefix selects the source shell hash workflow.
+    virtual QtOperationLauncher *startGuiHash(const QStringList &paths, const QString &method,
+                                              const QString &basePrefix, bool enterToDirs,
+                                              QString &error);
     virtual QtOperationLauncher *startGuiCompress(const QString &archive, const QString &type,
                                                   bool addExtension, const QStringList &paths,
                                                   bool email, bool showDialog, QString &error);

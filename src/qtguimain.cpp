@@ -17,7 +17,7 @@ int RunSevenzipGUICommand(QApplication &application, const QtGUICommandSource &c
     LoadLangOneTime();
     ArchiveBackend backend;
     std::unique_ptr<QtShellArchiveServices> services;
-    const QtGUIServiceFactory factory = [&]() -> QtShellArchiveServices & {
+    const QtGUIServiceFactory factory = [&](bool hashOnly) -> QtShellArchiveServices & {
         // Main2 invokes the factory after Parse2 acknowledged its mapping.
         QEventLoop discovery;
         bool ready = false;
@@ -30,7 +30,7 @@ int RunSevenzipGUICommand(QApplication &application, const QtGUICommandSource &c
                          });
         if (backend.discoverCodecCatalog())
             discovery.exec();
-        if (!ready)
+        if (!ready && !hashOnly)
             throw UString(error.toStdWString().c_str());
         services = std::make_unique<QtShellArchiveServices>(
             backend, nullptr, QtShellArchiveServices::OpenSink{},

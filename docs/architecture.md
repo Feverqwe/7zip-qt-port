@@ -117,7 +117,7 @@ and ArchiveExtractCallback in the same worker, including overwrite decisions
 delivered to the GUI and a final bounded-output policy. The CLI transport remains
 for write operations that have not yet migrated.
 
-The File Manager's Test, Extract and Add commands for ordinary filesystem inputs
+The File Manager's Test, Extract, Add and checksum commands for ordinary filesystem inputs
 launch the bundled `7zG`. The child owns native discovery, source GUI dispatch, dialogs and
 execution; the manager remains available. A versioned local request/ACK/result
 channel carries literal selections, typed options and outcomes. Before extraction
@@ -136,8 +136,14 @@ cross-filesystem move stages its cancellable copy beside the destination first.
 Readers may retain the previous generation, but a stale file-backed reader must
 refresh before editing. Completion reopens matching ordinary archive panels.
 Operations in an open archive folder or a nested parent chain, and synchronous
-drop consumers, retain their direct source workflow. Checksum and benchmark have
-not yet moved to this process boundary.
+drop consumers, retain their direct source workflow. Raw-device namespace commands
+also retain that owner. File Manager checksums preserve operated relative paths,
+prefixes and flat-mode recursion through the original PanelCrc worker; shell
+checksums use HashCalcGUI. File-backed Windows ADS retain their source prefix
+handling in the child. Registered native hashers remain usable without an archive
+DLL. Digest/results windows belong to the child, while typed completion preserves
+cancellation and partial-input warnings. Benchmark has not yet moved to this
+process boundary.
 
 Seekable archive items can back nested readers directly. Each reader generation
 retains its codec image, input and parents; independent cursors serialize access

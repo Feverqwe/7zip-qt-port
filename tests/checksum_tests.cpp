@@ -74,7 +74,7 @@ class ChecksumTests : public QObject {
         QCOMPARE(engineStarted.size(), 0);
     }
 
-    void filesystemAndArchiveMenusHashSelectedFile() {
+    void archiveMenuHashesSelectedFile() {
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
         const QString original = QDir::currentPath();
@@ -96,14 +96,6 @@ class ChecksumTests : public QObject {
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         auto *action = window.findChild<QAction *>("hashSHA256Action");
         QVERIFY(table && action);
-        QVERIFY(!action->isEnabled());
-        for (int row = 0; row < table->rowCount(); ++row) {
-            if (table->item(row, 0)->text() == QFileInfo(path).fileName()) {
-                table->selectRow(row);
-                break;
-            }
-        }
-        QVERIFY(action->isEnabled());
         const QString digest = QString::fromLatin1(
             QCryptographicHash::hash("content", QCryptographicHash::Sha256).toHex());
         QString results;
@@ -116,21 +108,13 @@ class ChecksumTests : public QObject {
             dialog->accept();
         });
         closeResults.start(10);
-        action->trigger(); // Source modal scan/hash/results has already joined its worker.
-        QVERIFY(results.contains(digest));
-        QCOMPARE(finished.size(), 0); // No process hashing or temporary extraction for FS.
-
         window.openArchive(archive);
-        QCOMPARE(finished.size(), 1); // Source modal opening has already joined its worker.
-        QVERIFY(finished.takeFirst().first().toBool());
         QTRY_COMPARE(table->rowCount(), 1);
         table->selectRow(0);
         QVERIFY(action->isEnabled());
         results.clear();
         action->trigger();
         QVERIFY(results.contains(digest));
-        QCOMPARE(finished.size(), 1); // Engine stream transport; no second CLI hash job.
-        QVERIFY(finished.takeFirst().first().toBool());
         closeResults.stop();
         QVERIFY(QDir::setCurrent(original));
     }

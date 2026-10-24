@@ -1,5 +1,6 @@
 #include "operation_dialogs.h"
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
+#include "CPP/7zip/UI/FileManager/ListViewDialog.h"
 #include "CPP/7zip/UI/GUI/ExtractDialog.h"
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
@@ -13,6 +14,7 @@
 #include <QPushButton>
 #include <QSaveFile>
 #include <QTimer>
+#include <QTreeWidget>
 
 // Public widget interactions in the fixture process only. Production 7zG owns
 // these same source dialogs; no automation flags are added to its entrypoint.
@@ -108,6 +110,39 @@ void DriveOperationDialogs() {
                 auto *ok = create->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok);
                 QTimer::singleShot(0, ok, &QPushButton::click);
             }
+        } else if (auto *hash = qobject_cast<CListViewDialog *>(widget);
+                   hash && hash->findChild<QTreeWidget *>("propertiesList")) {
+            const QString report = qEnvironmentVariable("SEVENZIP_OPERATION_HASH_REPORT");
+            if (!report.isEmpty()) {
+                const auto *list = hash->findChild<QTreeWidget *>("propertiesList");
+                QJsonArray rows;
+                for (int i = 0; i < list->topLevelItemCount(); ++i) {
+                    const auto *item = list->topLevelItem(i);
+                    rows.append(QJsonArray{item->text(0), item->text(1)});
+                }
+                QJsonDocument document(rows);
+                const QString tag = qEnvironmentVariable("SEVENZIP_OPERATION_HASH_UI_TAG");
+                if (!tag.isEmpty()) {
+                    bool geometry = true;
+                    const auto *buttons = hash->findChild<QDialogButtonBox *>("listViewButtons");
+                    for (int width : {540, 420}) {
+                        hash->resize(width, 360);
+                        QApplication::processEvents();
+                        geometry &=
+                            UiInspection::fullyVisible(*list, *hash) &&
+                            UiInspection::fullyVisible(*buttons, *hash) &&
+                            UiInspection::separate(*list, *buttons, *hash) &&
+                            UiInspection::writeReport(*hash, tag + '-' + QString::number(width));
+                    }
+                    document = QJsonDocument(QJsonObject{{"rows", rows}, {"geometry", geometry}});
+                }
+                QSaveFile file(report);
+                if (file.open(QIODevice::WriteOnly)) {
+                    file.write(document.toJson());
+                    file.commit();
+                }
+            }
+            QTimer::singleShot(0, hash, &QDialog::accept);
         } else if (widget->objectName() == "passwordDialog") {
             auto *dialog = qobject_cast<QDialog *>(widget);
             if (qEnvironmentVariableIsSet("SEVENZIP_OPERATION_CANCEL_PASSWORD"))
@@ -128,12 +163,17 @@ void DriveOperationDialogs() {
             QTimer::singleShot(0, message, [message] {
                 if (auto *ok = message->button(QMessageBox::Ok))
                     ok->click();
+                else if (qEnvironmentVariableIsSet("SEVENZIP_OPERATION_CANCEL_HASH") &&
+                         message->button(QMessageBox::Yes))
+                    message->button(QMessageBox::Yes)->click();
                 else
                     message->accept();
             });
         } else if (widget->objectName() == "progressDialog") {
             auto *close = widget->findChild<QPushButton *>("IDCANCEL");
             if (close && close->property("languageID").toUInt() == IDS_CLOSE)
+                QTimer::singleShot(0, close, &QPushButton::click);
+            else if (close && qEnvironmentVariableIsSet("SEVENZIP_OPERATION_CANCEL_HASH"))
                 QTimer::singleShot(0, close, &QPushButton::click);
         }
         // Let the source slot unwind before inspecting another modal. A Close

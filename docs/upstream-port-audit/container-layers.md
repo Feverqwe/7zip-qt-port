@@ -849,3 +849,68 @@ its retained direct update consumers. No installed-package, visual parity, slow
 matrix or full-gate acceptance is claimed. Checksum/benchmark migration and final
 installed three-platform checks remain part of the active goal. All builds reused
 the existing incremental trees and compiler cache; sibling upstream was read-only.
+
+### Standalone checksum: source comparison
+
+The next scenario compares upstream 9128 `CompressCall.cpp` checksum and hash-file
+verification entries, GUI.cpp hash dispatch, complete PanelCrc.cpp enumerator,
+worker and CApp caller, HashGUI.cpp callbacks/results, HashCalc.cpp scan/read/error
+projection and the existing Qt callers. Their mixed 0766 adaptation baseline and
+notices remain unchanged. The two source workflows are deliberately distinct:
+File Manager PanelCrc hashes exact operated paths with EnterToDirs controlled by
+flat mode; shell `h` uses HashCalcGUI and the original censor enumeration. Archive
+panel hashes retain original stream-mode CopyTo, including passwords and CRC
+failure handling. No container materialization is introduced.
+
+The filesystem block of CalculateCrc2 is made callable by the process owner through
+a narrow entry adapter in the same module. Its enumerator, prefix/ADS handling,
+scan and read loops, link boundary and results remain the one existing source
+implementation. The structured request retains the literal relative paths and
+base prefix, with traversal/absolute-path validation before acceptance. Shell
+requests keep literal absolute selections; checksum-file verification uses source
+`t -thash`. The original command-line parser still handles shell argv.
+
+PanelCrc and HashGUI originally returned S_OK after creating/joining the progress
+window regardless of worker outcome. The process boundary now projects the typed
+worker result and existing hash error count, preserving E_ABORT and reporting
+partial input as warning. Hash digests stay in the child-owned source results
+dialog; the manager receives an outcome, not parsed UI text. Acceptance and
+remaining consumer coverage are recorded after focused validation.
+
+Hash-only discovery also preserves registered native hashers when an archive
+runtime is absent. The source GUI dispatcher permits hashing without archive
+formats; its factory and hash-provider load now retain that distinction instead
+of making every command depend on an external archive DLL. This does not introduce
+a console fallback or relax archive-command catalog requirements. Shell command
+invocation keeps source KillSelection after acceptance; each subsequent shell
+operation uses the new explicit selection.
+
+Eligibility now has one manager owner shared by toolbar and shell consumers.
+Source Is_IO_FS_Folder includes the raw-device namespace; the process boundary
+explicitly excludes that prefix and nested/open-container providers. Native device
+hashing keeps CalculateCrc2 and its existing direct reader. File-backed ADS have
+no borrowed stream handle and remain eligible; their source colon-prefix handling,
+digests, source preservation and EN/RU normal/compact results geometry moved from
+the old manager-modal namespace test to the independent consumer test.
+
+Checksum acceptance, 2026-10-24: the final macOS eight-suite set passed (45.53 s):
+operation hash/protocol, manager hash workflow, retained checksum and shell archive
+services, namespace hash, and toolbar archive/creation workflows. The final manager
+crash/retry fixture passed again (7.40 s) with an accepted-job barrier. Earlier shared
+GUI-factory consumers also passed operation creation/extraction/launcher. The
+obsolete filesystem-modal digest assertion moved to actual child results; opened
+archive digest/password/CRC regressions remain. Opening/stream-transport signal
+counts were removed from that UI scenario while retaining actual digest checks.
+
+Windows passed nine direct consumers in `20261024T012809Z-1c527ffd`. After centralizing
+the device boundary and moving ADS coverage, all affected targets, including the
+retained namespace suite, built in `20261024T013456Z-39b9f2ab`; the final manager
+hash and toolbar archive/creation suites passed on the interactive desktop in
+`20261024T013825Z-2c1ff7ea`. Hash regressions cover registered hashers without a DLL
+or console, literal Unicode/space selections (quotes/wildcards where valid),
+recursion/flat mode, partial input, invalid methods, Cancel, manifests, parent exit,
+manager close/navigation and crash/retry. Windows paths and ADS justify its runner
+checks; portable Linux behavior was not rerun. No disks were created/attached;
+unchanged private-device VHD fixtures were not executed. No full/slow, installed
+package or rendered pixel-parity acceptance is claimed. Benchmark and installed
+three-platform acceptance remain in the active goal.

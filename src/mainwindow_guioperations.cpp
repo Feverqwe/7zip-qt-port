@@ -30,11 +30,24 @@ bool SameFile(const QString &left, const QString &right) {
 }
 } // namespace
 
+bool MainWindow::canLaunchGuiFilesystemOperation() {
+    const auto &panel = app_.GetFocusedPanel();
+    return panel.Is_IO_FS_Folder() && !panel.IsDeviceDrivesPrefix() &&
+           panel.GetParentFolders().IsEmpty();
+}
+
 HRESULT MainWindow::launchGuiArchiveTest(const UStringVector &paths, bool hashMode) {
-    if (hashMode)
-        return E_NOTIMPL;
     QString error;
-    auto *operation = backend_->startGuiTest(ArchivePaths(paths), error);
+    auto *operation = backend_->startGuiTest(ArchivePaths(paths), error, hashMode);
+    return observeGuiArchiveOperation(operation, error);
+}
+
+HRESULT MainWindow::launchGuiHash(const UStringVector &paths, const UString &method,
+                                  const UString &basePrefix, bool enterToDirs) {
+    QString error;
+    auto *operation =
+        backend_->startGuiHash(ArchivePaths(paths), QString::fromWCharArray(method),
+                               QString::fromWCharArray(basePrefix), enterToDirs, error);
     return observeGuiArchiveOperation(operation, error);
 }
 

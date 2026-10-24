@@ -258,6 +258,9 @@ class MainWindow : public QMainWindow {
     void extractArchives();
     void runArchiveBatchCommand(bool test);
     HRESULT launchGuiArchiveTest(const UStringVector &paths, bool hashMode);
+    bool canLaunchGuiFilesystemOperation();
+    HRESULT launchGuiHash(const UStringVector &paths, const UString &method,
+                          const UString &basePrefix = UString(), bool enterToDirs = true);
     HRESULT launchGuiArchiveCompress(const UString &folder, const UString &name,
                                      const UString &type, bool addExtension,
                                      const UStringVector &paths, bool email, bool showDialog);

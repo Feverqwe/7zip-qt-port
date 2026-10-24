@@ -116,6 +116,36 @@ class OperationProtocolTests final : public QObject {
         job.Paths = {root.filePath("archive.zip") + QChar::Null + "hidden"};
         QVERIFY(!EncodeOperationMessage(job, frame, error));
     }
+    void panelHashSelectionRejectsTraversalAndKeepsLiteralNames() {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+        QtOperationMessage job;
+        job.Type = Kind::Job;
+        job.Operation = QtOperationMessage::Command::Hash;
+        job.HashMethod = "SHA256";
+        job.HashBasePrefix = root.path() + '/';
+        QByteArray frame;
+        QString error;
+        QStringList invalidPaths{"../outside", root.filePath("absolute"), "sub/../../outside"};
+#ifdef Q_OS_WIN
+        invalidPaths.append({"..\\outside", "sub\\..\\outside"});
+#endif
+        for (const QString &path : invalidPaths) {
+            job.Paths = {path};
+            QVERIFY(!EncodeOperationMessage(job, frame, error));
+        }
+        job.Paths = {QStringLiteral("nested/literal [*] 空.txt")};
+        job.HashEnterToDirs = false;
+        QVERIFY(EncodeOperationMessage(job, frame, error));
+        QBuffer input(&frame);
+        QVERIFY(input.open(QIODevice::ReadOnly));
+        QtOperationMessage decoded;
+        QtOperationMessageReader reader;
+        QCOMPARE(reader.read(input, decoded, error), State::Message);
+        QCOMPARE(decoded.Paths, job.Paths);
+        QCOMPARE(decoded.HashBasePrefix, job.HashBasePrefix);
+        QVERIFY(!decoded.HashEnterToDirs);
+    }
     void extractionRequiresAbsoluteDestinationAndSupportedZone() {
         QTemporaryDir root;
         QVERIFY(root.isValid());

@@ -43,11 +43,12 @@ QtShellArchiveServices::QtShellArchiveServices(ArchiveBackend &backend, QWidget 
                                                OpenSink open, CompressSink compress,
                                                ErrorSink error, ModalSink modal,
                                                QString settingsPath, TestSink test,
-                                               ExtractSink extract, OutputSink outputReady)
+                                               ExtractSink extract, OutputSink outputReady,
+                                               HashSink hash)
     : _backend(backend), _parent(parent), _catalog(backend.codecCatalog()), _open(std::move(open)),
       _compress(std::move(compress)), _modal(std::move(modal)),
       _settingsPath(std::move(settingsPath)), _error(std::move(error)), _test(std::move(test)),
-      _extract(std::move(extract)), _outputReady(std::move(outputReady)) {
+      _extract(std::move(extract)), _outputReady(std::move(outputReady)), _hash(std::move(hash)) {
     // Metadata alone supports source ParseOpenTypes. Native factories remain
     // with the retained immutable backend catalog, never copied/unloaded here.
     if (_catalog && _catalog->result() == S_OK)
@@ -73,6 +74,10 @@ CCodecs &QtShellArchiveServices::Codecs() {
     if (!_catalog || _catalog->result() != S_OK)
         throw CSystemException(E_FAIL);
     return _metadata;
+}
+CCodecs &QtShellArchiveServices::GUICodecs(bool hashOnly) {
+    // Registered native hashers remain usable without archive DLL factories.
+    return hashOnly && (!_catalog || _catalog->result() != S_OK) ? _metadata : Codecs();
 }
 HRESULT QtShellArchiveServices::LoadHashProviders(CExternalCodecs &providers) {
     return _backend.loadHashProviders(providers);
@@ -212,7 +217,9 @@ HRESULT QtShellArchiveServices::UpdateArchive(CCodecs *codecs,
 }
 void QtShellArchiveServices::CalcChecksum(const UStringVector &paths, const UString &method,
                                           const UString &folder, const UString &generateName) {
-    const HRESULT result = ::CalcChecksum(paths, method, folder, generateName, *this);
+    const HRESULT result = _hash && generateName.IsEmpty()
+                               ? _hash(paths, method)
+                               : ::CalcChecksum(paths, method, folder, generateName, *this);
     if (result != S_OK)
         _result = result;
 }

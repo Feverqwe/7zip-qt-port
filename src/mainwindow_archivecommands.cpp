@@ -28,6 +28,14 @@ void MainWindow::calculateHash(const QString &method) {
     if ((state_ != State::Filesystem && state_ != State::Viewing && !filesystemNamespace) ||
         sourceOperatedIndices().IsEmpty())
         return;
+    if (canLaunchGuiFilesystemOperation() && !panel.GetFsPath().IsEmpty()) {
+        const auto indices = sourceOperatedIndices();
+        UStringVector paths;
+        FOR_VECTOR(i, indices)
+        paths.Add(panel.GetItemRelPath(indices[i]));
+        launchGuiHash(paths, ToUString(method), panel.GetFsPath(), !panel.GetFlatMode());
+        return;
+    }
     previousState_ = state_;
     setState(State::Operating);
     HRESULT result;
@@ -56,11 +64,11 @@ void MainWindow::runArchiveBatchCommand(bool test) {
     auto &panel = app_.GetFocusedPanel();
     QtShellArchiveServices::TestSink independentTest;
     QtShellArchiveServices::ExtractSink independentExtract;
-    if (test && panel.GetParentFolders().IsEmpty())
+    if (test && canLaunchGuiFilesystemOperation())
         independentTest = [this](const UStringVector &paths, bool hashMode) {
             return launchGuiArchiveTest(paths, hashMode);
         };
-    if (!test && panel.GetParentFolders().IsEmpty())
+    if (!test && canLaunchGuiFilesystemOperation())
         independentExtract = [this](const UStringVector &paths, const UString &folder,
                                     bool showDialog, bool elimDup, UInt32 zone) {
             return launchGuiArchiveExtract(paths, folder, showDialog, elimDup, zone);
@@ -110,7 +118,7 @@ void MainWindow::createDialog() {
     bool dialogShown = false;
     const auto catalog = backend_->codecCatalog();
     QtShellArchiveServices::CompressSink independent;
-    if (panel.Is_IO_FS_Folder() && panel.GetParentFolders().IsEmpty())
+    if (canLaunchGuiFilesystemOperation())
         independent = [this](const UString &folder, const UString &name, const UString &type,
                              bool addExtension, const UStringVector &paths, bool email,
                              bool showDialog, bool /* waitFinish */) {

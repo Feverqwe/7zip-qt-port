@@ -25,7 +25,7 @@ Q_DECLARE_METATYPE(QtOperationResult)
 
 struct QtOperationMessage {
     enum class Kind { Ready, Job, Accepted, Outputs, Result, Rejected };
-    enum class Command { Test, Extract, Compress };
+    enum class Command { Test, Extract, Compress, Hash };
     Kind Type = Kind::Ready;
     Command Operation = Command::Test;
     QStringList Paths;
@@ -38,6 +38,10 @@ struct QtOperationMessage {
     QString ArchiveType;
     bool AddExtension = true;
     bool EMail = false;
+    bool HashMode = false;
+    QString HashMethod;
+    QString HashBasePrefix;
+    bool HashEnterToDirs = true;
     QtOperationResult Result;
 };
 

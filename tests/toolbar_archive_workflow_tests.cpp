@@ -78,10 +78,12 @@ class GuiTestBackend final : public ArchiveBackend {
         }
         return operation;
     }
-    QtOperationLauncher *startGuiTest(const QStringList &archives, QString &error) override {
+    QtOperationLauncher *startGuiTest(const QStringList &archives, QString &error,
+                                      bool hashMode = false) override {
         QtOperationMessage job;
         job.Type = QtOperationMessage::Kind::Job;
         job.Paths = archives;
+        job.HashMode = hashMode;
         job.YesToAll = !CrashNext;
         auto *operation =
             QtOperationLauncher::Launch(QStringLiteral(SEVENZIP_NATIVE_GUI), job, error);

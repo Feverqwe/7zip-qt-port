@@ -27,6 +27,15 @@ bool TextIsRepresentable(const QString &path) {
 bool PathIsRepresentable(const QString &path) {
     return TextIsRepresentable(path) && QDir::isAbsolutePath(path);
 }
+bool RelativeHashPath(QString path) {
+    if (!TextIsRepresentable(path) || path.isEmpty() || !QDir::isRelativePath(path))
+        return false;
+#ifdef Q_OS_WIN
+    path.replace('\\', '/');
+#endif
+    const auto parts = path.split('/');
+    return !parts.contains("..") && !parts.contains(".");
+}
 QString KindName(QtOperationMessage::Kind type) {
     switch (type) {
     case QtOperationMessage::Kind::Ready:
@@ -72,6 +81,32 @@ bool Decode(const QJsonObject &object, QtOperationMessage &message) {
         QSet<QString> fields{"command", "paths"};
         const bool extract = object.value("command") == "extract";
         const bool compress = object.value("command") == "compress";
+        const bool hash = object.value("command") == "hash";
+        if (hash) {
+            fields.unite({"method", "basePrefix", "enterToDirs"});
+            if (!object.value("method").isString() ||
+                !TextIsRepresentable(object.value("method").toString()) ||
+                !object.value("basePrefix").isString() || !object.value("enterToDirs").isBool())
+                return false;
+            message.Operation = QtOperationMessage::Command::Hash;
+            message.HashMethod = object.value("method").toString();
+            message.HashBasePrefix = object.value("basePrefix").toString();
+            message.HashEnterToDirs = object.value("enterToDirs").toBool();
+            if (!message.HashBasePrefix.isEmpty() &&
+                (!PathIsRepresentable(message.HashBasePrefix) ||
+                 !(message.HashBasePrefix.endsWith('/')
+#ifdef Q_OS_WIN
+                   || message.HashBasePrefix.endsWith('\\') || message.HashBasePrefix.endsWith(':')
+#endif
+                       )))
+                return false;
+        }
+        if (object.value("command") == "test" && object.contains("hashMode")) {
+            fields.insert("hashMode");
+            if (!object.value("hashMode").isBool())
+                return false;
+            message.HashMode = object.value("hashMode").toBool();
+        }
         if (extract) {
             fields.unite({"destination", "showDialog", "elimDup", "writeZone"});
             const auto zone = object.value("writeZone");
@@ -109,7 +144,7 @@ bool Decode(const QJsonObject &object, QtOperationMessage &message) {
                 return false;
         }
         if (!ExactFields(object, fields) ||
-            (!extract && !compress && object.value("command") != "test") ||
+            (!extract && !compress && !hash && object.value("command") != "test") ||
             !object.value("paths").isArray())
             return false;
         const auto paths = object.value("paths").toArray();
@@ -118,7 +153,9 @@ bool Decode(const QJsonObject &object, QtOperationMessage &message) {
         message.Type = QtOperationMessage::Kind::Job;
         message.YesToAll = object.value("yesToAll").toBool(false);
         for (const auto &path : paths) {
-            if (!path.isString() || !PathIsRepresentable(path.toString()))
+            if (!path.isString() ||
+                !(hash && !message.HashBasePrefix.isEmpty() ? RelativeHashPath(path.toString())
+                                                            : PathIsRepresentable(path.toString())))
                 return false;
             message.Paths.append(path.toString());
         }
@@ -191,7 +228,15 @@ bool EncodeOperationMessage(const QtOperationMessage &message, QByteArray &frame
         object.insert("command",
                       message.Operation == QtOperationMessage::Command::Extract    ? "extract"
                       : message.Operation == QtOperationMessage::Command::Compress ? "compress"
+                      : message.Operation == QtOperationMessage::Command::Hash     ? "hash"
                                                                                    : "test");
+        if (message.Operation == QtOperationMessage::Command::Hash) {
+            object.insert("method", message.HashMethod);
+            object.insert("basePrefix", message.HashBasePrefix);
+            object.insert("enterToDirs", message.HashEnterToDirs);
+        }
+        if (message.Operation == QtOperationMessage::Command::Test && message.HashMode)
+            object.insert("hashMode", true);
         if (message.Operation == QtOperationMessage::Command::Extract) {
             object.insert("destination", message.Destination);
             object.insert("showDialog", message.ShowDialog);

@@ -33,6 +33,7 @@ class CHashCallbackGUI Z7_final : public CProgressThreadVirt, public IHashCallba
     virtual void ProcessWasFinished_GuiVirt() Z7_override;
 
   public:
+    bool HasErrors = false;
     const NWildcard::CCensor *censor;
     const CHashOptions *options;
 
@@ -214,6 +215,7 @@ void AddHashBundleRes(UString &s, const CHashBundle &hb) {
 }
 
 HRESULT CHashCallbackGUI::AfterLastFile(CHashBundle &hb) {
+    HasErrors = hb.NumErrors != 0;
     hb.FirstFileName = FirstFileName;
     // MainPath
     AddHashBundleRes(PropNameValPairs, hb);
@@ -254,7 +256,7 @@ HRESULT HashCalcGUI(DECL_EXTERNAL_CODECS_LOC_VARS const NWildcard::CCensor &cens
 
     RINOK(t.Create(title))
     messageWasDisplayed = t.ThreadFinishedOK && t.MessagesDisplayed;
-    return S_OK;
+    return t.Result == S_OK && t.HasErrors ? S_FALSE : t.Result;
 }
 
 void ShowHashResults(const CPropNameValPairs &propPairs, QWidget *hwnd) {

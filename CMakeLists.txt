@@ -275,7 +275,7 @@ set_target_properties(sevenzip_native_keys PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/qtsemanticcolors.cpp src/qtsemanticcolors.h
     src/qtmemorylockservices.cpp src/qtmemorylockservices.h
-    src/CPP/7zip/UI/FileManager/PanelCrc.cpp
+    src/CPP/7zip/UI/FileManager/PanelCrc.cpp src/qtfilecrc.h
     src/CPP/7zip/UI/Common/ArchiveName.cpp
     src/qtpaneldragmodel.h
     src/qtpaneldragtransport.cpp src/qtpaneldragtransport.h
@@ -712,6 +712,15 @@ if(BUILD_TESTING)
     add_dependencies(operation_creation_tests sevenzip_desktop)
     add_test(NAME operation_creation COMMAND operation_creation_tests -silent)
     set_tests_properties(operation_creation PROPERTIES TIMEOUT 90 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(operation_hash_tests tests/operation_hash_tests.cpp tests/fixtures/operation_parent.cpp)
+    target_include_directories(operation_hash_tests PRIVATE src tests)
+    target_link_libraries(operation_hash_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(operation_hash_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME operation_hash COMMAND operation_hash_tests -silent)
+    set_tests_properties(operation_hash PROPERTIES TIMEOUT 90 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     add_executable(object_vector_lifetime_tests tests/object_vector_lifetime_tests.cpp)
     target_include_directories(object_vector_lifetime_tests PRIVATE src/CPP third_party/7zip/CPP)
     set_target_properties(object_vector_lifetime_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF)
@@ -1537,6 +1546,9 @@ if(BUILD_TESTING)
     target_compile_definitions(operation_creation_tests PRIVATE
         "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
     add_dependencies(operation_creation_tests operation_host)
+    target_compile_definitions(operation_hash_tests PRIVATE
+        "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
+    add_dependencies(operation_hash_tests operation_host)
     if(WIN32)
         qt_add_executable(native_mapi_host tests/fixtures/native_mapi_host.cpp
             tests/fixtures/native_mapi_loader.cpp
@@ -3557,6 +3569,18 @@ if(BUILD_TESTING)
         set_tests_properties(toolbar_creation_workflow PROPERTIES TIMEOUT 90
             RESOURCE_LOCK "sevenzip_native_ui;sevenzip_ui_artifacts" ENVIRONMENT
             "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/toolbar-creation-workflow.ini")
+        qt_add_executable(manager_hash_workflow_tests tests/manager_hash_workflow_tests.cpp
+            tests/layout_inspection.cpp ${options_window_sources})
+        target_include_directories(manager_hash_workflow_tests PRIVATE src tests)
+        target_link_libraries(manager_hash_workflow_tests PRIVATE ${options_window_libraries})
+        target_compile_definitions(manager_hash_workflow_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\""
+            "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
+        add_dependencies(manager_hash_workflow_tests operation_host)
+        add_test(NAME manager_hash_workflow COMMAND manager_hash_workflow_tests -silent)
+        set_tests_properties(manager_hash_workflow PROPERTIES TIMEOUT 90
+            RESOURCE_LOCK "sevenzip_native_ui;sevenzip_ui_artifacts" ENVIRONMENT
+            "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/manager-hash-workflow.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     endif()
     qt_add_executable(address_combo_tests tests/address_combo_tests.cpp
         tests/external_editor_fixture.cpp tests/layout_inspection.cpp ${options_window_sources})
@@ -4595,7 +4619,7 @@ endif()
 # metrics do not describe the application's controls. Compare these dialog and
 # consumer tests using the same platform/fonts/style as the Windows application.
 if(BUILD_TESTING AND WIN32)
-    foreach(sevenzip_toolbar_test IN ITEMS toolbar_archive_workflow toolbar_creation_workflow)
+    foreach(sevenzip_toolbar_test IN ITEMS toolbar_archive_workflow toolbar_creation_workflow manager_hash_workflow)
       if(TEST ${sevenzip_toolbar_test})
         get_property(sevenzip_toolbar_environment TEST ${sevenzip_toolbar_test} PROPERTY ENVIRONMENT)
         list(FILTER sevenzip_toolbar_environment EXCLUDE REGEX "^QT_QPA_PLATFORM=")

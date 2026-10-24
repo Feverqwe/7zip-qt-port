@@ -20,6 +20,7 @@
 #include "UpdateCallbackGUI.h"
 #include "UpdateGUI.h"
 #include "qtdiagnostictext.h"
+#include "qtfilecrc.h"
 #include "qtguicommand.h"
 #include "qtshellarchiveservices.h"
 #ifndef _WIN32
@@ -66,8 +67,8 @@ static void ThrowException_if_Error(HRESULT res) {
 
 static int Main2(const QtGUIServiceFactory &factory, const QtGUICommandSource &command) {
     CArcCmdLineOptions options;
-    if (command) {
-        command(options);
+    if (command.Configure) {
+        command.Configure(options);
         g_DisableUserQuestions = options.YesToAll;
     } else {
         UStringVector commandStrings;
@@ -101,8 +102,9 @@ static int Main2(const QtGUIServiceFactory &factory, const QtGUICommandSource &c
         parser.Parse2(options);
     }
 
-    QtShellArchiveServices &services = factory();
-    CCodecs *codecs = &services.Codecs();
+    const bool hashOnly = options.Command.CommandType == NCommandType::kHash;
+    QtShellArchiveServices &services = factory(hashOnly);
+    CCodecs *codecs = &services.GUICodecs(hashOnly);
     CExternalCodecs _externalCodecs;
 
     codecs->CaseSensitive_Change = options.CaseSensitive_Change;
@@ -158,7 +160,8 @@ static int Main2(const QtGUIServiceFactory &factory, const QtGUICommandSource &c
     if (isExtractGroupCommand || options.Command.IsFromUpdateGroup() ||
         options.Command.CommandType == NCommandType::kHash ||
         options.Command.CommandType == NCommandType::kBenchmark)
-        ThrowException_if_Error(services.LoadExternalCodecs(_externalCodecs));
+        ThrowException_if_Error(hashOnly ? services.LoadHashProviders(_externalCodecs)
+                                         : services.LoadExternalCodecs(_externalCodecs));
 #endif
 
     if (options.Command.CommandType == NCommandType::kBenchmark) {
@@ -286,8 +289,27 @@ static int Main2(const QtGUIServiceFactory &factory, const QtGUICommandSource &c
         }
     } else if (options.Command.CommandType == NCommandType::kHash) {
         bool messageWasDisplayed = false;
-        HRESULT result = services.HashCalcGUI(EXTERNAL_CODECS_VARS_L options.Censor,
-                                              options.HashOptions, messageWasDisplayed);
+        HRESULT result;
+        if (command.FileHash) {
+            const auto &selection = *command.FileHash;
+            UStringVector paths;
+            for (const auto &path : selection.Paths)
+                paths.Add(path.toStdWString().c_str());
+            const UString method = options.HashOptions.Methods.IsEmpty()
+                                       ? UString()
+                                       : options.HashOptions.Methods.Front();
+            result = CalculateFileCrc(method, &_externalCodecs,
+                                      selection.BasePrefix.toStdWString().c_str(), paths,
+                                      selection.EnterToDirs, nullptr, &messageWasDisplayed);
+            if (result != S_OK && result != S_FALSE && result != E_ABORT && !messageWasDisplayed) {
+                services.ErrorMessageHRESULT(result);
+                messageWasDisplayed = true;
+            }
+        } else
+            result = services.HashCalcGUI(EXTERNAL_CODECS_VARS_L options.Censor,
+                                          options.HashOptions, messageWasDisplayed);
+        if (result == S_FALSE)
+            return NExitCode::kWarning;
 
         if (result != S_OK) {
             if (result != E_ABORT && messageWasDisplayed)

@@ -19,8 +19,7 @@ QtFileManagerShellMenu::QtFileManagerShellMenu(MainWindow &window, QMenu &menu,
           [this](const UString &path, const UString &type) { return Open(path, type); },
           [this](const UString &folder, const UString &name, const UString &type, bool addExtension,
                  const UStringVector &paths, bool email, bool showDialog, bool waitFinish) {
-              const auto &panel = _window.app_.GetFocusedPanel();
-              if (!waitFinish && panel.Is_IO_FS_Folder() && panel.GetParentFolders().IsEmpty())
+              if (!waitFinish && _window.canLaunchGuiFilesystemOperation())
                   return _window.launchGuiArchiveCompress(folder, name, type, addExtension, paths,
                                                           email, showDialog);
               return ::CompressFiles(folder, name, type, addExtension, paths, email, showDialog,
@@ -33,18 +32,22 @@ QtFileManagerShellMenu::QtFileManagerShellMenu(MainWindow &window, QMenu &menu,
           },
           MainWindow::toolbarSettingsPath(),
           [this](const UStringVector &paths, bool hashMode) {
-              const auto &panel = _window.app_.GetFocusedPanel();
-              if (!hashMode && panel.Is_IO_FS_Folder() && panel.GetParentFolders().IsEmpty())
-                  return _window.launchGuiArchiveTest(paths, false);
+              if (_window.canLaunchGuiFilesystemOperation())
+                  return _window.launchGuiArchiveTest(paths, hashMode);
               return ::TestArchives(paths, hashMode, _services);
           },
           [this](const UStringVector &paths, const UString &folder, bool showDialog, bool elimDup,
                  UInt32 writeZone) {
-              const auto &panel = _window.app_.GetFocusedPanel();
-              if (panel.Is_IO_FS_Folder() && panel.GetParentFolders().IsEmpty())
+              if (_window.canLaunchGuiFilesystemOperation())
                   return _window.launchGuiArchiveExtract(paths, folder, showDialog, elimDup,
                                                          writeZone);
               return ::ExtractArchives(paths, folder, showDialog, elimDup, writeZone, _services);
+          },
+          {},
+          [this](const UStringVector &paths, const UString &method) {
+              if (_window.canLaunchGuiFilesystemOperation())
+                  return _window.launchGuiHash(paths, method);
+              return ::CalcChecksum(paths, method, UString(), UString(), _services);
           }),
       _dispatch(std::move(dispatch)) {
     static const bool initialized = [] {

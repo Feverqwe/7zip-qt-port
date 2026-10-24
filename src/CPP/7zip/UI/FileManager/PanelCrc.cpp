@@ -17,6 +17,7 @@
 #include "App.h"
 #include "LangUtils.h"
 #include "ProgressDialog2.h"
+#include "qtfilecrc.h"
 
 #include "7zip/UI/FileManager/resource.h"
 
@@ -324,27 +325,11 @@ HRESULT CThreadCrc::ProcessVirt() {
     return S_OK;
 }
 
-HRESULT CApp::CalculateCrc2(const UString &methodName, const CExternalCodecs *externalCodecs) {
-    unsigned srcPanelIndex = GetFocusedPanelIndex();
-    CPanel &srcPanel = Panels[srcPanelIndex];
-
-    CRecordVector<UInt32> indices;
-    srcPanel.Get_ItemIndices_OperSmart(indices);
-    if (indices.IsEmpty())
-        return S_OK;
-
-    if (!srcPanel.Is_IO_FS_Folder()) {
-        CCopyToOptions options;
-        options.streamMode = true;
-        options.showErrorMessages = true;
-        options.hashMethods.Add(methodName);
-        options.ExternalCodecs = externalCodecs;
-        options.NeedRegistryZone = false;
-
-        UStringVector messages;
-        return srcPanel.CopyTo(options, indices, &messages);
-    }
-
+HRESULT CalculateFileCrc(const UString &methodName, const CExternalCodecs *externalCodecs,
+                         const UString &basePrefix, const UStringVector &paths, bool enterToDirs,
+                         QWidget *parent, bool *messageWasDisplayed) {
+    if (messageWasDisplayed)
+        *messageWasDisplayed = false;
     {
         CThreadCrc t;
 
@@ -354,13 +339,12 @@ HRESULT CApp::CalculateCrc2(const UString &methodName, const CExternalCodecs *ex
             RINOK(t.Hash.SetMethods(externalCodecs, methods))
         }
 
-        FOR_VECTOR(i, indices)
-        t.Enumerator.FilePaths.Add(us2fs(srcPanel.GetItemRelPath(indices[i])));
+        FOR_VECTOR(i, paths)
+        t.Enumerator.FilePaths.Add(us2fs(paths[i]));
 
         if (t.Enumerator.FilePaths.Size() == 1)
             t.Hash.MainName = fs2us(t.Enumerator.FilePaths[0]);
 
-        UString basePrefix = srcPanel.GetFsPath();
         UString basePrefix2 = basePrefix;
         if (!basePrefix2.IsEmpty() && basePrefix2.Back() == ':') {
             const int pos = basePrefix2.ReverseFind_PathSepar();
@@ -371,24 +355,54 @@ HRESULT CApp::CalculateCrc2(const UString &methodName, const CExternalCodecs *ex
         t.Enumerator.BasePrefix = us2fs(basePrefix);
         t.Enumerator.BasePrefix_for_Open = us2fs(basePrefix2);
 
-        t.Enumerator.EnterToDirs = !srcPanel.GetFlatMode();
+        t.Enumerator.EnterToDirs = enterToDirs;
 
         t.ShowCompressionInfo = false;
 
         const UString title = LangString(IDS_CHECKSUM_CALCULATING);
 
-        t.MainWindow = _window;
+        t.MainWindow = parent;
         t.MainTitle = "7-Zip"; // LangString(IDS_APP_TITLE);
         t.MainAddTitle = title;
         t.MainAddTitle.Add_Space();
 
-        RINOK(t.Create(title, _window))
+        RINOK(t.Create(title, parent))
+        if (messageWasDisplayed)
+            *messageWasDisplayed = t.ThreadFinishedOK && t.MessagesDisplayed;
 
-        t.ShowFinalResults(_window);
+        t.ShowFinalResults(parent);
+        if (t.Result != S_OK)
+            return t.Result;
+        return t.Hash.NumErrors ? S_FALSE : S_OK;
     }
+}
+
+HRESULT CApp::CalculateCrc2(const UString &methodName, const CExternalCodecs *externalCodecs) {
+    unsigned srcPanelIndex = GetFocusedPanelIndex();
+    CPanel &srcPanel = Panels[srcPanelIndex];
+    CRecordVector<UInt32> indices;
+    srcPanel.Get_ItemIndices_OperSmart(indices);
+    if (indices.IsEmpty())
+        return S_OK;
+    if (!srcPanel.Is_IO_FS_Folder()) {
+        CCopyToOptions options;
+        options.streamMode = true;
+        options.showErrorMessages = true;
+        options.hashMethods.Add(methodName);
+        options.ExternalCodecs = externalCodecs;
+        options.NeedRegistryZone = false;
+        UStringVector messages;
+        return srcPanel.CopyTo(options, indices, &messages);
+    }
+    UStringVector paths;
+    FOR_VECTOR(i, indices)
+    paths.Add(srcPanel.GetItemRelPath(indices[i]));
+    const HRESULT result = CalculateFileCrc(methodName, externalCodecs, srcPanel.GetFsPath(), paths,
+                                            !srcPanel.GetFlatMode(), _window);
 
     RefreshTitle(true);
-    return S_OK;
+    // The original progress/results windows already report partial hash errors.
+    return result == S_FALSE ? S_OK : result;
 }
 
 void CApp::CalculateCrc(const char *methodName) {

@@ -1,10 +1,25 @@
 #include "archivebackend.h"
 #include "qtoperationlauncher.h"
 
-QtOperationLauncher *ArchiveBackend::startGuiTest(const QStringList &archives, QString &error) {
+QtOperationLauncher *ArchiveBackend::startGuiTest(const QStringList &archives, QString &error,
+                                                  bool hashMode) {
     QtOperationMessage job;
     job.Type = QtOperationMessage::Kind::Job;
     job.Paths = archives;
+    job.HashMode = hashMode;
+    return QtOperationLauncher::Launch(QtOperationLauncher::GuiProgram(), job, error);
+}
+
+QtOperationLauncher *ArchiveBackend::startGuiHash(const QStringList &paths, const QString &method,
+                                                  const QString &basePrefix, bool enterToDirs,
+                                                  QString &error) {
+    QtOperationMessage job;
+    job.Type = QtOperationMessage::Kind::Job;
+    job.Operation = QtOperationMessage::Command::Hash;
+    job.Paths = paths;
+    job.HashMethod = method;
+    job.HashBasePrefix = basePrefix;
+    job.HashEnterToDirs = enterToDirs;
     return QtOperationLauncher::Launch(QtOperationLauncher::GuiProgram(), job, error);
 }
 

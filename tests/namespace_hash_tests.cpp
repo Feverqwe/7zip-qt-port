@@ -205,53 +205,6 @@ class NamespaceHashTests final : public QObject, protected MainWindowTestSupport
         QVERIFY(hash->isEnabled());
         QCOMPARE(disk.detach(), DWORD(ERROR_SUCCESS));
     }
-    void sourceAlternateStreamHash_data() {
-        QTest::addColumn<QString>("language");
-        QTest::newRow("en") << QString("-");
-        QTest::newRow("ru") << QString("ru");
-    }
-    void sourceAlternateStreamHash() {
-        QFETCH(QString, language);
-        SaveRegLang(ToUString(language), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
-        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
-        QTemporaryDir temporary;
-        QVERIFY(temporary.isValid());
-        const QString name = QStringLiteral("файл 空 with space.bin");
-        const QString streamName = QStringLiteral("поток 空 with space");
-        const QString base = temporary.filePath(name), stream = base + ':' + streamName;
-        for (const QString &path : {base, stream}) {
-            QFile file(path);
-            QVERIFY(file.open(QIODevice::WriteOnly));
-            QCOMPARE(file.write(path == base ? "base" : "123456789"),
-                     path == base ? qint64(4) : qint64(9));
-        }
-        ControlledBackend backend;
-        MainWindow window(&backend);
-        window.show();
-        auto *address = window.findChild<QLineEdit *>("archivePath");
-        address->setText(temporary.path());
-        QTest::keyClick(address, Qt::Key_Return);
-        QTRY_VERIFY(filesystemRow(window, name) >= 0);
-        table(window)->selectRow(filesystemRow(window, name));
-        action(window, "altStreamsAction")->trigger();
-        QTRY_COMPARE(table(window)->rowCount(), 1);
-        table(window)->setCurrentCell(0, 0);
-        table(window)->selectRow(0);
-        auto *hash = action(window, "hashSHA256Action");
-        QVERIFY(hash->isEnabled());
-        QSignalSpy engines(&backend, &ArchiveBackend::engineStarted);
-        HashModalResponse response("namespace-stream-hash-" + language);
-        hash->trigger();
-        QVERIFY(response.resultSeen);
-        QVERIFY(response.geometry);
-        QVERIFY2(response.errors.isEmpty(), qPrintable(response.errors.join('\n')));
-        QVERIFY(response.values.contains(QString::fromLatin1(
-            QCryptographicHash::hash("123456789", QCryptographicHash::Sha256).toHex())));
-        QCOMPARE(read(base), QByteArray("base"));
-        QCOMPARE(read(stream), QByteArray("123456789"));
-        QCOMPARE(engines.size(), 0);
-        QCOMPARE(backend.listCalls, 0);
-    }
 #endif
 };
 QTEST_MAIN(NamespaceHashTests)

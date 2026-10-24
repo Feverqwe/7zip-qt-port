@@ -19,8 +19,13 @@ void OperationOptions(const QtOperationMessage &job, CArcCmdLineOptions &options
     UStringVector defaults;
     const bool extract = job.Operation == QtOperationMessage::Command::Extract;
     const bool compress = job.Operation == QtOperationMessage::Command::Compress;
-    defaults.Add(compress ? L"a" : extract ? L"x" : L"t");
+    const bool hash = job.Operation == QtOperationMessage::Command::Hash;
+    defaults.Add(hash ? L"h" : compress ? L"a" : extract ? L"x" : L"t");
     defaults.Add(L"-an");
+    if (job.HashMode)
+        defaults.Add(L"-thash");
+    if (hash && !job.HashMethod.isEmpty())
+        defaults.Add(UString(L"-scrc") + UString(job.HashMethod.toStdWString().c_str()));
     if (compress) {
         defaults.Add(job.AddExtension ? L"-saa" : L"-sae");
         if (!job.ArchiveType.isEmpty())
@@ -37,6 +42,16 @@ void OperationOptions(const QtOperationMessage &job, CArcCmdLineOptions &options
         defaults.Add(L"-y");
     parser.Parse1(defaults, options);
     parser.Parse2(options);
+    if (hash) {
+        options.Censor.CensorPaths.Clear();
+        options.Censor.Pairs.Clear();
+        if (job.HashBasePrefix.isEmpty()) {
+            for (const auto &path : job.Paths)
+                options.Censor.AddPreItem_NoWildcard(UString(path.toStdWString().c_str()));
+            options.Censor.AddPathsToCensor(NWildcard::k_RelatPath);
+        }
+        return;
+    }
     if (compress) {
         options.ArchiveName = job.ArchivePath.toStdWString().c_str();
         options.ShowDialog = job.ShowDialog;
@@ -149,24 +164,29 @@ int RunGUIOperationEndpoint(QApplication &application, const QString &channel,
             QTimer::singleShot(0, &context, [&, job] {
                 QStringList changedDirectories;
                 QStringList changedArchives;
-                const int code =
-                    run([&](CArcCmdLineOptions &options) { OperationOptions(job, options); },
-                        [&](const QString &path, QtGUIOutputKind kind) {
-                            const QString directory = kind == QtGUIOutputKind::Archive
-                                                          ? QFileInfo(path).absolutePath()
-                                                          : path;
-                            if (kind == QtGUIOutputKind::Archive && !changedArchives.contains(path))
-                                changedArchives.append(path);
-                            if (!changedDirectories.contains(directory))
-                                changedDirectories.append(directory);
-                            if (socket.state() == QLocalSocket::ConnectedState) {
-                                QtOperationMessage update;
-                                update.Type = QtOperationMessage::Kind::Outputs;
-                                update.Result.ChangedDirectories = changedDirectories;
-                                update.Result.ChangedArchives = changedArchives;
-                                Send(socket, update);
-                            }
-                        });
+                QtGUICommandSource command;
+                command.Configure = [&](CArcCmdLineOptions &options) {
+                    OperationOptions(job, options);
+                };
+                if (job.Operation == QtOperationMessage::Command::Hash &&
+                    !job.HashBasePrefix.isEmpty())
+                    command.FileHash =
+                        QtGUIFileHashSelection{job.HashBasePrefix, job.Paths, job.HashEnterToDirs};
+                const int code = run(command, [&](const QString &path, QtGUIOutputKind kind) {
+                    const QString directory =
+                        kind == QtGUIOutputKind::Archive ? QFileInfo(path).absolutePath() : path;
+                    if (kind == QtGUIOutputKind::Archive && !changedArchives.contains(path))
+                        changedArchives.append(path);
+                    if (!changedDirectories.contains(directory))
+                        changedDirectories.append(directory);
+                    if (socket.state() == QLocalSocket::ConnectedState) {
+                        QtOperationMessage update;
+                        update.Type = QtOperationMessage::Kind::Outputs;
+                        update.Result.ChangedDirectories = changedDirectories;
+                        update.Result.ChangedArchives = changedArchives;
+                        Send(socket, update);
+                    }
+                });
                 if (socket.state() == QLocalSocket::ConnectedState) {
                     QtOperationMessage result;
                     result.Type = QtOperationMessage::Kind::Result;
