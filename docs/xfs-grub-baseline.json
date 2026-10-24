@@ -1,0 +1,82 @@
+{
+  "repository": "https://git.savannah.gnu.org/git/grub.git",
+  "revision": "b07cc37ca64fe99260884e7325abc333374e098b",
+  "files": {
+    "COPYING": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+    "grub-core/fs/xfs.c": "bf3bcdcb0943d3cadb179c60ef480925b787bfabae9a3257982d0afb2c21e685",
+    "grub-core/fs/fshelp.c": "cc2b24faf3e7fc5412074975dce644a50c068aa36706d5e71667e1b038531a5b",
+    "include/grub/fshelp.h": "48074fe5dd525f7f210fb26cf46ebaf6399866feeccfaf6bb483d470ba0f4688",
+    "include/grub/types.h": "469a72a47b12fa2f32c7439fb9ab732822f2839e717baf7a008fa6f38389a2a4",
+    "include/grub/safemath.h": "ceb20344dab94bff2a6e13b5991e417e03913c5dfeae30f9f5882e31ba774d8f"
+  },
+  "adapted": {
+    "grub-core/fs/xfs.c": "src/grub/fs/xfs.c",
+    "grub-core/fs/fshelp.c": "src/grub/fs/fshelp.c",
+    "include/grub/fshelp.h": "src/grub/fs/xfs_compat.h",
+    "include/grub/types.h": "src/grub/fs/xfs_compat.h",
+    "include/grub/safemath.h": "src/grub/fs/xfs_compat.h"
+  },
+  "unchanged": {
+    "COPYING": "third_party/grub/COPYING"
+  },
+  "symbols": {
+    "grub-core/fs/fshelp.c": [
+      "grub_fshelp_read_file"
+    ],
+    "grub-core/fs/xfs.c": [
+      "grub_xfs_sb_hascrc",
+      "grub_xfs_sb_hasftype",
+      "grub_xfs_sb_valid",
+      "grub_xfs_sb_needs_repair",
+      "GRUB_XFS_INO_*",
+      "GRUB_XFS_FSB_TO_BLOCK",
+      "GRUB_XFS_EXTENT_*",
+      "grub_xfs_inode_*",
+      "grub_xfs_fshelp_size",
+      "grub_xfs_inline_*",
+      "grub_xfs_dir_tail",
+      "grub_xfs_first_de",
+      "grub_xfs_next_de",
+      "grub_xfs_btree_keys",
+      "grub_xfs_read_inode",
+      "get_fsb",
+      "grub_xfs_inode_has_large_extent_counts",
+      "grub_xfs_get_inode_nextents",
+      "grub_xfs_read_block",
+      "grub_xfs_read_file",
+      "grub_xfs_read_symlink",
+      "grub_xfs_mode_to_filetype",
+      "iterate_dir_call_hook",
+      "grub_xfs_iterate_dir",
+      "grub_xfs_mount",
+      "grub_xfs_inode_has_bigtime",
+      "grub_xfs_get_inode_time"
+    ],
+    "include/grub/fshelp.h": [
+      "grub_fshelp_filetype",
+      "grub_fshelp_node_t",
+      "grub_fshelp_iterate_dir_hook_t",
+      "grub_fshelp_read_file"
+    ],
+    "include/grub/types.h": [
+      "grub_uint*_t",
+      "grub_disk_addr_t",
+      "grub_off_t",
+      "grub_size_t",
+      "grub_ssize_t",
+      "grub_addr_t"
+    ],
+    "include/grub/safemath.h": [
+      "grub_add",
+      "grub_mul"
+    ]
+  },
+  "local": [
+    "src/xfsreader.h",
+    "src/xfsreader.c",
+    "src/xfsarchivereader.h",
+    "src/xfsarchivereader.cpp",
+    "src/xfshandler.cpp",
+    "cmake/Xfs.cmake"
+  ]
+}

@@ -10,6 +10,9 @@
 [Read-only F2FS](upstream-port-audit/f2fs.md) — отдельный reader из GRUB,
 современная геометрия inode по f2fs-tools, provenance и границы первой версии.
 
+[Read-only XFS](upstream-port-audit/xfs.md) — GRUB C reader для образов
+серверов/NAS, отдельный baseline, адаптации и границы проверок.
+
 [Удаление Background](upstream-port-audit/progress-controls.md)
 — запрошенное изменение controls/transport с сохранением Pause и Cancel.
 

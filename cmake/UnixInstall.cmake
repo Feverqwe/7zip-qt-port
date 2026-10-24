@@ -19,6 +19,10 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z.so"
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/LICENSE.txt"
     DESTINATION "${notices_destination}/7zip")
 install(TARGETS sevenzip_exfat LIBRARY DESTINATION "${runtime_destination}/Formats")
+install(TARGETS sevenzip_xfs LIBRARY DESTINATION "${runtime_destination}/Formats")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/grub/COPYING"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    DESTINATION "${notices_destination}/sevenzip-xfs")
 install(TARGETS sevenzip_cramfs LIBRARY DESTINATION "${runtime_destination}/Formats")
 install(TARGETS sevenzip_fat LIBRARY DESTINATION "${runtime_destination}/Formats")
 install(TARGETS sevenzip_ext LIBRARY DESTINATION "${runtime_destination}/Formats")
