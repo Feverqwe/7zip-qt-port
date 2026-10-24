@@ -291,15 +291,21 @@ class ErofsModuleTests final : public QObject {
         QCOMPARE(processed, 0U);
         QCOMPARE(data, 'x');
     }
+    void failuresCancellationAndReuse_data() {
+        QTest::addColumn<QString>("variant");
+        for (const auto &variant : {"lz4", "lzma", "lzma-full"})
+            QTest::newRow(variant) << QString::fromLatin1(variant);
+    }
     void failuresCancellationAndReuse() {
+        QFETCH(QString, variant);
         CMyComPtr2<IArchiveOpenCallback, OpenCallback> cancelled;
         cancelled.Create_if_Empty();
         cancelled->cancel = true;
-        QCOMPARE(open(image(), cancelled), E_ABORT);
+        QCOMPARE(open(image(variant), cancelled), E_ABORT);
         UInt32 count = 99;
         QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
         QCOMPARE(count, 0u);
-        auto *input = new Input(image());
+        auto *input = new Input(image(variant));
         CMyComPtr<IInStream> source = input;
         input->fail = true;
         QCOMPARE(archive_->Open(source, nullptr, nullptr), E_FAIL);
@@ -323,8 +329,10 @@ class ErofsModuleTests final : public QObject {
         QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
         QCOMPARE(callback->output->bytes, payload());
     }
+    void streamSurvivesCloseReopenAndRelease_data() { failuresCancellationAndReuse_data(); }
     void streamSurvivesCloseReopenAndRelease() {
-        CMyComPtr<IInStream> embedded = new Input(QByteArray(512, 'x') + image());
+        QFETCH(QString, variant);
+        CMyComPtr<IInStream> embedded = new Input(QByteArray(512, 'x') + image(variant));
         QCOMPARE(embedded->Seek(512, STREAM_SEEK_SET, nullptr), S_OK);
         QCOMPARE(archive_->Open(embedded, nullptr, nullptr), S_OK);
         CMyComPtr<IInArchiveGetStream> provider;

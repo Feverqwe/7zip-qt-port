@@ -112,6 +112,35 @@ qsizetype regularEntry(const QByteArray &bytes) {
 class ErofsReaderTests final : public QObject {
     Q_OBJECT
   private slots:
+    void microLzmaCompletionAndPrefix() {
+        // XZ Utils 5.8.4 lzma_microlzma_encoder, preset 6, dictionary 65536.
+        const auto packed = QByteArray::fromHex("a2309888ad4b36ed1bb20000");
+        const auto expected = QByteArray("abc").repeated(100);
+        for (qsizetype size : {1, 17, 299, 300}) {
+            QByteArray output(size + 16, '?');
+            QCOMPARE(erofs_decode_native(1, 65536, packed.constData(), size_t(packed.size()),
+                                         output.data(), size_t(size), 1),
+                     0);
+            QCOMPARE(output.first(size), expected.first(size));
+            QCOMPARE(output.sliced(size), QByteArray(16, '?'));
+        }
+        QByteArray output(expected.size(), '?');
+        QCOMPARE(erofs_decode_native(1, 65536, packed.constData(), size_t(packed.size()),
+                                     output.data(), size_t(output.size()), 0),
+                 0);
+        QCOMPARE(output, expected);
+        // A full extent must finish: filling the requested output is insufficient.
+        for (const auto &input : {packed.first(packed.size() - 1), packed + '\0'})
+            QCOMPARE(erofs_decode_native(1, 65536, input.constData(), size_t(input.size()),
+                                         output.data(), size_t(output.size()), 0),
+                     -EILSEQ);
+        for (size_t size : {size_t(299), size_t(301)}) {
+            output.resize(qsizetype(size));
+            QCOMPARE(erofs_decode_native(1, 65536, packed.constData(), size_t(packed.size()),
+                                         output.data(), size, 0),
+                     -EILSEQ);
+        }
+    }
     void inlineMetadataIsIndependentOfDataDeviceRanges() {
         Reader reader;
         reader.external = true;

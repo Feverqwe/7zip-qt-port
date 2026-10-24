@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Contiguous-buffer calls to the official LZ4 and Linux MicroLZMA decoders.
+// Contiguous-buffer calls to the official LZ4 and liblzma MicroLZMA decoders.
 #include "erofsreader.h"
 #include <lz4.h>
-#include "../third_party/linux/include/linux/xz.h"
+#include <lzma.h>
 #include <errno.h>
 #include <limits.h>
 #include "../third_party/7zip/C/Alloc.h"
@@ -76,18 +76,21 @@ int erofs_decode_native(unsigned int algorithm, unsigned int dictionary, const v
     if (algorithm == 1) {
         if (dictionary < 4096 || dictionary > (8U << 20))
             return -EINVAL;
-        struct xz_dec_microlzma *state = xz_dec_microlzma_alloc(XZ_SINGLE, dictionary);
-        if (!state)
-            return -ENOMEM;
-        xz_dec_microlzma_reset(state, (uint32_t)input_size, (uint32_t)output_size, !partial);
-        struct xz_buf buf = {0};
-        buf.in = input;
-        buf.in_size = input_size;
-        buf.out = output;
-        buf.out_size = output_size;
-        enum xz_ret status = xz_dec_microlzma_run(state, &buf);
-        xz_dec_microlzma_end(state);
-        return status == XZ_STREAM_END && buf.out_pos == output_size ? 0 : -EILSEQ;
+        lzma_stream state = LZMA_STREAM_INIT;
+        lzma_ret status = lzma_microlzma_decoder(&state, input_size, output_size,
+                                               !partial, dictionary);
+        if (status == LZMA_OK) {
+            state.next_in = input;
+            state.avail_in = input_size;
+            state.next_out = output;
+            state.avail_out = output_size;
+            status = lzma_code(&state, LZMA_FINISH);
+        }
+        int error = status == LZMA_MEM_ERROR ? -ENOMEM : -EILSEQ;
+        if (status == LZMA_STREAM_END && state.total_out == output_size)
+            error = 0;
+        lzma_end(&state);
+        return error;
     }
     if (algorithm == 3)
         return erofs_decode_zstd(dictionary, input, input_size, output, output_size, partial);

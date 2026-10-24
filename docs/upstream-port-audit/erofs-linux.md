@@ -1,5 +1,95 @@
 # Read-only EROFS from Linux
 
+## MicroLZMA through liblzma — 2026-10-24
+
+EROFS now uses the unchanged public `lzma_microlzma_decoder`, `lzma_code` and
+`lzma_end` APIs from XZ Utils 5.8.4, repository
+`https://github.com/tukaani-project/xz.git`, commit
+`d3e650e63c110e830fd5391e7f8b45df0b91d3da`. The original-file hashes and local
+owners are recorded in [the liblzma baseline](../erofs-liblzma-baseline.json).
+The selected C sources and headers under `third_party/xz` are unchanged and
+retain their 0BSD license and author notices. The upstream CMake file is a
+reference-only inventory unit. The local static target compiles MicroLZMA,
+LZMA1/LZ and common stream/allocation services as C11; encoders, other formats,
+other filters, tools, threaded services and standalone assembly modules are omitted. Public
+headers include declarations for those unused APIs but their implementations
+are not linked. Symbols are hidden on Unix and the Windows API uses static
+linkage; no system liblzma or additional runtime DLL is required. Both install
+layouts include the liblzma license.
+
+Source comparison covered the Linux `xz_dec_microlzma_*` wrapper, its LZMA
+properties, range coder, dictionary and completion branches; the liblzma
+MicroLZMA wrapper, LZMA1/LZ decoder and common stream services; and the EROFS
+configuration, padding removal, extent map, native callback and archive stream
+consumers. The existing configuration range, compressed extent bounds,
+full-versus-prefix size contract and successful output-length check remain.
+Linux and liblzma both accept `lc + lp <= 4` and `pb <= 4` here. Allocation
+failure maps to `-ENOMEM`; other unsuccessful decodes map to `-EILSEQ`.
+liblzma allocates a dictionary bounded by the existing EROFS 8 MiB limit,
+whereas Linux's former `XZ_SINGLE` mode used the caller's output as dictionary.
+No speed or reduced-memory claim is made.
+
+The Linux XZ Embedded decoder, private/public headers and local host adapter
+have been removed. Their original hashes remain as historical reference units
+in [the Linux baseline](../erofs-linux-baseline.json), explicitly marked as
+replaced dependencies. EROFS metadata/layout handling and the other codecs
+are unchanged; general 7-Zip LZMA and XZ consumers are outside this replacement.
+The earlier read-side source-closure boundaries below still apply.
+
+The user explicitly permits differences in recovery behavior for this task.
+This is not byte-for-byte equivalence on malformed input: with dictionary
+65536, five-byte input `a2307ffc00` and a requested one-byte prefix, liblzma
+can return `a` where Linux rejects the block. Prefix decoding does not verify
+the remainder of a compressed extent, and must not be treated as a successful
+full integrity test. Full decoding still requires stream completion and the
+exact compressed/uncompressed lengths. Existing source-read, extraction-path,
+bounds, cancellation and result-reporting boundaries remain in place. No new
+EROFS recovery mode, repair, journal replay or source write is introduced.
+
+Reproduce verification and upstream review using the existing tooling:
+
+```sh
+git clone https://github.com/tukaani-project/xz.git /tmp/erofs-xz-review
+python3 scripts/upstream_baseline.py reference-verify \
+  --manifest docs/erofs-liblzma-baseline.json --upstream /tmp/erofs-xz-review
+python3 scripts/upstream_baseline.py reference-review \
+  --manifest docs/erofs-liblzma-baseline.json --upstream /tmp/erofs-xz-review \
+  --new-revision <proposed-full-commit> --output /tmp/erofs-xz-review.md
+```
+
+Review upstream dependencies/omissions and compare the baseline, proposed
+revision and local owners before updating. Original hashes pin the original
+bytes, independently of safe changes to the integration.
+
+Validation on 2026-10-24, feature branch `feature/erofs-microlzma` based on
+`4f3b80b4`: affected targets built and `erofs_reader`, `erofs_module` and
+`erofs` passed on macOS arm64, Linux x64 and Windows x64. Existing official
+creator images cover compressed layouts and CLI extraction; module regressions
+now also exercise MicroLZMA source/output failures, cancellation/reuse and
+seekable streams surviving archive close/reopen/release. A bounded decoder
+regression checks full-versus-prefix completion, truncated/extra input,
+incorrect output sizes and untouched output guard bytes.
+
+An additional macOS differential diagnostic encoded 675 valid streams with
+the pinned official liblzma encoder: every one of the 75 supported `lc/lp/pb`
+combinations, dictionaries 4096/65536/8388608, and one-byte, repetitive and
+mixed random/repeated payloads. Both the former Linux decoder and production
+liblzma adapter returned the expected bytes for all 2475 full/prefix requests,
+without writing beyond the output boundary. All 2025 full-decode mutations
+(truncation, appended byte and invalid properties) were rejected. This is
+bounded compatibility evidence, not exhaustive equivalence on corrupt input.
+Local diagnostic sources/results are retained under
+`build/review/microlzma`; they are not another shipped decoder.
+
+The baseline verifier validated all 32 original inventory units, all 31
+vendored units match those bytes, and a reference-review against the same
+revision exercised the original/local comparison path. macOS linkage inspection
+found only system dependencies and no exported liblzma symbols. Incremental
+builds/compiler caches were retained. Existing `upstream_baseline` and
+`upstream_inventory` tooling suites also passed on macOS. Full/slow suites,
+native mounts, release
+installation, UI appearance and performance acceptance were not run.
+
 ## Read-side source audit closure — 2026-10-22
 
 The read-side source audit is closed for this module's image/archive scenario
@@ -524,10 +614,9 @@ new C++ integration is formatted separately.
 
 Raw LZ4 now uses the unchanged official library; its full/partial contracts and
 the replacement of the earlier Linux decoder are recorded in the
-[LZ4 source audit](lz4-frame.md). XZ Embedded
-`lib/xz/xz_dec_lzma2.c`, its two private headers and public `include/linux/xz.h`
-are unchanged; the supported userspace configuration boundary selects single-call
-MicroLZMA. The existing 7-Zip Deflate and Zstd implementations are reused.
+[LZ4 source audit](lz4-frame.md). MicroLZMA uses the unchanged liblzma subset
+described in the 2026-10-24 substitution above. The existing 7-Zip Deflate and
+Zstd implementations are reused.
 Zstd uses caller-owned bounded buffers, checks the configured dictionary limit
 and preserves partial-reference decoding without trusting a frame's requested
 allocation size. No independent compression algorithm is introduced.

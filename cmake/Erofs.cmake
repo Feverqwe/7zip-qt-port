@@ -1,4 +1,19 @@
 # Linux C read-side code is isolated from the core engine's codec licenses.
+add_library(sevenzip_erofs_liblzma STATIC
+    third_party/xz/src/liblzma/common/common.c
+    third_party/xz/src/liblzma/common/microlzma_decoder.c
+    third_party/xz/src/liblzma/lz/lz_decoder.c
+    third_party/xz/src/liblzma/lzma/lzma_decoder.c)
+target_include_directories(sevenzip_erofs_liblzma PUBLIC third_party/xz/src/liblzma/api
+    PRIVATE third_party/xz/src/common third_party/xz/src/liblzma/common
+    third_party/xz/src/liblzma/lz third_party/xz/src/liblzma/lzma
+    third_party/xz/src/liblzma/rangecoder)
+target_compile_definitions(sevenzip_erofs_liblzma PUBLIC LZMA_API_STATIC
+    PRIVATE HAVE_STDBOOL_H HAVE__BOOL HAVE_STDINT_H HAVE_INTTYPES_H HAVE_DECODER_LZMA1)
+set_target_properties(sevenzip_erofs_liblzma PROPERTIES AUTOMOC OFF AUTOUIC OFF
+    POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON
+    C_VISIBILITY_PRESET hidden)
+
 add_library(sevenzip_erofs_core STATIC
     src/erofsreader.c src/fs/erofs/data.c src/fs/erofs/dir.c
     src/fs/erofs/xattr.c src/fs/posix_acl.c src/fs/fs_dirent.c src/lib/xxhash.c
@@ -7,11 +22,12 @@ add_library(sevenzip_erofs_core STATIC
     src/fs/erofs/decompressor.c src/fs/erofs/decompressor_lzma.c
     src/fs/erofs/decompressor_deflate.c src/fs/erofs/decompressor_zstd.c
     src/lib/crc/crc32-main.c
-    src/erofsnativedecoders.c third_party/linux/lib/xz/xz_dec_lzma2.c
+    src/erofsnativedecoders.c
     src/C/ZstdDec.c third_party/7zip/C/Xxh64.c
     third_party/7zip/C/Alloc.c third_party/7zip/C/CpuArch.c)
-target_include_directories(sevenzip_erofs_core PRIVATE src src/lib/xz)
-target_link_libraries(sevenzip_erofs_core PUBLIC sevenzip_lz4 sevenzip_zstd)
+target_include_directories(sevenzip_erofs_core PRIVATE src)
+target_link_libraries(sevenzip_erofs_core PUBLIC sevenzip_lz4 sevenzip_zstd
+    sevenzip_erofs_liblzma)
 set_target_properties(sevenzip_erofs_core PROPERTIES AUTOMOC OFF AUTOUIC OFF
     POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
 

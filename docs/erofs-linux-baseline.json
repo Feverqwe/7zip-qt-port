@@ -63,11 +63,7 @@
     "LICENSES/preferred/BSD-2-Clause",
     "LICENSES/preferred/BSD-3-Clause",
     "fs/erofs/erofs_fs.h",
-    "include/linux/crc32poly.h",
-    "include/linux/xz.h",
-    "lib/xz/xz_dec_lzma2.c",
-    "lib/xz/xz_lzma2.h",
-    "lib/xz/xz_private.h"
+    "include/linux/crc32poly.h"
   ],
   "adapted": [
     "fs/erofs/compress.h",
@@ -106,6 +102,10 @@
   "replaced_dependencies": {
     "include/linux/lz4.h": "lz4-frame-baseline.json: lib/lz4.h",
     "lib/lz4/lz4_decompress.c": "lz4-frame-baseline.json: lib/lz4.c",
-    "lib/lz4/lz4defs.h": "lz4-frame-baseline.json: lib/lz4.h"
+    "lib/lz4/lz4defs.h": "lz4-frame-baseline.json: lib/lz4.h",
+    "include/linux/xz.h": "erofs-liblzma-baseline.json: src/liblzma/common/microlzma_decoder.c",
+    "lib/xz/xz_dec_lzma2.c": "erofs-liblzma-baseline.json: src/liblzma/common/microlzma_decoder.c",
+    "lib/xz/xz_lzma2.h": "erofs-liblzma-baseline.json: src/liblzma/common/microlzma_decoder.c",
+    "lib/xz/xz_private.h": "erofs-liblzma-baseline.json: src/liblzma/common/microlzma_decoder.c"
   }
 }
