@@ -63,6 +63,11 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/exceptions/Linux-syscall-note"
     DESTINATION "${notices_destination}/sevenzip-fat")
 install(TARGETS sevenzip_erofs LIBRARY DESTINATION "${runtime_destination}/Formats")
+install(TARGETS sevenzip_f2fs LIBRARY DESTINATION "${runtime_destination}/Formats")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/grub/COPYING"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/grub/f2fs-tools-COPYING"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    DESTINATION "${notices_destination}/sevenzip-f2fs")
 install(TARGETS sevenzip_linux_frames LIBRARY DESTINATION "${runtime_destination}/Formats")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/BSD-2-Clause"
