@@ -1,6 +1,7 @@
 #include "archivecodeccatalog.h"
 #include "filetable.h"
 #include "fixtures/drag_event_position.h"
+#include "fixtures/operation_kill.h"
 #include "fixtures/operation_temp_cleanup.h"
 #include "fixtures/scoped_environment.h"
 #include "native_archive_fixture.h"
@@ -15,6 +16,8 @@ class DropBackend final : public ArchiveBackend {
   public:
     QList<QtOperationResult> Results;
     QString Barrier;
+    QString Program = QStringLiteral(SEVENZIP_OPERATION_HOST);
+    quint64 ProcessId = 0;
     bool Cancel = false;
     bool Fail = false;
     unsigned Accepted = 0;
@@ -33,9 +36,9 @@ class DropBackend final : public ArchiveBackend {
         ScopedTestEnvironment decision("SEVENZIP_OPERATION_CREATE_DECISION",
                                        Cancel ? "cancel" : "accept");
         ScopedTestEnvironment barrier("SEVENZIP_OPERATION_BARRIER", Barrier);
-        auto *operation =
-            QtOperationLauncher::Launch(QStringLiteral(SEVENZIP_OPERATION_HOST), job, error);
+        auto *operation = QtOperationLauncher::Launch(Program, job, error);
         if (operation) {
+            ProcessId = operation->processId();
             connect(operation, &QtOperationLauncher::accepted, this, [this] { ++Accepted; });
             connect(operation, &QtOperationLauncher::finished, this,
                     [this](const QtOperationResult &result) { Results.append(result); });
@@ -228,7 +231,7 @@ class DragDropAddUiTests final : public QObject {
         QTest::addColumn<QString>("outcome");
         for (bool wait : {false, true})
             for (const QString &outcome :
-                 {QString("create"), QString("cancel"), QString("failure")})
+                 {QString("create"), QString("cancel"), QString("failure"), QString("crash")})
                 QTest::newRow(
                     qPrintable(QString("%1-%2").arg(wait ? "temporary" : "ordinary").arg(outcome)))
                     << wait << outcome;
@@ -239,7 +242,8 @@ class DragDropAddUiTests final : public QObject {
 #else
         QFETCH(bool, wait);
         QFETCH(QString, outcome);
-        const bool cancel = outcome == "cancel", failure = outcome == "failure";
+        const bool cancel = outcome == "cancel", failure = outcome == "failure",
+                   crash = outcome == "crash";
         QTemporaryDir input, output;
         QVERIFY(input.isValid() && output.isValid());
         const QString source = input.filePath(QStringLiteral("drop 空 с пробелом.bin"));
@@ -260,6 +264,15 @@ class DragDropAddUiTests final : public QObject {
         auto *table = dynamic_cast<FileTable *>(window.findChild<QTableWidget *>("archiveTable"));
         QVERIFY(table);
         QTRY_VERIFY(table->isEnabled());
+        unsigned errors = 0;
+        QTimer dismiss;
+        connect(&dismiss, &QTimer::timeout, &window, [&] {
+            if (auto *error = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                ++errors;
+                error->accept();
+            }
+        });
+        dismiss.start(5);
         bool returned = false, checked = false;
         QTimer release;
         connect(&release, &QTimer::timeout, &window, [&] {
@@ -273,7 +286,10 @@ class DragDropAddUiTests final : public QObject {
             // Waiting protects the source stack from teardown; ordinary drops
             // can finish after the manager closes.
             QCOMPARE(window.close(), !wait);
-            QVERIFY(SourceExtractFixture::writeFile(backend.Barrier, "continue"));
+            if (crash)
+                QVERIFY(KillOperationProbe(backend.ProcessId));
+            else
+                QVERIFY(SourceExtractFixture::writeFile(backend.Barrier, "continue"));
         });
         release.start(10);
         UStringVector paths;
@@ -285,17 +301,21 @@ class DragDropAddUiTests final : public QObject {
         returned = true;
         if (wait) {
             QVERIFY(checked);
-            QCOMPARE(result, cancel ? E_ABORT : failure ? E_FAIL : S_OK);
+            QCOMPARE(result, cancel ? E_ABORT : (failure || crash) ? E_FAIL : S_OK);
         } else {
             QCOMPARE(result, S_OK);
         }
         QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 1, 30000);
         QVERIFY(checked);
-        QCOMPARE(backend.Results.first().Status, cancel    ? QtOperationResult::Outcome::Cancelled
+        QCOMPARE(backend.Results.first().Status, crash     ? QtOperationResult::Outcome::Crashed
+                                                 : cancel  ? QtOperationResult::Outcome::Cancelled
                                                  : failure ? QtOperationResult::Outcome::Failure
                                                            : QtOperationResult::Outcome::Success);
+        QCOMPARE(errors, crash && wait ? 1u : 0u);
+        if (wait)
+            QVERIFY(window.close());
         QCOMPARE(SourceExtractFixture::readFile(source), bytes);
-        if (!cancel && !failure) {
+        if (!cancel && !failure && !crash) {
             QVERIFY(!backend.Results.first().ChangedArchives.isEmpty());
             const QString archive = backend.Results.first().ChangedArchives.first();
             // The drag source may release its temporary bytes immediately
@@ -316,6 +336,39 @@ class DragDropAddUiTests final : public QObject {
             QVERIFY(backend.Results.first().ChangedArchives.isEmpty());
         }
 #endif
+    }
+
+    void launchFailureReleasesTemporarySource() {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+        const QString source = root.filePath(QStringLiteral("source 空.txt"));
+        QVERIFY(SourceExtractFixture::writeFile(source, "keep source"));
+        DropBackend backend;
+        backend.Program = root.filePath("missing-7zG");
+        MainWindow window(&backend);
+        window.show();
+        auto *table = dynamic_cast<FileTable *>(window.findChild<QTableWidget *>("archiveTable"));
+        QVERIFY(table);
+        QTRY_VERIFY(table->isEnabled());
+        unsigned errors = 0;
+        QTimer dismiss;
+        connect(&dismiss, &QTimer::timeout, &window, [&] {
+            if (auto *error = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                ++errors;
+                error->accept();
+            }
+        });
+        dismiss.start(5);
+        UStringVector paths;
+        paths.Add(ToUString(source));
+        UInt32 flags = 0;
+        QCOMPARE(table->sourcePanel->CompressDropFiles(paths, ToUString(root.path() + '/'), true,
+                                                       false, k_SourceFlags_TempFiles, flags),
+                 E_FAIL);
+        QCOMPARE(errors, 1u);
+        QVERIFY(backend.Results.isEmpty());
+        QCOMPARE(SourceExtractFixture::readFile(source), QByteArray("keep source"));
+        QVERIFY(window.close());
     }
 };
 QTEST_MAIN(DragDropAddUiTests)
