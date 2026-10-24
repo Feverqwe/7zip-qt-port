@@ -1,5 +1,6 @@
 #include "fixtures/operation_kill.h"
 #include "fixtures/operation_parent.h"
+#include "fixtures/operation_program.h"
 #include "fixtures/operation_temp_cleanup.h"
 #include "qtoperationlauncher.h"
 #include "source_extract_fixture.h"
@@ -12,13 +13,11 @@ class OperationLauncherTests final : public QObject {
     Q_OBJECT
     QTemporaryDir settings_;
     QByteArray oldSettings_;
-    static QString guiProgram() {
-        const QString installed = qEnvironmentVariable("SEVENZIP_OPERATION_GUI");
-        return installed.isEmpty() ? QStringLiteral(SEVENZIP_NATIVE_GUI) : installed;
-    }
+    static QString guiProgram() { return NativeOperationProgram(SEVENZIP_NATIVE_GUI); }
   private slots:
     void cleanup() { QVERIFY(CleanupOperationTestTemps()); }
     void initTestCase() {
+        ConfigureInstalledOperationPlatform();
         QVERIFY(settings_.isValid());
         oldSettings_ = qgetenv("SEVENZIP_SETTINGS_PATH");
         qputenv("SEVENZIP_SETTINGS_PATH", settings_.filePath("settings.ini").toUtf8());

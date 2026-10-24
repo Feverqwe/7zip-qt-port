@@ -2,6 +2,7 @@
 #include "Common/StringConvert.h"
 #include "fixtures/operation_kill.h"
 #include "fixtures/operation_parent.h"
+#include "fixtures/operation_program.h"
 #include "fixtures/operation_temp_cleanup.h"
 #include "fixtures/scoped_environment.h"
 #include "qtarchivewritelease.h"
@@ -71,6 +72,7 @@ class OperationCreationTests final : public QObject {
 
   private slots:
     void initTestCase() {
+        ConfigureInstalledOperationPlatform();
         QVERIFY(settings_.isValid());
         settingsPath_ = std::make_unique<Environment>("SEVENZIP_SETTINGS_PATH",
                                                       settings_.filePath("settings.ini"));
@@ -100,17 +102,17 @@ class OperationCreationTests final : public QObject {
         Environment engine("SEVENZIP_ENGINE_PATH",
                            QDir(deployment).filePath("unavailable console"));
 #endif
-        const auto created =
-            Run(QStringLiteral(SEVENZIP_NATIVE_GUI), Compress(archive, {source, keep}, format));
+        const auto created = Run(NativeOperationProgram(SEVENZIP_NATIVE_GUI),
+                                 Compress(archive, {source, keep}, format));
         QVERIFY2(created.Status == Outcome::Success, qPrintable(created.Error));
         QVERIFY(QFileInfo::exists(archive));
         QVERIFY(created.ChangedDirectories.contains(QFileInfo(archive).absolutePath()));
         QVERIFY(writeFile(source, "updated native bytes"));
         const auto updated =
-            Run(QStringLiteral(SEVENZIP_NATIVE_GUI), Compress(archive, {source}, format));
+            Run(NativeOperationProgram(SEVENZIP_NATIVE_GUI), Compress(archive, {source}, format));
         QVERIFY2(updated.Status == Outcome::Success, qPrintable(updated.Error));
         const QString output = directory.filePath("verified output");
-        QCOMPARE(Run(QStringLiteral(SEVENZIP_NATIVE_GUI), Extract(archive, output)).Status,
+        QCOMPARE(Run(NativeOperationProgram(SEVENZIP_NATIVE_GUI), Extract(archive, output)).Status,
                  Outcome::Success);
         QCOMPARE(readFile(QDir(output).filePath(name)), QByteArray("updated native bytes"));
         QCOMPARE(readFile(QDir(output).filePath("keep.bin")), QByteArray("keep original bytes"));

@@ -1,5 +1,6 @@
 #include "fixtures/operation_kill.h"
 #include "fixtures/operation_parent.h"
+#include "fixtures/operation_program.h"
 #include "fixtures/operation_temp_cleanup.h"
 #include "fixtures/scoped_environment.h"
 #include "qtoperationlauncher.h"
@@ -57,6 +58,7 @@ class OperationExtractionTests final : public QObject {
     std::unique_ptr<Environment> settingsPath_;
   private slots:
     void initTestCase() {
+        ConfigureInstalledOperationPlatform();
         QVERIFY(settings_.isValid());
         settingsPath_ = std::make_unique<Environment>("SEVENZIP_SETTINGS_PATH",
                                                       settings_.filePath("settings.ini"));
@@ -79,7 +81,8 @@ class OperationExtractionTests final : public QObject {
         Environment engine("SEVENZIP_ENGINE_PATH",
                            QDir(deployment).filePath("unavailable console"));
 #endif
-        const auto result = Run(QStringLiteral(SEVENZIP_NATIVE_GUI), Extract(archive, output));
+        const auto result =
+            Run(NativeOperationProgram(SEVENZIP_NATIVE_GUI), Extract(archive, output));
         QVERIFY2(result.Status == Outcome::Success, qPrintable(result.Error));
         QCOMPARE(readFile(QDir(output).filePath(kName)), bytes);
         QCOMPARE(Roots(result), QStringList{QFileInfo(output).canonicalFilePath()});
@@ -187,7 +190,8 @@ class OperationExtractionTests final : public QObject {
         damaged[offset] = char(damaged[offset] ^ 0x40);
         QVERIFY(writeFile(archive, damaged));
         const auto output = directory.filePath("output");
-        const auto result = Run(QStringLiteral(SEVENZIP_NATIVE_GUI), Extract(archive, output));
+        const auto result =
+            Run(NativeOperationProgram(SEVENZIP_NATIVE_GUI), Extract(archive, output));
         QCOMPARE(result.Status, Outcome::Failure);
         QCOMPARE(readFile(QDir(output).filePath("good.txt")), good);
         QVERIFY(QFileInfo::exists(QDir(output).filePath("bad.txt")));
@@ -312,7 +316,7 @@ class OperationExtractionTests final : public QObject {
         const auto before = readFile(archive);
         const auto outside = directory.filePath("outside.txt");
         QVERIFY(writeFile(outside, "retained outside file"));
-        const auto result = Run(QStringLiteral(SEVENZIP_NATIVE_GUI),
+        const auto result = Run(NativeOperationProgram(SEVENZIP_NATIVE_GUI),
                                 Extract(archive, directory.filePath("output")));
         QVERIFY(result.Status == Outcome::Success || result.Status == Outcome::Failure);
         QCOMPARE(readFile(outside), QByteArray("retained outside file"));

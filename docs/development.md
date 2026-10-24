@@ -91,6 +91,17 @@ only package/system paths in the child process environment. Run it on the
 interactive Windows runner. This private test layout is not a release package
 or final license/distribution acceptance; see [packaging scope](ci.md).
 
+`scripts/check-installed-operations.sh` prepares a private runtime and runs the
+focused operation and entrypoint checks against it. It uses Cocoa on macOS,
+the interactive Windows desktop, or X11 on Linux (Xvfb if no display is supplied).
+`--entry-only` checks the installed shell/GUI entrypoints without repeating the
+operation suites. Both modes reuse the existing incremental build and runtime.
+On Windows the ordinary interactive invocation checks registered shell launch;
+run `--entry-only` separately with the runner's `--interactive --elevated` mode
+for the startup/symlink suite. The wrapper selects these complementary scopes
+from the actual token; see [runner workflows](hyperv-runners.md).
+These checks do not establish rendered pixel parity or release acceptance.
+
 ## Dependencies
 
 - C and C++17 compiler, CMake 3.21+, Ninja, Qt 6 Widgets, LinguistTools and

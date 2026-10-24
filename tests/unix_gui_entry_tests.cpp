@@ -1,3 +1,4 @@
+#include "fixtures/operation_program.h"
 #include "source_extract_fixture.h"
 #include <QProcess>
 #include <QProcessEnvironment>
@@ -6,6 +7,7 @@
 class UnixGuiEntryTests final : public QObject {
     Q_OBJECT
   private slots:
+    void initTestCase() { ConfigureInstalledOperationPlatform(); }
     void sourceDispatch_data() {
         QTest::addColumn<QString>("command");
         QTest::addColumn<bool>("excluded");
@@ -62,7 +64,7 @@ class UnixGuiEntryTests final : public QObject {
 #endif
         }
         helper.setWorkingDirectory(fixture.path());
-        helper.start(QString::fromUtf8(SEVENZIP_NATIVE_GUI), arguments);
+        helper.start(NativeOperationProgram(SEVENZIP_NATIVE_GUI), arguments);
         QVERIFY(helper.waitForStarted(5000));
         QVERIFY2(helper.waitForFinished(30000), "source GUI dispatch did not complete");
         QCOMPARE(helper.exitStatus(), QProcess::NormalExit);

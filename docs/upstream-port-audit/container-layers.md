@@ -960,3 +960,68 @@ not relaxed to satisfy either fixture. The changes are platform-independent, so
 Linux/Windows runners were not used in this iteration. Installed three-platform
 acceptance remains pending for the goal; no full/slow or pixel-parity acceptance
 is claimed here.
+
+### Installed operation acceptance and scope audit — 2026-10-24
+
+The installed-runtime checks reuse the existing behavior suites instead of adding
+source-text, file-presence or configuration-value assertions. Their native GUI
+cases can select an installed executable with `SEVENZIP_OPERATION_GUI` and its
+native QPA with `SEVENZIP_OPERATION_QPA`. Ordinary dev runs retain their previous
+targets/platform. The first installed macOS run exposed the harness forcing
+offscreen, a test-only plugin deliberately pruned from runtime packages. The
+fixture now selects the actual native platform for installed children; production
+startup and package pruning are unchanged.
+
+`scripts/check-installed-operations.sh` builds the affected targets, installs with
+the existing atomic private-runtime deployment, then runs focused consumers. The
+actual installed executable handles Test, crash/retry, literal extraction, damaged
+output, traversal rejection and ZIP/7z creation/update/verification. Parameter,
+password, overwrite, cancellation, volumes/SFX, publication/conflicts, parent-exit,
+manager-hash and benchmark cases continue to use their explicit native GUI test
+host, which drives the same source dispatcher and public dialogs. Passing these
+suites does not mean every test row executes the installed binary.
+
+Installed/runtime receipt: macOS six suites passed (33.26 s), after the initial
+installed three-suite set passed (16.67 s). Linux and Windows six-suite sets passed
+in `20261024T020940Z-f8a96489` (24.68 s and 50.66 s respectively). The sets are
+operation launcher/extraction/creation/benchmark, benchmark command and manager
+hash workflow. macOS uses Cocoa and a deployed, strictly verified ad-hoc signed
+bundle; Linux uses the deployed X11 plugin on Xvfb; Windows runs in the logged-on
+interactive desktop. Existing compiler caches and persistent build trees were
+retained. No new disks were created or attached.
+
+The additional entry-only check launches installed 7zFM with its smoke entry.
+Unix CLI create/test/extract, excluded handlers, broken inputs and module-only
+dispatch also select installed 7zG. macOS passed this suite (5.87 s), Linux passed
+it (0.66 s, `20261024T021906Z-9459fed2`). The corresponding Windows check uses the
+existing real shell-DLL launch and File Manager startup suites, scoped temporary
+registration and package verification.
+
+Windows entry checks require complementary tokens. The first Limited run passed
+shell/package but failed the two startup symlink fixtures; the first Highest run
+passed startup/package but failed registered shell activation (host exit 6, whose
+individual COM/data-object failure was not further diagnosed). The wrapper now
+selects registered shell checks under Limited and startup/symlink checks under
+Highest instead of treating either token as universal acceptance. Final Limited
+shell/package passed (3.19 s, `20261024T022337Z-7c4f272d`); final Highest startup
+passed (14.84 s, `20261024T022355Z-406a922c`). No symlink, COM or security policy was
+changed and no assertion was removed.
+
+Requirement audit against the requested plan:
+
+| Requirement | Current source and behavior evidence |
+| --- | --- |
+| Retain native work and original module boundaries | The preceding Test, Extract, Create/Update, checksum and benchmark sections record complete source comparisons, source revisions, dependencies and necessary Qt/OS adaptations. Selected native workers remain authoritative; this iteration changes only validation tooling. |
+| Independent process owns engine, UI and resources | `qtguimain` owns catalog/services; original GUI workers own callbacks, inputs, staged writes and dialogs. Actual module-only installed operations prove no console dependency in their selected paths. Parent-exit cases cover each operation family. |
+| One launcher, ACK and typed completion | Backend GUI entry methods share the launcher/endpoint/protocol. The request is captured before ACK; process observation distinguishes result/Cancel/warning from kill/crash and protocol failure. Version, UTF-8, exact selections and malformed frames have behavior coverage. Only the channel address enters the manager-created argv; no password/job file is produced. |
+| Complete command scenarios | Manager toolbar/shell and child consumers cover Test, Extract, Create/Update, hash and benchmark; ordinary filesystem operations use the standalone route. Success, errors, password/overwrite/Cancel, partial/corrupt extraction and malicious paths are covered by the focused operation suites. |
+| Lifetime, refresh and concurrent writes | App-owned observers and native handle release do not terminate accepted work. Crash/retry, close/navigation during work, output announcement, stale-generation rejection, competing writers, atomic/cross-filesystem publication, volumes/SFX and input deletion have the recorded behavior checks. |
+| Explicit stream/device boundary | Current manager eligibility excludes raw-device prefixes and parent/open-container chains; live archive operations retain their source owner. No blanket nested read-only rule, whole-container materialization, decoding replacement or source repair/replay was introduced. |
+| Build, distribution and acceptance limits | Incremental focused checks and private installed runtimes pass on all three platforms as described above. Full/slow matrices, release distribution and pixel parity are not claimed. Computer Use returned “Computer Use was not approved to use Sevenzip” on macOS; the user explicitly chose to leave manual installed UI inspection unverified. That exception does not imply visual acceptance. Source/native dialog regressions remain part of the recorded checks. |
+
+With that explicit manual-UI exception, the selected standalone-operation plan
+has no remaining implementation or required runtime/package acceptance item.
+Live streams/devices and parent-update chains retain the intentional direct
+boundary; source transfer completeness and the focused runtime scope are recorded
+separately above. This completion does not extend to full engine isolation,
+the deferred lightweight executable, a full/slow gate or release distribution.
