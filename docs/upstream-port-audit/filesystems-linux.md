@@ -1,5 +1,8 @@
 # Проверка и актуализация форматов по Linux
 
+> Compatibility scope narrowed on 2026-10-24; see [retired formats](retired-formats.md).
+> Earlier dated source/runtime evidence below describes the scope at that date.
+
 Запрос от 2026-10-19: проверить существующие файловые системы, представленные
 в основном дереве Linux, исправить расхождения чтения и добавить read-only EROFS.
 Каждая завершённая итерация оформляется отдельным коммитом.

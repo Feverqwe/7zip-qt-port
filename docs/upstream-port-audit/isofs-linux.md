@@ -1,9 +1,12 @@
 # ISO9660: descriptors, logical blocks и extent streams
 
+> Compatibility scope narrowed on 2026-10-24; see [retired formats](retired-formats.md).
+> Earlier dated source/runtime evidence below describes the scope at that date.
+
 Работа входит в [общую актуализацию по Linux](filesystems-linux.md).
 Основной ISO9660 read path исправлен в обоих поставляемых engines.
 Отдельный GPL-модуль добавляет оригинальные Linux C Rock Ridge/SUSP readers.
-Он также читает High Sierra и zisofs.
+Он также читает zisofs; High Sierra исключён из текущего scope.
 Сверка read-side ISO9660 по pinned Linux выполнена в описанном ниже archive
 projection; [UDF проверен отдельно](udf-linux.md). Границы runtime evidence указаны отдельно.
 

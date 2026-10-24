@@ -174,8 +174,8 @@ HRESULT OpenDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &c
          {QStringLiteral("APFS"), QStringLiteral("Ext"), QStringLiteral("NTFS"),
           QStringLiteral("exFAT"), QStringLiteral("HFS"), QStringLiteral("EROFS"),
           QStringLiteral("F2FS"), QStringLiteral("XFS"), QStringLiteral("Btrfs"),
-          QStringLiteral("SquashFS"), QStringLiteral("CramFS"), QStringLiteral("Udf"),
-          QStringLiteral("Iso"), QStringLiteral("FAT")}) {
+          QStringLiteral("SquashFS"), QStringLiteral("Udf"), QStringLiteral("Iso"),
+          QStringLiteral("FAT")}) {
         if (catalog->formatIndex(format) < 0)
             continue;
         if (callback)

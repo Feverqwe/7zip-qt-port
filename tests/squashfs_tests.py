@@ -213,15 +213,15 @@ class SquashfsTests(unittest.TestCase):
             result = self.run_image(engine, volume(no_fragments=True)[0])
             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
 
-    def test_legacy_v3_little_and_big_endian_read_extension(self):
+    def test_legacy_v3_is_unsupported(self):
         for engine in ("7z",):
             for endian in ("<", ">"):
                 for compressed in (False, True):
                     with self.subTest(engine=engine, endian=endian, compressed=compressed):
                         data, expected = legacy_volume(endian, compressed)
                         result = self.run_image(engine, data, "x", "alpha")
-                        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
-                        self.assertEqual(result.stdout, expected)
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertEqual(result.stdout, b"")
 
     def test_corrupt_metadata_and_data_boundaries(self):
         for engine in ("7z",):

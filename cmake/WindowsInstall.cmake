@@ -29,7 +29,6 @@ install(TARGETS sevenzip_xfs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/grub/COPYING"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-xfs)
-install(TARGETS sevenzip_cramfs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(TARGETS sevenzip_fat RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(TARGETS sevenzip_ext RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(TARGETS sevenzip_squashfs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
@@ -101,8 +100,6 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/exceptions/Linux-syscall-note"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-erofs)
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
-    DESTINATION share/licenses/sevenzip-desktop/sevenzip-cramfs)
 install(TARGETS sevenzip_brotli RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(TARGETS sevenzip_lz4_frame RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(TARGETS sevenzip_lzip RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)

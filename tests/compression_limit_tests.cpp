@@ -59,9 +59,6 @@ class CompressionLimitTests final : public QObject {
         QCOMPARE(threads.AutoNumThreads, 4u);
         limit.Parse("50%");
         QCOMPARE(NCompressDialog::Get_MemUse_Bytes(limit, system), UInt64(512 << 20));
-        threads = NCompressDialog::SetNumThreads2(QStringLiteral("zip"), NCompressDialog::kPPMdZip,
-                                                  5, 16 << 20, UInt32(-1), system, limit);
-        QCOMPARE(threads.AutoNumThreads, sizeof(size_t) == 8 ? 6u : 10u);
         limit.Clear();
         QCOMPARE(NCompressDialog::Get_MemUse_Bytes(limit, system), system.RamUsageAuto);
         system.RamSizeDefined = false;
@@ -190,7 +187,7 @@ class CompressionLimitTests final : public QObject {
         file.close();
         ArchiveBackend backend;
         CompressionOptions options;
-        options.Method = "PPMd";
+        options.Method = format == "zip" ? "LZMA" : "PPMd";
         options.Dict64 = 1 << 20;
         options.MemUsage.Parse(spec);
         const QString target = dir.filePath("limit." + format);

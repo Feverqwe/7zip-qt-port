@@ -107,9 +107,8 @@ class IsoTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, expected)
 
-    def test_iso_and_high_sierra_detection(self):
-        for kind in ("plain", "joliet", "iso-hs-collision", "sierra", "sierra-xar", "sierra-multi",
-                     "sierra-block1024", "sierra-block1024-sector", "sierra-leading", "sierra-root-file"):
+    def test_iso_detection(self):
+        for kind in ("plain", "joliet", "iso-hs-collision"):
             image, files = volume(kind)
             for name, expected in files.items():
                 with self.subTest(kind=kind, name=name):
@@ -117,13 +116,12 @@ class IsoTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, expected)
 
-    def test_high_sierra_invalid_metadata(self):
-        for kind in ("sierra-invalid-type", "sierra-short-root",
-                     "sierra-bad-name", "sierra-short-source"):
-            with self.subTest(kind=kind):
-                result = self.run_image("7z", volume(kind)[0], "ALPHA.BIN", typed=False)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(result.stdout, b"")
+    def test_high_sierra_is_unsupported(self):
+        image = volume("sierra")[0]
+        for typed in (False, True):
+            result = self.run_image("7z", image, "ALPHA.BIN", typed=typed)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, b"")
 
     def test_linux_names_and_mappings(self):
         cases = {"names-joliet-components": (), "names-joliet-surrogates": (),

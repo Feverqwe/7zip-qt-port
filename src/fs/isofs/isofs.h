@@ -17,11 +17,6 @@ typedef uint8_t __u8;
 #endif
 #include "../../include/uapi/linux/iso_fs.h"
 typedef struct iso_directory_record sevenzip_iso_disk_record;
-static inline unsigned char isofs_record_flags(const sevenzip_iso_disk_record *record,
-                                               int high_sierra) {
-    return ((const unsigned char *)
-                record)[offsetof(sevenzip_iso_disk_record, flags) - (unsigned)high_sierra];
-}
 #define inode sevenzip_iso_inode
 #define iso_directory_record sevenzip_iso_record
 #define GFP_KERNEL 0
@@ -55,7 +50,6 @@ enum isofs_file_format { isofs_file_normal, isofs_file_sparse, isofs_file_compre
 struct super_block {
     struct sevenzip_iso_state *state;
     int s_rock, s_rock_offset, s_nocompress;
-    int s_high_sierra;
     uint32_t s_nzones, block_size;
     int error;
 };
@@ -111,7 +105,6 @@ static inline struct inode *isofs_iget_reloc(struct super_block *sb, unsigned bl
 #define IS_ERR(ptr) (!(ptr))
 #define PTR_ERR(ptr) (-EIO)
 #define iput(ptr) free(ptr)
-#define ISO_DATE_HIGH_SIERRA (1 << 0)
 #define ISO_DATE_LONG_FORM (1 << 1)
 struct timespec64 iso_date(u8 *, int);
 int64_t mktime64(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int,

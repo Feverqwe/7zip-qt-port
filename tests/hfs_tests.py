@@ -107,16 +107,11 @@ class HfsTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
 
-    def test_classic_hfs_bytes(self):
-        for kind in ("classic", "classic-overflow", "classic-catalog-overflow",
-                     "classic-non-power-of-two", "classic-locked", "classic-preallocated",
-                     "classic-unclean", "classic-free-overflow", "classic-unclean-free-overflow"):
-            image, files = volume(kind)
-            for name, expected in files.items():
-                with self.subTest(kind=kind, name=name):
-                    result = self.run_image("7z", image, name)
-                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
-                    self.assertEqual(result.stdout, expected)
+    def test_classic_hfs_is_unsupported(self):
+        data = volume("classic")[0]
+        result = self.run_image("7z", data, "HfsFixture/alpha", start_only=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
 
     def test_linux_inline_xattr_records(self):
         name = "HfsFixture/alpha:com.sevenzip.fixture"
@@ -130,15 +125,6 @@ class HfsTests(unittest.TestCase):
         for kind in ("xattr-short", "xattr-unknown"):
             with self.subTest(kind=kind):
                 result = self.run_image("7z", volume(kind)[0], name)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(result.stdout, b"")
-
-    def test_classic_hfs_metadata_failures(self):
-        for kind in ("classic-bad-fork", "classic-short-fork", "classic-bad-cnid",
-                     "classic-thread-parent", "classic-leaf-cycle", "classic-node-offset",
-                     "classic-truncated", "classic-missing-overflow"):
-            with self.subTest(kind=kind):
-                result = self.run_image("7z", volume(kind)[0], "HfsFixture/alpha")
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
 

@@ -1104,26 +1104,25 @@ class SquashfsStreamTests final : public QObject {
             QCOMPARE(count, 0u);
         }
     }
-    void modernFragmentsDoNotInheritLegacyMappings() {
-        loadFixture("zlib", false, "legacy-large");
-        CMyComPtr<IInStream> legacySource = new Input(bytes_);
-        QCOMPARE(archive_->Open(legacySource, nullptr, nullptr), S_OK);
-        auto legacy = stream("alpha");
-        QVERIFY(legacy);
-        check(legacy, "alpha", 0, 8192 * 3 + 7);
-        QCOMPARE(archive_->Close(), S_OK);
+    void rejectsRemovedLayouts() {
         loadFixture("zlib");
-        CMyComPtr<IInStream> modernSource = new Input(bytes_);
-        QCOMPARE(archive_->Open(modernSource, nullptr, nullptr), S_OK);
-        auto modern = stream("alpha");
-        QVERIFY(modern);
-        check(modern, "alpha", 8192, 10);
-        check(modern, "alpha", 0, 8192);
-        char bytes[7];
-        UInt32 count = 0;
-        QCOMPARE(legacy->Seek(8192 * 3, STREAM_SEEK_SET, nullptr), S_OK);
-        QCOMPARE(legacy->Read(bytes, sizeof(bytes), &count), S_OK);
-        QCOMPARE(QByteArray(bytes, int(count)), QByteArray(7, 'L'));
+        const QByteArray modern = bytes_;
+        for (quint16 version : {1, 2, 3}) {
+            QByteArray image = modern;
+            qToLittleEndian(version, image.data() + 28);
+            CMyComPtr<IInStream> source = new Input(image);
+            QVERIFY(archive_->Open(source, nullptr, nullptr) != S_OK);
+        }
+        for (const QByteArray &signature :
+             {QByteArray("sqsh"), QByteArray("shsq"), QByteArray("qshs")}) {
+            QByteArray image = modern;
+            image.replace(0, 4, signature);
+            CMyComPtr<IInStream> source = new Input(image);
+            QVERIFY(archive_->Open(source, nullptr, nullptr) != S_OK);
+        }
+        CMyComPtr<IInStream> source = new Input(modern);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        check(stream("alpha"), "alpha", 0, 8192);
     }
     void inodeRecordsRequestTheirOwnExtent() {
         QFETCH(QString, fault);

@@ -16,7 +16,6 @@ class CompressionMemoryTests final : public QObject {
         QTest::addColumn<QString>("formatName");
         QTest::addColumn<QString>("methodName");
         QTest::newRow("PPMd-7z") << QString("7z") << QString("PPMd");
-        QTest::newRow("PPMd-zip") << QString("zip") << QString("PPMd");
         QTest::newRow("BZip2-7z") << QString("7z") << QString("BZip2");
         QTest::newRow("BZip2-zip") << QString("zip") << QString("BZip2");
     }
@@ -108,7 +107,6 @@ class CompressionMemoryTests final : public QObject {
         QTest::addColumn<QString>("methodName");
         QTest::addColumn<quint64>("validSize");
         QTest::newRow("PPMd-7z") << QString("7z") << QString("PPMd") << quint64(1 << 20);
-        QTest::newRow("PPMd-zip") << QString("zip") << QString("PPMd") << quint64(1 << 20);
         QTest::newRow("BZip2-7z-small") << QString("7z") << QString("BZip2") << quint64(100 << 10);
         QTest::newRow("BZip2-zip-large")
             << QString("zip") << QString("BZip2") << quint64(900 << 10);

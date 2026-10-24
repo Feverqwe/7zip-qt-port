@@ -67,9 +67,8 @@ class DeviceFilesystemTests final : public QObject {
              {qMakePair("apfs", "APFS"), qMakePair("fat12", "FAT"), qMakePair("fat16", "FAT"),
               qMakePair("fat32", "FAT"), qMakePair("exfat", "exFAT"), qMakePair("texfat", "exFAT"),
               qMakePair("exfat-dirty", "exFAT"), qMakePair("ntfs-dirty", "NTFS"),
-              qMakePair("fat-dirty", "FAT"), qMakePair("ntfs", "NTFS"), qMakePair("hfs", "HFS"),
-              qMakePair("hfsplus", "HFS"), qMakePair("udf", "Udf"), qMakePair("iso", "Iso"),
-              qMakePair("squashfs", "SquashFS"), qMakePair("cramfs", "CramFS"),
+              qMakePair("fat-dirty", "FAT"), qMakePair("ntfs", "NTFS"), qMakePair("hfsplus", "HFS"),
+              qMakePair("udf", "Udf"), qMakePair("iso", "Iso"), qMakePair("squashfs", "SquashFS"),
               qMakePair("erofs", "EROFS")})
             for (const QString &layout : {"volume", "mbr", "apm"})
                 QTest::newRow(qPrintable(QString::fromLatin1(entry.first) + '-' + layout))

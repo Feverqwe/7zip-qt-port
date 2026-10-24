@@ -286,7 +286,7 @@ class CompressionPreferencesTests final : public QObject {
         NCompression::CFormatOptions fo;
         fo.FormatID = formatName;
         fo.Level = 5;
-        fo.Method = "PPMd";
+        fo.Method = "LZMA";
         fo.Dictionary = 1 << 20;
         fo.Order = 12;
         fo.BlockLogSize = 64;
@@ -297,7 +297,7 @@ class CompressionPreferencesTests final : public QObject {
         CreateArchiveDialog dialog(dir_.path(), {source_});
         format(dialog)->setCurrentText(formatName);
         QCOMPARE(QString::fromWCharArray(dialog.compressionOptions().Method.Ptr()),
-                 QString("PPMd"));
+                 QString("LZMA"));
         QCOMPARE(dialog.compressionOptions().Order, 12);
         dialog.findChild<QComboBox *>("compressionLevel")
             ->setCurrentIndex(dialog.findChild<QComboBox *>("compressionLevel")->findData(7u));

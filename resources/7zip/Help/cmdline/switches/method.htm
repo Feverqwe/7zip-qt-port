@@ -55,7 +55,7 @@ It's allowed to use reduced forms for switches with numbers: <B>x3</B> instead o
   <TR> 
     <TD>m={MethodID}</TD> 
     <TD align="center">Deflate</TD> 
-    <TD>Sets a method: Copy, Deflate, Deflate64, BZip2, LZMA, PPMd.</TD> </TR>
+    <TD>Sets a method: Copy, Deflate, Deflate64, BZip2, LZMA, XZ, ZSTD.</TD> </TR>
   <TR> 
     <TD><A class="parameter" href="#Deflate_FastBytes">fb={NumFastBytes}</A></TD>
     <TD align="center">32</TD>
@@ -68,12 +68,6 @@ It's allowed to use reduced forms for switches with numbers: <B>x3</B> instead o
     <TD><A class="parameter" href="#ZipDictionarySize">d={Size}[b|k|m]</A></TD> 
     <TD align="center">900000</TD>  
     <TD>Sets Dictionary size for BZip2</TD></TR>
-  <TR> 
-    <TD><A class="parameter" href="#ZipMemorySize">mem={Size}[b|k|m]</A></TD> 
-    <TD align="center">24</TD>  <TD>Sets size of used memory for PPMd.</TD></TR>
-  <TR> 
-    <TD><A class="parameter" href="#ZipOrder">o={Size}</A></TD> 
-    <TD align="center">8</TD>  <TD>Sets model order for PPMd.</TD></TR>
   <TR> 
     <TD><A class="parameter" href="#ZipMultiThread">mt=[off | on | {N}]</A></TD> 
     <TD align="center">on</TD>  
@@ -149,19 +143,7 @@ only for file names that contain symbols unsupported by local code page.</P>
        from set [b|k|m], dictionary size will be calculated as DictionarySize = 2^Size bytes.</P>
   </DD>
 
-  <DT><A name="ZipMemorySize"></A>mem={Size}[b|k|m]</DT>
-  <DD>
-    <P> Sets the size of memory used for PPMd. You must specify the size in bytes, kilobytes, or megabytes.
-       The maximum value is 256 MB = 2^28 bytes. The default value
-       is 24 (16MB). If you do not specify any symbol from the set [b|k|m], the
-       memory size will be calculated as (2^Size) bytes. PPMd uses the same 
-       amount of memory for compression and decompression.</P>
-  </DD>
   
-  <DT><A name="ZipOrder"></A>o={Size}</DT>
-  <DD>
-    <P>Sets the model order for PPMd. The size must be in the range [2,16]. The default value is 8.</P>
-  </DD>
   
   <DT><A name="ZipMultiThread"></A>mt=[off | on | {N}]</DT>
   <DD>

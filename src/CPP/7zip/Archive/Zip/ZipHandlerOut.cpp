@@ -58,17 +58,18 @@ static int FindZipMethod(const char *s, const char * const *names, unsigned num)
   return -1;
 }
 
-static int FindZipMethod(const char *s)
-{
-  int k = FindZipMethod(s, kMethodNames1, kNumMethodNames1);
-  if (k >= 0)
-    return k;
-  k = FindZipMethod(s, kMethodNames2, kNumMethodNames2);
-  if (k >= 0)
-    return (int)kMethodNames2Start + k;
-  return -1;
+static int FindZipMethod(const char *s) {
+    if (StringsAreEqualNoCase_Ascii(s, "PPMd") || StringsAreEqualNoCase_Ascii(s, "Shrink") ||
+        StringsAreEqualNoCase_Ascii(s, "Implode") || StringsAreEqualNoCase_Ascii(s, "LZFSE"))
+        return -1;
+    int k = FindZipMethod(s, kMethodNames1, kNumMethodNames1);
+    if (k >= 0)
+        return k;
+    k = FindZipMethod(s, kMethodNames2, kNumMethodNames2);
+    if (k >= 0)
+        return (int)kMethodNames2Start + k;
+    return -1;
 }
-
 
 #define COM_TRY_BEGIN2 try {
 #define COM_TRY_END2 } \
@@ -467,9 +468,16 @@ Z7_COM7F_IMF(CHandler::UpdateItems(ISequentialOutStream *outStream, UInt32 numIt
         NFileHeader::NCompressionMethod::kDeflate));
   else
     mainMethod = (Byte)mainMethod;
-  
+
+  if (mainMethod == NFileHeader::NCompressionMethod::kShrink ||
+      mainMethod == NFileHeader::NCompressionMethod::kImplode ||
+      mainMethod == NFileHeader::NCompressionMethod::kPPMd ||
+      mainMethod == NFileHeader::NCompressionMethod::kZstdPk ||
+      mainMethod == NFileHeader::NCompressionMethod::kWzAES)
+      return E_NOTIMPL;
+
   options.MethodSequence.Add((Byte)mainMethod);
-  
+
   if (mainMethod != NFileHeader::NCompressionMethod::kStore)
     options.MethodSequence.Add(NFileHeader::NCompressionMethod::kStore);
 

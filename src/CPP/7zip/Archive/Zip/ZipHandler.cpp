@@ -18,13 +18,7 @@
 #include "../../Common/StreamUtils.h"
 
 #include "../../Compress/CopyCoder.h"
-#ifndef Z7_ZIP_LZFSE_DISABLE
-#include "../../Compress/LzfseDecoder.h"
-#endif
 #include "../../Compress/LzmaDecoder.h"
-#include "../../Compress/ImplodeDecoder.h"
-#include "../../Compress/PpmdZip.h"
-#include "../../Compress/ShrinkDecoder.h"
 #include "../../Compress/XzDecoder.h"
 #include "../../Compress/ZstdDecoder.h"
 
@@ -1141,7 +1135,16 @@ HRESULT CZipDecoder::Decode(
       // RINOK(cryptoSetPassword->CryptoSetPassword(NULL, 0));
     }
   }
-  
+
+  if (id == NFileHeader::NCompressionMethod::kShrink ||
+      id == NFileHeader::NCompressionMethod::kImplode ||
+      id == NFileHeader::NCompressionMethod::kPPMd ||
+      id == NFileHeader::NCompressionMethod::kZstdPk ||
+      id == NFileHeader::NCompressionMethod::kWzAES) {
+      res = NExtract::NOperationResult::kUnsupportedMethod;
+      return S_OK;
+  }
+
   unsigned m;
   for (m = 0; m < methodItems.Size(); m++)
     if (methodItems[m].ZipMethod == id)
@@ -1152,48 +1155,32 @@ HRESULT CZipDecoder::Decode(
     CMethodItem mi;
     mi.ZipMethod = id;
     if (id == NFileHeader::NCompressionMethod::kStore)
-      mi.Coder = new NCompress::CCopyCoder;
-    else if (id == NFileHeader::NCompressionMethod::kShrink)
-      mi.Coder = new NCompress::NShrink::CDecoder;
-    else if (id == NFileHeader::NCompressionMethod::kImplode)
-      mi.Coder = new NCompress::NImplode::NDecoder::CCoder;
-    else if (id == NFileHeader::NCompressionMethod::kLZMA)
-    {
-      lzmaDecoderSpec = new CLzmaDecoder;
-      mi.Coder = lzmaDecoderSpec;
-    }
-    else if (id == NFileHeader::NCompressionMethod::kXz)
-      mi.Coder = new NCompress::NXz::CComDecoder;
-    else if (id == NFileHeader::NCompressionMethod::kPPMd)
-      mi.Coder = new NCompress::NPpmdZip::CDecoder(true);
+        mi.Coder = new NCompress::CCopyCoder;
+    else if (id == NFileHeader::NCompressionMethod::kLZMA) {
+        lzmaDecoderSpec = new CLzmaDecoder;
+        mi.Coder = lzmaDecoderSpec;
+    } else if (id == NFileHeader::NCompressionMethod::kXz)
+        mi.Coder = new NCompress::NXz::CComDecoder;
     else if (id == NFileHeader::NCompressionMethod::kZstdWz)
-      mi.Coder = new NCompress::NZstd::CDecoder();
-#ifndef Z7_ZIP_LZFSE_DISABLE
-    else if (id == NFileHeader::NCompressionMethod::kWzAES)
-      mi.Coder = new NCompress::NLzfse::CDecoder;
-#endif
-    else
-    {
-      CMethodId szMethodID;
-      if (id == NFileHeader::NCompressionMethod::kBZip2)
-        szMethodID = kMethodId_BZip2;
-      else
-      {
-        if (id > 0xFF)
-        {
-          res = NExtract::NOperationResult::kUnsupportedMethod;
-          return S_OK;
+        mi.Coder = new NCompress::NZstd::CDecoder();
+    else {
+        CMethodId szMethodID;
+        if (id == NFileHeader::NCompressionMethod::kBZip2)
+            szMethodID = kMethodId_BZip2;
+        else {
+            if (id > 0xFF) {
+                res = NExtract::NOperationResult::kUnsupportedMethod;
+                return S_OK;
+            }
+            szMethodID = kMethodId_ZipBase + (Byte)id;
         }
-        szMethodID = kMethodId_ZipBase + (Byte)id;
-      }
 
-      RINOK(CreateCoder_Id(EXTERNAL_CODECS_LOC_VARS szMethodID, false, mi.Coder))
+        RINOK(CreateCoder_Id(EXTERNAL_CODECS_LOC_VARS szMethodID, false, mi.Coder))
 
-      if (!mi.Coder)
-      {
-        res = NExtract::NOperationResult::kUnsupportedMethod;
-        return S_OK;
-      }
+        if (!mi.Coder) {
+            res = NExtract::NOperationResult::kUnsupportedMethod;
+            return S_OK;
+        }
     }
     m = methodItems.Add(mi);
   }

@@ -4309,47 +4309,7 @@ Are you sure you want to split archive into such volumes?</source>
             <source>Some SquashFS file block lists are unavailable. Only readable portions of affected files can be copied; incomplete copies report an error.</source>
             <translation>Некоторые списки блоков файлов SquashFS недоступны. Можно скопировать только читаемые части затронутых файлов; при неполном копировании будет сообщено об ошибке.</translation>
         </message>
-        <message>
-            <location line="-218" />
-            <source>The CramFS volume origin is ambiguous. File names or contents may belong to another candidate volume. Results from the selected origin are unverified.</source>
-            <translation>Не удалось однозначно определить начало тома CramFS. Имена или содержимое файлов могут относиться к другому варианту тома. Результаты чтения с выбранного начала не проверены.</translation>
-        </message>
-        <message>
-            <location line="+4" />
-            <source>Some CramFS file block tables are incomplete. Only readable portions of affected files can be copied; incomplete copies report an error.</source>
-            <translation>Некоторые таблицы блоков файлов CramFS неполны. Можно скопировать только читаемые части затронутых файлов; при неполном копировании будет сообщено об ошибке.</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source>The declared CramFS volume size does not bound all file references reliably. Reading uses the available source bounds. Some files may be damaged or unreadable.</source>
-            <translation>Объявленный размер тома CramFS не позволяет надёжно определить границы данных файлов. Чтение ограничено доступным источником. Некоторые файлы могут быть повреждены или недоступны.</translation>
-        </message>
-        <message>
-            <location line="+4" />
-            <source>Some CramFS directories could not be read completely. Files or names may be missing. Readable files remain accessible.</source>
-            <translation>Некоторые каталоги CramFS прочитаны не полностью. Файлы или имена могут отсутствовать. Читаемые файлы остаются доступны.</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source>The CramFS directory could not be read completely.</source>
-            <translation>Каталог CramFS прочитан не полностью.</translation>
-        </message>
-        <message>
-            <location line="+2" />
-            <source>The CramFS volume checksum could not be verified. Some files may be damaged or unreadable.</source>
-            <translation>Не удалось проверить контрольную сумму тома CramFS. Некоторые файлы могут быть повреждены или недоступны для чтения.</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source>The CramFS volume checksum does not match. Some files may be damaged.</source>
-            <translation>Контрольная сумма тома CramFS не совпадает. Некоторые файлы могут быть повреждены.</translation>
-        </message>
-        <message>
-            <location line="+2" />
-            <source>The CramFS source is shorter than the declared volume. Some files may be incomplete or unreadable.</source>
-            <translation>Размер источника CramFS меньше заявленного размера тома. Некоторые файлы могут быть неполными или недоступны для чтения.</translation>
-        </message>
-        <message>
+                                        <message>
             <location line="+200" />
             <source>Some SquashFS file block-list metadata is unavailable.</source>
             <translation>Часть метаданных списка блоков файла SquashFS недоступна.</translation>

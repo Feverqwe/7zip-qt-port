@@ -618,9 +618,9 @@ QString Modify_Auto(const QString &text) {
 static const UInt32 kLzmaMaxDictSize = (UInt32)15 << 28;
 static const UInt32 kSolidLog_NoSolid = 0;
 static const UInt32 kSolidLog_FullSolid = 64;
-static const char *const kMethodsNames[] = {"Copy",    "LZMA",      "LZMA2", "PPMd", "BZip2",
-                                            "Deflate", "Deflate64", "PPMd",  "ZSTD", "SHA256",
-                                            "SHA1",    "CRC32",     "CRC64", "GNU",  "POSIX"};
+static const char *const kMethodsNames[] = {"Copy",    "LZMA",      "LZMA2", "PPMd",   "BZip2",
+                                            "Deflate", "Deflate64", "ZSTD",  "SHA256", "SHA1",
+                                            "CRC32",   "CRC64",     "GNU",   "POSIX"};
 
 static const EMethodID g_7zMethods[] = {kLZMA2,
                                         kLZMA,
@@ -641,7 +641,7 @@ bool IsMethodSupportedBySfx(int methodID) {
     return false;
 }
 
-static const EMethodID g_ZipMethods[] = {kDeflate, kDeflate64, kBZip2, kLZMA, kPPMdZip, kZSTD};
+static const EMethodID g_ZipMethods[] = {kDeflate, kDeflate64, kBZip2, kLZMA, kZSTD};
 
 static const EMethodID g_GZipMethods[] = {kDeflate};
 
@@ -833,20 +833,6 @@ CDictionaryOptions SetDictionary2(int methodID, UInt32 level, UInt32 defaultDict
         break;
     }
 
-    case kPPMdZip: {
-        options.HasAuto = true;
-        options.AutoDict = (UInt32)1 << (level + 19);
-
-        for (unsigned i = 20; i <= 28; i++) {
-            const UInt32 dict = (UInt32)1 << i;
-            options.Values.append(quint64(dict));
-            if (defaultDict != UInt32(-1))
-                if (dict <= defaultDict || options.Selected <= 0)
-                    options.Selected = options.Values.size();
-        }
-        break;
-    }
-
     case kBZip2: {
         options.HasAuto = true;
         {
@@ -974,17 +960,6 @@ COrderOptions SetOrder2(int methodID, UInt32 level, UInt32 defaultOrder) {
         break;
     }
 
-    case kPPMdZip: {
-        options.AutoOrder = level + 3;
-        for (unsigned i = 2; i <= 16; i++) {
-            options.Values.append(int(i));
-            if (defaultOrder != UInt32(-1))
-                if (i <= defaultOrder || options.Selected <= 0)
-                    options.Selected = options.Values.size();
-        }
-        break;
-    }
-
     // case kBZip2:
     default:
         break;
@@ -994,7 +969,6 @@ COrderOptions SetOrder2(int methodID, UInt32 level, UInt32 defaultOrder) {
 bool GetOrderMode(int methodID) {
     switch (methodID) {
     case kPPMd:
-    case kPPMdZip:
         return true;
     default:
         break;
@@ -1263,10 +1237,6 @@ UInt64 GetMemoryUsage_Threads_Dict_DecompMem(QStringView format, int methodId, U
         return size + memForOneThread * numThreads;
     }
 
-    case kPPMdZip: {
-        decompressMemory = dict64 + (2 << 20);
-        return size + (UInt64)decompressMemory * numThreads;
-    }
     default:
         break;
     }
@@ -1351,7 +1321,6 @@ CThreadOptions SetNumThreads2(QStringView format, int methodID, UInt32 level, UI
         case kPPMd:
         case kDeflate:
         case kDeflate64:
-        case kPPMdZip:
             numAlgoThreadsMax = 1;
             break;
         default:

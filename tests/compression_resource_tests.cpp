@@ -88,14 +88,6 @@ class CompressionResourceTests final : public QObject {
         auto options = NCompressDialog::SetNumThreads2(
             QStringLiteral("7z"), NCompressDialog::kLZMA2, 5, 1 << 20, UInt32(-1), system);
         QCOMPARE(options.AutoNumThreads, 4u);
-        system.RamUsageAuto = 512 << 20;
-        options = NCompressDialog::SetNumThreads2(QStringLiteral("zip"), NCompressDialog::kPPMdZip,
-                                                  5, 16 << 20, UInt32(-1), system);
-        QCOMPARE(options.AutoNumThreads, sizeof(size_t) == 8 ? 6u : 10u);
-        system.RamSizeDefined = false;
-        options = NCompressDialog::SetNumThreads2(QStringLiteral("zip"), NCompressDialog::kPPMdZip,
-                                                  5, 16 << 20, UInt32(-1), system);
-        QCOMPARE(options.AutoNumThreads, 16u);
         UInt64 decompress;
         QCOMPARE(NCompressDialog::GetMemoryUsage_Threads_Dict_DecompMem(
                      QStringLiteral("7z"), NCompressDialog::kPPMd, 5, 1, 1 << 20, UInt32(-1),
@@ -151,7 +143,6 @@ class CompressionResourceTests final : public QObject {
         QTest::newRow("LZMA2") << QString("7z") << QString("LZMA2") << 2 << quint64(1 << 20);
         QTest::newRow("PPMd") << QString("7z") << QString("PPMd") << 0 << quint64(1 << 20);
         QTest::newRow("BZip2") << QString("7z") << QString("BZip2") << 2 << quint64(100 << 10);
-        QTest::newRow("ZIP-PPMd") << QString("zip") << QString("PPMd") << 2 << quint64(1 << 20);
         QTest::newRow("ZIP-Deflate") << QString("zip") << QString("Deflate") << 2 << quint64(0);
     }
     void operations() {

@@ -44,8 +44,7 @@ struct timespec64 iso_date(u8 *p, int flags)
 		minute = p[4];
 		second = p[5];
 		ts.tv_nsec = 0;
-		/* High sierra has no time zone */
-		tz = flags & ISO_DATE_HIGH_SIERRA ? 0 : p[6];
+		tz = p[6];
 	}
 
 	if (year < 0) {
@@ -88,9 +87,9 @@ struct timespec64 iso_date(u8 *p, int flags)
 	return ts;
 }
 
-struct timespec64 sevenzip_iso_date(unsigned char *date, int high_sierra)
+struct timespec64 sevenzip_iso_date(unsigned char *date)
 {
-    return iso_date(date, high_sierra ? ISO_DATE_HIGH_SIERRA : 0);
+    return iso_date(date, 0);
 }
 
 struct timespec64 sevenzip_iso_long_date(unsigned char *date)

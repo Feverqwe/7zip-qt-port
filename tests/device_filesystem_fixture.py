@@ -18,16 +18,12 @@ def volume(kind):
         from fat_fixture import Volume, LONG_NAME, PAYLOAD
         fs = Volume(int(kind[3:]))
         return bytes(fs.data), {LONG_NAME: PAYLOAD}
-    if kind == "cramfs":
-        from cramfs_fixture import image
-        payload = b"device cramfs payload\n"
-        return image([payload]), {"data.bin": payload}
     if kind in ("ntfs", "ntfs-dirty"):
         from ntfs_fixture import volume
         return volume("volume-dirty" if kind == "ntfs-dirty" else "base")
-    if kind in ("hfs", "hfsplus"):
+    if kind == "hfsplus":
         from hfs_fixture import volume
-        return volume("classic" if kind == "hfs" else "base")
+        return volume("base")
     if kind == "udf":
         from udf_fixture import volume
         return volume("native")

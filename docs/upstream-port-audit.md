@@ -124,7 +124,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
   — BPB, NLS, metadata/partial streams и source audit модуля;
   общие исправления standalone и границы профилей указаны отдельно.
 
-- [cramfs по Linux](upstream-port-audit/cramfs-linux.md)
+- [Удалённые форматы и legacy-варианты](upstream-port-audit/retired-formats.md)
+- [cramfs по Linux — исторический аудит удалённого reader](upstream-port-audit/cramfs-linux.md)
   — C read path, metadata/stream границы, ограниченное чтение и source audit.
 
 - [Read-only EROFS из Linux](upstream-port-audit/erofs-linux.md)

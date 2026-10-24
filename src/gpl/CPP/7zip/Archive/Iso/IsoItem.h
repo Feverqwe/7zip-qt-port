@@ -27,7 +27,7 @@ struct CRecordingDateTime {
 
     bool GetFileTime(NWindows::NCOM::CPropVariant &prop) const {
         unsigned char date[7] = {Year, Month, Day, Hour, Minute, Second, (Byte)GmtOffset};
-        const timespec64 time = sevenzip_iso_date(date, 0);
+        const timespec64 time = sevenzip_iso_date(date);
         const UInt64 value = (UInt64)(time.tv_sec + 11644473600LL) * 10000000;
         prop.SetAsTimeFrom_Ft64_Prec(value, k_PropVar_TimePrec_Base);
         return true;

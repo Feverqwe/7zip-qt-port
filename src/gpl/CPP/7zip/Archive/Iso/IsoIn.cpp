@@ -200,13 +200,7 @@ void CInArchive::ReadDirRecord(CDirRecord &r, unsigned len, bool isJolietDescrip
     r.ExtentLocation = ReadUInt32();
     r.Size = ReadUInt32();
     ReadRecordingDateTime(r.DateTime);
-    if (_highSierra) {
-        r.FileFlags = (Byte)r.DateTime.GmtOffset; // de->flags[-high_sierra]
-        r.DateTime.GmtOffset = 0;
-        Skip(1); // High Sierra reserves the ISO flags byte after its flags.
-    } else {
-        r.FileFlags = ReadByte();
-    }
+    r.FileFlags = ReadByte();
     r.FileUnitSize = ReadByte();
     r.InterleaveGapSize = ReadByte();
     r.VolSequenceNumber = ReadUInt16();
@@ -444,7 +438,7 @@ HRESULT CInArchive::ReadDirRecords(CDir &d, bool root, const CRef *sections) {
 
             CDir subItem;
             ReadDirRecord(subItem, len);
-            if (firstItem && root && section == 0 && !_highSierra)
+            if (firstItem && root && section == 0)
                 IsSusp = !ReadOptions.NoRock && subItem.CheckSusp(SuspSkipSize);
             if (!subItem.IsSystemItem() &&
                 !sevenzip_iso_visible(subItem.FileFlags, ReadOptions.Hide,
@@ -723,32 +717,7 @@ HRESULT CInArchive::Open2() {
         }
 
         if (!CheckSignature(kSig_CD001, sig + 1)) {
-            Byte sector[kBlockSize];
-            memcpy(sector, sig, sizeof(sig));
-            ReadBytes(sector + sizeof(sig), kBlockSize - sizeof(sig));
-            sevenzip_iso_high_sierra hs{};
-            const int found = isofs_high_sierra(sector, &hs);
-            if (found < 0)
-                return S_FALSE;
-            if (found) {
-                _highSierra = true;
-                _bootIsDefined = false;
-                CVolumeDescriptor vd = CVolumeDescriptor();
-                vd.VolumeSpaceSize = hs.s_nzones;
-                vd.LogicalBlockSize = (UInt16)hs.s_log_zone_size;
-                vd.VolumeSetSize = hs.volume_set_size;
-                vd.VolumeSequenceNumber = hs.volume_sequence_number;
-                memcpy(vd.SystemId, hs.system_id, sizeof(vd.SystemId));
-                memcpy(vd.VolumeId, hs.volume_id, sizeof(vd.VolumeId));
-                SeekToPosition((descriptorBase + descriptor) * kBlockSize + hs.root_offset);
-                const unsigned length = ReadByte();
-                if (length < 34)
-                    return S_FALSE;
-                ReadDirRecord(vd.RootDirRecord, 34, true);
-                VolDescs.Clear();
-                VolDescs.Add(vd);
-                break;
-            }
+            Skip(kBlockSize - sizeof(sig));
             continue;
         }
 
@@ -791,8 +760,7 @@ HRESULT CInArchive::Open2() {
     if (VolDescs.IsEmpty())
         return S_FALSE;
     MainVolDescIndex = 0;
-    if (!_highSierra)
-        RINOK(SelectRockVolume(primaryIndex, jolietIndex))
+    RINOK(SelectRockVolume(primaryIndex, jolietIndex))
     /* FIXME: some volume can contain Rock Ridge, that is better than
        Joliet volume. So we need some way to detect such case */
     // MainVolDescIndex = 0; // to read primary volume
@@ -884,7 +852,6 @@ HRESULT CInArchive::Open(IInStream *inStream, IArchiveOpenCallback *openCallback
 }
 
 void CInArchive::Clear() {
-    _highSierra = false;
     memset(&_rockState, 0, sizeof(_rockState));
     _rockState.rock_offset = -1;
     _rockState.nocompress = ReadOptions.NoCompress;

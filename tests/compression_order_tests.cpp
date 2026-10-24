@@ -88,7 +88,6 @@ class CompressionOrderTests final : public QObject {
     void upstreamPpmdOrderChoices_data() {
         QTest::addColumn<QString>("formatName");
         QTest::newRow("7z") << QString("7z");
-        QTest::newRow("zip") << QString("zip");
     }
     void upstreamPpmdOrderChoices() {
         QFETCH(QString, formatName);
@@ -139,8 +138,6 @@ class CompressionOrderTests final : public QObject {
         QTest::newRow("192") << 192 << QString("LZMA2") << QString("7z");
         QTest::newRow("PPMd-7z-min") << 2 << QString("PPMd") << QString("7z");
         QTest::newRow("PPMd-7z-max") << 32 << QString("PPMd") << QString("7z");
-        QTest::newRow("PPMd-zip-min") << 2 << QString("PPMd") << QString("zip");
-        QTest::newRow("PPMd-zip-max") << 16 << QString("PPMd") << QString("zip");
         QTest::newRow("Deflate-max") << 258 << QString("Deflate") << QString("zip");
         QTest::newRow("Deflate64-max") << 257 << QString("Deflate64") << QString("zip");
     }
@@ -175,7 +172,6 @@ class CompressionOrderTests final : public QObject {
         QTest::addColumn<int>("validWord");
         QTest::newRow("Deflate64") << QString("Deflate64") << QString("zip") << 258 << 48;
         QTest::newRow("PPMd-7z") << QString("PPMd") << QString("7z") << 999999 << 32;
-        QTest::newRow("PPMd-zip") << QString("PPMd") << QString("zip") << 17 << 16;
     }
     void invalidWordAndCancelPreserveDestination() {
         QFETCH(QString, methodName);

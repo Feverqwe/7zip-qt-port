@@ -14,6 +14,41 @@
 class CompressionProfileSelectionTests final : public QObject {
     Q_OBJECT
   private slots:
+    void retiredZipMethodFallsBackWithoutChangingSavedSettings() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const auto previous = qgetenv("SEVENZIP_SETTINGS_PATH");
+        const auto restore = qScopeGuard([&] {
+            if (previous.isNull())
+                qunsetenv("SEVENZIP_SETTINGS_PATH");
+            else
+                qputenv("SEVENZIP_SETTINGS_PATH", previous);
+        });
+        const QString settings = fixture.filePath("settings.ini");
+        qputenv("SEVENZIP_SETTINGS_PATH", settings.toUtf8());
+        NCompression::CInfo registry;
+        registry.ArcType = "zip";
+        auto &profile = registry.Formats.AddNew();
+        profile.FormatID = "zip";
+        profile.Method = "PPMd";
+        registry.Save(settings);
+        QFile file(settings);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const QByteArray before = file.readAll();
+        file.close();
+        CreateArchiveDialog dialog(fixture.path());
+        QCOMPARE(dialog.findChild<QComboBox *>("archiveFormat")->currentText(), QString("zip"));
+        const auto options = dialog.compressionOptions();
+        QVERIFY(options.Method != L"PPMd");
+        CObjectVector<CProperty> properties;
+        QString error;
+        QVERIFY2(
+            ArchiveBackend::compressionProperties("zip", {}, false, options, &properties, &error),
+            qPrintable(error));
+        dialog.reject();
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), before);
+    }
     void sourceFormatComparison() {
         NCompression::CInfo registry;
         registry.Formats.AddNew().FormatID = "K";
@@ -45,8 +80,6 @@ class CompressionProfileSelectionTests final : public QObject {
             row("ppmd-between", "7z", "PPMd", 5 << 20, 4 << 20, 15, 14, 0, 0);
             row("ppmd-marker", "7z", "PPMd", UInt32(-2), UInt64(1) << (29 + sizeof(size_t) / 8), 1,
                 2, 19, UInt32(-1));
-            row("zip-ppmd-between", "zip", "PPMd", 5 << 20, 4 << 20, 100, 16, UInt32(-1),
-                UInt32(-1));
             row("bzip-decimal", "7z", "BZip2", 200000, 200 << 10, UInt32(-1), UInt32(-1), 0, 0);
             row("zip-deflate-between", "zip", "Deflate", 200000, UInt64(-1), 50, 48, UInt32(-1),
                 UInt32(-1));

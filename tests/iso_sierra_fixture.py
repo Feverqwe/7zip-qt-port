@@ -48,39 +48,4 @@ def volume(kind="sierra"):
     image[primary:primary + 2048] = descriptor
     convert(primary + 180)
     image[primary + 2048:primary + 4096] = bytes(2048)
-    if kind == "sierra-block1024-sector":
-        # Keep the child before the sector padding for native kernels predating
-        # Linux's logical-block padding fix. The normal case tests that fix.
-        pos = root * block
-        while image[pos + 33:pos + 33 + image[pos + 32]] != b"NESTED":
-            pos += image[pos]
-        nested = (struct.unpack_from("<I", image, pos + 2)[0] + image[pos + 1]) * block
-        old = nested + block
-        length = image[old]
-        new = nested + image[nested]
-        new += image[new]
-        image[new:new + length] = image[old:old + length]
-        image[old:old + length] = bytes(length)
-    elif kind == "sierra-leading":
-        image[primary + 2048:primary + 4096] = image[primary:primary + 2048]
-        image[primary:primary + 2048] = bytes(2048)
-        struct.pack_into("<I", image, primary + 2048, 17)
-        struct.pack_into(">I", image, primary + 2052, 17)
-    elif kind == "sierra-invalid-type":
-        image[primary + 8] = 2
-    elif kind == "sierra-root-file":
-        image[primary + 180 + 24] = 0
-    elif kind == "sierra-short-root":
-        image[primary + 180] = 12
-    elif kind == "sierra-bad-name":
-        image[root * block + 32] = 255
-    elif kind == "sierra-short-source":
-        image = image[:primary + 214 - 1]
-    elif kind == "sierra-date":
-        pos = root * block
-        while image[pos + 33:pos + 33 + image[pos + 32]] != b"ALPHA.BIN;1":
-            pos += image[pos]
-        image[pos + 18:pos + 24] = bytes((141, 1, 2, 3, 4, 5))
-    elif kind not in ("sierra", "sierra-xar", "sierra-multi", "sierra-block1024"):
-        raise ValueError(kind)
     return bytes(image), files

@@ -1,5 +1,8 @@
 # Cramfs read-side modernization against Linux
 
+> CramFS support was removed on 2026-10-24. This document preserves historical
+> source/runtime evidence; see [retired formats](retired-formats.md) for the current decision.
+
 Scope входит в [общую проверку форматов](filesystems-linux.md). Датированные
 разделы сохраняют evidence итераций; прежние открытые вопросы заменены поздними
 исправлениями и итогом сверки ниже. Source completeness и runtime acceptance

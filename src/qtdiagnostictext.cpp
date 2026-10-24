@@ -64,30 +64,6 @@ UString QtArchiveDiagnosticText(const UString &source) {
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "The FAT file shares clusters with a directory. Its contents are "
                           "unverified."),
-        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "The CramFS volume origin is ambiguous. File names or contents may "
-                          "belong to another candidate volume. Results from the selected origin "
-                          "are unverified."),
-        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "Some CramFS file block tables are incomplete. Only readable portions "
-                          "of affected files can be copied; incomplete copies report an error."),
-        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "The declared CramFS volume size does not bound all file references "
-                          "reliably. Reading uses the available source bounds. Some files may be "
-                          "damaged or unreadable."),
-        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "Some CramFS directories could not be read completely. Files or names "
-                          "may be missing. Readable files remain accessible."),
-        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "The CramFS directory could not be read completely."),
-        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "The CramFS volume checksum could not be verified. Some files may be "
-                          "damaged or unreadable."),
-        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "The CramFS volume checksum does not match. Some files may be damaged."),
-        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "The CramFS source is shorter than the declared volume. Some files may "
-                          "be incomplete or unreadable."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics", "32-bit overflow in headers"),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics", "16-bit overflow for number of files in headers"),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",

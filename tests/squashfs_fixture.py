@@ -28,9 +28,6 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         return special_inode_volume(xattrs)
     if fault.startswith("inode-inventory-"):
         return inode_inventory_volume(fault)
-    if fault == "legacy-large":
-        image, payload = legacy_volume(large=True)
-        return image, {"alpha": payload}
     if fault.startswith("blocklist-"):
         return blocklist_volume(fault)
     if fault.startswith("inode-block-"):

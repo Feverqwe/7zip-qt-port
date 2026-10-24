@@ -62,18 +62,6 @@
     "include/linux/err.h": "e7fab3f021ae4d0c5f7e34497eca5cd3473cca904cb59a853b015720a74b04e9"
   },
   "adapted": [
-    "fs/hfs/bfind.c",
-    "fs/hfs/bnode.c",
-    "fs/hfs/brec.c",
-    "fs/hfs/btree.c",
-    "fs/hfs/btree.h",
-    "fs/hfs/catalog.c",
-    "fs/hfs/extent.c",
-    "fs/hfs/hfs_fs.h",
-    "fs/hfs/inode.c",
-    "fs/hfs/mdb.c",
-    "fs/hfs/string.c",
-    "fs/hfs/trans.c",
     "fs/hfsplus/bfind.c",
     "fs/hfsplus/dir.c",
     "fs/hfsplus/hfsplus_fs.h",
@@ -90,5 +78,22 @@
   "exact": [
     "include/linux/hfs_common.h",
     "include/linux/delayed_call.h"
-  ]
+  ],
+  "retired_classic_hfs": {
+    "paths": [
+      "fs/hfs/bfind.c",
+      "fs/hfs/bnode.c",
+      "fs/hfs/brec.c",
+      "fs/hfs/btree.c",
+      "fs/hfs/btree.h",
+      "fs/hfs/catalog.c",
+      "fs/hfs/extent.c",
+      "fs/hfs/hfs_fs.h",
+      "fs/hfs/inode.c",
+      "fs/hfs/mdb.c",
+      "fs/hfs/string.c",
+      "fs/hfs/trans.c"
+    ],
+    "reason": "Classic HFS support removed by product decision on 2026-10-24. HFS+/HFSX and embedded HFS+ wrappers remain. Original inventory hashes retained for historical review."
+  }
 }

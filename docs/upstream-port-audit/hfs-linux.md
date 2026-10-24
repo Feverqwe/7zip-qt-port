@@ -1,11 +1,15 @@
 # HFS/HFS+: read modules, forks и metadata
 
+> Compatibility scope narrowed on 2026-10-24; see [retired formats](retired-formats.md).
+> Earlier dated source/runtime evidence below describes the scope at that date.
+
 Работа входит в [общий scope актуализации по Linux](filesystems-linux.md).
 Исправлено существующее чтение HFS+/HFSX и их HFS wrappers; добавлены Linux
 Unicode read conversion и разрешение hardlinks через backing inode.
 Актуализированы permission defaults, catalog/thread validation и FinderInfo.
 Подключены Linux timestamp rollover и metadata специальных inode.
-Добавлено чтение plain classic HFS через Linux C read paths в том же GPL-модуле.
+Plain classic HFS исключён из текущего GPL-модуля; его прежний перенос описан
+в исторических разделах ниже.
 Read-side source scope семейства HFS сверён по pinned Linux; границы archive/
 platform adaptation и runtime evidence отделены от полноты переноса исходников.
 

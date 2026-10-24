@@ -1,7 +1,11 @@
 # SquashFS: metadata, streams и Linux-декодеры
 
+> Compatibility scope narrowed on 2026-10-24; see [retired formats](retired-formats.md).
+> Earlier dated source/runtime evidence below describes the scope at that date.
+
 Scope входит в [общую проверку форматов](filesystems-linux.md). Исправлено
-существующее чтение в обоих engines; приложение также получает Linux LZ4,
+существующее чтение; текущий reader ограничен стандартным v4.0 LE и поставляется
+отдельным GPL-модулем. Приложение также получает Linux LZ4,
 современный LZO и проверки compressor options через отдельный format-модуль.
 Итоговая сверка read-side source scope приведена ниже; runtime evidence и
 границы archive/VFS различаются. Датированные разделы сохраняют свидетельства

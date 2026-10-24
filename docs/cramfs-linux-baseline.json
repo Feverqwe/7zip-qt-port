@@ -10,8 +10,12 @@
     "fs/cramfs/uncompress.c": "9adce1d111657837c1ecb047497dd92a6dbff5049a4dbedec4649c67a2159731",
     "include/uapi/linux/cramfs_fs.h": "e82899f9370a23ee4abafb60bb6c3c14d8892761752579d1db586dcede95bc1e"
   },
-  "adapted": [
-    "fs/cramfs/inode.c",
-    "fs/cramfs/internal.h"
-  ]
+  "adapted": [],
+  "retired": {
+    "paths": [
+      "fs/cramfs/inode.c",
+      "fs/cramfs/internal.h"
+    ],
+    "reason": "CramFS removed by product decision on 2026-10-24; original hashes retained for historical review."
+  }
 }

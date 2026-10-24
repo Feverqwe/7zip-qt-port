@@ -117,7 +117,7 @@ HRESULT CInArchive::ReadDirectory(CDir &directory) {
     sevenzip_iso_inode inode{};
     unsigned count = 0;
     const int result =
-        sevenzip_iso_directory(&_rockState, (uint32_t)block, _highSierra, &inode, sections, &count);
+        sevenzip_iso_directory(&_rockState, (uint32_t)block, &inode, sections, &count);
     const HRESULT restored = InStream_SeekSet(_stream, _position + m_BufferSize - m_BufferPos);
     if (_rockResult != S_OK)
         return _rockResult;

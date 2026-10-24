@@ -12,7 +12,7 @@ PROFILES = {
     "policy-norock-bad-px": ("norock",),
     "policy-nocompress": ("nocompress",), "policy-nocompress-bad": ("nocompress",),
     "policy-cruft": ("cruft",), "policy-cruft-multi": ("cruft",),
-    "policy-sbsector": ("sbsector=512",), "policy-sbsector-sierra": ("sbsector=512",),
+    "policy-sbsector": ("sbsector=512",),
     "policy-date-east": (), "policy-date-invalid-zone": (),
     "policy-date-normalize": (), "policy-date-malformed": (), "policy-date-empty": (),
     "policy-leading-supplementary": ("nojoliet",), "policy-joliet-only": (),
@@ -33,11 +33,11 @@ def volume(kind):
             "zisofs-crc" if kind == "policy-nocompress-bad" else
             "zisofs" if kind == "policy-nocompress" else
             "multi" if kind == "policy-cruft-multi" else
-            "sierra" if kind == "policy-sbsector-sierra" else "plain")
+            "plain")
     original, files = native_volume(base)
     image = bytearray(original)
     primary = 16 * 2048
-    root_offset = 180 if base == "sierra" else 156
+    root_offset = 156
     def number(pos):
         return struct.unpack_from("<I", image, pos)[0]
     def both(pos, value):
@@ -111,7 +111,7 @@ def volume(kind):
         both(first + image[first] + 2, len(image) // 2048 + 100)
     elif kind.startswith("policy-sbsector"):
         end = primary
-        while base != "sierra" and image[end] != 255:
+        while image[end] != 255:
             end += 2048
         descriptors = bytes(image[primary:end + 2048])
         image[primary:end + 2048] = bytes(len(descriptors))

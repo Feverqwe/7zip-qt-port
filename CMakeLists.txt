@@ -29,7 +29,6 @@ find_package(Threads REQUIRED)
 include(cmake/Zstd.cmake)
 include(cmake/Exfat.cmake)
 include(cmake/Xfs.cmake)
-include(cmake/Cramfs.cmake)
 include(cmake/Fat.cmake)
 include(cmake/Ext.cmake)
 include(cmake/Squashfs.cmake)
@@ -46,6 +45,10 @@ include(cmake/LinuxFrames.cmake)
 include(cmake/Brotli.cmake)
 include(cmake/Lz4Frame.cmake)
 include(cmake/Lzip.cmake)
+
+# Retire the former project-built plugin when reusing an existing runtime.
+# Otherwise external-module discovery could restore CramFS after its removal.
+file(REMOVE "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats/sevenzip_cramfs${CMAKE_SHARED_MODULE_SUFFIX}")
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR (APPLE AND BUILD_TESTING))
     find_package(Qt6 REQUIRED COMPONENTS DBus)
     add_library(sevenzip_launcher STATIC src/qtlauncherprogress.cpp src/qtlauncherprogress.h)
@@ -654,7 +657,6 @@ set_target_properties(sevenzip_desktop PROPERTIES
 )
 sevenzip_deploy_exfat()
 sevenzip_deploy_xfs()
-sevenzip_deploy_cramfs()
 sevenzip_deploy_fat()
 sevenzip_deploy_ext()
 sevenzip_deploy_squashfs()
@@ -1350,10 +1352,6 @@ if(BUILD_TESTING)
     add_dependencies(ext_xattr_backend_tests sevenzip_ext_runtime)
     add_test(NAME ext_xattr_backend COMMAND ext_xattr_backend_tests -silent)
     set_tests_properties(ext_xattr_backend PROPERTIES TIMEOUT 45)
-    add_test(NAME cramfs COMMAND ${Python3_EXECUTABLE}
-        ${CMAKE_CURRENT_SOURCE_DIR}/tests/cramfs_tests.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_cramfs>")
-    set_tests_properties(cramfs PROPERTIES TIMEOUT 45)
     add_test(NAME erofs COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/erofs_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_erofs>")
@@ -2242,7 +2240,6 @@ if(BUILD_TESTING)
     list(REMOVE_ITEM compression_order_sources tests/compression_tests.cpp)
     target_sources(exfat_backend_tests PRIVATE ${compression_order_sources})
     target_sources(xfs_backend_tests PRIVATE ${compression_order_sources})
-    target_sources(cramfs_module_tests PRIVATE ${compression_order_sources})
     target_sources(squashfs_stream_tests PRIVATE ${compression_order_sources})
     target_sources(ntfs_stream_tests PRIVATE ${compression_order_sources})
     target_sources(ntfs_security_tests PRIVATE ${compression_order_sources})
@@ -4149,12 +4146,16 @@ if(BUILD_TESTING)
         "SEVENZIP_ZIP_VERIFY_ENGINE=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z${CMAKE_EXECUTABLE_SUFFIX}\"")
     add_test(NAME native_zip_writer COMMAND native_zip_writer_tests -silent)
     set_tests_properties(native_zip_writer PROPERTIES TIMEOUT 30)
-    qt_add_executable(zip_shrink_tests tests/zip_shrink_tests.cpp)
-    target_link_libraries(zip_shrink_tests PRIVATE sevenzip_zip Qt6::Test)
-    target_compile_definitions(zip_shrink_tests PRIVATE
+    qt_add_executable(removed_zip_methods_tests tests/removed_zip_methods_tests.cpp)
+    target_link_libraries(removed_zip_methods_tests PRIVATE sevenzip_zip Qt6::Test)
+    target_compile_definitions(removed_zip_methods_tests PRIVATE
         "SEVENZIP_ZIP_VERIFY_ENGINE=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z${CMAKE_EXECUTABLE_SUFFIX}\"")
-    add_test(NAME zip_shrink COMMAND zip_shrink_tests -silent)
-    set_tests_properties(zip_shrink PROPERTIES TIMEOUT 30)
+    add_test(NAME removed_zip_methods COMMAND removed_zip_methods_tests -silent)
+    set_tests_properties(removed_zip_methods PROPERTIES TIMEOUT 30)
+    add_test(NAME removed_formats COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/removed_formats_tests.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+    set_tests_properties(removed_formats PROPERTIES TIMEOUT 30)
     qt_add_executable(native_folder_opening_tests tests/native_folder_opening_tests.cpp ${codec_update_sources})
     target_include_directories(native_folder_opening_tests PRIVATE src tests)
     target_link_libraries(native_folder_opening_tests PRIVATE sevenzip_location Qt6::Test)
@@ -4227,7 +4228,7 @@ if(BUILD_TESTING)
     endif()
     add_dependencies(device_filesystem_tests sevenzip_exfat_runtime sevenzip_erofs_runtime
         sevenzip_fat_runtime sevenzip_ntfs_runtime sevenzip_hfs_runtime sevenzip_udf_runtime
-        sevenzip_iso_runtime sevenzip_squashfs_runtime sevenzip_cramfs_runtime sevenzip_mbr_runtime)
+        sevenzip_iso_runtime sevenzip_squashfs_runtime sevenzip_mbr_runtime)
     add_test(NAME device_filesystem COMMAND device_filesystem_tests -silent)
     set_tests_properties(device_filesystem PROPERTIES TIMEOUT 60)
     qt_add_executable(native_archive_opening_tests tests/native_archive_opening_tests.cpp)
@@ -4318,8 +4319,6 @@ if(BUILD_TESTING)
     target_include_directories(filesystem_read_ui_tests PRIVATE src tests)
     target_link_libraries(filesystem_read_ui_tests PRIVATE ${metadata_ui_libraries})
     target_compile_definitions(filesystem_read_ui_tests PRIVATE
-        "SEVENZIP_CRAMFS_MODULE=\"$<TARGET_FILE:sevenzip_cramfs>\""
-        "SEVENZIP_CRAMFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/cramfs_fixture.py\""
         "SEVENZIP_SQUASHFS_MODULE=\"$<TARGET_FILE:sevenzip_squashfs>\""
         "SEVENZIP_SQUASHFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/squashfs_fixture.py\""
         "SEVENZIP_EXFAT_MODULE=\"$<TARGET_FILE:sevenzip_exfat>\""
@@ -4336,14 +4335,22 @@ if(BUILD_TESTING)
         "SEVENZIP_HFS_PYTHON=\"${Python3_EXECUTABLE}\""
         "SEVENZIP_EXT_RECOVERY_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_recovery_fixture.py\""
         "SEVENZIP_HFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/hfs_fixture.py\"")
-    add_dependencies(filesystem_read_ui_tests sevenzip_exfat sevenzip_fat_runtime sevenzip_hfs_runtime sevenzip_ntfs_runtime sevenzip_ext_runtime sevenzip_squashfs_runtime sevenzip_cramfs_runtime)
-    add_test(NAME filesystem_cramfs_read_ui COMMAND filesystem_read_ui_tests -silent confirmsLimitedCramfs)
+    add_dependencies(filesystem_read_ui_tests sevenzip_exfat sevenzip_fat_runtime sevenzip_hfs_runtime sevenzip_ntfs_runtime sevenzip_ext_runtime sevenzip_squashfs_runtime)
     add_test(NAME filesystem_squashfs_read_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialSquashfsAttributes)
     add_test(NAME filesystem_squashfs_directory_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialSquashfsDirectory)
     add_test(NAME filesystem_squashfs_inode_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialSquashfsInodes)
     add_test(NAME filesystem_squashfs_index_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialSquashfsIndexes)
     add_test(NAME filesystem_read_ui COMMAND filesystem_read_ui_tests -silent deletedRecoveryConsent confirmsAndCopiesFlaggedVolume)
     add_test(NAME filesystem_read_ui_ru COMMAND filesystem_read_ui_tests -silent confirmsAndCopiesFlaggedVolumeRu)
+    add_test(NAME filesystem_hfs_read_ui COMMAND filesystem_read_ui_tests -silent
+        confirmsAndCopiesFlaggedVolume:en-cancel-unclean
+        confirmsAndCopiesFlaggedVolume:en-accept-wrapper-no-slock
+        confirmsAndCopiesFlaggedVolume:en-accept-unclean
+        confirmsAndCopiesFlaggedVolume:en-accept-free-overflow
+        confirmsAndCopiesFlaggedVolumeRu:ru-cancel-unclean
+        confirmsAndCopiesFlaggedVolumeRu:ru-accept-wrapper-no-slock
+        confirmsAndCopiesFlaggedVolumeRu:ru-accept-unclean
+        confirmsAndCopiesFlaggedVolumeRu:ru-accept-free-overflow)
     add_test(NAME filesystem_ext_read_ui COMMAND filesystem_read_ui_tests -silent confirmsLimitedExt)
     add_test(NAME filesystem_ext_read_ui_ru COMMAND filesystem_read_ui_tests -silent confirmsLimitedExtRu)
     add_test(NAME filesystem_security_read_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialSecurityStream)
@@ -4361,10 +4368,10 @@ if(BUILD_TESTING)
         set_property(TEST filesystem_exfat_recovery_ui filesystem_ext_recovery_ui filesystem_ntfs_recovery_ui filesystem_ntfs_failure_ui PROPERTY ENVIRONMENT
             "QT_QPA_PLATFORM=cocoa;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     endif()
-    set_tests_properties(filesystem_exfat_directory_ui filesystem_cramfs_read_ui filesystem_squashfs_index_ui filesystem_squashfs_inode_ui filesystem_squashfs_directory_ui filesystem_squashfs_read_ui filesystem_read_ui filesystem_read_ui_ru filesystem_ext_read_ui filesystem_ext_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui filesystem_fat_file_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
+    set_tests_properties(filesystem_exfat_directory_ui filesystem_squashfs_index_ui filesystem_squashfs_inode_ui filesystem_squashfs_directory_ui filesystem_squashfs_read_ui filesystem_read_ui filesystem_read_ui_ru filesystem_hfs_read_ui filesystem_ext_read_ui filesystem_ext_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui filesystem_fat_file_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     if(APPLE)
-        set_property(TEST filesystem_exfat_directory_ui filesystem_cramfs_read_ui filesystem_squashfs_index_ui filesystem_squashfs_inode_ui filesystem_squashfs_directory_ui filesystem_squashfs_read_ui filesystem_read_ui filesystem_read_ui_ru filesystem_ext_read_ui filesystem_ext_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui filesystem_fat_file_ui PROPERTY ENVIRONMENT
+        set_property(TEST filesystem_exfat_directory_ui filesystem_squashfs_index_ui filesystem_squashfs_inode_ui filesystem_squashfs_directory_ui filesystem_squashfs_read_ui filesystem_read_ui filesystem_read_ui_ru filesystem_hfs_read_ui filesystem_ext_read_ui filesystem_ext_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui filesystem_fat_file_ui PROPERTY ENVIRONMENT
             "QT_QPA_PLATFORM=cocoa;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     endif()
     qt_add_executable(associated_window_tests tests/associated_window_tests.cpp

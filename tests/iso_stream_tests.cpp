@@ -245,9 +245,9 @@ class IsoStreamTests final : public QObject {
         QTest::addColumn<QString>("kind");
         for (const char *kind :
              {"plain", "multi", "multi-directory", "xar", "xar-directory", "block-512",
-              "block-1024", "block-512-tail", "sierra", "sierra-xar", "sierra-multi",
-              "directory-root-size", "directory-parent-size", "directory-multi-root",
-              "directory-multi-child", "directory-multi-padding", "directory-multi-split"})
+              "block-1024", "block-512-tail", "directory-root-size", "directory-parent-size",
+              "directory-multi-root", "directory-multi-child", "directory-multi-padding",
+              "directory-multi-split"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void independentAndRetainedStreams() {
@@ -259,7 +259,7 @@ class IsoStreamTests final : public QObject {
         auto alpha = stream("ALPHA.BIN");
         auto beta = stream("NESTED/BETA.BIN");
         auto boot = stream("[BOOT]/Boot-NoEmul.img");
-        const bool hasBoot = !kind.startsWith("sierra");
+        const bool hasBoot = true;
         QVERIFY(alpha && beta);
         if (hasBoot)
             QVERIFY(boot);
@@ -434,8 +434,7 @@ class IsoStreamTests final : public QObject {
     }
     void failedOpenClearsCatalog() {
         for (const char *kind :
-             {"bad-directory", "cycle", "bad-name-length", "short-record", "sierra-invalid-type",
-              "sierra-short-root", "sierra-bad-name", "sierra-short-source", "directory-bad-dot",
+             {"bad-directory", "cycle", "bad-name-length", "short-record", "directory-bad-dot",
               "directory-file-dot", "directory-multi-outside", "directory-multi-unaligned",
               "directory-multi-unfinished", "directory-multi-bad-dot",
               "directory-sections-overflow"}) {
@@ -485,8 +484,6 @@ class IsoStreamTests final : public QObject {
                                  "rock-joliet",
                                  "zisofs",
                                  "zisofs-multi",
-                                 "sierra",
-                                 "sierra-multi",
                                  "names-joliet-components",
                                  "names-joliet-surrogates",
                                  "names-joliet-long",
@@ -715,7 +712,6 @@ class IsoStreamTests final : public QObject {
         row("policy-cruft", {"cruft"});
         row("policy-cruft-multi", {"cruft"});
         row("policy-sbsector", {"sbsector=512"});
-        row("policy-sbsector-sierra", {"sbsector=512"});
         row("policy-leading-supplementary", {"nojoliet"});
         row("policy-joliet-only", {});
         row("policy-joliet-flags", {});
@@ -798,7 +794,6 @@ class IsoStreamTests final : public QObject {
         QTest::addColumn<QString>("kind");
         QTest::addColumn<int>("offset");
         QTest::addColumn<bool>("normalize");
-        QTest::newRow("sierra-no-zone") << QString("sierra-date") << 0 << false;
         QTest::newRow("east") << QString("date-east") << 52 << false;
         QTest::newRow("west") << QString("date-west") << -52 << false;
         QTest::newRow("invalid-east") << QString("date-invalid-east") << 0 << false;

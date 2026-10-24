@@ -300,7 +300,6 @@ class CInArchive {
 
     void ReadBootInfo();
     HRESULT Open2();
-    bool _highSierra = false;
     sevenzip_iso_state _rockState{};
     HRESULT _rockResult = S_OK;
     static int RockRead(void *, uint64_t, void *, size_t);

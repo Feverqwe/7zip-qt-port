@@ -848,7 +848,7 @@ int sevenzip_iso_rock_name(struct sevenzip_iso_state *state,
 /* isofs_read_inode projection for normalized directory identity. The original
  * Level 3 scan supplies sections; VFS page mapping/publication is omitted. */
 static int read_directory_inode(struct sevenzip_iso_state *state, uint32_t block,
-                                 int high_sierra, int relocated,
+                                 int relocated,
                                  struct sevenzip_iso_inode *output,
                                  struct sevenzip_iso_section *sections, unsigned *count)
 {
@@ -867,7 +867,7 @@ static int read_directory_inode(struct sevenzip_iso_state *state, uint32_t block
         return -EIO;
     size = isonum_711(de->length);
     if (size < sizeof(*de) + 1 || size > state->block_size ||
-        isonum_711(de->name_len) != 1 || de->name[0] != 0 || !(isofs_record_flags(de, high_sierra) & 2))
+        isonum_711(de->name_len) != 1 || de->name[0] != 0 || !(isonum_711(de->flags) & 2))
         return -EIO;
     su = sizeof(*de) + isonum_711(de->name_len);
     if (su & 1) su++;
@@ -875,8 +875,7 @@ static int read_directory_inode(struct sevenzip_iso_state *state, uint32_t block
     record.system_use = data + su;
     record.system_use_size = size - su;
     memcpy(record.date, de->date, sizeof(de->date));
-    if (high_sierra) record.date[6] = 0;
-    record.flags = isofs_record_flags(de, high_sierra);
+    record.flags = isonum_711(de->flags);
     record.size = isonum_733(de->size);
     record.block = (uint64_t)isonum_733(de->extent) + isonum_711(de->ext_attr_length);
     if (record.block >= state->volume_blocks)
@@ -888,7 +887,6 @@ static int read_directory_inode(struct sevenzip_iso_state *state, uint32_t block
     sb.state = state;
     sb.block_size = state->block_size;
     sb.s_nzones = state->volume_blocks;
-    sb.s_high_sierra = high_sierra;
     scan.i_sb = &sb;
     scan.i_iget5_block = block;
     scan.i_section_size = (uint32_t)record.size;
@@ -916,22 +914,22 @@ int sevenzip_iso_relocated(struct sevenzip_iso_state *state, uint32_t block,
                             struct sevenzip_iso_inode *output)
 {
     unsigned count;
-    return read_directory_inode(state, block, 0, 1, output, NULL, &count);
+    return read_directory_inode(state, block, 1, output, NULL, &count);
 }
 
-int sevenzip_iso_directory(struct sevenzip_iso_state *state, uint32_t block, int high_sierra,
+int sevenzip_iso_directory(struct sevenzip_iso_state *state, uint32_t block,
                            struct sevenzip_iso_inode *output,
                            struct sevenzip_iso_section *sections, unsigned *count)
 {
     uint64_t total = 0;
     unsigned i;
-    int result = read_directory_inode(state, block, high_sierra, 0, output, sections, count);
+    int result = read_directory_inode(state, block, 0, output, sections, count);
     if (result) return result;
     if ((output->i_mode & 0170000) != 0040000 || output->i_file_format != isofs_file_normal)
         return -EIO;
     if (sections[0].block != output->i_first_extent) {
         struct sevenzip_iso_inode relocated;
-        result = read_directory_inode(state, output->i_first_extent, high_sierra, 1,
+        result = read_directory_inode(state, output->i_first_extent, 1,
                                       &relocated, sections, count);
         if (result) return result;
     }

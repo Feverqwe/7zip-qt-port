@@ -104,7 +104,7 @@ ISO9660 читает тома с блоками 512/1024/2048 байт, XAR и �
 повреждённые maps и interleaving дают явную ошибку чтения. Потоки файлов и
 El Torito images независимы. Исходные archive names и boot namespace сохранены.
 Отдельный модуль добавляет Linux Rock Ridge names/links, POSIX metadata,
-continuations, relocated directories, выбор RR перед Joliet, zisofs и High Sierra.
+continuations, relocated directories, выбор RR перед Joliet и zisofs.
 Joliet names и RR fallback используют Linux Unicode/суффиксные правила;
 CLI open-properties доступны для normal/Acorn/raw mapping и UTF-8/CP437.
 Поддержано чтение глубоких ISO-деревьев и извлечение отдельного вложенного
@@ -123,8 +123,7 @@ forks, boot blocks и wrappers, проверки повреждённых metada
 потоки. Отдельный read-only модуль добавляет Linux Unicode composition/casefold,
 hardlink backing data, Linux permission defaults, BSD flags и FinderInfo streams.
 Даты следуют Linux диапазону 1970–2106; специальные inode сообщают device metadata.
-Тот же модуль читает plain classic HFS, включая resource forks, type/creator
-metadata и non-power-of-two allocation blocks.
+Plain classic HFS исключён; HFS wrappers с вложенным HFS+ остаются доступны.
 [Scope и проверки](upstream-port-audit/hfs-linux.md); полная актуализация
 формата ещё не завершена.
 
@@ -484,11 +483,12 @@ Apply/Cancel и исходная обработка ошибок сохране�
 сверх исходного 7zFM; требуется поставляемый динамический runtime с модулем exFAT.
 [Происхождение и проверки](upstream-port-audit/exfat-linux.md).
 
-Cramfs читается с расширенными указателями блоков, несжатыми блоками,
-разделяемыми данными, sparse-областями и 512-байтным префиксом образа.
-Полное обновлённое чтение доступно через поставляемый динамический runtime
-с отдельным cramfs-модулем.
-[Происхождение и проверки](upstream-port-audit/cramfs-linux.md).
+По продуктовому решению от 2026-10-24 удалены CramFS, classic HFS,
+SquashFS до v4 и его старые нестандартные варианты, High Sierra и ZIP
+Shrink/Implode/PPMd/LZFSE/Zstandard method 20. Для ZIP сохраняется просмотр
+метаданных таких записей; извлечение сообщает неподдерживаемый метод.
+HFS+ wrappers и ZIP AES сохраняются.
+[Точный scope и проверки](upstream-port-audit/retired-formats.md).
 
 FAT поддерживает образы DOS 1.x и современные тома без boot signature,
 восстановление длинных имён и Linux-совместимую обработку CP437/Unicode и дат.

@@ -137,7 +137,7 @@ class CompressionTests : public QObject {
         QCOMPARE(options.SolidBlockSize, quint64(0));
 
         format->setCurrentText("zip");
-        QVERIFY(method->findText("PPMd") >= 0);
+        QVERIFY(method->findText("PPMd") < 0);
         QCOMPARE(method->currentText(), QStringLiteral("*  Deflate"));
         QVERIFY(!solidBlock->isEnabled());
         auto *passwordEnabled = dialog.findChild<QCheckBox *>("archivePasswordEnabled");
@@ -290,7 +290,6 @@ class CompressionTests : public QObject {
         QTest::newRow("7z-solid-off") << "7z" << "LZMA2" << 9;
         QTest::newRow("7z-level-two") << "7z" << "LZMA2" << 2;
         QTest::newRow("zip-bzip2") << "zip" << "BZip2" << 9;
-        QTest::newRow("zip-ppmd") << "zip" << "PPMd" << 9;
     }
 
     void createWithCompressionOptions() {

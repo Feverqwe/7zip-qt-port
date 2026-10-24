@@ -17,13 +17,7 @@ struct sevenzip_iso_section {
     uint32_t size;
     unsigned char gap;
 };
-struct sevenzip_iso_high_sierra {
-    uint32_t s_nzones, s_log_zone_size, root_offset;
-    unsigned char system_id[32], volume_id[32];
-    uint16_t volume_set_size, volume_sequence_number;
-};
-int isofs_high_sierra(const unsigned char *, struct sevenzip_iso_high_sierra *);
-struct timespec64 sevenzip_iso_date(unsigned char *, int);
+struct timespec64 sevenzip_iso_date(unsigned char *);
 struct timespec64 sevenzip_iso_long_date(unsigned char *);
 struct sevenzip_iso_inode {
     struct super_block *i_sb;
@@ -57,7 +51,7 @@ int sevenzip_iso_rock(struct sevenzip_iso_state *, const struct sevenzip_iso_rec
 int sevenzip_iso_relocated(struct sevenzip_iso_state *, uint32_t, struct sevenzip_iso_inode *);
 int sevenzip_iso_rock_name(struct sevenzip_iso_state *, const struct sevenzip_iso_record *,
                            char[256]);
-int sevenzip_iso_directory(struct sevenzip_iso_state *, uint32_t, int, struct sevenzip_iso_inode *,
+int sevenzip_iso_directory(struct sevenzip_iso_state *, uint32_t, struct sevenzip_iso_inode *,
                            struct sevenzip_iso_section *, unsigned *);
 int isofs_fill_super(struct sevenzip_iso_state *, int, int, int, uint32_t);
 #ifdef __cplusplus

@@ -8,7 +8,6 @@
 #include "Common/MyString.h"
 #include "Common/StringConvert.h"
 #include "Common/UTFConvert.h"
-#include "hfsclassicreader.h"
 #include "hfsreader.h"
 #include "pagelink.h"
 #include <errno.h>
@@ -182,7 +181,6 @@ bool CFork::Upgrade(const CObjectVector<CIdExtents> &items, UInt32 id) {
 struct CVolHeader {
     unsigned BlockSizeLog;
     UInt32 BlockSize;
-    bool IsClassic;
     UInt32 NumFiles;
     UInt32 NumFolders;
     UInt32 NumBlocks;
@@ -487,7 +485,6 @@ class CDatabase {
     HRESULT ResolveHardlinks();
     HRESULT LoadMetadata();
     HRESULT BuildRefs(CRecordVector<CIdIndexPair> &IdToIndexMap);
-    HRESULT OpenClassic(IInStream *inStream, IArchiveOpenCallback *progress);
 
   public:
     bool CheckFork(const CFork &fork) const;
@@ -525,7 +522,6 @@ class CDatabase {
         UnsupportedFeature = false;
         ThereAreAltStreams = false;
         CatalogCaseSensitive = false;
-        Header.IsClassic = false;
         ReadLimitations.Empty();
         // CaseSensetive = false;
 
@@ -1554,152 +1550,6 @@ static const unsigned k_Signature_LE16_HFSX = 'H' + ((unsigned)'X' << 8);
 static const UInt32 k_Signature_LE32_HFSP_VER4 = 'H' + ((UInt32)'+' << 8) + ((UInt32)4 << 24);
 static const UInt32 k_Signature_LE32_HFSX_VER5 = 'H' + ((UInt32)'X' << 8) + ((UInt32)5 << 24);
 
-struct CClassicInput {
-    IInStream *Stream;
-    IArchiveOpenCallback *Progress;
-    sevenzip_hfs_classic *State;
-    HRESULT Result;
-    UInt64 ReadBytes;
-
-    CClassicInput(IInStream *stream, IArchiveOpenCallback *progress)
-        : Stream(stream), Progress(progress), State(NULL), Result(S_OK), ReadBytes(0) {}
-    ~CClassicInput() { sevenzip_hfs_classic_close(State); }
-    HRESULT Status(int error) const {
-        if (Result != S_OK)
-            return Result;
-        return error == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
-    }
-    static int Read(void *context, uint64_t offset, void *data, size_t size) {
-        CClassicInput &input = *(CClassicInput *)context;
-        try {
-            input.Result = InStream_SeekSet(input.Stream, offset);
-            if (input.Result == S_OK)
-                input.Result = ReadStream_FALSE(input.Stream, data, size);
-            input.ReadBytes += size;
-            if (input.Result == S_OK && input.Progress)
-                input.Result = input.Progress->SetCompleted(NULL, &input.ReadBytes);
-        } catch (...) {
-            input.Result = E_FAIL;
-        }
-        return input.Result == S_OK ? 0 : -EIO;
-    }
-};
-
-HRESULT CDatabase::OpenClassic(IInStream *inStream, IArchiveOpenCallback *progress) {
-    RINOK(InStream_GetSize_SeekToEnd(inStream, ArcFileSize))
-    CClassicInput input(inStream, progress);
-    sevenzip_hfs_classic_volume volume;
-    const int error =
-        sevenzip_hfs_classic_open(CClassicInput::Read, &input, ArcFileSize, &input.State, &volume);
-    if (error)
-        return input.Status(error);
-    Header.IsClassic = true;
-    Header.Is_Hsfx_ver5 = false;
-    Header.BlockSize = volume.block_size;
-    Header.NumBlocks = volume.blocks;
-    Header.NumFreeBlocks = volume.free_blocks;
-    Header.NumFiles = volume.files;
-    Header.NumFolders = volume.folders;
-    Header.CTime = volume.created;
-    Header.MTime = volume.modified;
-    if (volume.unclean)
-        ReadLimitations = "Volume was not properly unmounted. Some data may be corrupt.";
-    SpecOffset = volume.allocation_start;
-    PhySize2 = ArcFileSize;
-    ResFileName = kResFileName;
-    CRecordVector<CIdIndexPair> IdToIndexMap;
-    UInt64 numFiles = (UInt64)volume.files + volume.folders + 1;
-    if (progress)
-        RINOK(progress->SetTotal(&numFiles, NULL))
-    UInt32 files = 0, folders = 0;
-    bool root = false;
-    for (;;) {
-        sevenzip_hfs_classic_item record;
-        const int result = sevenzip_hfs_classic_next(input.State, &record);
-        if (result < 0)
-            return input.Status(result);
-        if (result == 0)
-            break;
-        CItem &item = Items.AddNew();
-        item.DataIndex = Items.Size() - 1;
-        item.ID = record.id;
-        item.ParentID = record.parent;
-        item.Type = (record.mode & 0170000) == 0040000 ? RECORD_TYPE_FOLDER : RECORD_TYPE_FILE;
-        if (item.ID == kHfsID_RootFolder) {
-            if (!item.IsDir() || item.ParentID != kHfsID_Root)
-                return S_FALSE;
-            root = true;
-        }
-        wchar_t *name = item.Name.GetBuf(record.name_length);
-        for (unsigned i = 0; i < record.name_length; i++) {
-            if (!record.name[i])
-                return S_FALSE;
-            name[i] = (wchar_t)record.name[i];
-        }
-        item.Name.ReleaseBuf_SetEnd(record.name_length);
-        item.CTime = record.created;
-        item.MTime = item.ATime = item.AttrMTime = record.modified;
-        item.OwnerID = item.GroupID = 0;
-        item.FileMode = (UInt16)record.mode;
-        item.NumLinks = 1;
-        item.DeviceMajor = item.DeviceMinor = item.Special = 0;
-        item.AdminFlags = item.OwnerFlags = 0;
-        item.FileType = Get32(record.finder_type);
-        item.FileCreator = Get32(record.finder_creator);
-        if (item.IsDir())
-            folders++;
-        else {
-            files++;
-            for (unsigned resource = 0; resource < 2; resource++) {
-                CFork &fork = resource ? item.ResourceFork : item.DataFork;
-                fork.Size = record.size[resource];
-                fork.NumBlocks = record.blocks[resource];
-                for (UInt32 block = 0; block < fork.NumBlocks; block++) {
-                    uint32_t physical;
-                    const int mapped =
-                        sevenzip_hfs_classic_map(input.State, resource, block, &physical);
-                    if (mapped)
-                        return input.Status(mapped);
-                    if (!fork.Extents.IsEmpty() &&
-                        fork.Extents.Back().Pos + fork.Extents.Back().NumBlocks == physical)
-                        fork.Extents.Back().NumBlocks++;
-                    else {
-                        CExtent extent;
-                        extent.Pos = physical;
-                        extent.NumBlocks = 1;
-                        fork.Extents.Add(extent);
-                    }
-                }
-                if (!CheckFork(fork))
-                    return S_FALSE;
-            }
-            for (unsigned creator = 0; creator < 2; creator++) {
-                CAttr &attr = Attrs.AddNew();
-                attr.ID = item.ID;
-                attr.Name = creator ? "hfs.creator" : "hfs.type";
-                attr.Data.CopyFrom(creator ? record.finder_creator : record.finder_type, 4);
-            }
-        }
-        CIdIndexPair pair;
-        pair.ID = item.ID;
-        pair.Index = Items.Size() - 1;
-        IdToIndexMap.Add(pair);
-        if (progress) {
-            numFiles = Items.Size();
-            RINOK(progress->SetCompleted(&numFiles, NULL))
-        }
-    }
-    if (!root)
-        return S_FALSE;
-    if (files != Header.NumFiles || (UInt64)folders != (UInt64)Header.NumFolders + 1)
-        HeadersError = true;
-    RINOK(BuildRefs(IdToIndexMap))
-    FOR_VECTOR(i, Refs)
-    if (Refs[i].IsItem() && Items[Refs[i].ItemIndex].ID != kHfsID_RootFolder && Refs[i].Parent < 0)
-        return S_FALSE;
-    return S_OK;
-}
-
 API_FUNC_static_IsArc IsArc_HFS(const Byte *p, size_t size) {
     if (size < kHfsHeaderSize)
         return k_IsArc_Res_NEED_MORE;
@@ -1734,9 +1584,7 @@ HRESULT CDatabase::Open2(IInStream *inStream, IArchiveOpenCallback *progress) {
 
         if (GetUi16a(p + 0x7c) != k_Signature_LE16_HPLUS &&
             GetUi16a(p + 0x7c) != k_Signature_LE16_HFSX) {
-            if (SpecOffset)
-                return S_FALSE;
-            return OpenClassic(inStream, progress);
+            return S_FALSE;
         }
         /*
         h.CTime = Get32(p + 0x2);
@@ -1979,7 +1827,7 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         prop = Header.IsHfsX() ? "hfsx" : "hfs";
         break;
     case kpidMethod:
-        prop = Header.IsClassic ? "HFS" : Header.IsHfsX() ? "HFSX" : "HFS+";
+        prop = Header.IsHfsX() ? "HFSX" : "HFS+";
         break;
     case kpidCharacts:
         MethodsMaskToProp(MethodsMask, prop);

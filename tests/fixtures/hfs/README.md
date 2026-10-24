@@ -28,7 +28,5 @@ Ubuntu `hfsutils` 3.2.6 (`hformat -f -l HfsFixture`, `hmount`, `hmkdir`, `hcopy`
 directory and small files that make the native catalog span multiple levels.
 `alpha` was imported as MacBinary II to give it data/resource forks and
 `TEXT`/`SZIP` type/creator bytes. The nested accented name uses byte `e9`;
-Linux's default byte-preserving HFS names and the archive's Unicode projection
-are checked separately. No user files or physical devices were used.
-The classic fixture generator derives overflow, preallocated, locked,
-non-power-of-two allocation and damaged variants from this native volume.
+No user files or physical devices were used. The original image is retained
+to check rejection of classic HFS after its support was removed.

@@ -14,26 +14,6 @@
 
 #include "isofs.h"
 
-/* isofs_fill_super High Sierra descriptor branch. The caller has checked the
- * ISO identifier first and supplies a complete descriptor sector. */
-int isofs_high_sierra(const unsigned char *data, struct sevenzip_iso_high_sierra *sbi)
-{
-    const struct hs_volume_descriptor *hdp = (const struct hs_volume_descriptor *)data;
-    const struct hs_primary_descriptor *h_pri = (const struct hs_primary_descriptor *)data;
-    if (strncmp(hdp->id, HS_STANDARD_ID, sizeof hdp->id) != 0)
-        return 0;
-    if (isonum_711(hdp->type) != 1)
-        return -EIO;
-    sbi->s_nzones = isonum_733(h_pri->volume_space_size);
-    sbi->s_log_zone_size = isonum_721(h_pri->logical_block_size);
-    sbi->root_offset = offsetof(struct hs_primary_descriptor, root_directory_record);
-    memcpy(sbi->system_id, h_pri->system_id, sizeof sbi->system_id);
-    memcpy(sbi->volume_id, h_pri->volume_id, sizeof sbi->volume_id);
-    sbi->volume_set_size = (uint16_t)isonum_721(h_pri->volume_set_size);
-    sbi->volume_sequence_number = (uint16_t)isonum_721(h_pri->volume_sequence_number);
-    return 1;
-}
-
 static int rootdir_empty(struct super_block *sb, unsigned long block)
 {
 	int offset = 0, files = 0, de_len;
@@ -95,7 +75,6 @@ int isofs_read_level3_size(struct inode *inode, struct sevenzip_iso_section *sec
                            unsigned *count)
 {
 	unsigned long bufsize = ISOFS_BUFFER_SIZE(inode);
-	int high_sierra = ISOFS_SB(inode->i_sb)->s_high_sierra;
 	struct buffer_head *bh = NULL;
 	unsigned long block, offset, block_saved, offset_saved;
 	int i = 0;
@@ -165,9 +144,9 @@ int isofs_read_level3_size(struct inode *inode, struct sevenzip_iso_section *sec
 		}
 
 		if (de->name_len[0] != 1 || de_len < sizeof(*de) + 1 || de->name[0] != 0 ||
-		    !(isofs_record_flags(de, high_sierra) & 2))
+		    !(isonum_711(de->flags) & 2))
 			goto out_corrupt;
-		if ((isofs_record_flags(de, high_sierra) & 0x80) &&
+		if ((isonum_711(de->flags) & 0x80) &&
 		    (isonum_733(de->size) & (bufsize - 1)))
 			goto out_corrupt;
 		if (sections) {
@@ -181,7 +160,7 @@ int isofs_read_level3_size(struct inode *inode, struct sevenzip_iso_section *sec
 			ei->i_next_section_offset = offset_saved;
 		}
 
-		more_entries = isofs_record_flags(de, high_sierra) & 0x80;
+		more_entries = isonum_711(de->flags) & 0x80;
 
 		i++;
 		if (i >= SEVENZIP_ISO_MAX_SECTIONS && more_entries)
