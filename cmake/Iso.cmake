@@ -1,3 +1,17 @@
+# Official zlib decoder API; unchanged C sources, private to the GPL ISO reader.
+add_library(sevenzip_zisofs_zlib STATIC
+    third_party/zlib/adler32.c third_party/zlib/inflate.c
+    third_party/zlib/inffast.c third_party/zlib/inftrees.c third_party/zlib/zutil.c)
+target_include_directories(sevenzip_zisofs_zlib PUBLIC third_party/zlib)
+target_compile_definitions(sevenzip_zisofs_zlib PUBLIC Z_PREFIX)
+target_compile_definitions(sevenzip_zisofs_zlib PRIVATE NO_GZIP)
+set_target_properties(sevenzip_zisofs_zlib PROPERTIES AUTOMOC OFF AUTOUIC OFF
+    POSITION_INDEPENDENT_CODE ON C_STANDARD 99 C_STANDARD_REQUIRED ON
+    C_VISIBILITY_PRESET hidden)
+if(MSVC)
+    target_compile_definitions(sevenzip_zisofs_zlib PRIVATE _CRT_SECURE_NO_DEPRECATE)
+endif()
+
 # Linux Rock Ridge stays in an isolated archive-only GPL module.
 add_library(sevenzip_iso MODULE
     src/gpl/CPP/7zip/Archive/Iso/IsoIn.cpp src/gpl/CPP/7zip/Archive/Iso/IsoHandler.cpp
@@ -6,7 +20,7 @@ add_library(sevenzip_iso MODULE
     src/CPP/7zip/Common/MethodProps.cpp third_party/7zip/CPP/Common/StringToInt.cpp
     third_party/7zip/CPP/7zip/Archive/Iso/IsoHeader.cpp
     src/fs/isofs/rock.c src/fs/isofs/inode.c src/fs/isofs/util.c src/kernel/time/time.c src/exfatmodule.cpp
-    src/fs/isofs/compress.c src/lib/zlib_inflate/inffast.c
+    src/fs/isofs/compress.c
     src/fs/isofs/dir.c src/fs/isofs/joliet.c src/fs/nls/nls_base.c src/fs/nls/nls_cp437.c
     src/fs/nls/mac-celtic.c src/fs/nls/mac-centeuro.c src/fs/nls/mac-croatian.c
     src/fs/nls/mac-cyrillic.c src/fs/nls/mac-gaelic.c src/fs/nls/mac-greek.c
@@ -25,7 +39,6 @@ add_library(sevenzip_iso MODULE
     src/fs/nls/nls_iso8859-5.c src/fs/nls/nls_iso8859-6.c src/fs/nls/nls_iso8859-7.c
     src/fs/nls/nls_iso8859-9.c src/fs/nls/nls_koi8-r.c src/fs/nls/nls_koi8-ru.c
     src/fs/nls/nls_koi8-u.c src/fs/nls/registry.c
-    third_party/linux/lib/zlib_inflate/inflate.c third_party/linux/lib/zlib_inflate/inftrees.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Archive/Common/FindSignature.cpp
     third_party/7zip/CPP/7zip/Archive/Common/ItemNameUtils.cpp
@@ -48,9 +61,9 @@ add_library(sevenzip_iso MODULE
     third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c)
 target_include_directories(sevenzip_iso PRIVATE src third_party/7zip/CPP
     src/CPP/7zip/Archive/Iso third_party/7zip/CPP/7zip/Archive/Iso third_party/linux/fs/isofs
-    src/include third_party/linux/include third_party/linux/lib/zlib_inflate)
+    src/include third_party/linux/include)
 target_compile_definitions(sevenzip_iso PRIVATE CONFIG_ZISOFS Z7_ST)
-target_link_libraries(sevenzip_iso PRIVATE Threads::Threads)
+target_link_libraries(sevenzip_iso PRIVATE Threads::Threads sevenzip_zisofs_zlib)
 set_target_properties(sevenzip_iso PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
 if(UNIX AND NOT APPLE)

@@ -55,7 +55,8 @@ def volume(kind="zisofs"):
             result += record
         assert len(result) <= size
         image[root:root + size] = result + bytes(size - len(result))
-    custom = {"zisofs-shift0": 0, "zisofs-pointer-boundary": 8, "zisofs-expanding": 8, "zisofs-small-sparse": 10,
+    custom = {"zisofs-shift0": 0, "zisofs-pointer-boundary": 8, "zisofs-expanding": 8,
+              "zisofs-expanding-padding": 8, "zisofs-small-sparse": 10,
               "zisofs-shift17": 17, "zisofs-padding": 15, "zisofs-crc": 15,
               "zisofs-short-zlib": 15, "zisofs-short-output": 15, "zisofs-long-output": 15,
               "zisofs-header0": 15}
@@ -82,7 +83,7 @@ def volume(kind="zisofs"):
             if offset == 0 and kind == "zisofs-long-output":
                 chunk += b"X"
             packed = zlib.compress(chunk)
-            if kind == "zisofs-padding":
+            if kind in ("zisofs-padding", "zisofs-expanding-padding"):
                 packed += bytes(3)
             if kind == "zisofs-small-sparse" and not any(chunk):
                 packed = b""

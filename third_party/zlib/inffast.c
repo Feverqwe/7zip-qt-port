@@ -1,33 +1,16 @@
 /* inffast.c -- fast decoding
- * Copyright (C) 1995-2004 Mark Adler
+ * Copyright (C) 1995-2026 Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
-/* Sevenzip adaptation: uintptr_t preserves pointer alignment on LLP64. */
-
-#include <linux/zutil.h>
+#include "zutil.h"
 #include "inftrees.h"
 #include "inflate.h"
 #include "inffast.h"
 
-#ifndef ASMINF
-
-union uu {
-	unsigned short us;
-	unsigned char b[2];
-};
-
-/* Endian independent version */
-static inline unsigned short
-get_unaligned16(const unsigned short *p)
-{
-	union uu  mm;
-	unsigned char *b = (unsigned char *)p;
-
-	mm.b[0] = b[0];
-	mm.b[1] = b[1];
-	return mm.us;
-}
+#ifdef ASMINF
+#  pragma message("Assembler code may have bugs -- use at your own risk")
+#else
 
 /*
    Decode literal, length, and distance codes and write out the resulting
@@ -63,39 +46,36 @@ get_unaligned16(const unsigned short *p)
       bytes, which is the maximum length that can be coded.  inflate_fast()
       requires strm->avail_out >= 258 for each loop to avoid checking for
       output space.
-
-    - @start:	inflate()'s starting value for strm->avail_out
  */
-void inflate_fast(z_streamp strm, unsigned start)
-{
-    struct inflate_state *state;
-    const unsigned char *in;    /* local strm->next_in */
-    const unsigned char *last;  /* while in < last, enough input available */
-    unsigned char *out;         /* local strm->next_out */
-    unsigned char *beg;         /* inflate()'s initial strm->next_out */
-    unsigned char *end;         /* while out < end, enough space available */
+void ZLIB_INTERNAL inflate_fast(z_streamp strm, unsigned start) {
+    struct inflate_state FAR *state;
+    z_const unsigned char FAR *in;      /* local strm->next_in */
+    z_const unsigned char FAR *last;    /* have enough input while in < last */
+    unsigned char FAR *out;     /* local strm->next_out */
+    unsigned char FAR *beg;     /* inflate()'s initial strm->next_out */
+    unsigned char FAR *end;     /* while out < end, enough space available */
 #ifdef INFLATE_STRICT
     unsigned dmax;              /* maximum distance from zlib header */
 #endif
     unsigned wsize;             /* window size or zero if not using window */
     unsigned whave;             /* valid bytes in the window */
-    unsigned write;             /* window write index */
-    unsigned char *window;      /* allocated sliding window, if wsize != 0 */
+    unsigned wnext;             /* window write index */
+    unsigned char FAR *window;  /* allocated sliding window, if wsize != 0 */
     unsigned long hold;         /* local strm->hold */
     unsigned bits;              /* local strm->bits */
-    code const *lcode;          /* local strm->lencode */
-    code const *dcode;          /* local strm->distcode */
+    code const FAR *lcode;      /* local strm->lencode */
+    code const FAR *dcode;      /* local strm->distcode */
     unsigned lmask;             /* mask for first level of length codes */
     unsigned dmask;             /* mask for first level of distance codes */
-    code this;                  /* retrieved table entry */
+    code const *here;           /* retrieved table entry */
     unsigned op;                /* code bits, operation, extra bits, or */
                                 /*  window position, window bytes to copy */
     unsigned len;               /* match length, unused bytes */
     unsigned dist;              /* match distance */
-    unsigned char *from;        /* where to copy match from */
+    unsigned char FAR *from;    /* where to copy match from */
 
     /* copy state to local variables */
-    state = (struct inflate_state *)strm->state;
+    state = (struct inflate_state FAR *)strm->state;
     in = strm->next_in;
     last = in + (strm->avail_in - 5);
     out = strm->next_out;
@@ -106,7 +86,7 @@ void inflate_fast(z_streamp strm, unsigned start)
 #endif
     wsize = state->wsize;
     whave = state->whave;
-    write = state->write;
+    wnext = state->wnext;
     window = state->window;
     hold = state->hold;
     bits = state->bits;
@@ -124,17 +104,20 @@ void inflate_fast(z_streamp strm, unsigned start)
             hold += (unsigned long)(*in++) << bits;
             bits += 8;
         }
-        this = lcode[hold & lmask];
+        here = lcode + (hold & lmask);
       dolen:
-        op = (unsigned)(this.bits);
+        op = (unsigned)(here->bits);
         hold >>= op;
         bits -= op;
-        op = (unsigned)(this.op);
+        op = (unsigned)(here->op);
         if (op == 0) {                          /* literal */
-            *out++ = (unsigned char)(this.val);
+            Tracevv((stderr, here->val >= 0x20 && here->val < 0x7f ?
+                    "inflate:         literal '%c'\n" :
+                    "inflate:         literal 0x%02x\n", here->val));
+            *out++ = (unsigned char)(here->val);
         }
         else if (op & 16) {                     /* length base */
-            len = (unsigned)(this.val);
+            len = (unsigned)(here->val);
             op &= 15;                           /* number of extra bits */
             if (op) {
                 if (bits < op) {
@@ -145,20 +128,21 @@ void inflate_fast(z_streamp strm, unsigned start)
                 hold >>= op;
                 bits -= op;
             }
+            Tracevv((stderr, "inflate:         length %u\n", len));
             if (bits < 15) {
                 hold += (unsigned long)(*in++) << bits;
                 bits += 8;
                 hold += (unsigned long)(*in++) << bits;
                 bits += 8;
             }
-            this = dcode[hold & dmask];
+            here = dcode + (hold & dmask);
           dodist:
-            op = (unsigned)(this.bits);
+            op = (unsigned)(here->bits);
             hold >>= op;
             bits -= op;
-            op = (unsigned)(this.op);
+            op = (unsigned)(here->op);
             if (op & 16) {                      /* distance base */
-                dist = (unsigned)(this.val);
+                dist = (unsigned)(here->val);
                 op &= 15;                       /* number of extra bits */
                 if (bits < op) {
                     hold += (unsigned long)(*in++) << bits;
@@ -171,23 +155,47 @@ void inflate_fast(z_streamp strm, unsigned start)
                 dist += (unsigned)hold & ((1U << op) - 1);
 #ifdef INFLATE_STRICT
                 if (dist > dmax) {
-                    strm->msg = (char *)"invalid distance too far back";
+                    strm->msg = (z_const char *)
+                        "invalid distance too far back";
                     state->mode = BAD;
                     break;
                 }
 #endif
                 hold >>= op;
                 bits -= op;
+                Tracevv((stderr, "inflate:         distance %u\n", dist));
                 op = (unsigned)(out - beg);     /* max distance in output */
                 if (dist > op) {                /* see if copy from window */
                     op = dist - op;             /* distance back in window */
                     if (op > whave) {
-                        strm->msg = (char *)"invalid distance too far back";
-                        state->mode = BAD;
-                        break;
+                        if (state->sane) {
+                            strm->msg = (z_const char *)
+                                "invalid distance too far back";
+                            state->mode = BAD;
+                            break;
+                        }
+#ifdef INFLATE_ALLOW_INVALID_DISTANCE_TOOFAR_ARRR
+                        if (len <= op - whave) {
+                            do {
+                                *out++ = 0;
+                            } while (--len);
+                            continue;
+                        }
+                        len -= op - whave;
+                        do {
+                            *out++ = 0;
+                        } while (--op > whave);
+                        if (op == 0) {
+                            from = out - dist;
+                            do {
+                                *out++ = *from++;
+                            } while (--len);
+                            continue;
+                        }
+#endif
                     }
                     from = window;
-                    if (write == 0) {           /* very common case */
+                    if (wnext == 0) {           /* very common case */
                         from += wsize - op;
                         if (op < len) {         /* some from window */
                             len -= op;
@@ -197,17 +205,17 @@ void inflate_fast(z_streamp strm, unsigned start)
                             from = out - dist;  /* rest from output */
                         }
                     }
-                    else if (write < op) {      /* wrap around window */
-                        from += wsize + write - op;
-                        op -= write;
+                    else if (wnext < op) {      /* wrap around window */
+                        from += wsize + wnext - op;
+                        op -= wnext;
                         if (op < len) {         /* some from end of window */
                             len -= op;
                             do {
                                 *out++ = *from++;
                             } while (--op);
                             from = window;
-                            if (write < len) {  /* some from start of window */
-                                op = write;
+                            if (wnext < len) {  /* some from start of window */
+                                op = wnext;
                                 len -= op;
                                 do {
                                     *out++ = *from++;
@@ -217,7 +225,7 @@ void inflate_fast(z_streamp strm, unsigned start)
                         }
                     }
                     else {                      /* contiguous in window */
-                        from += write - op;
+                        from += wnext - op;
                         if (op < len) {         /* some from window */
                             len -= op;
                             do {
@@ -239,71 +247,41 @@ void inflate_fast(z_streamp strm, unsigned start)
                     }
                 }
                 else {
-		    unsigned short *sout;
-		    unsigned long loops;
-
                     from = out - dist;          /* copy direct from output */
-		    /* minimum length is three */
-		    /* Align out addr */
-		    if (!((uintptr_t)(out - 1) & 1)) {
-			*out++ = *from++;
-			len--;
-		    }
-		    sout = (unsigned short *)(out);
-		    if (dist > 2) {
-			unsigned short *sfrom;
-
-			sfrom = (unsigned short *)(from);
-			loops = len >> 1;
-			do {
-			    if (IS_ENABLED(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS))
-				*sout++ = *sfrom++;
-			    else
-				*sout++ = get_unaligned16(sfrom++);
-			} while (--loops);
-			out = (unsigned char *)sout;
-			from = (unsigned char *)sfrom;
-		    } else { /* dist == 1 or dist == 2 */
-			unsigned short pat16;
-
-			pat16 = *(sout-1);
-			if (dist == 1) {
-				union uu mm;
-				/* copy one char pattern to both bytes */
-				mm.us = pat16;
-				mm.b[0] = mm.b[1];
-				pat16 = mm.us;
-			}
-			loops = len >> 1;
-			do
-			    *sout++ = pat16;
-			while (--loops);
-			out = (unsigned char *)sout;
-		    }
-		    if (len & 1)
-			*out++ = *from++;
+                    do {                        /* minimum length is three */
+                        *out++ = *from++;
+                        *out++ = *from++;
+                        *out++ = *from++;
+                        len -= 3;
+                    } while (len > 2);
+                    if (len) {
+                        *out++ = *from++;
+                        if (len > 1)
+                            *out++ = *from++;
+                    }
                 }
             }
             else if ((op & 64) == 0) {          /* 2nd level distance code */
-                this = dcode[this.val + (hold & ((1U << op) - 1))];
+                here = dcode + here->val + (hold & ((1U << op) - 1));
                 goto dodist;
             }
             else {
-                strm->msg = (char *)"invalid distance code";
+                strm->msg = (z_const char *)"invalid distance code";
                 state->mode = BAD;
                 break;
             }
         }
         else if ((op & 64) == 0) {              /* 2nd level length code */
-            this = lcode[this.val + (hold & ((1U << op) - 1))];
+            here = lcode + here->val + (hold & ((1U << op) - 1));
             goto dolen;
         }
         else if (op & 32) {                     /* end-of-block */
+            Tracevv((stderr, "inflate:         end of block\n"));
             state->mode = TYPE;
             break;
         }
         else {
-            strm->msg = (char *)"invalid literal/length code";
+            strm->msg = (z_const char *)"invalid literal/length code";
             state->mode = BAD;
             break;
         }
@@ -330,7 +308,7 @@ void inflate_fast(z_streamp strm, unsigned start)
    inflate_fast() speedups that turned out slower (on a PowerPC G3 750CXe):
    - Using bit fields for code structure
    - Different op definition to avoid & for extra bits (do & for table bits)
-   - Three separate decoding do-loops for direct, window, and write == 0
+   - Three separate decoding do-loops for direct, window, and wnext == 0
    - Special case for distance > 1 copies to do overlapped load and store copy
    - Explicit branch predictions (based on measured branch probabilities)
    - Deferring match copy and interspersed it with decoding subsequent codes
