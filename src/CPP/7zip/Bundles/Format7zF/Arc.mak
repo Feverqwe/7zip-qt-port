@@ -207,6 +207,7 @@ COMPRESS_OBJS = \
   $O\DeflateEncoder.obj \
   $O\DeflateRegister.obj \
   $O\DeltaFilter.obj \
+  $O\ImplodeDecoder.obj \
   $O\LzfseDecoder.obj \
   $O\LzhDecoder.obj \
   $O\Lzma2Decoder.obj \
@@ -221,6 +222,7 @@ COMPRESS_OBJS = \
   $O\PpmdDecoder.obj \
   $O\PpmdEncoder.obj \
   $O\PpmdRegister.obj \
+  $O\PpmdZip.obj \
   $O\QuantumDecoder.obj \
   $O\Rar1Decoder.obj \
   $O\Rar2Decoder.obj \
@@ -228,6 +230,7 @@ COMPRESS_OBJS = \
   $O\Rar3Vm.obj \
   $O\Rar5Decoder.obj \
   $O\RarCodecsRegister.obj \
+  $O\ShrinkDecoder.obj \
   $O\XpressDecoder.obj \
   $O\XzDecoder.obj \
   $O\XzEncoder.obj \
@@ -282,6 +285,7 @@ C_OBJS = \
   $O\Ppmd7Enc.obj \
   $O\Ppmd8.obj \
   $O\Ppmd8Dec.obj \
+  $O\Ppmd8Enc.obj \
   $O\Sha3.obj \
   $O\Sha512.obj \
   $O\Sha512Opt.obj \

@@ -1,14 +1,15 @@
 # Retired format support — 2026-10-24
 
 The user selected these compatibility reductions to reduce maintained format
-code. This is an intentional product difference from upstream 7-Zip, not an
-upstream decoder limitation or a completed migration to another library.
+code. The same-day review narrowed the ZIP change to creation: legacy ZIP
+reading is retained. This is an intentional product difference from upstream
+7-Zip, not an upstream decoder limitation or a completed library migration.
 
 | Removed scope | Retained scope and source decision |
 | --- | --- |
 | SquashFS 1–3, big-endian and patched legacy magic/layouts | Standard little-endian SquashFS 4.0 and its existing zlib/LZO/LZ4/XZ/Zstd paths. Removed old superblock/inode/directory/ID/fragment parsing, eager metadata and block maps, heuristic LZMA selection and private LZO decoder. The Linux v4 metadata services and partial-access behavior stay connected. |
 | Plain classic HFS | HFS+, HFSX and HFS wrappers containing those volumes. Removed `OpenClassic`, its C input adapter and the separate `src/fs/hfs` read implementation. Wrapper bounds/protection and HFS+ metadata, forks, compression and hardlink readers remain. |
-| ZIP Shrink, Implode, PPMd, LZFSE and Zstandard method 20 | ZIP catalog/metadata remain readable; extracting a removed method reports unsupported with no payload. Removed writer methods are rejected before output. WinZip AES method 99 resolves its actual compression method before this check; AES remains supported. Zstandard method 93, Deflate64 and other retained methods remain. |
+| ZIP PPMd creation | Reading Shrink, Implode, PPMd, LZFSE and Zstandard method 20 remains supported. Zstandard creation uses method 93. Explicit PPMd writer requests are rejected before output; saved PPMd UI profiles fall back to a supported method. WinZip AES and other retained methods remain supported. |
 | CramFS | Removed both handlers, C reader, module/build/install/device integration and dedicated positive suites. A generated valid image is retained as a rejection fixture. |
 | High Sierra | ISO9660, Joliet, Rock Ridge, zisofs, logical blocks, multi-extent files and El Torito remain. Removed the CDROM descriptor probe, record-layout conversion and high-Sierra arguments/state from the Linux C boundary. |
 
@@ -21,19 +22,20 @@ resolution, UI method selection, CMake consumers and Console/Format7zF makefile
 closure. After removal, reviewed the remaining v4 and HFS+ branches and checked
 that removed formats cannot be supplied by the built-in runtime fallback.
 
-ZIP `ZipHandler.cpp`, `ZipHandlerOut.cpp` and `ZipUpdate.cpp` move from unchanged
-dependencies to adapted owners under `src/CPP/7zip/Archive/Zip`; their baseline
-original hashes stay pinned in `upstream-baseline.json`. The adaptation removes
-codec construction, ZIP PPMd encoding/resource calculation and numeric/name
-selection for removed methods. Method-name metadata remains useful for reporting
-unsupported entries. ZIP `ZipAddCommon.cpp` retains the existing encoder flow
-for supported methods.
+ZIP `ZipHandler.cpp` and `ZipHandlerOut.cpp` are adapted owners under
+`src/CPP/7zip/Archive/Zip`; their original hashes stay pinned in
+`upstream-baseline.json`. The decoder matches the pinned upstream body except
+that method 20 shares the existing method 93 Zstandard decoder. Writer selection
+rejects PPMd (and the already unsupported legacy writer IDs) before output.
+`ZipUpdate.cpp` returns to an unchanged dependency, and `ZipAddCommon.cpp`
+returns to its pre-removal adaptation. This avoids maintaining redundant changes
+to encoding and resource calculations behind the writer gate.
 
 The complete original `CPP/7zip/Bundles/Format7zF/Arc.mak` and `Arc_gcc.mak`
 units are newly pinned by original SHA256 in that manifest, at the same commit,
-and adapted under the corresponding `src` paths. Only obsolete object entries
-are removed. Both native runtime builders consume these overlays, including
-Console, so the independent sidecar has the same reduced format scope.
+and adapted under the corresponding `src` paths. Only the CramFS and SDK
+SquashFS handler entries are removed. Both runtime builders consume the
+overlays, including Console, so the sidecar has the same reduced format scope.
 The SDK SquashFS handler is omitted entirely from these bundles: the deployed
 GPL v4 module is the authoritative reader. No GPL source is copied into the SDK
 runtime overlay. No sibling upstream files were changed.
@@ -42,10 +44,12 @@ Configuration also retires the former project-built `sevenzip_cramfs` plugin
 from this checkout's generated runtime, so incremental builds cannot rediscover
 that stale module. External runtime directories are not modified.
 
-Removed standalone dependencies include ZIP Shrink/Implode/PpmdZip and Ppmd8
-encoding. Ppmd8 decoding remains for standalone `.pmd`; PPMd for 7z also remains.
-The shared LZFSE decoder remains for HFS+/DMG consumers. Shared LZO, LZMA,
-Deflate, XZ and Zstd dependencies remain where retained formats use them.
+Shrink, Implode and PpmdZip units are restored unchanged from the same pinned
+baseline, with their existing hashes/revision recorded in the manifest.
+The complete upstream PpmdZip unit contains both decoder and encoder bodies;
+its Ppmd8 encoding dependency is retained to avoid splitting/forking the unit.
+The public ZIP writer gate, including the sidecar, disables PPMd creation.
+Standalone `.pmd`, PPMd for 7z and shared LZFSE/LZO/LZMA/Deflate/XZ/Zstd remain.
 
 Linux source baseline remains
 `58161ead29e50d70a317ea26b472e0c7508e69da` from
@@ -72,12 +76,13 @@ because local compatibility was narrowed.
 
 ## Behavior evidence and validation
 
-The ZIP rejection fixtures for Shrink/Implode/LZFSE produced `A` with the
+The ZIP compatibility fixtures for Shrink/Implode/LZFSE produced `A` with the
 pre-removal 26.05 runtime; PPMd bytes came from its official ZIP encoder for
 30,000 `A` bytes. The CramFS fixture also extracted correctly before removal.
-These fixtures check a deliberate behavior change, not source text or file
-presence. Negative rows cover static ZIP extraction and the independent
-sidecar, explicit numeric/name writer requests, and unchanged input bytes.
+These fixtures check decoded bytes through static ZIP extraction and the
+independent sidecar, with Unicode/spaces in entry/archive names and unchanged
+input bytes. A mismatched entry CRC must fail verification. Negative writer
+rows cover explicit numeric/name requests without output.
 Existing AES/Zstd and other retained format tests protect shared consumers.
 
 The classic HFS and generated High Sierra fixtures now verify rejection.
@@ -94,16 +99,18 @@ extracts its own source and owns its operation state. Repeated deployment
 discovery belongs to codec-discovery coverage; these format matrices discover
 the deployment once without increasing their suite timeouts.
 
-Baseline verification and proposed-revision comparison pass at the pinned
-7-Zip revision (404 exact units, 272 adapted units and 15 local units).
+Baseline verification passes at the pinned 7-Zip revision (412 exact units,
+271 adapted units and 15 local units); original baseline comparison tooling
+is unchanged.
 The affected libraries, desktop application and operation host build on macOS.
 Focused macOS runs pass the removal tests, retained ZIP writer/AES/Zstd tests,
 HFS+/SquashFS/ISO controls and compression-profile regressions. Reconfiguration
 with a deliberately restored old project CramFS module also passes the runtime
 rejection check, confirming incremental-build cleanup.
 
-Linux and Windows runs pass the removed-format/method checks and the retained
-format controls. Two unrelated failures were reproduced with unchanged main
+Before the ZIP scope revision, Linux and Windows runs passed the removal
+checks and retained format controls. Two unrelated failures were reproduced
+with unchanged main
 checkout binaries on macOS: `compression_encryption::methodsAndShowPassword`
 restores ZipCrypto instead of AES-256, and
 `iso_stream::backendExtraction(names-joliet-surrogates)` cannot open an output
@@ -116,3 +123,13 @@ suites. Linux and Windows pass `hfs_stream` and the focused English/Russian
 `filesystem_hfs_read_ui`; the two broader `filesystem_read_ui` suites on both
 guests still hit their existing 60-second limits. Those broad runs are incomplete
 validation, not successful acceptance.
+
+After the ZIP scope revision, macOS passes all five focused suites:
+`legacy_zip_methods`, restored `zip_shrink`, `native_zip_writer`, `zip_zstd`
+and `compression_profile_selection`. Coverage includes correct legacy payloads
+through the static handler and shipped sidecar, CRC failure, Shrink dictionary
+boundaries/malformed streams/cancellation, retained AES/Zstd and saved-profile
+fallback. Static and sidecar PPMd creation fail without archive output.
+The restored upstream units and method-ID alias are platform-independent;
+Linux/Windows were not rerun for this revision, and their earlier evidence
+above must not be read as acceptance of the restored ZIP paths.

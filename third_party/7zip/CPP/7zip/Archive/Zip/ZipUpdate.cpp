@@ -1157,27 +1157,42 @@ static HRESULT Update2(
           numFilesToCompress, numBytesToCompress);
     }
     */
-    else if (method == NFileHeader::NCompressionMethod::kDeflate ||
-             method == NFileHeader::NCompressionMethod::kDeflate64) {
-        if (numThreads > 1 && options._memUsage_WasSet && !options._numThreads_WasForced) {
-            const UInt64 methodMemUsage = (4 << 20); // for deflate
-            const UInt64 threadMemUsage = kMemPerThread + methodMemUsage;
-            const UInt64 numThreads64 = options._memUsage_Compress / threadMemUsage;
-            if (numThreads64 < numThreads)
-                numThreads = (UInt32)numThreads64;
-        }
-    } else if (method == NFileHeader::NCompressionMethod::kLZMA) {
-        // we suppose that default LZMA is 2 thread. So we don't change it
-        const UInt32 numLZMAThreads = oneMethodMain->Get_Lzma_NumThreads();
-        numThreads /= numLZMAThreads;
+    else if (
+           method == NFileHeader::NCompressionMethod::kDeflate
+        || method == NFileHeader::NCompressionMethod::kDeflate64
+        || method == NFileHeader::NCompressionMethod::kPPMd)
+    {
+      if (numThreads > 1
+          && options._memUsage_WasSet
+          && !options._numThreads_WasForced)
+      {
+        UInt64 methodMemUsage;
+        if (method == NFileHeader::NCompressionMethod::kPPMd)
+          methodMemUsage = oneMethodMain->Get_Ppmd_MemSize();
+        else
+          methodMemUsage = (4 << 20); // for deflate
+        const UInt64 threadMemUsage = kMemPerThread + methodMemUsage;
+        const UInt64 numThreads64 = options._memUsage_Compress / threadMemUsage;
+        if (numThreads64 < numThreads)
+          numThreads = (UInt32)numThreads64;
+      }
+    }
+    else if (method == NFileHeader::NCompressionMethod::kLZMA)
+    {
+      // we suppose that default LZMA is 2 thread. So we don't change it
+      const UInt32 numLZMAThreads = oneMethodMain->Get_Lzma_NumThreads();
+      numThreads /= numLZMAThreads;
 
-        if (numThreads > 1 && options._memUsage_WasSet && !options._numThreads_WasForced) {
-            const UInt64 methodMemUsage = oneMethodMain->Get_Lzma_MemUsage(true);
-            const UInt64 threadMemUsage = kMemPerThread + methodMemUsage;
-            const UInt64 numThreads64 = options._memUsage_Compress / threadMemUsage;
-            if (numThreads64 < numThreads)
-                numThreads = (UInt32)numThreads64;
-        }
+      if (numThreads > 1
+          && options._memUsage_WasSet
+          && !options._numThreads_WasForced)
+      {
+        const UInt64 methodMemUsage = oneMethodMain->Get_Lzma_MemUsage(true);
+        const UInt64 threadMemUsage = kMemPerThread + methodMemUsage;
+        const UInt64 numThreads64 = options._memUsage_Compress / threadMemUsage;
+        if (numThreads64 < numThreads)
+          numThreads = (UInt32)numThreads64;
+      }
     }
    } // (oneMethodMain)
 

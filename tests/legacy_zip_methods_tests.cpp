@@ -52,11 +52,11 @@ class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
 };
 } // namespace
 
-class RemovedZipMethodsTests final : public QObject {
+class LegacyZipMethodsTests final : public QObject {
     Q_OBJECT
   private slots:
     void initTestCase() { CrcGenerateTable(); }
-    void unsupportedEntries_data() {
+    void readsLegacyEntries_data() {
         QTest::addColumn<quint16>("method");
         QTest::addColumn<QByteArray>("packed");
         QTest::addColumn<QByteArray>("plain");
@@ -74,7 +74,7 @@ class RemovedZipMethodsTests final : public QObject {
         QTest::newRow("zstd-method-20")
             << quint16(20) << QByteArray::fromHex("28b52ffd200109000041") << QByteArray("A");
     }
-    void unsupportedEntries() {
+    void readsLegacyEntries() {
         QFETCH(quint16, method);
         QFETCH(QByteArray, packed);
         QFETCH(QByteArray, plain);
@@ -87,8 +87,10 @@ class RemovedZipMethodsTests final : public QObject {
         callback.SetFromCls(new Extract);
         const UInt32 index = 0;
         QCOMPARE(reader->Extract(&index, 1, 0, callback), S_OK);
-        QCOMPARE(callback->Result, Int32(NArchive::NExtract::NOperationResult::kUnsupportedMethod));
-        QCOMPARE(callback->Output->GetSize(), size_t(0));
+        QCOMPARE(callback->Result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(QByteArray(reinterpret_cast<const char *>(callback->Output->GetBuffer()),
+                            qsizetype(callback->Output->GetSize())),
+                 plain);
 
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
@@ -101,11 +103,21 @@ class RemovedZipMethodsTests final : public QObject {
                      {"x", "-so", "-bso0", "-bse2", "--", file.fileName()});
         QVERIFY(engine.waitForFinished(10000));
         QCOMPARE(engine.exitStatus(), QProcess::NormalExit);
-        QVERIFY(engine.exitCode() != 0);
-        QVERIFY(engine.readAllStandardOutput().isEmpty());
-        QVERIFY(engine.readAllStandardError().contains("Unsupported Method"));
+        QCOMPARE(engine.exitCode(), 0);
+        QCOMPARE(engine.readAllStandardOutput(), plain);
         QVERIFY(file.open(QIODevice::ReadOnly));
         QCOMPARE(file.readAll(), image);
+
+        // A decodable payload with a mismatched recorded CRC must not become
+        // a successful extraction when restoring an old compression method.
+        QByteArray wrongPlain = plain;
+        wrongPlain[0] = char(wrongPlain[0] ^ 1);
+        const QByteArray badCrcImage = archive(method, packed, wrongPlain);
+        input->Init(reinterpret_cast<const Byte *>(badCrcImage.constData()), badCrcImage.size());
+        QCOMPARE(reader->Open(input, nullptr, nullptr), S_OK);
+        callback.SetFromCls(new Extract);
+        QCOMPARE(reader->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->Result, Int32(NArchive::NExtract::NOperationResult::kCRCError));
     }
     void removedWriterMethods_data() {
         QTest::addColumn<QString>("method");
@@ -128,7 +140,28 @@ class RemovedZipMethodsTests final : public QObject {
         QCOMPARE(writer->UpdateItems(output, 1, callback), E_NOTIMPL);
         QCOMPARE(output->GetSize(), size_t(0));
     }
+    void sidecarRejectsPpmdCreation() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const QString inputPath = directory.filePath(QStringLiteral("данные 空.txt"));
+        QFile input(inputPath);
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        QCOMPARE(input.write(QByteArray(30000, 'A')), qint64(30000));
+        input.close();
+        const QString archivePath = directory.filePath(QStringLiteral("архив 空.zip"));
+        QProcess engine;
+        engine.start(QString::fromUtf8(SEVENZIP_ZIP_VERIFY_ENGINE),
+                     {"a", "-tzip", "-mm=PPMd", "-bso0", "-bse2", "--", archivePath, inputPath});
+        QVERIFY(engine.waitForFinished(10000));
+        QCOMPARE(engine.exitStatus(), QProcess::NormalExit);
+        QVERIFY(engine.exitCode() != 0);
+        QVERIFY(engine.readAllStandardError().contains("Not implemented"));
+        QFile output(archivePath);
+        QVERIFY(!output.exists() || output.size() == 0);
+        QVERIFY(input.open(QIODevice::ReadOnly));
+        QCOMPARE(input.readAll(), QByteArray(30000, 'A'));
+    }
 };
 
-QTEST_GUILESS_MAIN(RemovedZipMethodsTests)
-#include "removed_zip_methods_tests.moc"
+QTEST_GUILESS_MAIN(LegacyZipMethodsTests)
+#include "legacy_zip_methods_tests.moc"

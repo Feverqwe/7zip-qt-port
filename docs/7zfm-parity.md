@@ -484,9 +484,9 @@ Apply/Cancel и исходная обработка ошибок сохране�
 [Происхождение и проверки](upstream-port-audit/exfat-linux.md).
 
 По продуктовому решению от 2026-10-24 удалены CramFS, classic HFS,
-SquashFS до v4 и его старые нестандартные варианты, High Sierra и ZIP
-Shrink/Implode/PPMd/LZFSE/Zstandard method 20. Для ZIP сохраняется просмотр
-метаданных таких записей; извлечение сообщает неподдерживаемый метод.
+SquashFS до v4 и его старые нестандартные варианты, High Sierra.
+Чтение ZIP Shrink/Implode/PPMd/LZFSE и Zstandard method 20 сохранено;
+создание ZIP PPMd отключено. Zstandard записывается как method 93.
 HFS+ wrappers и ZIP AES сохраняются.
 [Точный scope и проверки](upstream-port-audit/retired-formats.md).
 

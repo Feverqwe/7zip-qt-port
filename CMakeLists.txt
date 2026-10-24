@@ -4146,12 +4146,18 @@ if(BUILD_TESTING)
         "SEVENZIP_ZIP_VERIFY_ENGINE=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z${CMAKE_EXECUTABLE_SUFFIX}\"")
     add_test(NAME native_zip_writer COMMAND native_zip_writer_tests -silent)
     set_tests_properties(native_zip_writer PROPERTIES TIMEOUT 30)
-    qt_add_executable(removed_zip_methods_tests tests/removed_zip_methods_tests.cpp)
-    target_link_libraries(removed_zip_methods_tests PRIVATE sevenzip_zip Qt6::Test)
-    target_compile_definitions(removed_zip_methods_tests PRIVATE
+    qt_add_executable(legacy_zip_methods_tests tests/legacy_zip_methods_tests.cpp)
+    target_link_libraries(legacy_zip_methods_tests PRIVATE sevenzip_zip Qt6::Test)
+    target_compile_definitions(legacy_zip_methods_tests PRIVATE
         "SEVENZIP_ZIP_VERIFY_ENGINE=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z${CMAKE_EXECUTABLE_SUFFIX}\"")
-    add_test(NAME removed_zip_methods COMMAND removed_zip_methods_tests -silent)
-    set_tests_properties(removed_zip_methods PROPERTIES TIMEOUT 30)
+    add_test(NAME legacy_zip_methods COMMAND legacy_zip_methods_tests -silent)
+    set_tests_properties(legacy_zip_methods PROPERTIES TIMEOUT 30)
+    qt_add_executable(zip_shrink_tests tests/zip_shrink_tests.cpp)
+    target_link_libraries(zip_shrink_tests PRIVATE sevenzip_zip Qt6::Test)
+    target_compile_definitions(zip_shrink_tests PRIVATE
+        "SEVENZIP_ZIP_VERIFY_ENGINE=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z${CMAKE_EXECUTABLE_SUFFIX}\"")
+    add_test(NAME zip_shrink COMMAND zip_shrink_tests -silent)
+    set_tests_properties(zip_shrink PROPERTIES TIMEOUT 30)
     add_test(NAME removed_formats COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/removed_formats_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)

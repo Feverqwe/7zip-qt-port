@@ -252,6 +252,7 @@ COMPRESS_OBJS = \
   $O/DeflateEncoder.o \
   $O/DeflateRegister.o \
   $O/DeltaFilter.o \
+  $O/ImplodeDecoder.o \
   $O/LzfseDecoder.o \
   $O/LzhDecoder.o \
   $O/Lzma2Decoder.o \
@@ -266,7 +267,9 @@ COMPRESS_OBJS = \
   $O/PpmdDecoder.o \
   $O/PpmdEncoder.o \
   $O/PpmdRegister.o \
+  $O/PpmdZip.o \
   $O/QuantumDecoder.o \
+  $O/ShrinkDecoder.o \
   $O/XpressDecoder.o \
   $O/XzDecoder.o \
   $O/XzEncoder.o \
@@ -345,6 +348,7 @@ C_OBJS = \
   $O/Ppmd7Enc.o \
   $O/Ppmd8.o \
   $O/Ppmd8Dec.o \
+  $O/Ppmd8Enc.o \
   $O/Sha1.o \
   $O/Sha1Opt.o \
   $O/Sha256.o \

@@ -19,6 +19,9 @@ add_library(sevenzip_zip STATIC
     third_party/7zip/C/LzmaEnc.c
     third_party/7zip/C/MtCoder.c
     third_party/7zip/C/MtDec.c
+    third_party/7zip/C/Ppmd8.c
+    third_party/7zip/C/Ppmd8Dec.c
+    third_party/7zip/C/Ppmd8Enc.c
     third_party/7zip/C/Xz.c
     src/C/XzDec.c
     third_party/7zip/C/XzEnc.c
@@ -34,7 +37,7 @@ add_library(sevenzip_zip STATIC
     third_party/7zip/CPP/7zip/Archive/Zip/ZipIn.cpp
     third_party/7zip/CPP/7zip/Archive/Zip/ZipItem.cpp
     third_party/7zip/CPP/7zip/Archive/Zip/ZipOut.cpp
-    src/CPP/7zip/Archive/Zip/ZipUpdate.cpp
+    third_party/7zip/CPP/7zip/Archive/Zip/ZipUpdate.cpp
     third_party/7zip/CPP/7zip/Common/CWrappers.cpp
     third_party/7zip/CPP/7zip/Common/InBuffer.cpp
     third_party/7zip/CPP/7zip/Common/MemBlocks.cpp
@@ -45,10 +48,14 @@ add_library(sevenzip_zip STATIC
     third_party/7zip/CPP/7zip/Common/ProgressMt.cpp
     third_party/7zip/CPP/7zip/Common/ProgressUtils.cpp
     third_party/7zip/CPP/7zip/Compress/BitlDecoder.cpp
+    third_party/7zip/CPP/7zip/Compress/ImplodeDecoder.cpp
     third_party/7zip/CPP/7zip/Compress/LzOutWindow.cpp
+    third_party/7zip/CPP/7zip/Compress/LzfseDecoder.cpp
     third_party/7zip/CPP/7zip/Compress/Lzma2Encoder.cpp
     src/CPP/7zip/Compress/LzmaDecoder.cpp
     third_party/7zip/CPP/7zip/Compress/LzmaEncoder.cpp
+    third_party/7zip/CPP/7zip/Compress/PpmdZip.cpp
+    third_party/7zip/CPP/7zip/Compress/ShrinkDecoder.cpp
     src/CPP/7zip/Compress/XzDecoder.cpp
     third_party/7zip/CPP/7zip/Compress/XzEncoder.cpp
     src/CPP/7zip/Compress/ZstdDecoder.cpp
