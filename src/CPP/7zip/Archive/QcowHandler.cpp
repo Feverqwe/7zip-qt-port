@@ -11,6 +11,7 @@
 #include "../../Common/ComTry.h"
 #include "../../Common/IntToString.h"
 #include "../../Common/MyBuffer2.h"
+#include "../../Common/UTFConvert.h"
 
 #include "../../Windows/PropVariant.h"
 #include "../../Windows/PropVariantUtils.h"
@@ -22,6 +23,8 @@
 
 #include "../Compress/DeflateDecoder.h"
 
+#include "../../../block/qcow.h"
+#include "../../../block/qcow2.h"
 #include "HandlerCont.h"
 
 #define Get32(p) GetBe32a(p)
@@ -48,6 +51,8 @@ Z7_class_CHandler_final : public CHandlerImg {
 
     unsigned _clusterBits;
     unsigned _numMidBits;
+    unsigned _l2EntryBits;
+    bool _extendedL2;
     UInt64 _compressedFlag;
 
     CObjArray2<UInt32> _dir;
@@ -74,6 +79,17 @@ Z7_class_CHandler_final : public CHandlerImg {
     UInt32 _version;
     UInt32 _cryptMethod;
     UInt64 _incompatFlags;
+    Qcow2HeaderExtensions _extensions{};
+    CMyComPtr<IInStream> _backingStream;
+    CMyComPtr<IInStream> _dataStream;
+    UInt64 _backingSize = 0;
+    UInt64 _dataSize = 0;
+    bool _externalData = false;
+    UString _backingName;
+    UString _sourceName;
+    UString _errorMessage;
+    unsigned _level = 0;
+    CHandler *_child = NULL;
 
     HRESULT Seek2(UInt64 offset) {
         _posInArc = offset;
@@ -86,10 +102,14 @@ Z7_class_CHandler_final : public CHandlerImg {
     }
 
     HRESULT Open2(IInStream * stream, IArchiveOpenCallback * openCallback) Z7_override;
+    HRESULT OpenReference(IArchiveOpenCallback * openCallback, const UString &name,
+                          CMyComPtr<IInStream> &input, UString &resolvedName);
+    HRESULT OpenParent(IArchiveOpenCallback * openCallback);
 
   public:
     CHandler() : _zstd(NULL) {}
     ~CHandler() {
+        qcow2_free_extensions(&_extensions);
         if (_zstd)
             ZstdDec_Destroy(_zstd);
     }
@@ -112,6 +132,7 @@ Z7_COM7F_IMF(CHandler::Read(void *data, UInt32 size, UInt32 *processedSize)) {
     }
 
     for (;;) {
+        bool inherit = true;
         const UInt64 cluster = _virtPos >> _clusterBits;
         const size_t clusterSize = (size_t)1 << _clusterBits;
         const size_t lowBits = (size_t)_virtPos & (clusterSize - 1);
@@ -131,13 +152,12 @@ Z7_COM7F_IMF(CHandler::Read(void *data, UInt32 size, UInt32 *processedSize)) {
             const UInt32 tabl = _dir[(size_t)high];
             if (tabl != kEmptyDirItem) {
                 const size_t midBits = (size_t)cluster & (((size_t)1 << _numMidBits) - 1);
-                const Byte *p = _table + ((((size_t)tabl << _numMidBits) + midBits) << 3);
+                const Byte *p =
+                    _table + ((((size_t)tabl << _numMidBits) + midBits) << _l2EntryBits);
                 UInt64 v = Get64(p);
 
-                if (v) {
+                if (v || _extendedL2) {
                     if (v & _compressedFlag) {
-                        if (_version <= 1)
-                            return E_FAIL;
                         /*
                         the example of table record for 12-bit clusters (4KB uncompressed):
                           2 bits : isCompressed status
@@ -147,13 +167,22 @@ Z7_COM7F_IMF(CHandler::Read(void *data, UInt32 size, UInt32 *processedSize)) {
                           (49 == 61 - _clusterBits) bits : offset of 512-byte sector
                           9 bits : offset in 512-byte sector
                         */
-                        const unsigned numOffsetBits = 62 - (_clusterBits - 8);
-                        const UInt64 offset = v & (((UInt64)1 << 62) - 1);
-                        const size_t dataSize = ((size_t)(offset >> numOffsetBits) + 1) << 9;
-                        UInt64 sectorOffset = offset & (((UInt64)1 << numOffsetBits) - (1 << 9));
+                        UInt64 sectorOffset;
+                        size_t dataSize;
+                        size_t offsetInSector = 0;
+                        if (_version == 1) {
+                            // QCOW1 stores an exact byte count and byte offset.
+                            sectorOffset = qcow_get_compressed_cluster(v, _clusterBits, &dataSize);
+                        } else {
+                            const unsigned numOffsetBits = 62 - (_clusterBits - 8);
+                            const UInt64 offset = v & (((UInt64)1 << 62) - 1);
+                            dataSize = ((size_t)(offset >> numOffsetBits) + 1) << 9;
+                            sectorOffset = offset & (((UInt64)1 << numOffsetBits) - (1 << 9));
+                            offsetInSector = (size_t)offset & ((1 << 9) - 1);
+                        }
                         const UInt64 offset2inCache = sectorOffset - _comprPos;
 
-                        // _comprPos is aligned for 512-bytes
+                        // QCOW2 _comprPos is aligned for 512-bytes; QCOW1 is byte-aligned.
                         // we try to use previous _cacheCompressed that contains compressed data
                         // that was read for previous unpacking
 
@@ -191,8 +220,6 @@ Z7_COM7F_IMF(CHandler::Read(void *data, UInt32 size, UInt32 *processedSize)) {
                             _comprSize += dataSize2;
                         }
 
-                        const size_t kSectorMask = (1 << 9) - 1;
-                        const size_t offsetInSector = (size_t)offset & kSectorMask;
                         _bufInStream->Init(_cacheCompressed + offsetInSector,
                                            dataSize - offsetInSector);
                         _cacheCluster = (UInt64)(Int64)-1;
@@ -236,7 +263,7 @@ Z7_COM7F_IMF(CHandler::Read(void *data, UInt32 size, UInt32 *processedSize)) {
                         _bufOutStreamSpec->GetPos());
                         */
                         if (res == S_OK && _compressionType == 0)
-                            if (!_deflateDecoder->IsFinished() ||
+                            if ((_version >= 2 && !_deflateDecoder->IsFinished()) ||
                                 _bufOutStream->GetPos() != clusterSize)
                                 res = S_FALSE;
                         RINOK(res)
@@ -248,16 +275,43 @@ Z7_COM7F_IMF(CHandler::Read(void *data, UInt32 size, UInt32 *processedSize)) {
                         */
                     }
 
-                    // version_3 supports zero clusters
-                    if (((UInt32)v & 511) != 1) {
+                    // QEMU classifies extended entries per subcluster. Never expose
+                    // stale host bytes from an unallocated or explicitly zero range.
+                    bool allocated = ((UInt32)v & 511) != 1;
+                    if (_version >= 2) {
+                        unsigned subcluster = 0;
+                        if (_extendedL2) {
+                            const size_t subclusterSize = clusterSize >> 5;
+                            subcluster = (unsigned)(lowBits / subclusterSize);
+                            const size_t rem = subclusterSize - (lowBits & (subclusterSize - 1));
+                            if (size > rem)
+                                size = (UInt32)rem;
+                        }
+                        const QCow2SubclusterType type =
+                            qcow2_get_subcluster_type(_extendedL2, _externalData, v,
+                                                      _extendedL2 ? Get64(p + 8) : 0, subcluster);
+                        if (type == QCOW2_SUBCLUSTER_INVALID)
+                            return S_FALSE;
+                        allocated = type == QCOW2_SUBCLUSTER_NORMAL;
+                        inherit = type == QCOW2_SUBCLUSTER_UNALLOCATED_PLAIN ||
+                                  type == QCOW2_SUBCLUSTER_UNALLOCATED_ALLOC;
+                    } else {
+                        inherit = v == 0;
+                    }
+                    if (allocated) {
                         v &= _compressedFlag - 1;
                         v += lowBits;
-                        if (v != _posInArc) {
+                        if (_externalData) {
+                            RINOK(InStream_SeekSet(_dataStream, v))
+                        } else if (v != _posInArc) {
                             // printf("\n%12I64x\n", v - _posInArc);
                             RINOK(Seek2(v))
                         }
-                        const HRESULT res = Stream->Read(data, size, &size);
-                        _posInArc += size;
+                        IInStream *input =
+                            _externalData ? _dataStream.Interface() : Stream.Interface();
+                        const HRESULT res = input->Read(data, size, &size);
+                        if (!_externalData)
+                            _posInArc += size;
                         _virtPos += size;
                         if (processedSize)
                             *processedSize = size;
@@ -267,6 +321,18 @@ Z7_COM7F_IMF(CHandler::Read(void *data, UInt32 size, UInt32 *processedSize)) {
             }
         }
 
+        if (inherit && _backingStream && _virtPos < _backingSize) {
+            const UInt64 rem = _backingSize - _virtPos;
+            if (size > rem)
+                size = (UInt32)rem;
+            RINOK(InStream_SeekSet(_backingStream, _virtPos))
+            size_t actual = size;
+            const HRESULT result = ReadStream(_backingStream, data, &actual);
+            RINOK(result)
+            if (actual != size)
+                return S_FALSE;
+            break;
+        }
         memset(data, 0, size);
         break;
     }
@@ -303,7 +369,7 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         prop = (UInt32)1 << _clusterBits;
         break;
     case kpidSectorSize:
-        prop = (UInt32)1 << (_numMidBits + 3);
+        prop = (UInt32)1 << (_numMidBits + _l2EntryBits);
         break;
     case kpidHeadersSize:
         prop = _table.Size() + (UInt64)_dir.Size() * 8;
@@ -367,6 +433,10 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             prop = v;
         break;
     }
+    case kpidError:
+        if (!_errorMessage.IsEmpty())
+            prop = _errorMessage;
+        break;
     }
 
     prop.Detach(value);
@@ -414,6 +484,7 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
         return S_FALSE;
     size_t l1Size;
     UInt32 headerSize;
+    _l2EntryBits = 3;
 
     if (_version == 1) {
         // _mTime = Get32((const Byte *)(const void *)buf64 + 0x14); // is unused in most images
@@ -445,13 +516,26 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
             // const UInt32 RefCountOrder = Get32((const Byte *)(const void *)buf64 + 0x60);
             headerSize = 0x68;
             const UInt32 headerSize2 = Get32((const Byte *)(const void *)buf64 + 0x64);
-            if (headerSize2 > (1u << 30))
+            if (headerSize2 < 0x68 || headerSize2 > ((UInt32)1 << _clusterBits) ||
+                (headerSize2 & 7))
                 return S_FALSE;
             if (headerSize < headerSize2)
                 headerSize = headerSize2;
             if (headerSize2 >= 0x68 + 1)
                 _compressionType = ((const Byte *)(const void *)buf64)[0x68];
+            if ((_compressionType != 0) != ((_incompatFlags & 8) != 0))
+                return S_FALSE;
+            _extendedL2 = (_incompatFlags & 16) != 0;
+            if (_extendedL2) {
+                if (_clusterBits < 14)
+                    return S_FALSE;
+                _l2EntryBits = 4;
+                _numMidBits = _clusterBits - _l2EntryBits;
+            }
         }
+        const unsigned l1Bits = _clusterBits + _numMidBits;
+        if ((UInt64)l1Size < ((_size + (((UInt64)1 << l1Bits) - 1)) >> l1Bits))
+            return S_FALSE;
 
         const UInt64 refOffset =
             Get64((const Byte *)(const void *)buf64 + 0x30); // must be aligned for cluster
@@ -491,7 +575,8 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
 
     const UInt64 l1Offset =
         Get64((const Byte *)(const void *)buf64 + 0x28); // must be aligned for cluster ?
-    if (l1Offset < headerSize || l1Offset > k_CompressedSize_MAX)
+    if ((l1Size && l1Offset < headerSize) || l1Offset > k_CompressedSize_MAX ||
+        (_version >= 2 && (l1Offset & (((UInt64)1 << _clusterBits) - 1))))
         return S_FALSE;
     if (_phySize < headerSize)
         _phySize = headerSize;
@@ -502,12 +587,8 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
 
     _isArc = true;
     {
-        const UInt64 backOffset = Get64((const Byte *)(const void *)buf64 + 8);
-        // UInt32 backSize = Get32((const Byte *)(const void *)buf64 + 0x10);
-        // Standard L2 mapping supports dirty/corrupt metadata and compression
-        // type bit 3. External data and extended/unknown L2 layouts require
-        // different mappings; do not interpret them as standard cluster entries.
-        if (backOffset || (_incompatFlags & ~(UInt64)0xB)) {
+        // Dirty/corrupt flags are permitted for read-only access.
+        if (_incompatFlags & ~(UInt64)0x1F) {
             _unsupported = true;
             return S_FALSE;
         }
@@ -517,6 +598,61 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
     RINOK(InStream_GetSize_SeekToBegin(stream, fileSize))
 
     const size_t clusterSize = (size_t)1 << _clusterBits;
+    const UInt64 backOffset = Get64((const Byte *)(const void *)buf64 + 8);
+    const UInt32 backSize = Get32((const Byte *)(const void *)buf64 + 0x10);
+    if (backOffset) {
+        if (backSize == 0 || backSize > 1023 || backOffset > fileSize ||
+            backSize > fileSize - backOffset ||
+            (_version >= 2 && (backOffset < headerSize || backOffset > clusterSize ||
+                               backSize > clusterSize - backOffset)))
+            return S_FALSE;
+        CByteBuffer name;
+        name.Alloc((size_t)backSize + 1);
+        RINOK(InStream_SeekSet(stream, backOffset))
+        RINOK(ReadStream_FALSE(stream, name, backSize))
+        if (memchr(name, 0, backSize))
+            return S_FALSE;
+        name[backSize] = 0;
+        if (!ConvertUTF8ToUnicode(AString((const char *)(const Byte *)name), _backingName))
+            return S_FALSE;
+    }
+    if (_version >= 2) {
+        const UInt64 extEnd = backOffset ? backOffset : clusterSize;
+        const auto read = [](void *opaque, uint64_t offset, void *data, size_t size) -> int32_t {
+            auto *input = static_cast<IInStream *>(opaque);
+            RINOK(InStream_SeekSet(input, offset))
+            return ReadStream_FALSE(input, data, size);
+        };
+        RINOK(qcow2_read_extensions(read, stream, headerSize, extEnd, fileSize, &_extensions))
+        if (_extensions.has_crypto && _cryptMethod != 2)
+            return S_FALSE;
+    }
+    if (_sourceName.IsEmpty() && openCallback) {
+        CMyComPtr<IArchiveOpenVolumeCallback> volumes;
+        openCallback->QueryInterface(IID_IArchiveOpenVolumeCallback, (void **)&volumes);
+        if (volumes) {
+            NCOM::CPropVariant name;
+            RINOK(volumes->GetProperty(kpidName, &name))
+            if (name.vt == VT_BSTR)
+                _sourceName = name.bstrVal;
+        }
+    }
+    _externalData = (_incompatFlags & 4) != 0;
+    if (_version >= 3 && (Get64((const Byte *)(const void *)buf64 + 0x58) & 2) &&
+        (!_externalData || backOffset))
+        return S_FALSE;
+    _dataSize = fileSize;
+    if (_externalData) {
+        if (!_extensions.image_data_file || !_extensions.image_data_file[0]) {
+            _errorMessage = L"Missing external data file name";
+            return S_FALSE;
+        }
+        UString name, resolved;
+        if (!ConvertUTF8ToUnicode(AString(_extensions.image_data_file), name))
+            return S_FALSE;
+        RINOK(OpenReference(openCallback, name, _dataStream, resolved))
+        RINOK(InStream_GetSize_SeekToBegin(_dataStream, _dataSize))
+    }
     const size_t t1SizeBytes = (size_t)l1Size << 3;
     {
         const UInt64 end = l1Offset + t1SizeBytes;
@@ -542,14 +678,19 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
 
     _compressedFlag = (_version <= 1) ? ((UInt64)1 << 63) : ((UInt64)1 << 62);
     const UInt64 offsetMask = _compressedFlag - 1;
-    const size_t midSize = (size_t)1 << (_numMidBits + 3);
+    const size_t midSize = (size_t)1 << (_numMidBits + _l2EntryBits);
     size_t numTables = 0;
     size_t i;
 
     for (i = 0; i < l1Size; i++) {
+        const UInt64 entry = Get64(table64 + (size_t)i);
+        if (_version >= 2 && (entry & ~(L2E_OFFSET_MASK | QCOW_OFLAG_COPIED)))
+            return S_FALSE;
         const UInt64 v = Get64(table64 + (size_t)i) & offsetMask;
         if (!v)
             continue;
+        if (_version >= 2 && (v & (clusterSize - 1)))
+            return S_FALSE;
         numTables++;
         const UInt64 end = v + midSize;
         if (end > k_CompressedSize_MAX)
@@ -561,8 +702,8 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
     }
 
     if (numTables) {
-        const size_t size = (size_t)numTables << (_numMidBits + 3);
-        if (size >> (_numMidBits + 3) != numTables)
+        const size_t size = (size_t)numTables << (_numMidBits + _l2EntryBits);
+        if (size >> (_numMidBits + _l2EntryBits) != numTables)
             return E_OUTOFMEMORY;
         _table.Alloc(size);
         if (!_table.IsAllocated())
@@ -586,7 +727,7 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
                 continue;
             }
             _dir[i] = curTable;
-            const size_t tableOffset = (size_t)curTable << (_numMidBits + 3);
+            const size_t tableOffset = (size_t)curTable << (_numMidBits + _l2EntryBits);
             buf2 = (Byte *)_table + tableOffset;
             curTable++;
             if (openCallback && (tableOffset & 0xFFFFF) == 0) {
@@ -597,8 +738,22 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
             RINOK(ReadStream_FALSE(stream, buf2, midSize))
         }
 
-        for (size_t k = 0; k < midSize; k += 8) {
+        for (size_t k = 0; k < midSize; k += (size_t)1 << _l2EntryBits) {
             const UInt64 v = Get64((const Byte *)buf2 + (size_t)k);
+            const UInt64 bitmap = _extendedL2 ? Get64(buf2 + k + 8) : 0;
+            if (_version >= 2) {
+                if (v & _compressedFlag) {
+                    if (_externalData || bitmap || (v & QCOW_OFLAG_COPIED))
+                        return S_FALSE;
+                } else {
+                    const UInt64 allowed = L2E_OFFSET_MASK | QCOW_OFLAG_COPIED |
+                                           ((_version >= 3 && !_extendedL2) ? QCOW_OFLAG_ZERO : 0);
+                    if ((v & ~allowed) || ((v & L2E_OFFSET_MASK) & (clusterSize - 1)) ||
+                        qcow2_get_subcluster_type(_extendedL2, _externalData, v, bitmap, 0) ==
+                            QCOW2_SUBCLUSTER_INVALID)
+                        return S_FALSE;
+                }
+            }
             if (v == 0)
                 continue;
             UInt64 offset = v & offsetMask;
@@ -606,18 +761,25 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
 
             if (v & _compressedFlag) {
                 if (_version <= 1) {
-                    const unsigned numOffsetBits = 63 - _clusterBits;
-                    dataSize = ((size_t)(offset >> numOffsetBits) + 1) << 9;
-                    offset &= ((UInt64)1 << numOffsetBits) - 1;
-                    dataSize = 0; // why ?
-                                  // offset &= ~(((UInt64)1 << 9) - 1);
+                    offset = qcow_get_compressed_cluster(v, _clusterBits, &dataSize);
+                    if (dataSize == 0)
+                        return S_FALSE;
                 } else {
                     const unsigned numOffsetBits = 62 - (_clusterBits - 8);
                     dataSize = ((size_t)(offset >> numOffsetBits) + 1) << 9;
                     offset &= ((UInt64)1 << numOffsetBits) - (1 << 9);
+                    if (offset >= ((UInt64)1 << 56))
+                        return S_FALSE;
                 }
                 _needCompression = true;
             } else {
+                if (_extendedL2) {
+                    // QEMU can leave the trailing unallocated subclusters
+                    // beyond EOF. Bound only the last allocated subcluster.
+                    dataSize = 0;
+                    for (UInt32 allocated = (UInt32)bitmap; allocated; allocated >>= 1)
+                        dataSize += clusterSize >> 5;
+                }
                 const UInt32 low = (UInt32)v & 511;
                 if (low) {
                     // version_3 supports zero clusters
@@ -629,7 +791,31 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
             }
 
             const UInt64 end = offset + dataSize;
-            if (_phySize < end)
+            if (_version == 1 && end > fileSize)
+                return S_FALSE;
+            if (_version >= 2) {
+                const QCow2SubclusterType type =
+                    qcow2_get_subcluster_type(_extendedL2, _externalData, v, bitmap, 0);
+                // Only allocated data is dereferenced. Zero/preallocated ranges
+                // need no host bytes; extended allocation can start after bit 0.
+                const bool readsData =
+                    (v & _compressedFlag) ||
+                    (_extendedL2 ? (UInt32)bitmap != 0 : type == QCOW2_SUBCLUSTER_NORMAL);
+                if (readsData && end > _dataSize)
+                    return S_FALSE;
+                if (_externalData &&
+                    (type == QCOW2_SUBCLUSTER_NORMAL || type == QCOW2_SUBCLUSTER_ZERO_ALLOC ||
+                     type == QCOW2_SUBCLUSTER_UNALLOCATED_ALLOC)) {
+                    const unsigned l1Bits = _numMidBits + _clusterBits;
+                    if ((UInt64)i > ((UInt64)(Int64)-1 >> l1Bits))
+                        return S_FALSE;
+                    const UInt64 guest =
+                        ((UInt64)i << l1Bits) + ((UInt64)(k >> _l2EntryBits) << _clusterBits);
+                    if ((v & L2E_OFFSET_MASK) != guest)
+                        return S_FALSE;
+                }
+            }
+            if (!_externalData && _phySize < end)
                 _phySize = end;
         }
     }
@@ -639,12 +825,88 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
 
     if (_cryptMethod)
         _unsupported = true;
-    if (_needCompression && _version <= 1) // that case was not implemented
-        _unsupported = true;
     if (_compressionType > 1)
         _unsupported = true;
 
     Stream = stream;
+    if (!_backingName.IsEmpty()) {
+        RINOK(OpenParent(openCallback))
+    }
+    return S_OK;
+}
+
+// The volume callback, ownership and depth guard follow VhdxHandler::OpenParent.
+// Names remain relative to the selected image; the callback owns path validation.
+HRESULT CHandler::OpenReference(IArchiveOpenCallback *callback, const UString &name,
+                                CMyComPtr<IInStream> &input, UString &resolved) {
+    if (!callback)
+        return S_FALSE;
+    CMyComPtr<IArchiveOpenVolumeCallback> volumes;
+    callback->QueryInterface(IID_IArchiveOpenVolumeCallback, (void **)&volumes);
+    if (!volumes)
+        return S_FALSE;
+    resolved = _sourceName.Left(_sourceName.ReverseFind_PathSepar() + 1);
+    resolved += name;
+    const HRESULT result = volumes->GetStream(resolved, &input);
+    if (result != S_OK || !input) {
+        _errorMessage = L"Missing or inaccessible image dependency: ";
+        _errorMessage += resolved;
+        return result == S_OK ? S_FALSE : result;
+    }
+    return S_OK;
+}
+
+HRESULT CHandler::OpenParent(IArchiveOpenCallback *callback) {
+    if (_level >= (1 << 8) - 1) {
+        _errorMessage = L"Too many parent levels";
+        return S_FALSE;
+    }
+    CMyComPtr<IInStream> input;
+    UString name;
+    RINOK(OpenReference(callback, _backingName, input, name))
+    for (const CHandler *child = this; child; child = child->_child) {
+        if (name.IsEqualTo_NoCase(child->_sourceName)) {
+            _errorMessage = L"Cyclic parent archive was blocked";
+            return S_FALSE;
+        }
+    }
+    UInt64 size;
+    RINOK(InStream_GetSize_SeekToBegin(input, size))
+    Byte signature[4];
+    size_t count = sizeof(signature);
+    RINOK(ReadStream(input, signature, &count))
+    RINOK(InStream_SeekSet(input, 0))
+    const bool isQcow = count == 4 && memcmp(signature, k_Signature, 4) == 0;
+    const char *format = _extensions.image_backing_format;
+    if (format && format[0] && strcmp(format, "raw") != 0 && strcmp(format, "qcow") != 0 &&
+        strcmp(format, "qcow2") != 0) {
+        _unsupported = true;
+        _errorMessage = L"Unsupported backing file format";
+        return S_FALSE;
+    }
+    if ((format && strcmp(format, "raw") == 0) || ((!format || !format[0]) && !isQcow)) {
+        _backingStream = input;
+        _backingSize = size;
+        return S_OK;
+    }
+    CHandler *parent = new CHandler;
+    CMyComPtr<IInStream> owner = parent;
+    parent->Close();
+    parent->_level = _level + 1;
+    parent->_child = this;
+    parent->_sourceName = name;
+    const HRESULT result = parent->Open2(input, callback);
+    if (result != S_OK) {
+        _errorMessage = parent->_errorMessage;
+        _unsupported = parent->_unsupported;
+        return result;
+    }
+    CMyComPtr<ISequentialInStream> sequential;
+    RINOK(parent->GetStream(0, &sequential))
+    if (!sequential)
+        return S_FALSE;
+    RINOK(sequential.QueryInterface(IID_IInStream, &_backingStream))
+    _backingSize = parent->_size;
     return S_OK;
 }
 
@@ -665,6 +927,16 @@ Z7_COM7F_IMF(CHandler::Close()) {
 
     _compressionType = 0;
     _incompatFlags = 0;
+    _extendedL2 = false;
+    _externalData = false;
+    _backingStream.Release();
+    _dataStream.Release();
+    _backingSize = 0;
+    _dataSize = 0;
+    _backingName.Empty();
+    _sourceName.Empty();
+    _errorMessage.Empty();
+    qcow2_free_extensions(&_extensions);
 
     // CHandlerImg:
     Clear_HandlerImg_Vars();
@@ -678,7 +950,7 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 /* index */, ISequentialInStream **strea
     if (_unsupported || !Stream)
         return S_FALSE;
     if (_needCompression) {
-        if (_version <= 1 || _compressionType > 1)
+        if (_compressionType > 1)
             return S_FALSE;
         _bufInStream.Create_if_Empty();
         _bufOutStream.Create_if_Empty();
@@ -690,7 +962,9 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 /* index */, ISequentialInStream **strea
             }
         } else {
             _deflateDecoder.Create_if_Empty();
-            _deflateDecoder->Set_NeedFinishInput(true);
+            // QEMU QCOW1 accepts Z_BUF_ERROR when the complete cluster was
+            // produced, even without a final Deflate marker in the byte range.
+            _deflateDecoder->Set_NeedFinishInput(_version >= 2);
         }
         const size_t clusterSize = (size_t)1 << _clusterBits;
         _cache.AllocAtLeast(clusterSize);

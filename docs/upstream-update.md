@@ -23,6 +23,11 @@ The builders refresh one owned source snapshot while retaining incremental
 compiler outputs. They do not compile in the upstream checkout. GPL reader
 variants are excluded from this overlay and built as separate CMake modules;
 the snapshot preparer rejects a GPL variant in `runtime_adapted`.
+`runtime_dependencies` adds non-7-Zip C modules and headers needed by these
+modules at their declared snapshot paths. Their source revisions and licenses
+belong in the existing port audit. Runtime fingerprints and transitive dependencies
+include them; generated native rules compile C sources as C and link their objects
+into both engine variants while preserving incremental build outputs.
 
 Start from a disposable Git snapshot of the official repository. The old
 `../7zip-upstream` checkout is not required, and it must not be modified:
@@ -72,3 +77,35 @@ after review, including when a member is unchanged in the new release.
 
 Early verification and synthetic-review evidence is preserved in
 [the tooling archive](archive/qt-port/workflow-evidence.md).
+
+## QEMU and Linux reference baselines
+
+QEMU follows the Linux reference-baseline model: original inventory units and
+SHA256 values are pinned to a retrievable commit, with an explicit mapping to
+local source owners. Local paths follow project boundaries and need not mirror
+the external repository. [QCOW's baseline](qcow-qemu-baseline.json)
+maps the borrowed QEMU header to its local owner. The
+[QCOW source audit](upstream-port-audit/container-layers.md#qemu-read-side-update--2026-10-24)
+records transferred symbols, dependencies, omitted scope and licenses.
+The 7-Zip handler keeps its separate 7-Zip provenance.
+
+Use a separate QEMU Git checkout containing the recorded and proposed commits:
+
+```sh
+git clone --filter=blob:none --no-checkout https://github.com/qemu/qemu.git /tmp/qemu-update-review
+python3 scripts/upstream_baseline.py reference-verify \
+  --manifest docs/qcow-qemu-baseline.json --upstream /tmp/qemu-update-review
+python3 scripts/upstream_baseline.py reference-review \
+  --manifest docs/qcow-qemu-baseline.json --upstream /tmp/qemu-update-review \
+  --new-revision <full-commit> --output /tmp/qcow-update-review.md
+```
+
+The report compares complete original units and shows the local adaptation
+against the recorded original. It does not change sources or advance the
+baseline. Review dependencies and omitted branches before transferring changes
+into the partial port; merging the complete QEMU header over the selected
+helpers would introduce unported block services. Retain local fixes, validate
+the affected reading scenarios and update original hashes/revision together
+with the source audit. `--path` can restrict review to recorded upstream paths.
+The same reference commands accept the existing Linux baseline manifests;
+explicit adaptation maps additionally enable local-difference reports.

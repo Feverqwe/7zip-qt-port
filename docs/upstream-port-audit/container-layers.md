@@ -71,8 +71,9 @@ decoder dependencies. Formatting is separate from functional adaptation:
 the handler retains upstream mappings, Deflate, sparse/zero reads and bounds
 checks. The additional Zstandard cluster path uses the official caller-buffer
 decoder, stops at the frame boundary before sector padding, and requires a full
-cluster without extra output. External-data, extended-L2 and unknown incompatible
-layouts are rejected; backing files and encryption retain their limitations.
+cluster without extra output. The initial transfer retained limitations for
+external data, backing files and encryption. Subsequent read-side updates,
+including extended L2 and dependent files, are recorded below.
 
 One SDK adaptation is registered in both `adapted` and `runtime_adapted` in the
 baseline manifest. Normal runtime preparation overlays that source onto the
@@ -85,6 +86,186 @@ stored/Deflate/Zstandard source-byte comparison, sparse tail and backward reads,
 unsupported layout rejection and corrupted cluster failure. Linux and Windows
 receipts are the focused runs above. Retained stream-chain validation is recorded
 below.
+
+### QEMU read-side update — 2026-10-24
+
+Reference: <https://github.com/qemu/qemu.git>, full commit
+`b6c4b7e86dec12d07f5cac65265b986d38ee9002`, `docs/interop/qcow2.rst`,
+`block/qcow2.h` (`QCow2ClusterType`, `QCow2SubclusterType`,
+`qcow2_get_cluster_type`, `qcow2_get_subcluster_type`), `block/qcow2.c`
+(`validate_compression_type`, `qcow2_do_open`) and `block/qcow2-cluster.c`
+(cluster lookup callers). Compared header fields, active L1/L2 mapping,
+standard/compressed descriptors, subcluster classification, corruption handling,
+dependencies and omitted block services. Official 7-Zip HEAD
+`b88c6bc09339de32f7d18bbab900686b244f42ba` has the same QCOW handler as our
+9128 baseline; it provides no extended-L2 implementation to transfer.
+
+[The QEMU baseline](../qcow-qemu-baseline.json) pins SHA256 values for these
+complete original units and maps the adapted header to its local owner, using
+the same reference model as Linux. The
+[update workflow](../upstream-update.md#qemu-and-linux-reference-baselines)
+verifies the snapshot and produces upstream/local-difference reports without
+overwriting the partial port. This inventory records reference-only callers
+and specification files as well as the transferred header; it does not claim
+they are compiled into the product.
+Baseline tooling validation: the four hashes were verified against the official
+QEMU Git commit; twelve `upstream_baseline` regressions passed on macOS, including
+reference changes/deletions, local-fix preservation and original-hash mismatch.
+
+Adapted the original inline classification bodies and required enums/masks in
+`src/block/qcow2.h`, preserving QEMU's path, symbols, branches and MIT notice.
+The C-compatible header remains an inline header: block-graph state/locks are
+replaced by explicit flags and GLib assertions by standard assertions. No C
+translation unit is converted to C++. Omitted QEMU allocation, mutation,
+coroutines, block graph, backing/external-file I/O, encryption, snapshots and
+refcount repair. The SDK handler remains the sole QCOW reader, using the
+existing 7-Zip Deflate/Zstandard decoders; QEMU performs no product I/O.
+
+The handler now traverses extended entries and bounds reads at subcluster
+boundaries. It validates conflicting allocation/zero bitmaps, absent host
+allocations, reserved/misaligned offsets, allocated data bounds, L1 coverage,
+header length and compression feature/field agreement. Existing 7-Zip cluster-size
+acceptance and QCOW1's path are preserved: QEMU's 2-MiB implementation ceiling
+does not introduce a new gate on otherwise supported images. Dirty/corrupt flags
+remain readable without writes or replay.
+Backing files, external data, encryption and unknown features remain unsupported;
+this is not a complete transfer of the QEMU block driver or recovery support.
+
+The existing baseline's `runtime_dependencies` selects the QEMU header for both
+runtime overlays and fingerprints. Runtime dependency rules include its transitive
+consumers and retain incremental objects. Its full license is installed on all
+platforms. Fixtures with extended stored/Deflate/Zstandard clusters are generated
+and independently checked/compared to raw source by QEMU 11.1.2.
+Runtime validation on macOS: `archive_qcow` passed the disk-byte comparisons,
+subcluster visibility and malformed-metadata cases; `archive_layer_chain` passed
+all generated variants through QCOW → MBR → ext4, selected Unicode-file copying,
+automatic opening, TAR parent transport, cancellation and source errors.
+For the larger extended fixtures, fault injection targets the decoded partition
+source so the QCOW compressed-input cache cannot avoid the injected read;
+the original fixtures retain backing-source fault coverage. QEMU independently
+confirmed the zero/unallocated subcluster result with stale host bytes present.
+`archive_layer_lifetime`, `upstream_baseline`, `upstream_inventory` and
+`runtime_cache` passed, including rebuilding a transitive runtime-header consumer.
+Official codec/client targets rebuilt incrementally; baseline verification and
+`git diff --check` passed. Linux/Windows, installed-package acceptance, full gate
+and slow suites were not run for this platform-independent reader update.
+
+### Dependent QCOW images — 2026-10-24
+
+The active QCOW goal includes backing chains, external data, encrypted images
+and internal snapshots. This step completes the raw/QCOW dependent-file scenario;
+it does not establish completion of encryption or snapshot access.
+
+Compared the complete `qcow2_read_extensions`, `qcow2_do_open`,
+`qcow2_get_host_offset`, `qcow2_co_preadv_task` and
+`qcow2_co_preadv_part` paths, external-data fixed-offset constraints, short
+backing-file zero tails, and QCOW1's `qcow_open`/`qcow_co_preadv`, at the same
+QEMU commit recorded above. `block/qcow.c` is added to the existing reference
+baseline. Compared the original 7-Zip `VhdxHandler.cpp::OpenParent` and
+`VhdHandler.cpp::Open2`, volume ownership, cycle/depth checks, and
+`COpenCallbackImp::GetStream` at the pinned 7-Zip revision.
+
+`src/block/qcow2.c` adapts QEMU's read-side extension loop/dispatch as C, preserving
+its MIT notice. The block graph is replaced by a bounded read callback and an
+owned metadata result; it retains backing-format, external-data and crypto-header
+records. Feature/bitmap mutation and crypto-context creation are not imported
+into this parser. The handler uses the existing 7-Zip volume callback and
+VHDX-style stream ownership/depth guard, resolves each child's relative name
+against that child's directory, and retains parent streams for the lifetime of
+the selected image. Callback path checks are not bypassed. Missing dependencies,
+cyclic chains and incompatible backing formats fail explicitly; they do not
+produce an apparently complete zero-filled image.
+
+Unallocated regions inherit raw/QCOW parent bytes, short parents have zero tails,
+and explicit zero regions override the parent. External data supports standard
+and extended L2, including the copied-bit representation of host offset zero.
+Host offsets must match guest offsets; compressed entries in external-data images
+and invalid data-file-raw/backing combinations are rejected. Data bounds use the
+external file size, while L1/L2 metadata bounds use the selected metadata stream.
+The existing SDK handler remains the only format implementation and the engine
+still performs all reads/decoding; there is no QEMU console subprocess.
+
+Both runtime builders receive the C module through the existing dependency
+manifest. Generated make/nmake rules use C compilation and the existing compiler
+launcher/cache. A real C-to-C++ link regression also changes a shared header and
+checks the resulting executable, covering incremental recompilation without
+pinning generated makefile text. The QEMU reference manifest maps the new C source
+to its original inventory unit.
+
+QEMU-generated fixtures cover a Unicode-named QCOW → extended-L2 QCOW → shorter
+raw chain, overrides/explicit zeros, external raw-compatible data and external
+extended-L2 data. QEMU check/convert/compare provide the independent disk oracle.
+`archive_qcow_references` verifies full disk bytes, unaligned/backward reads,
+retained references, source immutability, missing dependencies, cycles, path
+escapes, external-offset validation, and actual Extract success/output-error/cancel.
+macOS passed this suite and the focused `archive_qcow`, `archive_layer_chain`,
+`archive_layer_lifetime`, `upstream_baseline` and `runtime_cache` checks.
+Linux passed `archive_qcow` and `archive_qcow_references` in
+`20261024T070040Z-82183221`; Windows passed those suites plus
+`upstream_baseline` and `runtime_cache` in `20261024T070136Z-ebbe6383`.
+The reference-header regression exposed a Windows pipe deadlock in snapshot preparation:
+the tar reader stopped before git's final archive padding while the producer
+could still be blocked writing it. The preparer now drains the stream before
+waiting for git. The baseline suite has a bounded CTest timeout; report checks
+accept source CRLF/LF differences without normalizing the original hashes.
+A dedicated producer-padding regression, using an actual archive plus padding
+larger than a pipe buffer, also passed on macOS and Windows (the latter in
+`20261024T071014Z-115c817f`). It fails with a bounded wait if archive draining
+regresses, instead of leaving validation hanging indefinitely.
+
+Both guests also contained an obsolete `sevenzip_qcow` plugin from removed
+`src/lgpl3`/`qcowlib*` sources, confirmed by their Ninja logs and absent current
+CMake target. These owned build artifacts were moved outside `Formats` to
+`build/qcow-review/retired/`, preserving their bytes for diagnosis. The accepted
+runs above load the current SDK implementation. Earlier Linux discovery timeouts
+and the interrupted Windows archive-producer test are not acceptance results.
+No compiler cache or incremental build tree was cleared. Full/slow suites and
+installed-package acceptance were not run for this focused step.
+
+### Legacy QCOW compressed clusters — 2026-10-24
+
+Compared QEMU `block/qcow.c` at the pinned QEMU revision above:
+`qcow_open`, `get_cluster_offset`, `qcow_co_preadv`, `decompress_cluster`,
+`decompress_buffer`, and their compressed-writer caller. Adapted the descriptor
+decoding from `decompress_cluster` into `src/block/qcow.c`, with the narrow
+declaration in `src/block/qcow.h`; the C source and original MIT notice remain
+intact. The baseline maps that original unit to its adapted owner and the runtime
+overlay compiles it as C. QEMU block-graph I/O and zlib are omitted: native stream
+I/O, cache and the existing official 7-Zip Deflate decoder perform those roles.
+The adapter supplies cluster bits explicitly instead of a `BDRVQcowState`.
+
+QCOW1 compressed descriptors use exact byte lengths and byte offsets. The SDK
+handler now reads those ranges, validates their source bounds, and exposes the
+decoded stream instead of marking all compressed QCOW1 images unsupported.
+It requires a complete output cluster. Like QEMU's acceptance of zlib's
+`Z_BUF_ERROR` with complete output, QCOW1 does not require a final Deflate marker
+within the descriptor's byte range. QCOW2 retains its finished-stream check.
+QCOW1 encryption remains separate missing work.
+
+QEMU-generated stored/compressed QCOW1 fixtures were independently compared with
+the raw source. The compressed producer is `qemu-io`: QEMU's QCOW1 compressed
+writer rejects the final zero-byte request made by `qemu-img convert -c`, so the
+fixture generator writes complete clusters to a fresh image instead. It does
+not accept a failed conversion as an oracle. The reader suite covers complete
+disk bytes, backward/sparse reads, invalid Deflate and truncated payloads; the
+existing layer-chain suite consumes all three QCOW1 variants.
+
+Current integration validation on macOS with the shared 7-Zip 26.05 baseline:
+all six focused suites passed (`archive_qcow`, `archive_qcow_references`,
+`archive_layer_chain`, `archive_layer_lifetime`, `upstream_baseline`,
+`runtime_cache`). QEMU independently accepted the shortened-Deflate fixture;
+our reader returned S_FALSE before the finish-mode fix and full matching bytes
+after it. Five original QEMU file hashes verified. The legacy step has no new
+Linux/Windows or installed-package acceptance; the guest evidence above predates
+this step. Full and slow suites were not run.
+
+Remaining source-visible goal work: AES-CBC and
+LUKS read/decryption paths, internal snapshot enumeration and independent streams,
+backing-format delegation beyond raw/QCOW, and explicit dependency selection where
+the existing volume callback rejects a path or cannot resolve a stream-contained
+image's siblings. These are missing implementations
+or integration work, not evidence that QEMU cannot read those inputs. No blanket
+claim of current-QEMU read parity is made by the focused dependent-file checks.
 
 ## Retained native streams and generations
 

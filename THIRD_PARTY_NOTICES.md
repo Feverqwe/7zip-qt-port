@@ -23,6 +23,9 @@ sources. Retain their copyright and license notices when redistributing them.
 | Lucide command/navigation icons | SVG geometry adapted to native Qt paths; [ISC and Feather MIT notices](third_party/lucide/LICENSE), [source provenance](docs/upstream-port-audit/ui-redesign.md#итерация-22-контурные-значки-команд). |
 
 Qt and other runtime dependencies keep their own licenses.
+The QCOW/QCOW2 reader also uses QEMU read-side code under the
+[retained MIT notice](third_party/qemu/LICENSE); see the
+[source audit](docs/upstream-port-audit/container-layers.md#qcow).
 Qt Base translations are merged from the matching SDK; the corresponding official
 [Qt Translations source](https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/qttranslations-everywhere-src-6.12.0.tar.xz)
 and source provenance are recorded in the [localization audit](docs/upstream-port-audit/qt-linguist.md).

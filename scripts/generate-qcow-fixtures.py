@@ -66,6 +66,58 @@ def encode(raw, compress):
     return bytes(image[:used_end]), compressed_count
 
 
+def generate_references(destination):
+    """Use QEMU to build dependent images; do not invent reference mappings."""
+    with tempfile.TemporaryDirectory(prefix="sevenzip-qcow-references-") as temporary:
+        root = Path(temporary)
+        nested = root / "слои 空"
+        nested.mkdir()
+        base = nested / "база.raw"
+        base.write_bytes(bytes((index * 17 + 3) % 256 for index in range(65536)))
+        def run(args, cwd=root):
+            subprocess.run(args, cwd=cwd, check=True, stdout=subprocess.DEVNULL)
+        run(["qemu-img", "create", "-f", "qcow2", "-F", "raw", "-b", base.name,
+             "-o", "cluster_size=16384,extended_l2=on", "родитель.qcow2", "131072"], nested)
+        run(["qemu-io", "-f", "qcow2", "-c", "write -P 0x42 512 512", "-c",
+             "write -z 1024 512", "родитель.qcow2"], nested)
+        run(["qemu-img", "create", "-f", "qcow2", "-F", "qcow2", "-b",
+             "слои 空/родитель.qcow2", "диск.qcow2"])
+        run(["qemu-io", "-f", "qcow2", "-c", "write -P 0x5a 4096 512", "-c",
+             "write -z 8192 4096", "диск.qcow2"])
+        run(["qemu-img", "convert", "-f", "qcow2", "-O", "raw", "диск.qcow2", "expected.raw"])
+        sets = [{"name": "backing-chain", "entry": "диск.qcow2", "files": {
+            "диск.qcow2": "top", "слои 空/родитель.qcow2": "parent", "слои 空/база.raw": "base"}}]
+        contents = {"expected": root / "expected.raw", "base": base,
+                    "parent": nested / "родитель.qcow2", "top": root / "диск.qcow2"}
+        for variant, options in (
+                ("external", "cluster_size=4096,data_file_raw=on"),
+                ("external-extended", "cluster_size=16384,extended_l2=on")):
+            image = variant + ".qcow2"
+            data = variant + " данные 空.raw"
+            run(["qemu-img", "convert", "-f", "raw", "-O", "qcow2", "-o",
+                 options + ",data_file=" + data, "expected.raw", image])
+            run(["qemu-img", "check", "-q", image])
+            run(["qemu-img", "compare", "-q", "-f", "qcow2", "-F", "raw", image, "expected.raw"])
+            contents[variant] = root / image
+            contents[variant + "-data"] = root / data
+            sets.append({"name": variant, "entry": image, "files": {
+                image: variant, data: variant + "-data"}})
+        for image in (root / "диск.qcow2", nested / "родитель.qcow2"):
+            run(["qemu-img", "check", "-q", str(image)])
+        folder = destination / "references"
+        folder.mkdir(exist_ok=True)
+        for name, source in contents.items():
+            target = folder / (name + ".gz")
+            data = source.read_bytes()
+            if not target.is_file() or gzip.decompress(target.read_bytes()) != data:
+                target.write_bytes(gzip.compress(data, mtime=0))
+        for record in sets:
+            record["files"] = {local: "references/" + fixture + ".gz"
+                               for local, fixture in record["files"].items()}
+            record["expected"] = "references/expected.gz"
+        return sets
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("destination", type=Path)
@@ -89,23 +141,64 @@ def main():
         source.write_bytes(raw)
         with source.open("r+b") as stream:
             stream.truncate(VIRTUAL_SIZE)
-        target = Path(temporary) / "disk.qcow2"
-        subprocess.run(["qemu-img", "convert", "-f", "raw", "-O", "qcow2", "-c",
-                        "-o", "cluster_size=4096,compression_type=zstd",
-                        str(source), str(target)], check=True)
-        subprocess.run(["qemu-img", "check", "-q", str(target)], check=True)
-        subprocess.run(["qemu-img", "compare", "-q", "-f", "qcow2", "-F", "raw",
-                        str(target), str(source)], check=True)
-        image = target.read_bytes()
-    name = "zstd.qcow2.gz"
-    (args.destination / name).write_bytes(gzip.compress(image, mtime=0))
-    records.append({"file": name, "size": len(image),
-                    "sha256": hashlib.sha256(image).hexdigest(),
-                    "compression": "ZSTD", "producer": "qemu-img"})
+        for variant, compression, options in (
+                ("qcow1-stored", None, ""),
+                ("qcow1-deflate", "zlib", ""),
+                ("qcow1-deflate-short", "zlib", ""),
+                ("zstd", "zstd", "cluster_size=4096"),
+                ("extended-stored", None, "cluster_size=16384,extended_l2=on"),
+                ("extended-deflate", "zlib", "cluster_size=16384,extended_l2=on"),
+                ("extended-zstd", "zstd", "cluster_size=16384,extended_l2=on")):
+            target = Path(temporary) / (variant + ".qcow2")
+            image_format = "qcow" if variant.startswith("qcow1-") else "qcow2"
+            command = ["qemu-img", "convert", "-f", "raw", "-O", image_format]
+            if compression and image_format == "qcow2":
+                command += ["-c"]
+                options += ",compression_type=" + compression
+            if options:
+                command += ["-o", options]
+            if compression and image_format == "qcow":
+                # qcow's compressed writer rejects qemu-img's final zero-byte
+                # request. Exercise that writer directly with complete clusters.
+                subprocess.run(["qemu-img", "create", "-q", "-f", "qcow",
+                                str(target), str(VIRTUAL_SIZE)], check=True)
+                block_file = Path(temporary) / "cluster.raw"
+                for offset in range(0, len(raw), CLUSTER):
+                    block = raw[offset:offset + CLUSTER].ljust(CLUSTER, b"\0")
+                    if any(block):
+                        block_file.write_bytes(block)
+                        subprocess.run(["qemu-io", "-f", "qcow", "-c",
+                                        f'write -q -c -s cluster.raw {offset} {CLUSTER}',
+                                        str(target)], cwd=temporary, check=True)
+            else:
+                subprocess.run(command + [str(source), str(target)], check=True)
+            if variant == "qcow1-deflate-short":
+                # QEMU accepts a full decoded cluster even when the descriptor
+                # omits the final Deflate byte (inflate returns Z_BUF_ERROR).
+                image = bytearray(target.read_bytes())
+                l1 = struct.unpack_from(">Q", image, 40)[0]
+                l2 = struct.unpack_from(">Q", image, l1)[0]
+                entry = struct.unpack_from(">Q", image, l2)[0]
+                struct.pack_into(">Q", image, l2, entry - (1 << (63 - image[32])))
+                target.write_bytes(image)
+            if image_format == "qcow2":
+                subprocess.run(["qemu-img", "check", "-q", "-f", image_format, str(target)], check=True)
+            subprocess.run(["qemu-img", "compare", "-q", "-f", image_format, "-F", "raw",
+                            str(target), str(source)], check=True)
+            image = target.read_bytes()
+            name = variant + ".qcow2.gz"
+            destination = args.destination / name
+            if not destination.is_file() or gzip.decompress(destination.read_bytes()) != image:
+                destination.write_bytes(gzip.compress(image, mtime=0))
+            records.append({"file": name, "size": len(image),
+                            "sha256": hashlib.sha256(image).hexdigest(),
+                            "compression": compression or "stored",
+                            "producer": "qemu-io" if variant.startswith("qcow1-deflate") else "qemu-img"})
     manifest = {"virtual_size": VIRTUAL_SIZE, "source_size": len(raw),
                 "source_sha256": hashlib.sha256(raw).hexdigest(),
                 "path": "папка 空/данные с пробелом.txt",
-                "payload": "device ext4 payload\n", "images": records}
+                "payload": "device ext4 payload\n", "images": records,
+                "reference_sets": generate_references(args.destination)}
     (args.destination / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
 

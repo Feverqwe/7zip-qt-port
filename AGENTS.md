@@ -9,10 +9,13 @@ for Windows, macOS, and Linux. The official source checkout is `../7zip-upstream
   Before functional changes, inspect original bodies, callers, types and dependencies.
   Functional code inside `UI/` files is part of the port; replace Win32 presentation
   and platform services with Qt or narrow adapters without rewriting the whole module.
-- Preserve upstream paths, filenames, symbols, module boundaries, algorithms and
-  control flow. Adapted sources belong under `src/<upstream-relative-path>`;
-  unchanged reusable dependencies under `third_party/7zip/<upstream-relative-path>`.
-  Keep one authoritative implementation per module and reuse portable upstream types.
+- Preserve upstream symbols, module boundaries, algorithms and control flow.
+  Choose local paths to fit this project's architecture; mirroring an external
+  repository's directory tree is not a general requirement. Retain upstream-relative
+  paths where required by the 7-Zip source build/runtime overlay and include layout:
+  adapted sources under `src/<upstream-relative-path>` and unchanged dependencies
+  under `third_party/7zip/<upstream-relative-path>`. Keep one authoritative
+  implementation per module and reuse portable upstream types.
 - License-specific archive variants use separate source roots: SDK adaptations
   under `src/CPP` and Linux/GPL reader variants under `src/gpl/CPP`, preserving
   upstream-relative paths within each root. Keep one implementation per variant;
@@ -37,9 +40,26 @@ for Windows, macOS, and Linux. The official source checkout is `../7zip-upstream
   [the port audit](docs/upstream-port-audit.md). Preserve notices and licenses.
   Record observable workflow/platform differences in [parity](docs/7zfm-parity.md).
 
-Keep a reproducible baseline per borrowed module, including mixed revisions.
-For upstream updates follow [the update procedure](docs/upstream-update.md):
-compare a separate snapshot, review dependencies/omissions and retain local fixes.
+For every external code import or adaptation, including individual functions and
+snippets from any project, establish a reproducible baseline in the same change.
+Follow the Linux/QEMU model: record the retrievable repository, full upstream
+commit, SHA256 hashes of complete original inventory units and their mapping to
+local source owners in a machine-readable manifest. Record what was borrowed and
+where it lives locally, including selected symbols for partial imports; local
+paths need not match upstream. Distinguish unchanged dependencies, adapted code
+and local integration.
+Record transferred symbols, dependencies, omitted scope, adaptation reasons and
+licenses in the existing source audit. Pin original bytes, not the current
+adaptation, so safe local refactoring does not require changing upstream hashes.
+
+Reuse the existing baseline verification and review tooling; extend it only when
+needed. Every import must have a documented, repeatable way to verify its original
+baseline and compare a proposed upstream revision with both that baseline and
+the local adaptation. A source URL or an audit note alone is insufficient.
+Keep mixed revisions explicit. For updates follow
+[the update procedure](docs/upstream-update.md): compare a separate snapshot,
+review dependencies/omissions and retain local fixes. Do not overwrite partial
+ports with complete upstream modules or advance provenance before validation.
 Keep adaptations narrow; account for formatting separately from functional changes.
 
 ### Porting order: source comparison before runtime acceptance

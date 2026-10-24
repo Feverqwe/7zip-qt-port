@@ -11,7 +11,7 @@
 — запрошенное изменение controls/transport с сохранением Pause и Cancel.
 
 [Выборочный перенос native readers](upstream-port-audit/container-layers.md)
-— QCOW Zstandard, границы потоков и удаление Background по запросу пользователя.
+— QCOW Zstandard/extended L2, границы потоков и удаление Background по запросу пользователя.
 
 [Отдельные SDK/GPL-варианты обработчиков](upstream-port-audit/license-variants.md)
 — границы исходников и сборки вместо `SEVENZIP_LINUX_*` ветвлений.

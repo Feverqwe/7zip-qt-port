@@ -18,11 +18,83 @@
       "compressed_clusters": 10
     },
     {
+      "file": "qcow1-stored.qcow2.gz",
+      "size": 53248,
+      "sha256": "35221b11ff8e0821b2a31cc4ede53216f98b35d1b4ccc167e9edeb265dba2348",
+      "compression": "stored",
+      "producer": "qemu-img"
+    },
+    {
+      "file": "qcow1-deflate.qcow2.gz",
+      "size": 17022,
+      "sha256": "7dfbed1c383403864fbf0c99246370c793a5bff14332b5f4c03adf2b213d07fb",
+      "compression": "zlib",
+      "producer": "qemu-io"
+    },
+    {
+      "file": "qcow1-deflate-short.qcow2.gz",
+      "size": 17022,
+      "sha256": "5d415e19f105dfb50a63b6f8305498da15f5f6f8eff16960199c1abe783aebfb",
+      "compression": "zlib",
+      "producer": "qemu-io"
+    },
+    {
       "file": "zstd.qcow2.gz",
       "size": 22016,
       "sha256": "bcbf6c9cad7fa957fa4e439b8f08cfabfb4682ada6a4549424531e52ed4bdf9c",
-      "compression": "ZSTD",
+      "compression": "zstd",
       "producer": "qemu-img"
+    },
+    {
+      "file": "extended-stored.qcow2.gz",
+      "size": 167936,
+      "sha256": "16d493994c4d9e78c08dba60aaeb15cf949aa26f6ed13dbc9e4a3ffe087d17ab",
+      "compression": "stored",
+      "producer": "qemu-img"
+    },
+    {
+      "file": "extended-deflate.qcow2.gz",
+      "size": 83456,
+      "sha256": "467e95f06c16a5268c4dcebf1212c8e0fea57a27da60ecbdb175475ef754f8a6",
+      "compression": "zlib",
+      "producer": "qemu-img"
+    },
+    {
+      "file": "extended-zstd.qcow2.gz",
+      "size": 82944,
+      "sha256": "142e715c9ab0d0f86df07ab7994b65ee97dc3a15927504784a41339a17e7824a",
+      "compression": "zstd",
+      "producer": "qemu-img"
+    }
+  ],
+  "reference_sets": [
+    {
+      "name": "backing-chain",
+      "entry": "диск.qcow2",
+      "files": {
+        "диск.qcow2": "references/top.gz",
+        "слои 空/родитель.qcow2": "references/parent.gz",
+        "слои 空/база.raw": "references/base.gz"
+      },
+      "expected": "references/expected.gz"
+    },
+    {
+      "name": "external",
+      "entry": "external.qcow2",
+      "files": {
+        "external.qcow2": "references/external.gz",
+        "external данные 空.raw": "references/external-data.gz"
+      },
+      "expected": "references/expected.gz"
+    },
+    {
+      "name": "external-extended",
+      "entry": "external-extended.qcow2",
+      "files": {
+        "external-extended.qcow2": "references/external-extended.gz",
+        "external-extended данные 空.raw": "references/external-extended-data.gz"
+      },
+      "expected": "references/expected.gz"
     }
   ]
 }

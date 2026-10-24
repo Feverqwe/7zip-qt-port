@@ -1,5 +1,11 @@
 {
   "schema": 1,
+  "runtime_dependencies": [
+    "src/block/qcow.c",
+    "src/block/qcow.h",
+    "src/block/qcow2.c",
+    "src/block/qcow2.h"
+  ],
   "repository": "https://github.com/ip7z/7zip.git",
   "revision": "9128b80e3a471108678e2b3ec3c985861c8d7b0f",
   "overrides": {},

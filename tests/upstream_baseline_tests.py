@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 import pathlib
 import os
@@ -8,6 +9,7 @@ import sys
 import time
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts/upstream_baseline.py"
@@ -73,6 +75,50 @@ class UpstreamBaselineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Exact vendor differs"):
             baseline.verify(data, self.upstream)
 
+    def reference_manifest(self):
+        paths = [self.source, "CPP/Windows/Net.cpp"]
+        return {
+            "repository": "https://github.com/qemu/qemu.git",
+            "revision": self.old,
+            "files": {path: hashlib.sha256(baseline.git(self.upstream, "show",
+                                                     self.old + ":" + path)).hexdigest()
+                      for path in paths},
+            "adapted": {self.source: "src/" + self.source},
+        }
+
+    def test_reference_verifies_originals_without_pinning_local_adaptation(self):
+        data = self.reference_manifest()
+        baseline.verify_reference(data, self.upstream, self.port)
+        (self.port / ("src/" + self.source)).write_text("revised platform adaptation\n")
+        baseline.verify_reference(data, self.upstream, self.port)
+        data["files"][self.source] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "source hash mismatch"):
+            baseline.verify_reference(data, self.upstream, self.port)
+
+    def test_reference_review_reports_changes_and_deletions_without_writing_sources(self):
+        data = self.reference_manifest()
+        (self.upstream / self.source).write_text("new reference body\n")
+        (self.upstream / "CPP/Windows/Net.cpp").unlink()
+        git(self.upstream, "add", "-A")
+        git(self.upstream, "commit", "-qm", "reference update")
+        proposed = git(self.upstream, "rev-parse", "HEAD")
+        local = self.port / ("src/" + self.source)
+        before = local.read_bytes()
+        report = baseline.review_reference(data, self.upstream, proposed, [], self.port)
+        report_lines = report.splitlines()
+        self.assertIn("-source body", report_lines)
+        self.assertIn("+new reference body", report_lines)
+        self.assertIn("deleted file mode", report)
+        self.assertIn("+source body with Qt adapter", report_lines)
+        self.assertEqual(local.read_bytes(), before)
+        self.assertEqual(git(self.upstream, "status", "--porcelain"), "")
+        self.assertEqual(git(self.port, "status", "--porcelain"), "")
+
+    def test_reference_review_rejects_unrecorded_paths(self):
+        with self.assertRaisesRegex(ValueError, "absent from reference baseline"):
+            baseline.review_reference(self.reference_manifest(), self.upstream, self.old,
+                                      ["unreviewed/file.h"], self.port)
+
     def test_review_reports_adapted_and_exact_changes(self):
         (self.upstream / self.source).write_text("upstream revised source\n")
         (self.upstream / "CPP/Windows/Net.cpp").write_text("upstream revised vendor\n")
@@ -117,6 +163,30 @@ class UpstreamBaselineTests(unittest.TestCase):
         self.assertEqual(adapted.read_bytes(), b"new adapted input")
         self.assertEqual(compiled.read_bytes(), b"cached compiler output")
 
+    def test_runtime_snapshot_drains_archive_padding_before_waiting_for_producer(self):
+        snapshot = pathlib.Path(self.temporary.name) / "runtime"
+        self.manifest["runtime_adapted"] = ["src/" + self.source]
+        real_popen = subprocess.Popen
+        producer = (
+            "import subprocess,sys; "
+            "data=subprocess.check_output(sys.argv[1:]); "
+            "sys.stdout.buffer.write(data); "
+            "sys.stdout.buffer.write(bytes(1024*1024)); sys.stdout.buffer.flush()"
+        )
+        def padded_archive(args, **kwargs):
+            if "archive" not in args:
+                return real_popen(args, **kwargs)
+            process = real_popen([sys.executable, "-c", producer, *args], **kwargs)
+            wait = process.wait
+            # A regression fails in bounded time instead of hanging the suite
+            # on an archive producer whose stdout pipe is still full.
+            process.wait = lambda timeout=None: wait(timeout=5 if timeout is None else timeout)
+            return process
+        with patch.object(baseline.subprocess, "Popen", side_effect=padded_archive):
+            baseline.prepare_runtime_snapshot(self.manifest, snapshot, self.upstream)
+        self.assertEqual((snapshot / self.source).read_bytes(),
+                         (self.port / ("src/" + self.source)).read_bytes())
+
     def test_runtime_snapshot_refuses_unowned_directory(self):
         snapshot = pathlib.Path(self.temporary.name) / "runtime"
         snapshot.mkdir()
@@ -156,32 +226,50 @@ class UpstreamBaselineTests(unittest.TestCase):
             "C/7zVersion.h", (("#define MY_VER_MINOR 5\n", 5), ("#define MY_VER_MINOR 4\n", 4)),
             "MY_VER_MINOR", adapted=False)
 
-    def assert_runtime_rebuilds_header_consumers(self, header, versions, expression, adapted):
+    def test_runtime_rebuilds_external_header_consumers(self):
+        self.assert_runtime_rebuilds_header_consumers(
+            "block/qcow2.h", (("#define DISK_VALUE 3\n", 3), ("#define DISK_VALUE 7\n", 7)),
+            "DISK_VALUE", adapted=False, dependency=True)
+
+    def test_runtime_links_c_reference_and_rebuilds_after_header_change(self):
+        self.assert_runtime_rebuilds_header_consumers(
+            "block/reader.h", (("#define DISK_VALUE 3\n", 3), ("#define DISK_VALUE 7\n", 7)),
+            "reference_value()", adapted=False, dependency=True, c_reference=True)
+
+    def assert_runtime_rebuilds_header_consumers(self, header, versions, expression, adapted,
+                                               dependency=False, c_reference=False):
         directory = "CPP/7zip/UI/Console"
-        include = "Model.h" if adapted else "../../../C/7zVersion.h"
+        include = "Model.h" if adapted else "../../../" + header
         files = {
             directory + "/Probe.cpp": '#include "../../Common/Bridge.h"\nint main() { return ' + expression + '; }\n',
             "CPP/7zip/Common/Bridge.h": '#include "' + include + '"\n',
             header: versions[0][0],
         }
+        if c_reference:
+            files["CPP/7zip/Common/Bridge.h"] += 'extern "C" int reference_value(void);\n'
         windows = sys.platform == "win32"
         cache = shutil.which("ccache")
         self.assertIsNotNone(cache, "Runtime compilation must use the existing compiler cache")
         compiler = '"' + cache + '" ' + ("cl /nologo" if windows else "c++")
         if windows:
-            makefile = ('O=objects\nall: $(O)\\probe.exe\n'
-                        '$(O)\\probe.exe: $(O)\\Probe.obj\n'
-                        f'\t{compiler} /Fe$@ $(O)\\Probe.obj\n'
+            makefile = ('O=objects\nPROGPATH=$(O)\\probe.exe\nOBJS=$(O)\\Probe.obj\n'
+                        f'CC={compiler}\nCFLAGS_O2=/c\nall: $(PROGPATH)\n'
+                        '$(PROGPATH): $(OBJS)\n'
+                        f'\t{compiler} /Fe$@ $(OBJS) $(LIBS)\n'
                         '$(O)\\Probe.obj: Probe.cpp\n'
                         f'\t{compiler} /c /Fo$@ Probe.cpp\n')
         else:
-            makefile = ('O=objects\nall: $(O)/probe\n'
-                        '$(O)/probe: $(O)/Probe.o\n'
-                        f'\t{compiler} -o $@ $<\n'
+            makefile = ('O=objects\nPROGPATH=$(O)/probe\nPROGPATH_STATIC=$(O)/probes\n'
+                        'OBJS=$(O)/Probe.o\n'
+                        f'CC="{cache}" cc\nCFLAGS=-c -o $@\nall: $(PROGPATH)\n'
+                        '$(PROGPATH): $(OBJS)\n'
+                        f'\t{compiler} -o $@ $(OBJS)\n'
                         '$(O)/Probe.o: Probe.cpp\n'
                         f'\t{compiler} -c -o $@ $<\n')
         files[directory + ("/makefile" if windows else "/makefile.gcc")] = makefile
         for name, contents in files.items():
+            if dependency and name == header:
+                continue
             path = self.upstream / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(contents)
@@ -189,10 +277,17 @@ class UpstreamBaselineTests(unittest.TestCase):
         git(self.upstream, "commit", "-qm", "native dependency fixture")
         self.manifest["revision"] = git(self.upstream, "rev-parse", "HEAD")
         local = "src/" + header
-        if adapted:
+        if adapted or dependency:
             (self.port / local).parent.mkdir(parents=True, exist_ok=True)
             (self.port / local).write_text(files[header])
-            self.manifest["adapted"] = sorted([*self.manifest["adapted"], local])
+            if adapted:
+                self.manifest["adapted"] = sorted([*self.manifest["adapted"], local])
+            else:
+                self.manifest["runtime_dependencies"] = [local]
+                if c_reference:
+                    source = self.port / "src/block/reader.c"
+                    source.write_text('#include "reader.h"\nint reference_value(void) { return DISK_VALUE; }\n')
+                    self.manifest["runtime_dependencies"] = sorted([local, "src/block/reader.c"])
         self.manifest["runtime_adapted"] = [local] if adapted else []
         snapshot = pathlib.Path(self.temporary.name) / "runtime"
         environment = dict(os.environ)
@@ -204,7 +299,7 @@ class UpstreamBaselineTests(unittest.TestCase):
             # Apple GNU make 3.81 and nmake compare whole-second timestamps.
             if iteration:
                 time.sleep(1.1)
-            if adapted:
+            if adapted or dependency:
                 (self.port / local).write_text(contents)
             elif iteration:
                 (self.upstream / header).write_text(contents)
