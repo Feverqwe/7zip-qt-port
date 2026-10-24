@@ -13,14 +13,15 @@ same Qt runtime; this adds no separate runtime module.
 Native console SFX can be built from the recorded official baseline with
 `./scripts/build-sfx.sh [upstream-checkout] [artifact-directory]` on macOS/Linux.
 Defaults are the read-only sibling checkout and `build/sfx`. The script extracts
-an immutable temporary snapshot, builds upstream SFXCon unchanged and writes
+an owned source snapshot, builds upstream SFXCon unchanged and writes
 `7zCon.sfx`, its license and a SHA-256/source/host/version JSON record. It refuses
-to replace an unowned module artifact. Source scope and acceptance evidence are
+to replace an unowned module artifact. SFX builds retain their incremental outputs
+and use the existing compiler cache. Source scope and acceptance evidence are
 in [the port audit](upstream-port-audit.md). Windows uses
 the official GUI `7z.sfx` runtime; this script does not create a Windows module.
 
 For Windows, use `scripts/build-sfx.ps1 -Architecture arm64` (or `x64`/`x86`)
-in a matching Visual Studio developer PowerShell. It requires Git, Windows tar,
+in a matching Visual Studio developer PowerShell. It requires Git, Python,
 MSVC/nmake, linker and resource compiler, snapshots the same recorded revision,
 and builds unchanged `Bundles/SFXWin/makefile` with `PLATFORM`. Optional
 `-UpstreamCheckout` and `-OutputDirectory` select the read-only source and output.

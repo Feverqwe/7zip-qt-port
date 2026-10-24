@@ -45,6 +45,12 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Полное обновление 7-Zip до 26.05](upstream-port-audit/upstream-26.05.md)
+  — native engine/SFX, адаптации NTFS/container/progress и проверки платформ.
+
+- [ZIP: обновление Shrink из 7-Zip 26.05](upstream-port-audit/zip-26.05.md)
+  — исходные decoder units, точечная ревизия и проверки native/runtime consumers.
+
 - [Политика read-only и частичного доступа](upstream-port-audit/read-only-access.md)
   — текущий аудит файловых систем и архивов, согласие, читаемые данные и результаты.
 

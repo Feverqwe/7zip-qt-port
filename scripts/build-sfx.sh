@@ -27,9 +27,9 @@ if any(path.exists() or path.is_symlink() for path in (module, manifest, license
     if not manifest.is_file() or json.loads(manifest.read_text()).get("producer") != "sevenzip-desktop/build-sfx":
         raise SystemExit("Refusing to replace an unowned SFX artifact")
 PY
-snapshot="$(mktemp -d "$artifact_dir/.build-sfx-XXXXXX")"
-trap 'rm -rf -- "$snapshot"' EXIT
-git -C "$upstream_checkout" archive "$revision" | tar -x -C "$snapshot"
+snapshot="$artifact_dir/.build-sfx"
+python3 "$project_root/scripts/upstream_baseline.py" runtime-snapshot --original-only \
+  --snapshot "$snapshot" --upstream "$upstream_checkout"
 if [[ "$(uname -s)" == Darwin ]]; then
   if ! printf '#include <type_traits>\n' | c++ -x c++ -std=c++17 -fsyntax-only - >/dev/null 2>&1; then
     task_sfx_sdk="$(xcrun --show-sdk-path)"
@@ -37,8 +37,17 @@ if [[ "$(uname -s)" == Darwin ]]; then
   fi
 fi
 # Keep upstream makefiles and engine unchanged. Only host toolchain flags differ.
-make -s -C "$snapshot/CPP/7zip/Bundles/SFXCon" -f makefile.gcc \
-  CC="${CC:-cc}" CXX="${CXX:-c++}" LFLAGS_STRIP= -j4
+task_sfx_cc="${CC:-cc}"
+task_sfx_cxx="${CXX:-c++}"
+if command -v ccache >/dev/null 2>&1; then
+  task_sfx_cc="ccache $task_sfx_cc"
+  task_sfx_cxx="ccache $task_sfx_cxx"
+fi
+if [[ "$(uname -s)" == Darwin ]]; then
+  export CCACHE_DIR="${CCACHE_DIR:-/private/tmp/sevenzip-desktop-ccache}"
+fi
+make -s -C "$snapshot/CPP/7zip/Bundles/SFXCon" -f sevenzip-runtime.gcc.mak \
+  CC="$task_sfx_cc" CXX="$task_sfx_cxx" LFLAGS_STRIP= -j4
 python3 - "$project_root/docs/upstream-baseline.json" "$snapshot" "$artifact_dir" <<'PY'
 import hashlib, json, pathlib, platform, re, shutil, sys
 baseline = json.loads(pathlib.Path(sys.argv[1]).read_text())

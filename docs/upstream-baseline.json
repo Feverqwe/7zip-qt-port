@@ -8,7 +8,7 @@
     "src/block/qcow2.h"
   ],
   "repository": "https://github.com/ip7z/7zip.git",
-  "revision": "9128b80e3a471108678e2b3ec3c985861c8d7b0f",
+  "revision": "b88c6bc09339de32f7d18bbab900686b244f42ba",
   "overrides": {},
   "runtime_adapted": [
     "src/C/Xz.h",
@@ -761,6 +761,15 @@
     "src/gpl/CPP/7zip/Archive/Udf/UdfLinux.cpp"
   ],
   "original_sha256": {
-    "src/CPP/7zip/Archive/HandlerCont.h": "0dc3ecde43894bddb416ae8c47f6aa55ac66450fe8376a1b81c78b24ccafe40e"
+    "src/CPP/7zip/Archive/HandlerCont.h": "0dc3ecde43894bddb416ae8c47f6aa55ac66450fe8376a1b81c78b24ccafe40e",
+    "src/CPP/7zip/Archive/HandlerCont.cpp": "2e0e38b0d5116c66fad75b624a6997c7bcf2b9a26bea16aa147796d5e884f820",
+    "src/CPP/7zip/Archive/NtfsHandler.cpp": "e6217266a6dc51208c1a8420ab25ce4731e0c78a9e1984891bd7404334736cf9",
+    "src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp": "7af000033b8bba197e7d1b1d13e5e25b6b72358730b718d764b02e3640e851cb",
+    "src/CPP/Common/MyVector.h": "cd5d792c8e2e4127c0353cf500bee63d45ced7e83d002e65e33c46f881212915",
+    "src/gpl/CPP/7zip/Archive/NtfsHandler.cpp": "e6217266a6dc51208c1a8420ab25ce4731e0c78a9e1984891bd7404334736cf9",
+    "third_party/7zip/C/7zVersion.h": "773aef68cc2d03e0a24b26422a4e220c2dc1ffa6c3c6c319e35a5502d748dc8e",
+    "third_party/7zip/CPP/7zip/Compress/ShrinkDecoder.cpp": "fab6e97d24d2855f5b979bf00994c97731f232123c18135ef2ebdcb4eb060ac5",
+    "third_party/7zip/CPP/7zip/Compress/ShrinkDecoder.h": "78bbe1b36383885dbd03538e3f764b386b1a1bc3a6983ce534c30d3750a2ea5e",
+    "third_party/7zip/CPP/Common/MyString.h": "88c9abe6fccb0bcf446e659254e88f376ba501c931a23621ed36394de9079be0"
   }
 }

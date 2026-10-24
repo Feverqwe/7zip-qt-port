@@ -1,5 +1,6 @@
 #include "archive_reader_fixture.h"
 #include "rar_memory_fixture.h"
+#include <QDataStream>
 #include <QTimer>
 
 class NativeArchiveTestTests final : public ArchiveReaderFixture {
@@ -117,6 +118,66 @@ class NativeArchiveTestTests final : public ArchiveReaderFixture {
         QCOMPARE(backend_->lastResult(), E_FAIL);
         QVERIFY(!errors.isEmpty());
         QVERIFY(finished[0][1].toString().contains(errors[0][0].toString()));
+        QCOMPARE(Bytes(path), image);
+    }
+    void legacyZPadding_data() {
+        QTest::addColumn<QByteArray>("image");
+        QTest::addColumn<bool>("valid");
+        QTest::newRow("zero-padding") << QByteArray::fromHex("1f9d904100") << true;
+        QTest::newRow("nonzero-padding") << QByteArray::fromHex("1f9d904180") << false;
+    }
+    void legacyZPadding() {
+        QFETCH(QByteArray, image);
+        QFETCH(bool, valid);
+        QTemporaryDir dir;
+        const QString path = dir.filePath(QStringLiteral("данные 空 with spaces.Z"));
+        QVERIFY(Put(path, image));
+        QSignalSpy finished(backend_.get(), &ArchiveBackend::finished);
+        backend_->testSourceArchive(path, {});
+        QTRY_COMPARE(finished.size(), 1);
+        QCOMPARE(finished.takeFirst()[0].toBool(), valid);
+        if (valid) {
+            const QString output = dir.filePath("extracted data");
+            backend_->extractSourceEntry(path, QStringLiteral("данные 空 with spaces"), output, "Z",
+                                         {});
+            QTRY_COMPARE(finished.size(), 1);
+            QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+            QCOMPARE(Bytes(output), QByteArray("A"));
+        }
+        QCOMPARE(Bytes(path), image);
+    }
+    void machoObjectSymbolTablesAreReadable() {
+        QTemporaryDir dir;
+        const QString path = dir.filePath(QStringLiteral("объект 空 with spaces.o"));
+        QByteArray image;
+        QDataStream out(&image, QIODevice::WriteOnly);
+        out.setByteOrder(QDataStream::LittleEndian);
+        // A 64-bit object with LC_SYMTAB outside the segment command area.
+        out << quint32(0xfeedfacf) << quint32(0x01000007) << quint32(3) << quint32(1) << quint32(1)
+            << quint32(24) << quint32(0) << quint32(0);
+        out << quint32(2) << quint32(24) << quint32(56) << quint32(1) << quint32(72) << quint32(4);
+        image.append(QByteArray(16, '\0'));
+        const QByteArray strings("\0id\0", 4);
+        image.append(strings);
+        QVERIFY(Put(path, image));
+        QSignalSpy finished(backend_.get(), &ArchiveBackend::finished);
+        QSignalSpy entries(backend_.get(), &ArchiveBackend::entriesReady);
+        backend_->list(path);
+        QTRY_COMPARE(finished.size(), 1);
+        const auto result = finished.takeFirst();
+        QVERIFY2(result[0].toBool(), qPrintable(result[1].toString()));
+        QCOMPARE(entries.size(), 1);
+        const auto items = qvariant_cast<QList<ArchiveEntry>>(entries[0][0]);
+        QCOMPARE(items.size(), 2);
+        const auto found = std::find_if(items.begin(), items.end(), [](const ArchiveEntry &item) {
+            return item.path == QStringLiteral("_SYMTAB_STRINGS");
+        });
+        QVERIFY(found != items.end());
+        const QString output = dir.filePath("symbol strings");
+        backend_->extractSourceEntry(path, found->path, output, "MachO", {});
+        QTRY_COMPARE(finished.size(), 1);
+        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QCOMPARE(Bytes(output), strings);
         QCOMPARE(Bytes(path), image);
     }
     void storedRarUsesAlreadyAllowedMemory_data() {

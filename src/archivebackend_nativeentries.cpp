@@ -3,6 +3,7 @@
 #include "7zip/UI/Common/PropIDUtils.h"
 #include "CPP/7zip/UI/Console/List.h"
 #include "Common/ComTry.h"
+#include "Windows/FileIO.h"
 #include "Windows/PropVariantConv.h"
 #include "archivenativeopen.h"
 #include <limits>
@@ -60,7 +61,8 @@ HRESULT RawFields(const CArc &arc, UInt32 index, ArchiveEntry &entry, IProgress 
             UString text;
             if (ConvertNtReparseToString(static_cast<const Byte *>(data), size, text)) {
                 value = Text(text);
-                entry.link = true;
+                NWindows::NFile::CReparseAttr reparse;
+                entry.link |= reparse.Parse(static_cast<const Byte *>(data), size);
             }
         }
         if (value.isEmpty())
@@ -105,7 +107,7 @@ HRESULT Item(const CArc &arc, UInt32 index, const QList<CField> &fields, Archive
             entry.properties.insert(Text(field.Name), value);
             if (field.Id == kpidCRC && prop.vt == VT_UI4)
                 entry.crc = prop.ulVal;
-            if (field.Id == kpidSymLink || field.Id == kpidHardLink || field.Id == kpidNtReparse)
+            if (field.Id == kpidSymLink || field.Id == kpidHardLink)
                 entry.link |= !value.isEmpty();
             if (field.Id == kpidPosixAttrib)
                 entry.link |= value.startsWith('l');

@@ -21,9 +21,7 @@ $msvcBin = Split-Path -Parent (Get-Command cl.exe -CommandType Application -Erro
 $null = Get-Command (Join-Path $msvcBin 'link.exe') -ErrorAction Stop
 $env:PATH = "$msvcBin;$env:PATH"
 Write-Output "Using MSVC tools: $msvcBin"
-# Git Bash's GNU tar treats drive-letter paths as remote archive names.
-$tar = Join-Path $env:SystemRoot 'System32/tar.exe'
-foreach ($tool in @('git', $tar, 'nmake', 'cl', 'link', 'rc')) {
+foreach ($tool in @('git', 'python', 'nmake', 'cl', 'link', 'rc')) {
     $null = Get-Command $tool -ErrorAction Stop
 }
 function Invoke-Checked([string]$Program, [string[]]$Arguments) {
@@ -60,17 +58,18 @@ if ($existing.Count -gt 0) {
         throw 'Refusing to replace an unowned SFX artifact.'
     }
 }
-$snapshot = Join-Path $output ('.build-sfx-' + [Guid]::NewGuid().ToString('N'))
-$null = New-Item -ItemType Directory -Path $snapshot
-try {
-    $archive = Join-Path $snapshot 'source.tar'
-    # PowerShell 5.1 binary pipelines corrupt archives: let Git write the file.
-    Invoke-Checked 'git' @('-C', $upstream, 'archive', "--output=$archive", $revision)
-    Invoke-Checked $tar @('-xf', $archive, '-C', $snapshot)
+$snapshot = Join-Path $output '.build-sfx'
+& {
+    Invoke-Checked 'python' @((Join-Path $scriptDirectory 'upstream_baseline.py'),
+        'runtime-snapshot', '--original-only', '--snapshot', $snapshot, '--upstream', $upstream)
     $bundle = Join-Path $snapshot 'CPP/7zip/Bundles/SFXWin'
     Push-Location -LiteralPath $bundle
     try {
-        Invoke-Checked 'nmake' @('/nologo', '/f', 'makefile', "PLATFORM=$Architecture")
+        $makeArgs = @('/nologo', '/f', 'sevenzip-runtime.mak', "PLATFORM=$Architecture")
+        if (Get-Command ccache.exe -ErrorAction SilentlyContinue) {
+            $makeArgs += 'CC=ccache cl'
+        }
+        Invoke-Checked 'nmake' $makeArgs
     } finally { Pop-Location }
     $built = Join-Path $bundle "$Architecture/7z.sfx"
     if (-not (Test-Path -LiteralPath $built -PathType Leaf)) { throw 'SFXWin produced no module.' }
@@ -99,7 +98,4 @@ try {
     Move-Item -LiteralPath $stagedManifest -Destination $manifest -Force
     Write-Output "Built official Windows GUI SFX: $module"
     Write-Output "Upstream: $revision SHA-256: $($record.sha256)"
-} finally {
-    # Only this invocation's unique source snapshot is removed.
-    Remove-Item -LiteralPath $snapshot -Recurse -Force
 }

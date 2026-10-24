@@ -669,11 +669,12 @@ void CProgressDialog::UpdateStatInfo(bool showAll) {
             ShowSize(IDT_PROGRESS_PACKED_VAL, packSize, _packed_Prev);
             if (IS_DEFINED_VAL(packSize) && IS_DEFINED_VAL(unpackSize) && unpackSize != 0) {
                 wchar_t s[32];
-                UInt64 ratio = packSize * 100 / unpackSize;
+                const UInt64 ratio = packSize * 100 / unpackSize;
                 if (_ratio_Prev != ratio) {
                     _ratio_Prev = ratio;
-                    ConvertUInt64ToString(ratio, s);
-                    MyStringCat(s, L"%");
+                    wchar_t *dest = ConvertUInt64ToString(ratio, s);
+                    dest[0] = '%';
+                    dest[1] = 0;
                     SetItemText(IDT_PROGRESS_RATIO_VAL, s);
                 }
             }

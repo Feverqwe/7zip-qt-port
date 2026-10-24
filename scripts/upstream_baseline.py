@@ -120,7 +120,8 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=()):
             if pathlib.PurePosixPath(current).suffix in (".c", ".cpp"):
                 dependencies.setdefault(pathlib.PurePosixPath(current).stem, set()).add(header)
             pending.extend(reverse.get(current, ()))
-    for directory in ("CPP/7zip/UI/Console", "CPP/7zip/Bundles/Format7zF"):
+    for directory in ("CPP/7zip/UI/Console", "CPP/7zip/Bundles/Format7zF",
+                      "CPP/7zip/Bundles/SFXCon", "CPP/7zip/Bundles/SFXWin"):
         for windows, original, generated in ((False, "makefile.gcc", "sevenzip-runtime.gcc.mak"),
                                               (True, "makefile", "sevenzip-runtime.mak")):
             bundle = snapshot / directory
@@ -180,7 +181,10 @@ def prepare_runtime_snapshot(data, snapshot, upstream):
         raise ValueError("Unexpected runtime source owner")
     if not owner.exists():
         owner.write_text(json.dumps({"producer": "sevenzip-runtime-source", "files": []}) + "\n")
-    overlays = {source_path(path): ROOT / path for path in paths}
+    # A partial upstream update must reach the standalone engine as well as
+    # statically linked consumers. Keep unchanged dependencies byte-exact.
+    exact_overrides = sorted(set(data.get("overrides", {})) & set(data["exact"]))
+    overlays = {source_path(path): ROOT / path for path in paths + exact_overrides}
     # Non-7-Zip C/header dependencies retain their declared snapshot paths.
     dependencies = data.get("runtime_dependencies", [])
     if dependencies != sorted(set(dependencies)):
@@ -244,7 +248,7 @@ def prepare_runtime_snapshot(data, snapshot, upstream):
         (snapshot / relative).unlink(missing_ok=True)
     owner.write_text(json.dumps({"producer": "sevenzip-runtime-source", "files": members}) + "\n")
     hashes = {}
-    for path in paths + dependencies:
+    for path in paths + exact_overrides + dependencies:
         source = ROOT / path
         destination = snapshot / (path[len("src/"):] if path in dependencies else source_path(path))
         if source.is_symlink() or destination.is_symlink() or not destination.is_file():
@@ -369,6 +373,8 @@ def main():
     parser.add_argument("command", choices=("inventory", "verify", "review", "runtime-snapshot",
                                             "reference-verify", "reference-review"))
     parser.add_argument("--snapshot", type=pathlib.Path)
+    parser.add_argument("--original-only", action="store_true",
+                        help="Prepare original sources without runtime overlays (SFX builds)")
     parser.add_argument("--upstream", type=pathlib.Path)
     parser.add_argument("--manifest", type=pathlib.Path, default=MANIFEST)
     parser.add_argument("--new-revision", help="Proposed upstream commit for review")
@@ -396,6 +402,8 @@ def main():
         if args.command == "runtime-snapshot":
             if not args.snapshot or not args.upstream:
                 raise ValueError("Runtime snapshot and upstream directories are required")
+            if args.original_only:
+                data = dict(data, runtime_adapted=[], runtime_dependencies=[], overrides={})
             prepare_runtime_snapshot(data, args.snapshot, args.upstream)
             return 0
         if args.command == "inventory":

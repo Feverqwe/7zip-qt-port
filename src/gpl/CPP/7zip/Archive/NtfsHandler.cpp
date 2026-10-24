@@ -1618,7 +1618,7 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
                 break;
             }
             CFileNameAttr fna;
-            if (!attr.ParseFileName(fna))
+            if (attr.NonResident != 0 || !attr.ParseFileName(fna))
                 return false;
             FileNames.Add(fna);
             PRF(printf(" \n NameType = %1u: ", (unsigned)fna.NameType));

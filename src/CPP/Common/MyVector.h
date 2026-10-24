@@ -254,7 +254,7 @@ public:
   }
 
   /*
-  unsigned Add2(const T &item)
+  unsigned Add_byRef(const T &item)
   {
     ReserveOnePosition();
     const unsigned size = _size;
@@ -263,6 +263,14 @@ public:
     return size;
   }
   */
+
+  T& AddNew_NoConstruct()
+  {
+    ReserveOnePosition();
+    const unsigned size = _size;
+    _size = size + 1;
+    return _items[size];
+  }
 
   unsigned AddInReserved(const T item)
   {

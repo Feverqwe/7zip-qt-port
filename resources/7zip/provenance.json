@@ -1,9 +1,9 @@
 {
   "repository": "https://github.com/ip7z/7zip",
-  "release": "26.04",
-  "archive": "https://github.com/ip7z/7zip/releases/download/26.04/7z2604-x64.exe",
-  "archive_sha256": "d54bf805f9f3704d1e8db2fa3498ae7ef2df0312b40b558e7c71c734430a665d",
-  "archive_size": 1664082,
+  "release": "26.05",
+  "archive": "https://github.com/ip7z/7zip/releases/download/26.05/7z2605-x64.exe",
+  "archive_sha256": "fd99e86f57d8f429ef5ed045bf98315af962e2309b0f1ba87a147a44c71647d0",
+  "archive_size": 1663506,
   "files": [
     {
       "path": "License.txt",

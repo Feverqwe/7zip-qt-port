@@ -135,6 +135,30 @@ class RuntimeCacheTests(unittest.TestCase):
                 (root / "docs/upstream-baseline.json").write_text('{"revision":"two"}')
                 self.assertNotEqual(original, runtime.fingerprint(root))
 
+    def test_partial_exact_update_invalidates_prepared_runtime(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "scripts").mkdir()
+            (root / "docs").mkdir()
+            source = root / "third_party/7zip/decoder.cpp"
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b"baseline decoder")
+            manifest = {"revision": "one", "exact": [str(source.relative_to(root))]}
+            path = root / "docs/upstream-baseline.json"
+            path.write_text(json.dumps(manifest))
+            for name in runtime.BUILDERS:
+                (root / "scripts" / name).write_text("builder")
+            with patch.object(runtime.subprocess, "run", return_value=
+                              subprocess.CompletedProcess("compiler", 0, b"compiler", b"")):
+                before = runtime.fingerprint(root)
+                source.write_bytes(b"updated decoder")
+                manifest["overrides"] = {str(source.relative_to(root)): "two"}
+                path.write_text(json.dumps(manifest))
+                updated = runtime.fingerprint(root)
+                self.assertNotEqual(before, updated)
+                source.write_bytes(b"corrected decoder")
+                self.assertNotEqual(updated, runtime.fingerprint(root))
+
 
 if __name__ == "__main__":
     unittest.main()

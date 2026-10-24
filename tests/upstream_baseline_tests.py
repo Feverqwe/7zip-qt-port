@@ -205,6 +205,45 @@ class UpstreamBaselineTests(unittest.TestCase):
             baseline.prepare_runtime_snapshot(self.manifest, snapshot, self.upstream)
         self.assertEqual(private.read_bytes(), b"user data")
 
+    def test_original_snapshot_excludes_engine_adaptations_and_retains_outputs(self):
+        snapshot = pathlib.Path(self.temporary.name) / "sfx"
+        self.manifest["runtime_adapted"] = ["src/" + self.source]
+        self.manifest_path.write_text(json.dumps(self.manifest))
+        command = [sys.executable, str(SCRIPT), "runtime-snapshot", "--original-only",
+                   "--manifest", str(self.manifest_path), "--upstream", str(self.upstream),
+                   "--snapshot", str(snapshot)]
+        subprocess.run(command, check=True)
+        self.assertEqual((snapshot / self.source).read_bytes(),
+                         baseline.git(self.upstream, "show", self.old + ":" + self.source))
+        compiled = snapshot / "cached.o"
+        compiled.write_bytes(b"incremental SFX output")
+        before = (snapshot / self.source).stat().st_mtime_ns
+        subprocess.run(command, check=True)
+        self.assertEqual((snapshot / self.source).stat().st_mtime_ns, before)
+        self.assertEqual(compiled.read_bytes(), b"incremental SFX output")
+
+    def test_runtime_snapshot_applies_partial_exact_update(self):
+        snapshot = pathlib.Path(self.temporary.name) / "runtime"
+        baseline.prepare_runtime_snapshot(self.manifest, snapshot, self.upstream)
+        compiled = snapshot / "cached.o"
+        compiled.write_bytes(b"retain incremental output")
+        (self.upstream / "CPP/Windows/Net.cpp").write_bytes(b"updated upstream dependency\n")
+        git(self.upstream, "add", ".")
+        git(self.upstream, "commit", "-qm", "partial update")
+        revision = git(self.upstream, "rev-parse", "HEAD")
+        self.manifest["overrides"] = {self.exact: revision}
+        (self.port / self.exact).write_bytes(b"updated upstream dependency\n")
+        self.manifest["original_sha256"] = {
+            self.exact: hashlib.sha256(b"updated upstream dependency\n").hexdigest()}
+        baseline.verify(self.manifest, self.upstream)
+        baseline.prepare_runtime_snapshot(self.manifest, snapshot, self.upstream)
+        self.assertEqual((snapshot / "CPP/Windows/Net.cpp").read_bytes(),
+                         b"updated upstream dependency\n")
+        self.assertEqual(compiled.read_bytes(), b"retain incremental output")
+        self.manifest["original_sha256"][self.exact] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "Original source hash mismatch"):
+            baseline.verify(self.manifest, self.upstream)
+
     def test_license_variants_keep_sdk_runtime_isolated(self):
         sdk = "src/" + self.source
         gpl = "src/gpl/" + self.source
@@ -235,6 +274,12 @@ class UpstreamBaselineTests(unittest.TestCase):
             "C/7zVersion.h", (("#define MY_VER_MINOR 5\n", 5), ("#define MY_VER_MINOR 4\n", 4)),
             "MY_VER_MINOR", adapted=False)
 
+    def test_sfx_rebuilds_native_version_after_baseline_change(self):
+        self.assert_runtime_rebuilds_header_consumers(
+            "C/7zVersion.h", (("#define MY_VER_MINOR 4\n", 4), ("#define MY_VER_MINOR 5\n", 5)),
+            "MY_VER_MINOR", adapted=False,
+            directory="CPP/7zip/Bundles/" + ("SFXWin" if sys.platform == "win32" else "SFXCon"))
+
     def test_runtime_rebuilds_external_header_consumers(self):
         self.assert_runtime_rebuilds_header_consumers(
             "block/qcow2.h", (("#define DISK_VALUE 3\n", 3), ("#define DISK_VALUE 7\n", 7)),
@@ -246,8 +291,8 @@ class UpstreamBaselineTests(unittest.TestCase):
             "reference_value()", adapted=False, dependency=True, c_reference=True)
 
     def assert_runtime_rebuilds_header_consumers(self, header, versions, expression, adapted,
-                                               dependency=False, c_reference=False):
-        directory = "CPP/7zip/UI/Console"
+                                               dependency=False, c_reference=False,
+                                               directory="CPP/7zip/UI/Console"):
         include = "Model.h" if adapted else "../../../" + header
         files = {
             directory + "/Probe.cpp": '#include "../../Common/Bridge.h"\nint main() { return ' + expression + '; }\n',

@@ -1395,7 +1395,7 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
         switch (type) {
         case ATTR_TYPE_FILE_NAME: {
             CFileNameAttr fna;
-            if (!attr.ParseFileName(fna))
+            if (attr.NonResident != 0 || !attr.ParseFileName(fna))
                 return false;
             FileNames.Add(fna);
             PRF(printf(" \n NameType = %1u: ", (unsigned)fna.NameType));
@@ -1432,12 +1432,11 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
         */
         default:
             // if (attrs) attrs->Add(attr);
-            if (volInfo) {
+            if (volInfo && attr.NonResident == 0) {
                 if (type == ATTR_TYPE_VOLUME_NAME && volInfo->VolName.IsEmpty())
                     GetString(attr.Data, (unsigned)attr.Data.Size() / 2, volInfo->VolName);
-                else if (type == ATTR_TYPE_VOLUME_INFO /* && volInfo->FsVerMajor < 0 */) {
-                    if (attr.Data.Size() < 10)
-                        return false;
+                else if (type == ATTR_TYPE_VOLUME_INFO &&
+                         attr.Data.Size() >= 12 /* && volInfo->FsVerMajor < 0 */) {
                     volInfo->FsVerMajor = attr.Data[8];
                     volInfo->FsVerMinor = attr.Data[9];
                     // volInfo->Flags = Get16(attr.Data + 10);

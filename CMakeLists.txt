@@ -191,7 +191,8 @@ target_link_libraries(sevenzip_common PUBLIC Threads::Threads)
 target_sources(sevenzip_common PRIVATE
     src/CPP/Common/CommandLineParser.cpp
     third_party/7zip/CPP/Common/ListFileUtils.cpp
-    src/CPP/7zip/UI/Common/ArchiveCommandLine.cpp)
+    src/CPP/7zip/UI/Common/ArchiveCommandLine.cpp
+    third_party/7zip/CPP/7zip/UI/Common/UpdateAction.cpp)
 target_include_directories(sevenzip_common PRIVATE
     src/CPP/Common src/CPP/7zip/UI/Common)
 if(WIN32)
@@ -287,7 +288,6 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/qtcompressoptionscontrols.cpp src/qtcompressoptionscontrols.h
     src/qtcompressoptionsdialog.h
     src/CPP/7zip/UI/GUI/UpdateGUI.cpp src/CPP/7zip/UI/GUI/UpdateGUI.h
-    third_party/7zip/CPP/7zip/UI/Common/UpdateAction.cpp
     src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h
     src/CPP/7zip/UI/FileManager/CopyDialog.cpp src/CPP/7zip/UI/FileManager/CopyDialog.h
     src/CPP/Windows/Control/Dialog.cpp src/CPP/Windows/Control/Dialog.h
@@ -1614,6 +1614,7 @@ if(BUILD_TESTING)
         ${source_extract_advanced_sources})
     target_include_directories(archive_layer_chain_tests PRIVATE src tests)
     target_link_libraries(archive_layer_chain_tests PRIVATE sevenzip_location Qt6::Test)
+    add_dependencies(archive_layer_chain_tests sevenzip_ext_runtime)
     target_compile_definitions(archive_layer_chain_tests PRIVATE
         LAYER_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/layers"
         SEVENZIP_EXT_PYTHON="${Python3_EXECUTABLE}"
@@ -4099,6 +4100,12 @@ if(BUILD_TESTING)
         "SEVENZIP_ZIP_VERIFY_ENGINE=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z${CMAKE_EXECUTABLE_SUFFIX}\"")
     add_test(NAME native_zip_writer COMMAND native_zip_writer_tests -silent)
     set_tests_properties(native_zip_writer PROPERTIES TIMEOUT 30)
+    qt_add_executable(zip_shrink_tests tests/zip_shrink_tests.cpp)
+    target_link_libraries(zip_shrink_tests PRIVATE sevenzip_zip Qt6::Test)
+    target_compile_definitions(zip_shrink_tests PRIVATE
+        "SEVENZIP_ZIP_VERIFY_ENGINE=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z${CMAKE_EXECUTABLE_SUFFIX}\"")
+    add_test(NAME zip_shrink COMMAND zip_shrink_tests -silent)
+    set_tests_properties(zip_shrink PROPERTIES TIMEOUT 30)
     qt_add_executable(native_folder_opening_tests tests/native_folder_opening_tests.cpp ${codec_update_sources})
     target_include_directories(native_folder_opening_tests PRIVATE src tests)
     target_link_libraries(native_folder_opening_tests PRIVATE sevenzip_location Qt6::Test)

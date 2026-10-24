@@ -30,8 +30,10 @@ def fingerprint(root):
         probe = subprocess.run([*compiler], capture_output=True)
         version += probe.stdout + probe.stderr
     baseline = json.loads((root / "docs/upstream-baseline.json").read_text())
-    return {"baseline": {key: baseline.get(key) for key in ("repository", "revision")},
-            "runtime_sources": {path: sha(root / path) for path in baseline.get("runtime_adapted", []) +
+    exact_overrides = sorted(set(baseline.get("overrides", {})) & set(baseline.get("exact", [])))
+    return {"baseline": {key: baseline.get(key) for key in ("repository", "revision", "overrides")},
+            "runtime_sources": {path: sha(root / path) for path in
+                                baseline.get("runtime_adapted", []) + exact_overrides +
                                 baseline.get("runtime_dependencies", [])},
             "builders": {name: sha(root / "scripts" / name) for name in BUILDERS},
             "cache_version": sha(Path(__file__)),
