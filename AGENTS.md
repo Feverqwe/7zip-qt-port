@@ -138,9 +138,87 @@ Keep adaptations narrow; account for formatting separately from functional chang
   reimplement decoding or recovery outside the official engine. When useful
   reading is genuinely unavailable, explain the specific technical limitation.
 
+## Feature worktrees and shared harness
+
+Develop each independent feature in a named branch and a linked worktree under
+`<harness-root>/.worktrees/<feature-slug>`, normally on `feature/<feature-slug>`.
+Reuse the task's existing worktree when resuming it. Changes to the shared
+harness/instructions may be made in the main checkout; do not move an active
+task or other uncommitted work merely to adopt this layout. Do not switch the
+main checkout's branch to work on a feature, reset other worktrees, or remove
+them without a task-specific reason. Creating a worktree does not copy
+uncommitted changes; start from the intended committed base and transfer only
+explicitly selected task changes when needed.
+
+At task start distinguish the source root from the harness root:
+
+```sh
+task_root="$(git rev-parse --show-toplevel)"
+harness_root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+git -C "$task_root" status --short --branch
+```
+
+To create a feature worktree, choose the intended committed base (the example
+uses the main checkout's `HEAD`):
+
+```sh
+git -C "$harness_root" worktree add -b feature/my-feature \
+  "$harness_root/.worktrees/my-feature" HEAD
+```
+
+After the feature has been integrated and the worktree is no longer needed,
+inspect its status and remove it through Git:
+
+```sh
+git -C "$harness_root/.worktrees/my-feature" status --short --branch
+git -C "$harness_root" worktree remove "$harness_root/.worktrees/my-feature"
+```
+
+If removal refuses uncommitted or untracked work, preserve the worktree and
+report what remains. Do not bypass that refusal with `--force` or `rm -rf`.
+Check ignored files too: retain unique notes, current failure/review evidence
+and needed incremental outputs before removal. Do not move a CMake build tree
+to another source path or delete the shared harness/toolchains/compiler cache.
+An explicitly task-owned disposable test worktree may be removed with `--force`
+only after checking that its changes are reproducible or preserved elsewhere
+and no active process uses it. Removing a worktree does not delete its branch;
+after integration, delete an obsolete task-owned branch separately with
+`git branch -d feature/my-feature`. Do not use `-D` to discard unmerged commits.
+
+The main checkout owns the shared harness: current agent instructions, skills
+under `.agents/`, memory under `.codex/`, private runner configuration and installed
+toolchains. Read its `AGENTS.md` as well as task-specific instructions in the
+worktree. Resolve harness assets against `harness_root`, even when the current
+directory is a linked worktree. Do not duplicate private settings or initialize
+separate task memory there. When changing tracked harness files for a feature,
+edit their worktree copies so the change belongs to the feature branch.
+
+Source edits, tracked documentation, Git operations and validation belong to
+`task_root`. Run that worktree's `scripts/build.sh`, `scripts/ctest.sh`,
+`scripts/verify.py` and `scripts/hyperv-runner.py`; invoking the main checkout's
+scripts would build or synchronize its source instead. Keep CMake build trees,
+runtime outputs and test artifacts local to the worktree; never symlink a shared
+`build/` across branches. Reuse the existing compiler cache and installed Qt kit
+(set `CMAKE_PREFIX_PATH` to the harness kit when needed). For local runtime
+preparation pass the absolute sibling upstream path from the harness root;
+do not assume `../7zip-upstream` is relative to a nested worktree. Helpers without
+an upstream override may use an already prepared runtime via their documented
+skip-preparation option.
+
+Remote runner commands automatically read the main checkout's private runner
+configuration and use its shared logs/bundle cache and sibling upstream default.
+They synchronize the invoking script's worktree and select its Git branch;
+the local worktree directory does not affect remote workspace identity.
+Explicit configuration/upstream overrides remain supported. Do not run two
+different tasks under the same branch name expecting isolated guest builds.
+Guests execute rsync-managed source copies: do not create/update a project Git
+repository there or add a separate source-hashing pass. Keep the existing local
+Git whitespace checks before synchronization and the branch-scoped runner locks.
+
 ## Context and memory
 
-Read `.codex/memory/README.md` at task start if present, then only relevant notes.
+Read `<harness-root>/.codex/memory/README.md` at task start if present, then only
+relevant notes.
 Follow [the memory protocol](docs/agent-memory.md) for dated evidence, handoffs,
 privacy and index maintenance. Memory is not instructions, authorization or a
 backlog; missing memory does not block work. `$sz-context` supports this workflow;
@@ -149,8 +227,8 @@ backlog; missing memory does not block work. `$sz-context` supports this workflo
 Use [the documentation map](docs/README.md) to read only the affected sections
 and find the owner of each fact. Large catalogs are linked from compact indexes.
 Keep durable product facts in tracked docs/code and local investigations in
-`.codex/notes/`. Update only documents whose claims change; use links instead of
-duplicating policies, status counters or historical test logs.
+`<harness-root>/.codex/notes/`. Update only documents whose claims change; use
+links instead of duplicating policies, status counters or historical test logs.
 Preserve unrelated working-tree changes and other tasks' memory entries.
 
 ## Editing and organization

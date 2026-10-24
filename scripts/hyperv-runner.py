@@ -19,9 +19,11 @@ from lib.hyperv_source import stage_tree
 from lib.hyperv_transport import collect_logs, sync_command
 from lib.hyperv_workspace import current_branch, load_workspaces, mount_guard, worktree_root
 from lib.runner_config import load_config, runner_config
+from lib.project_paths import harness_root
 
 ROOT = Path(__file__).resolve().parents[1]
-STATE = ROOT / "build/runners/hyperv"
+HARNESS = harness_root(ROOT)
+STATE = HARNESS / "build/runners/hyperv"
 
 
 def invoke(args, **kwargs):
@@ -83,7 +85,7 @@ def command_payload(preset, command):
     return "set -euo pipefail\n" + "".join(shlex.join(item) + "\n" for item in commands)
 
 
-def execute_check(record, platform, preset, digest, root, token, command=None,
+def execute_check(record, platform, preset, root, token, command=None,
                   prepare_runtime=True, output=None, interactive=False, elevated=False):
     import os
     config = record.get("config") or runner_config(platform)
@@ -94,8 +96,6 @@ def execute_check(record, platform, preset, digest, root, token, command=None,
     if build_jobs <= 0:
         raise ValueError("CMAKE_BUILD_PARALLEL_LEVEL must be a positive integer")
     payload = command_payload(preset, command)
-    excludes = ["build/", "runner-tmp/", "upstream/", "upstream.bundle", ".runner-*",
-                "check.log", "check.cmd", "runner-command.sh", "interactive-*.txt"]
     if platform == "linux":
         script = f"""set -euo pipefail
 cd {shlex.quote(root)}
@@ -115,11 +115,6 @@ set +e
 (
 set -e
 df -Pk .
-{shlex.quote(config['python'])} scripts/lib/hyperv_source.py {digest}
-git init -q
-printf '%s\\n' {' '.join(shlex.quote('/' + name) for name in excludes)} > .git/info/exclude
-git add -A
-git diff --cached --quiet || git -c user.name='Runner worktree' -c user.email='runner@example.invalid' commit -qm 'Current source'
 """
         if prepare_runtime:
             script += shlex.quote(config['python']) + ' scripts/prepare-runtime.py --upstream "$PWD/upstream"\nexport SEVENZIP_RUNTIME_PREPARED=1\n'
@@ -139,13 +134,7 @@ git diff --cached --quiet || git -c user.name='Runner worktree' -c user.email='r
                     'set "SEVENZIP_CTEST_JOBS=1"', f'set "SEVENZIP_CODEC_MODULE_DIR={root}/build/codec-runtime"',
                     'set "PYTHONUTF8=1"', 'set "PYTHONIOENCODING=utf-8"',
                     f'set "SEVENZIP_RUN_TOKEN={token}"',
-                    f'cd /d "{root}"', f'"{config["python"]}" scripts/lib/hyperv_source.py {digest}',
-                    'if errorlevel 1 exit /b %errorlevel%', 'git init -q', 'if errorlevel 1 exit /b %errorlevel%',
-                    'git config core.autocrlf false', 'if errorlevel 1 exit /b %errorlevel%']
-        commands += [f'{">" if i == 0 else ">>"}.git/info/exclude echo /{name}' for i, name in enumerate(excludes)]
-        commands += ['git add -A', 'if errorlevel 1 exit /b %errorlevel%',
-                     'git diff --cached --quiet || git -c user.name="Runner worktree" -c user.email="runner@example.invalid" commit -qm "Current source"',
-                     'if errorlevel 1 exit /b %errorlevel%']
+                    f'cd /d "{root}"']
         if prepare_runtime:
             commands += [f'"{config["python"]}" scripts/prepare-runtime.py --upstream upstream',
                          'if errorlevel 1 exit /b %errorlevel%', 'set "SEVENZIP_RUNTIME_PREPARED=1"']
@@ -184,7 +173,7 @@ def script_command(arguments, platforms):
     return [*interpreters[path.suffix], path.as_posix(), *arguments[1:]]
 
 
-def run_platform(platform, local, source, digest, preset, command, prepare_runtime,
+def run_platform(platform, local, source, preset, command, prepare_runtime,
                  interactive=False, elevated=False, workspace=None, branch=None):
     directory = local / platform
     directory.mkdir()
@@ -192,7 +181,7 @@ def run_platform(platform, local, source, digest, preset, command, prepare_runti
     branch = branch if branch is not None else current_branch(ROOT)
     root = worktree_root(workspace, branch)
     token = local.name
-    result = {"platform": platform, "sha256": digest, "status": "running", "transport": "rsync",
+    result = {"platform": platform, "status": "running", "transport": "rsync",
               "branch": branch, "directory": root, "interactive": interactive and platform == "windows",
               "elevated": elevated and platform == "windows", "seconds": {}}
     acquired = launched = interrupted_sync = False
@@ -218,7 +207,7 @@ def run_platform(platform, local, source, digest, preset, command, prepare_runti
             launched = True
             started = time.monotonic()
             try:
-                execute_check(record, platform, preset, digest, root, token, resolved, prepare_runtime,
+                execute_check(record, platform, preset, root, token, resolved, prepare_runtime,
                               output, result["interactive"], result["elevated"])
             finally:
                 result["seconds"]["execute"] = round(time.monotonic() - started, 3)
@@ -282,11 +271,11 @@ def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=Tru
         with tempfile.TemporaryDirectory(prefix="source-", dir=STATE) as temporary:
             started = time.monotonic()
             source = Path(temporary)
-            summary["sha256"] = stage_tree(ROOT, upstream, source, STATE / "cache")
+            stage_tree(ROOT, upstream, source, STATE / "cache")
             summary["source_seconds"] = round(time.monotonic() - started, 3)
             report.write_text(json.dumps(summary, indent=2) + "\n")
             with ThreadPoolExecutor(max_workers=len(platforms)) as executor:
-                futures = [executor.submit(run_platform, platform, local, source, summary["sha256"],
+                futures = [executor.submit(run_platform, platform, local, source,
                                            preset, command, prepare_runtime, interactive, elevated,
                                            workspaces[platform], branch) for platform in platforms]
                 summary["platforms"] = [future.result() for future in futures]
@@ -351,7 +340,7 @@ def parse_arguments(argv):
             subparser.add_argument("--interactive", action="store_true")
             subparser.add_argument("--elevated", action="store_true")
             subparser.add_argument("--transport", choices=["rsync"], default="rsync")
-            subparser.add_argument("--upstream", type=Path, default=ROOT.parent / "7zip-upstream")
+            subparser.add_argument("--upstream", type=Path, default=HARNESS.parent / "7zip-upstream")
             subparser.add_argument("--skip-runtime", action="store_true")
         if action == "check":
             subparser.add_argument("--preset", choices=["dev", "release"], default="dev")

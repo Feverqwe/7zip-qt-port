@@ -1,6 +1,5 @@
-"""Materialize and verify the current source tree without build or private state."""
+"""Materialize current source for rsync without build or private state."""
 
-import hashlib
 import json
 import os
 import re
@@ -14,10 +13,7 @@ SOURCE_DIRS = {".agents", "cmake", "docs", "scripts", "src", "tests", "third_par
 SOURCE_FILES = {".clang-format", ".gitattributes", ".gitignore", "AGENTS.md", "CMakeLists.txt",
                 "CMakePresets.json", "LICENSE", "README.md", "upstream.lock.json", "windows-runtime.lock.json"}
 MANIFEST = ".runner-source.json"
-
-
-def sha(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+CONTEXT = ".runner-context.json"
 
 
 def source_name(name):
@@ -34,31 +30,27 @@ def stage_tree(root, upstream, destination, cache):
     files = subprocess.check_output(["git", "ls-files", "-z", "--cached", "--others",
                                      "--exclude-standard"], cwd=root)
     names = sorted({os.fsdecode(name) for name in files.split(b"\0") if name})
-    records = {}
+    names_copied = []
     for name in names:
         if not source_name(name):
             continue
         source = root / name
         if not source.exists() and not source.is_symlink():
             continue
+        link_target = None
         if source.is_symlink():
-            target = os.readlink(source)
-            if Path(target).is_absolute() or root.resolve() not in source.resolve().parents:
+            link_target = os.readlink(source)
+            if Path(link_target).is_absolute() or root.resolve() not in source.resolve().parents:
                 raise ValueError(f"Source link leaves project: {name}")
-            record = {"link": target}
-        elif source.is_file():
-            record = {"sha256": sha(source), "executable": bool(source.stat().st_mode & 0o111)}
-        else:
+        elif not source.is_file():
             raise ValueError(f"Unsupported source entry: {name}")
         target = destination / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        if source.is_symlink():
-            target.symlink_to(record["link"])
+        if link_target is not None:
+            target.symlink_to(link_target)
         else:
             shutil.copy2(source, target)
-            if sha(target) != record["sha256"]:
-                raise ValueError(f"Source changed while copying: {name}; retry after editing finishes")
-        records[name] = record
+        names_copied.append(name)
     baseline = json.loads((destination / "docs/upstream-baseline.json").read_text())
     revision = baseline["revision"]
     if not re.fullmatch(r"[0-9a-f]{40}", revision):
@@ -74,33 +66,15 @@ def stage_tree(root, upstream, destination, cache):
             subprocess.run(["git", "-C", str(mirror), "bundle", "create", str(staged), "runner-baseline"], check=True)
             staged.replace(bundle)
     shutil.copy2(bundle, destination / "upstream.bundle")
-    records["upstream.bundle"] = {"sha256": sha(bundle), "executable": False}
+    diff = subprocess.check_output(["git", "diff", "HEAD", "--", "src", "CMakeLists.txt", "cmake"], cwd=root)
+    context = {"revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip(),
+               "sourceState": {"modified": bool(diff)}}
+    (destination / CONTEXT).write_text(json.dumps(context) + "\n")
     manifest = destination / MANIFEST
-    manifest.write_text(json.dumps(records, sort_keys=True, ensure_ascii=True) + "\n")
-    return sha(manifest)
+    manifest.write_text(json.dumps(sorted(names_copied), ensure_ascii=True) + "\n")
 
 
-def verify_tree(root, digest):
-    manifest = root / MANIFEST
-    if sha(manifest) != digest:
-        raise ValueError("Source manifest checksum mismatch")
-    records = json.loads(manifest.read_text())
-    for name, record in records.items():
-        if not source_name(name):
-            raise ValueError(f"Invalid source path: {name}")
-        path = root / name
-        if any(parent.is_symlink() for parent in path.parents if parent != root and root in parent.parents):
-            raise ValueError(f"Symlink parent in source path: {name}")
-        if "link" in record:
-            if not path.is_symlink() or os.readlink(path) != record["link"] or root.resolve() not in path.resolve().parents:
-                raise ValueError(f"Source link mismatch: {name}")
-        elif path.is_symlink() or not path.is_file() or sha(path) != record["sha256"]:
-            raise ValueError(f"Source checksum mismatch: {name}")
-        elif os.name != "nt" and bool(path.stat().st_mode & 0o111) != record["executable"]:
-            raise ValueError(f"Source executable mode mismatch: {name}")
-    print(f"Verified source: {digest} ({len(records)} files)", flush=True)
-
-
-if __name__ == "__main__":
-    import sys
-    verify_tree(Path.cwd(), sys.argv[1])
+def runner_context(root):
+    if os.environ.get("SEVENZIP_RUN_TOKEN"):
+        return json.loads((Path(root) / CONTEXT).read_text())
+    return None

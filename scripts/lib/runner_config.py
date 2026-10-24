@@ -7,7 +7,12 @@ import re
 import sys
 import uuid
 
-CONFIG_PATH = Path(__file__).resolve().parents[1] / "config/runners.local.json"
+if __package__:
+    from .project_paths import harness_root
+else:
+    from project_paths import harness_root
+
+CONFIG_PATH = harness_root(Path(__file__).resolve().parents[2]) / "scripts/config/runners.local.json"
 
 
 def text(value, name):

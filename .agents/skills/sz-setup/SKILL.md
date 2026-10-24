@@ -5,7 +5,9 @@ description: Initialize or refresh repository-local Sevenzip Desktop Markdown me
 
 # Set up Sevenzip Desktop context
 
-Run `.agents/skills/sz-setup/scripts/setup.sh` from any working directory.
+Run `<harness-root>/.agents/skills/sz-setup/scripts/setup.sh` from any working directory;
+resolve the shared harness root using `AGENTS.md`. In a linked worktree, use the
+main checkout's script so memory is initialized in the shared harness.
 It resolves the repository root, creates the ignored `.codex/` memory directory,
 initializes the memory index only if absent and links tracked project docs.
 Existing memory, notes and attachments are preserved. Only task templates are

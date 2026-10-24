@@ -5,6 +5,7 @@ import argparse
 import difflib
 import hashlib
 import json
+import os
 import pathlib
 import posixpath
 import re
@@ -66,8 +67,13 @@ def load_manifest(path):
 
 
 def tracked_paths():
-    paths = git(ROOT, "ls-files", "--cached", "--others", "--exclude-standard",
-                "third_party/7zip/", "src/CPP/", "src/C/", "src/gpl/").decode().splitlines()
+    snapshot = ROOT / ".runner-source.json"
+    if os.environ.get("SEVENZIP_RUN_TOKEN") and snapshot.is_file():
+        paths = [path for path in json.loads(snapshot.read_text())
+                 if path.startswith(("third_party/7zip/", "src/CPP/", "src/C/", "src/gpl/"))]
+    else:
+        paths = git(ROOT, "ls-files", "--cached", "--others", "--exclude-standard",
+                    "third_party/7zip/", "src/CPP/", "src/C/", "src/gpl/").decode().splitlines()
     return {path for path in paths
             if path != "third_party/7zip/README.md" and (ROOT / path).is_file()}
 

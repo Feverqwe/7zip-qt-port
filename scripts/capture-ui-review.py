@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 from datetime import datetime, timezone
+from lib.hyperv_source import runner_context
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "scripts/config/ui-review.json"
@@ -209,9 +210,13 @@ def main():
     subprocess.run(["bash", "scripts/build.sh", "dev", *targets], cwd=ROOT, check=True)
     previous = output / "manifest.json"
     runs = json.loads(previous.read_text(encoding="utf-8")).get("runs", []) if previous.exists() else []
-    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-    source_diff = subprocess.check_output(["git", "diff", "HEAD", "--", "src", "CMakeLists.txt", "cmake"], cwd=ROOT)
-    source_state = {"modified": bool(source_diff), "diffSha256": hashlib.sha256(source_diff).hexdigest()}
+    snapshot = runner_context(ROOT)
+    if snapshot:
+        revision, source_state = snapshot["revision"], snapshot["sourceState"]
+    else:
+        revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        source_diff = subprocess.check_output(["git", "diff", "HEAD", "--", "src", "CMakeLists.txt", "cmake"], cwd=ROOT)
+        source_state = {"modified": bool(source_diff), "diffSha256": hashlib.sha256(source_diff).hexdigest()}
     host = {"Darwin": "macos", "Windows": "windows", "Linux": "linux"}[system]
     failures = 0
     for row in selected:

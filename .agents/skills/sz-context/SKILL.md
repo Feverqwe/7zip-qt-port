@@ -5,10 +5,13 @@ description: Read and maintain Sevenzip Desktop context and memory between tasks
 
 # Sevenzip Desktop context
 
-Read `.codex/memory/README.md` when present, then only the indexed notes relevant
-to the request. Follow [the memory protocol](../../../docs/agent-memory.md) for
+Resolve the shared harness root using `AGENTS.md`, including from linked
+worktrees. Read its `.codex/memory/README.md` when present, then only the indexed
+notes relevant to the request. Follow [the memory protocol](../../../docs/agent-memory.md) for
 verification, saving useful handoffs and index maintenance; the template is
-`.codex/templates/handoff.md`. Missing memory does not block work.
+`<harness-root>/.codex/templates/handoff.md`. Keep task notes in the shared
+harness memory and identify the task worktree/branch. Missing memory does not
+block work.
 
 Use [the reading routes](../../../docs/README.md#where-to-start)
 to locate tracked facts without loading whole audits or test catalogs.

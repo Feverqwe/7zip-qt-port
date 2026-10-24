@@ -1,7 +1,6 @@
 """Offline source reconciliation, locking, guest context and failure regressions."""
 
 import contextlib
-import hashlib
 import importlib.util
 import io
 import json
@@ -86,8 +85,7 @@ class RunnerTests(unittest.TestCase):
             before = git(upstream, "status", "--porcelain")
             destination = root / "stage"
             destination.mkdir()
-            digest = hyperv_source.stage_tree(project, upstream, destination, root / "cache")
-            hyperv_source.verify_tree(destination, digest)
+            hyperv_source.stage_tree(project, upstream, destination, root / "cache")
             self.assertEqual((destination / "src/changed.cpp").read_text(), "new")
             self.assertEqual((destination / "translations/fixture.ts").read_text(), catalog.read_text())
             self.assertTrue((destination / "src/Юникод $(touch injected).cpp").exists())
@@ -97,9 +95,10 @@ class RunnerTests(unittest.TestCase):
             self.assertFalse((destination / ".codex").exists())
             self.assertFalse((destination / "scripts/config/runners.local.json").exists())
             self.assertEqual(before, git(upstream, "status", "--porcelain"))
-            (destination / "translations/fixture.ts").write_text("tampered")
-            with self.assertRaises(ValueError):
-                hyperv_source.verify_tree(destination, digest)
+            with patch.dict(os.environ, {"SEVENZIP_RUN_TOKEN": "fixture"}):
+                context = hyperv_source.runner_context(destination)
+            self.assertEqual(context["revision"], git(project, "rev-parse", "HEAD"))
+            self.assertTrue(context["sourceState"]["modified"])
 
     def test_source_rejects_links_outside_project(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -232,6 +231,72 @@ class RunnerTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "detached HEAD"):
                 hyperv_workspace.current_branch(project)
 
+    def test_nested_worktree_runner_uses_shared_harness_and_its_own_uncommitted_source(self):
+        with tempfile.TemporaryDirectory(prefix="worktree harness ") as temporary:
+            base = Path(temporary)
+            project, upstream = self.source_fixture(base)
+            upstream.rename(base / "7zip-upstream")
+            shutil.copytree(ROOT / "scripts/lib", project / "scripts/lib", ignore=shutil.ignore_patterns("__pycache__"))
+            shutil.copy2(ROOT / "scripts/hyperv-runner.py", project / "scripts/hyperv-runner.py")
+            (project / "scripts/fixture.py").write_text(
+                "from pathlib import Path\nPath('observed').write_text(Path('src/changed.cpp').read_text())\n")
+            (project / ".gitignore").write_text((project / ".gitignore").read_text() + "/.worktrees/\n/scripts/config/*.local.json\n")
+            git(project, "add", ".")
+            git(project, "commit", "-qm", "runner harness")
+            worktree = project / ".worktrees/feature"
+            git(project, "worktree", "add", "-qb", "feature/nested", str(worktree))
+            (worktree / "src/changed.cpp").write_text("feature edits")
+            (project / "src/changed.cpp").write_text("main edits must not travel")
+            settings = json.loads(self.config_path.read_text())
+            settings["runners"] = {"linux": settings["runners"]["linux"]}
+            settings["runners"]["linux"].update(ssh=["ssh", "fixture"], python=sys.executable,
+                                                workspace={"root": "/fixture/sevenzip/runs"})
+            (project / "scripts/config").mkdir()
+            (project / "scripts/config/runners.local.json").write_text(json.dumps(settings))
+            # Replace only guest transport/execution with a local guest. Keep
+            # CLI selection, config discovery, staging, locks and reports real.
+            driver = base / "drive.py"
+            driver.write_text('''import importlib.util
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+sys.path.insert(0, str(Path.cwd() / 'scripts'))
+from lib import hyperv_lock
+spec = importlib.util.spec_from_file_location('runner', 'scripts/hyperv-runner.py')
+runner = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(runner)
+def guest_path(root):
+    return Path(__file__).parent / 'guest' / root.rsplit('/', 1)[-1]
+def sync(argv, **kwargs):
+    shutil.copytree(argv[-2], guest_path(argv[-1].split(':', 1)[1].rstrip('/')), dirs_exist_ok=True)
+def lock(record, root, token, action, **kwargs):
+    hyperv_lock.operate(guest_path(root), token, action)
+def execute(record, platform, preset, root, token, command, *args):
+    subprocess.run(command, cwd=guest_path(root), check=True)
+    (guest_path(root) / '.runner-complete').write_text(token)
+runner.invoke = sync
+runner.lock_command = lock
+runner.execute_check = execute
+runner.collect_logs = lambda *args: {}
+sys.argv = ['runner', 'run', 'linux', '--skip-runtime', '--', 'scripts/fixture.py']
+raise SystemExit(runner.main())
+''')
+            environment = dict(os.environ)
+            environment.pop("SEVENZIP_RUNNER_CONFIG", None)
+            result = subprocess.run([sys.executable, str(driver)], cwd=worktree, env=environment,
+                                    text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            reports = list((project / "build/runners/hyperv").glob("*/run.json"))
+            self.assertEqual(len(reports), 1)
+            report = json.loads(reports[0].read_text())
+            self.assertEqual(report["branch"], "feature/nested")
+            guest = base / "guest" / report["platforms"][0]["directory"].rsplit("/", 1)[-1]
+            self.assertEqual((guest / "observed").read_text(), "feature edits")
+            self.assertFalse(guest.with_name(guest.name + ".lock").exists())
+            self.assertFalse((guest / "scripts/config/runners.local.json").exists())
+            self.assertFalse((worktree / "build/runners").exists())
+
     def test_workspace_configuration_and_missing_mount_fail_before_sync(self):
         with tempfile.TemporaryDirectory() as temporary:
             state = Path(temporary)
@@ -247,9 +312,10 @@ class RunnerTests(unittest.TestCase):
             with patch.object(runner, "discover", return_value=record), \
                     patch.object(runner, "remote", side_effect=subprocess.CalledProcessError(1, "mount")), \
                     patch.object(runner, "lock_command") as lock, patch.object(runner, "invoke") as invoke:
-                result = runner.run_platform("linux", state, state, "hash", "dev", None, False, workspace=valid["linux"])
+                result = runner.run_platform("linux", state, state, "dev", None, False,
+                                             workspace=valid["linux"], branch="fixture")
                 self.assertEqual(result["directory"], hyperv_workspace.worktree_root(
-                    valid["linux"], hyperv_workspace.current_branch(ROOT)))
+                    valid["linux"], "fixture"))
                 self.assertEqual(result["status"], "failed")
                 lock.assert_not_called()
                 invoke.assert_not_called()
@@ -311,20 +377,15 @@ class RunnerTests(unittest.TestCase):
     def test_failed_command_keeps_exit_code_literal_args_context_and_completion(self):
         with tempfile.TemporaryDirectory(prefix="runner Юникод ") as temporary:
             root = Path(temporary)
-            (root / "scripts/lib").mkdir(parents=True)
-            shutil.copy2(ROOT / "scripts/lib/hyperv_source.py", root / "scripts/lib/hyperv_source.py")
+            (root / "scripts").mkdir()
             (root / "scripts/fixture.sh").write_text('printf "%s\\n" "$@" "$TEMP" "$QT_QPA_PLATFORM" "$CMAKE_BUILD_PARALLEL_LEVEL"\nexit 23\n')
-            records = {name: {"sha256": hyperv_source.sha(root / name), "executable": bool((root / name).stat().st_mode & 0o111)}
-                       for name in ("scripts/lib/hyperv_source.py", "scripts/fixture.sh")}
-            manifest = root / hyperv_source.MANIFEST
-            manifest.write_text(json.dumps(records))
             args = ["space name", "Юникод", "$(touch injected)", "a'b", "", "first\nsecond"]
             def local_remote(record, script, **kwargs):
                 return subprocess.run(["bash", "-se"], input=script, text=True, check=True, capture_output=True)
             with patch.object(runner, "remote", local_remote), \
                     patch.dict(os.environ, {"QT_QPA_PLATFORM": "offscreen", "CMAKE_BUILD_PARALLEL_LEVEL": "1"}):
                 with self.assertRaises(subprocess.CalledProcessError) as error:
-                    runner.execute_check({}, "linux", "dev", hyperv_source.sha(manifest), root.as_posix(), "token",
+                    runner.execute_check({}, "linux", "dev", root.as_posix(), "token",
                                          ["bash", "scripts/fixture.sh", *args], False)
             self.assertEqual(error.exception.returncode, 23)
             log = (root / "check.log").read_text()
@@ -332,7 +393,7 @@ class RunnerTests(unittest.TestCase):
             self.assertTrue(log.endswith("/runner-tmp\noffscreen\n1\n"))
             self.assertEqual((root / ".runner-complete").read_text().strip(), "token")
             self.assertFalse((root / "injected").exists())
-            self.assertEqual(git(root, "status", "--porcelain"), "")
+            self.assertFalse((root / ".git").exists())
 
     def test_invalid_build_parallelism_is_rejected_before_remote_execution(self):
         for platform in ("linux", "windows"):
@@ -341,8 +402,32 @@ class RunnerTests(unittest.TestCase):
                         patch.dict(os.environ, {"CMAKE_BUILD_PARALLEL_LEVEL": value}), \
                         patch.object(runner, "remote") as remote:
                     with self.assertRaises(ValueError):
-                        runner.execute_check({}, platform, "dev", "hash", "/unused", "token", prepare_runtime=False)
+                        runner.execute_check({}, platform, "dev", "/unused", "token", prepare_runtime=False)
                     remote.assert_not_called()
+
+    def test_gate_accepts_runner_snapshot_without_project_git_and_keeps_local_diff_check(self):
+        with tempfile.TemporaryDirectory(prefix="gate snapshot ") as temporary:
+            root = Path(temporary)
+            (root / "scripts/lib").mkdir(parents=True)
+            (root / "bin").mkdir()
+            shutil.copy2(ROOT / "scripts/check.sh", root / "scripts/check.sh")
+            shutil.copy2(ROOT / "scripts/lib/agent-output.sh", root / "scripts/lib/agent-output.sh")
+            for name, content in (("bin/git", "exit 73\n"), ("bin/clang-format", "exit 0\n"),
+                                  ("scripts/build.sh", "touch built\n"), ("scripts/ctest.sh", "exit 0\n")):
+                path = root / name
+                path.write_text("#!/usr/bin/env bash\n" + content)
+                path.chmod(0o755)
+            environment = dict(os.environ, PATH=str(root / "bin") + os.pathsep + os.environ["PATH"],
+                               CODEX_SANDBOX="none", SEVENZIP_RUN_TOKEN="")
+            local = subprocess.run(["bash", "scripts/check.sh"], cwd=root, env=environment,
+                                   text=True, capture_output=True)
+            self.assertEqual(local.returncode, 73, local.stdout + local.stderr)
+            self.assertFalse((root / "built").exists())
+            environment["SEVENZIP_RUN_TOKEN"] = "fixture"
+            guest = subprocess.run(["bash", "scripts/check.sh"], cwd=root, env=environment,
+                                   text=True, capture_output=True)
+            self.assertEqual(guest.returncode, 0, guest.stdout + guest.stderr)
+            self.assertTrue((root / "built").exists())
 
     def test_custom_command_keeps_percent_variables_and_metacharacters_literal(self):
         payload = runner.command_payload("dev", ["printf", "%s\\n", "%PATH%", "$(touch injected)", "Юникод"])
@@ -369,7 +454,8 @@ class RunnerTests(unittest.TestCase):
                     patch.object(runner, "invoke"), patch.object(runner, "lock_command", side_effect=local_lock), \
                     patch.object(runner, "execute_check", side_effect=KeyboardInterrupt()):
                 with self.assertRaises(KeyboardInterrupt):
-                    runner.run_platform("linux", Path(temporary), Path(temporary), "hash", "dev", None, False)
+                    runner.run_platform("linux", Path(temporary), Path(temporary), "dev", None, False,
+                                        branch="fixture")
                 self.assertTrue(current.with_name("current.lock").is_dir())
             result = json.loads((Path(temporary) / "linux/run.json").read_text())
             self.assertEqual(result["status"], "interrupted")

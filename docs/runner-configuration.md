@@ -17,6 +17,11 @@ Different branches can run concurrently. Existing nonempty directories without t
 project ownership marker are refused.
 
 The local file is ignored by Git and excluded from runner source transfers.
+Linked worktrees use this file from the main checkout, so feature worktrees
+under `.worktrees/` need no separate machine configuration. Run the scripts in
+the feature worktree to send that branch's current source. Runner logs and the
+upstream bundle cache stay under the main checkout's `build/runners/hyperv/`;
+the default upstream checkout remains its sibling `7zip-upstream`.
 Keep passwords and private keys outside it; use SSH's normal authentication and
 host-key verification. An alternative file can be selected with
 `SEVENZIP_RUNNER_CONFIG`. Keep alternative private files outside the checkout

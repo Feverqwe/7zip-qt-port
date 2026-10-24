@@ -7,6 +7,13 @@ worktree per Git branch on each platform. Run IDs identify logs, not new source/
 Historical installation records are linked from the archive; use local
 configuration for the identities and paths of your installation.
 
+For local linked worktrees, invoke the runner script in the feature worktree.
+It transfers that worktree's current source and uses its branch for the remote
+directory/lock. Private configuration, local run reports, bundle cache and the
+default sibling upstream checkout are resolved from the main checkout's harness;
+see [configuration](runner-configuration.md) and
+[feature worktree rules](../AGENTS.md#feature-worktrees-and-shared-harness).
+
 ## Persistent worktree
 
 Synchronize local code into a persistent guest directory and reuse its build
@@ -39,9 +46,9 @@ Deleted files disappear remotely. No staging or
 commit is required. Local `.git`, `.codex`, credentials, build outputs and other
 ignored state are not sent. The guest's `.git/`, `build/`, `ui-reports/`,
 `runner-tmp/`, `upstream/` and runner control/log files are protected from deletion.
-Do not use `--delete-excluded`. A SHA256 manifest verifies every supplied source
-file/link before the command runs; unsafe external links are refused. The
-manifest describes code at invocation start, not edits made during the run.
+Do not use `--delete-excluded`. Unsafe external source links are refused.
+Rsync checks and reconciles the supplied files; there is no additional source
+hash pass. The source copy describes code at invocation start, not edits made during the run.
 Matching files are skipped, including on repeated runs. The archive-mode subset
 `-rlp` preserves recursive content, links and permissions; owner/group
 and special-device replication are deliberately omitted across Linux/Windows.
@@ -125,7 +132,7 @@ Use `probe` to confirm the live kit; prior probe/gate results are
 
 The persistent worktree contains `runner-tmp`. Its process environment sets
 `TEMP`, `TMP` and `TMPDIR` there before MSVC setup and the interactive child.
-Temporary files stay in the project workspace and are excluded from its Git baseline.
+Temporary files stay in the project workspace and are excluded from source synchronization.
 This does not change global environment variables, move old files or delete
 completed runs; capacity still needs a live preflight before substantial builds.
 Linux SSH checks default `QT_QPA_PLATFORM` to `offscreen` when it is unset;
@@ -221,12 +228,12 @@ paths in [local configuration](runner-configuration.md). Windows transport uses
 MSYS-compatible destination paths; builds use the configured Bash and MSVC tools.
 Checks do not install or upgrade packages automatically.
 
-`all` materializes and hashes current source once, then runs the two guests in
+`all` materializes current source once, then runs the two guests in
 parallel. Failure on one guest does not prevent the other from completing.
 The command exits nonzero if either fails. Each platform has `run.json`, a local
 `transport.log`, and a downloaded full `check.log` when available under
 `build/runners/hyperv/<run-id>/<platform>/`; the parent `run.json` records the
-shared manifest hash, source revision, command, phase timings and aggregate result. Failure
+source revision, branch, command, phase timings and aggregate result. Failure
 output includes the last 20 log lines with a platform prefix. Log retrieval
 errors are recorded separately from script results.
 `probe all` also checks both guests in parallel, printing each guest's captured
@@ -266,12 +273,13 @@ upstream build trees are removed by those builders. All runtime binaries match
 the guest architecture and pinned source. Environment changes are process-local.
 
 Before transfer, the helper checks actual local staged/worktree diffs for
-whitespace errors. The guest updates its local Git baseline for the full
-gate, so original upstream notices with historical whitespace are baseline
-content rather than newly staged additions. The client's Git index is unchanged. Runtime
+whitespace errors, as before. The guest runs the supplied checks without creating
+or updating a Git repository for the project. Remote full gates retain formatting
+checks and use the local whitespace result. Source inventory and revision metadata
+travel with the snapshot for checks and review reports. The client's Git index is unchanged. Runtime
 preparation and `scripts/check.sh` write to `check.log` in the guest directory.
 Use the `dev` preset for tests and `run ... -- scripts/build.sh release` for
-a Release build; the Release preset disables test targets. Connection records and per-run SHA256,
+a Release build; the Release preset disables test targets. Connection records,
 project revision, directory, preset and status stay in ignored
 `build/runners/hyperv/` on the Mac. Local source/toolchain preparation failures
 may occur before a remote run record exists. No automatic cleanup, VM creation,

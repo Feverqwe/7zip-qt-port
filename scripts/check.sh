@@ -34,11 +34,15 @@ check_formatting() {
     fi
   done
 
-  git diff --check || return
-  git diff --cached --check
+  # Runner snapshots already passed both Git whitespace checks locally before
+  # rsync. The guest needs no project Git repository.
+  if [[ -z "${SEVENZIP_RUN_TOKEN:-}" ]]; then
+    git diff --check || return
+    git diff --cached --check
+  fi
 }
 
-sevenzip_run_command 'clang-format checks and git diff --check' check_formatting
+sevenzip_run_command 'clang-format and source whitespace checks' check_formatting
 if [[ -n "${sevenzip_output_log:-}" ]]; then
   trap - EXIT
   sevenzip_finish_output 0
