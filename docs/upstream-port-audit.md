@@ -22,8 +22,8 @@
 [Выборочный перенос native readers](upstream-port-audit/container-layers.md)
 — QCOW Zstandard/extended L2, границы потоков и удаление Background по запросу пользователя.
 
-[Отдельные SDK/GPL-варианты обработчиков](upstream-port-audit/license-variants.md)
-— границы исходников и сборки вместо `SEVENZIP_LINUX_*` ветвлений.
+[Единые readers для приложения и 7z](upstream-port-audit/license-variants.md)
+— удаление SDK-дублей, общие probes/dependencies и границы бинарных модулей.
 
 [Проверка файловых систем по Linux](upstream-port-audit/filesystems-linux.md)
 — текущий scope проверки существующих read handlers и добавления EROFS.

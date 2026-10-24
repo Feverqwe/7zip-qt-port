@@ -49,10 +49,9 @@ def load_manifest(path):
     paths = [path for group in groups for path in group]
     if len(paths) != len(set(paths)):
         raise ValueError("Borrowed paths have multiple owners")
-    sources = [("gpl" if path.startswith("src/gpl/") else "sdk", source_path(path))
-               for path in paths]
+    sources = [source_path(path) for path in paths]
     if len(sources) != len(set(sources)):
-        raise ValueError("Upstream module has multiple authoritative implementations in one variant")
+        raise ValueError("Upstream module has multiple authoritative implementations")
     overrides = data.get("overrides", {})
     if not isinstance(overrides, dict) or set(overrides) - set(paths) or any(
         not re.fullmatch(r"[0-9a-f]{40}", value) for value in overrides.values()
@@ -63,6 +62,11 @@ def load_manifest(path):
         not re.fullmatch(r"[0-9a-f]{64}", value) for value in hashes.values()
     ):
         raise ValueError("Original SHA256 values require recorded upstream source owners")
+    for owner, extraction in data.get("extracted", {}).items():
+        if (owner not in data["adapted"] or owner not in hashes or
+                not extraction.get("symbols") or not extraction.get("local") or
+                set(extraction["local"]) - set(data["local"] + data["adapted"])):
+            raise ValueError("Extracted source requires its original baseline and local owners")
     return data
 
 
@@ -87,7 +91,7 @@ def check_inventory(data):
         raise ValueError(f"Inventory mismatch: unrecorded={sorted(missing)}, stale={sorted(stale)}")
 
 
-def runtime_header_dependencies(snapshot, members, overlays, extra_c=()):
+def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_sources=()):
     """Supplement upstream rules for adapted headers and module-version consumers."""
     sources = {name for name in members if pathlib.PurePosixPath(name).suffix in
                (".c", ".cpp", ".h", ".hpp", ".inl")}
@@ -127,8 +131,10 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=()):
             bundle = snapshot / directory
             if not (bundle / original).is_file():
                 continue
+            bundle_sources = sorted(set(extra_c) | (set(format_sources)
+                if directory == "CPP/7zip/Bundles/Format7zF" else set()))
             extra_objects = ["$(O)\\reference_" + re.sub(r"[^a-zA-Z0-9_]", "_", str(pathlib.PurePosixPath(name).with_suffix(''))) + ".obj"
-                             for name in sorted(extra_c)] if windows else []
+                             for name in bundle_sources] if windows else []
             # Nmake expands the upstream link command while reading its include;
             # supply additional objects through Build.mak's supported LIBS input.
             lines = (["LIBS = $(LIBS) " + " ".join(extra_objects)] if extra_objects else [])
@@ -141,7 +147,7 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=()):
             # Preserve each dependency's source language, upstream object outputs
             # and compiler-cache launchers in both native runtimes.
             extra_objects = []
-            for name in sorted(extra_c):
+            for name in bundle_sources:
                 stem = "reference_" + re.sub(r"[^a-zA-Z0-9_]", "_", str(pathlib.PurePosixPath(name).with_suffix('')))
                 target = "$(O)\\" + stem + ".obj" if windows else "$(O)/" + stem + ".o"
                 source = posixpath.relpath(name, directory)
@@ -176,7 +182,7 @@ def prepare_runtime_snapshot(data, snapshot, upstream):
     if not isinstance(paths, list) or paths != sorted(set(paths)) or set(paths) - set(data["adapted"]):
         raise ValueError("Runtime sources must be selected adapted upstream modules")
     if any(path.startswith("src/gpl/") for path in paths):
-        raise ValueError("GPL reader variants cannot be overlaid into the SDK runtime")
+        raise ValueError("Full GPL format readers cannot be overlaid into the core runtime")
     snapshot.mkdir(parents=True, exist_ok=True)
     owner = snapshot / ".sevenzip-runtime-source.json"
     if snapshot.is_symlink() or (any(snapshot.iterdir()) and not owner.is_file()):
@@ -194,6 +200,11 @@ def prepare_runtime_snapshot(data, snapshot, upstream):
     dependencies = data.get("runtime_dependencies", [])
     if dependencies != sorted(set(dependencies)):
         raise ValueError("Runtime dependencies must be sorted and unique")
+    format_sources = data.get("runtime_format_sources", [])
+    if (not isinstance(format_sources, list) or format_sources != sorted(set(format_sources)) or
+            set(format_sources) - set(dependencies) or
+            any(not path.endswith((".c", ".cpp")) for path in format_sources)):
+        raise ValueError("Format support sources must be selected runtime dependencies")
     for path in dependencies:
         relative = pathlib.PurePosixPath(path)
         if (relative.parts[:1] != ("src",) or ".." in relative.parts or
@@ -261,7 +272,9 @@ def prepare_runtime_snapshot(data, snapshot, upstream):
         hashes[path] = hashlib.sha256(destination.read_bytes()).hexdigest()
     (snapshot / "runtime-adaptations.json").write_text(json.dumps(hashes, indent=2) + "\n")
     runtime_header_dependencies(snapshot, members, overlays,
-                                [path[len("src/"):] for path in dependencies if path.endswith((".c", ".cpp"))])
+                                [path[len("src/"):] for path in dependencies
+                                 if path.endswith((".c", ".cpp")) and path not in format_sources],
+                                [path[len("src/"):] for path in format_sources])
 
 
 def verify(data, upstream):
@@ -311,6 +324,11 @@ def review(data, upstream, new_revision, paths):
         rows.append(f"- `{path}` ({kind}, `{old}` → `{new}`): `{status}`")
         if kind == "adapted":
             rows.append("  Review the upstream diff against the current Qt/platform adaptations.")
+            extraction = data.get("extracted", {}).get(path)
+            if extraction:
+                rows.append("  Extracted symbols: " + ", ".join(extraction["symbols"]) + ".")
+                rows.append("  Also compare: " + ", ".join("`" + unit + "`"
+                    for unit in extraction["local"]) + ".")
         else:
             rows.append("  Replace with exact new source only after dependency and build review.")
     if len(rows) == 4:
@@ -421,7 +439,8 @@ def main():
             if not args.snapshot or not args.upstream:
                 raise ValueError("Runtime snapshot and upstream directories are required")
             if args.original_only:
-                data = dict(data, runtime_adapted=[], runtime_dependencies=[], overrides={})
+                data = dict(data, runtime_adapted=[], runtime_dependencies=[],
+                            runtime_format_sources=[], overrides={})
             prepare_runtime_snapshot(data, args.snapshot, args.upstream)
             return 0
         if args.command == "inventory":

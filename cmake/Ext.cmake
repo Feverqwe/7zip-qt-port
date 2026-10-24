@@ -143,6 +143,7 @@ if(BUILD_TESTING)
     set_tests_properties(fscrypt_crypto PROPERTIES TIMEOUT 30)
 endif()
 add_library(sevenzip_ext MODULE
+    src/CPP/7zip/Archive/ExtHeader.cpp
     src/fs/ext4/acl.c src/fs/posix_acl.c
     src/gpl/CPP/7zip/Archive/ExtHandler.cpp src/exfatmodule.cpp src/extpasswordguid.cpp
     src/extreader.c src/fs/readdir.c src/fs/libfs.c src/fs/ext4/super.c src/fs/ext4/crypto.c src/fs/ext4/balloc.c

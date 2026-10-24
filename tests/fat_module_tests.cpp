@@ -267,7 +267,13 @@ class FatModuleTests final : public QObject {
         }
         createArchive();
     }
+    void backendDiscoveryAndLegacyExtraction_data() {
+        QTest::addColumn<bool>("consoleMode");
+        QTest::newRow("native") << false;
+        QTest::newRow("console") << true;
+    }
     void backendDiscoveryAndLegacyExtraction() {
+        QFETCH(bool, consoleMode);
         QTemporaryDir runtime;
         QVERIFY(runtime.isValid());
 #ifdef Q_OS_WIN
@@ -287,6 +293,26 @@ class FatModuleTests final : public QObject {
         QVERIFY(source.open(QIODevice::WriteOnly));
         QCOMPARE(source.write(bytes_), bytes_.size());
         source.close();
+        if (consoleMode) {
+            // Exercise the console independently of asynchronous native
+            // discovery, from a deployment without system plugins.
+            for (const QString &command : {QString("l"), QString("t"), QString("x")}) {
+                QProcess console;
+                console.setWorkingDirectory(runtime.path());
+                QStringList arguments{command, image};
+                if (command == "x")
+                    arguments << "-so" << "LEGACY.BIN";
+                console.start(engine, arguments);
+                QVERIFY(console.waitForFinished(10000));
+                QCOMPARE(console.exitStatus(), QProcess::NormalExit);
+                QVERIFY2(console.exitCode() == 0, console.readAllStandardError().constData());
+                if (command == "x")
+                    QCOMPARE(console.readAllStandardOutput(), payload());
+                else if (command == "l")
+                    QVERIFY(console.readAllStandardOutput().contains("LEGACY.BIN"));
+            }
+            return;
+        }
         ArchiveBackend backend(nullptr, engine);
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog(core));

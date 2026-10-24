@@ -11,13 +11,15 @@ Detailed dated component investigations remain in the
 ## Repository boundary
 
 `src/CPP/7zip/` contains adapted upstream SDK modules at their original paths;
-`src/gpl/CPP/7zip/` contains the separate Linux/GPL archive-reader variants.
+`src/gpl/CPP/7zip/` contains the complete Linux/GPL archive readers used by both
+the application and console through the same external format modules.
 `third_party/7zip/` contains reusable upstream dependencies. Local Qt integration
-lives under `src/`. Preserve one authoritative implementation per module variant and
+lives under `src/`. Preserve one authoritative implementation per module and
 portable upstream types. [AGENTS.md](../AGENTS.md#source-port-requirements)
 owns the source-port rules; the [manifest](upstream-baseline.json) owns revisions.
-The [variant audit](upstream-port-audit/license-variants.md) records the split and
-its engine/module boundaries.
+The [reader ownership audit](upstream-port-audit/license-variants.md) records the
+shared probes/compression dependencies and engine/module boundaries. The core
+does not retain parallel SDK filesystem readers.
 
 The application is a C++17 / Qt 6 Widgets host for original FileManager/Agent/GUI
 logic. Qt adapters replace Win32 presentation, event delivery and native services.

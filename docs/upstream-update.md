@@ -4,7 +4,7 @@ The complete current baseline is [upstream-baseline.json](upstream-baseline.json
 It records the official repository, full default commit and every
 borrowed path. `exact` files under `third_party/7zip/` must match the original
 bytes; `adapted` files under `src/` retain their original relative path but need
-code review; `local` headers have no upstream counterpart at their current
+code review; `local` units have no upstream counterpart at their current
 paths. `overrides` records full commits for individual modules if an update is
 applied incrementally. The function/branch scope and reasons for local changes
 remain in [the port audit](upstream-port-audit.md).
@@ -13,25 +13,28 @@ remain in [the port audit](upstream-port-audit.md).
 revision overrides also enter the native runtime snapshot and its cache/provenance,
 so a selective codec update reaches both static consumers and the standalone engine.
 
-Archive readers with Linux dependencies have separate variants under
-`src/gpl/CPP/`, preserving the upstream path below that source root. Compare both
-variants with their recorded upstream revision during an update. Each variant
-has one authoritative implementation; shared portable dependencies stay shared.
-The [variant audit](upstream-port-audit/license-variants.md) records ownership and
-the original conditional source used for the split.
+Archive readers with Linux dependencies have one implementation under
+`src/gpl/CPP/`, preserving the upstream path below that source root. Both the
+application and console load these format modules. The [reader ownership
+audit](upstream-port-audit/license-variants.md) records the shared portable support
+units. `extracted` maps transferred symbols and local units to their original
+handler owner; `original_sha256` pins that complete original inventory unit.
+Review these units together with the full reader when updating upstream.
 
 `runtime_adapted` selects adapted engine modules for both dynamic and standalone
 runtime builds. Review these local changes during an upstream update as well;
 their compiled provenance and prepared-runtime cache include the source hashes.
 The builders refresh one owned source snapshot while retaining incremental
 compiler outputs. They do not compile in the upstream checkout. GPL reader
-variants are excluded from this overlay and built as separate CMake modules;
-the snapshot preparer rejects a GPL variant in `runtime_adapted`.
+sources are excluded from this overlay and built as separate CMake modules;
+the snapshot preparer rejects a full GPL reader in `runtime_adapted`.
 `runtime_dependencies` adds non-7-Zip C modules and headers needed by these
 modules at their declared snapshot paths. Their source revisions and licenses
 belong in the existing port audit. Runtime fingerprints and transitive dependencies
-include them; generated native rules compile C sources as C and link their objects
-into both engine variants while preserving incremental build outputs.
+include them; generated native rules compile C sources as C while preserving
+incremental build outputs. `runtime_format_sources` selects dependencies linked
+only into Format7zF, such as probes and HFS compression shared with APFS. The
+console executable and original SFX do not link these format support objects.
 
 Start from a disposable Git snapshot of the official repository. The old
 `../7zip-upstream` checkout is not required, and it must not be modified:
@@ -41,7 +44,7 @@ git clone --no-checkout https://github.com/ip7z/7zip.git /tmp/7zip-update-review
 python3 scripts/upstream_baseline.py verify --upstream /tmp/7zip-update-review
 ```
 
-`verify` rejects missing/stale manifest entries, duplicate source owners within a variant,
+`verify` rejects missing/stale manifest entries, duplicate source owners across roots,
 unknown revisions, new upstream counterparts for local-only paths, and changed
 bytes in exact files. It checks the current working-tree inventory, including
 nonignored new sources and excluding deleted files, so source moves can be

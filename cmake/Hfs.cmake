@@ -1,5 +1,6 @@
 # Linux HFS+ readers stay in a separate GPL format module.
 add_library(sevenzip_hfs MODULE
+    src/CPP/7zip/Archive/HfsDecmpfs.cpp
     src/gpl/CPP/7zip/Archive/HfsHandler.cpp src/exfatmodule.cpp
     src/hfsreader.c src/fs/namei.c src/fs/hfsplus/unicode.c src/fs/hfsplus/tables.c src/fs/hfsplus/dir.c
     src/fs/hfsplus/inode.c src/fs/hfsplus/bfind.c src/fs/hfsplus/xattr.c

@@ -1,6 +1,12 @@
 {
   "schema": 1,
   "runtime_dependencies": [
+    "src/CPP/7zip/Archive/ExtHeader.cpp",
+    "src/CPP/7zip/Archive/ExtHeader.h",
+    "src/CPP/7zip/Archive/FatHeader.cpp",
+    "src/CPP/7zip/Archive/FatHeader.h",
+    "src/CPP/7zip/Archive/HfsDecmpfs.cpp",
+    "src/CPP/7zip/Archive/MbrProbe.cpp",
     "src/CPP/7zip/Compress/ZstdEncoder.cpp",
     "src/CPP/7zip/Compress/ZstdEncoder.h",
     "src/block/qcow.c",
@@ -87,33 +93,20 @@
     "src/CPP/7zip/Archive/ApmHandler.cpp",
     "src/CPP/7zip/Archive/Base64Handler.cpp",
     "src/CPP/7zip/Archive/Bz2Handler.cpp",
-    "src/CPP/7zip/Archive/CpioHandler.cpp",
     "src/CPP/7zip/Archive/ElfHandler.cpp",
-    "src/CPP/7zip/Archive/ExtHandler.cpp",
-    "src/CPP/7zip/Archive/FatHandler.cpp",
     "src/CPP/7zip/Archive/GptHandler.cpp",
     "src/CPP/7zip/Archive/GzHandler.cpp",
     "src/CPP/7zip/Archive/HandlerCont.cpp",
     "src/CPP/7zip/Archive/HandlerCont.h",
-    "src/CPP/7zip/Archive/HfsHandler.cpp",
+    "src/CPP/7zip/Archive/HfsHandler.h",
     "src/CPP/7zip/Archive/IhexHandler.cpp",
-    "src/CPP/7zip/Archive/Iso/IsoHandler.cpp",
-    "src/CPP/7zip/Archive/Iso/IsoIn.cpp",
-    "src/CPP/7zip/Archive/Iso/IsoIn.h",
-    "src/CPP/7zip/Archive/Iso/IsoItem.h",
-    "src/CPP/7zip/Archive/Iso/IsoRegister.cpp",
     "src/CPP/7zip/Archive/LzmaHandler.cpp",
-    "src/CPP/7zip/Archive/MbrHandler.cpp",
-    "src/CPP/7zip/Archive/NtfsHandler.cpp",
     "src/CPP/7zip/Archive/PeHandler.cpp",
     "src/CPP/7zip/Archive/QcowHandler.cpp",
     "src/CPP/7zip/Archive/Tar/TarHandler.cpp",
     "src/CPP/7zip/Archive/Tar/TarHandler.h",
     "src/CPP/7zip/Archive/Tar/TarIn.cpp",
     "src/CPP/7zip/Archive/Tar/TarIn.h",
-    "src/CPP/7zip/Archive/Udf/UdfHandler.cpp",
-    "src/CPP/7zip/Archive/Udf/UdfIn.cpp",
-    "src/CPP/7zip/Archive/Udf/UdfIn.h",
     "src/CPP/7zip/Archive/UefiHandler.cpp",
     "src/CPP/7zip/Archive/XzHandler.cpp",
     "src/CPP/7zip/Archive/Zip/ZipAddCommon.cpp",
@@ -226,7 +219,6 @@
     "third_party/7zip/CPP/7zip/Archive/Common/ParseProperties.cpp",
     "third_party/7zip/CPP/7zip/Archive/Common/ParseProperties.h",
     "third_party/7zip/CPP/7zip/Archive/Common/StdAfx.h",
-    "third_party/7zip/CPP/7zip/Archive/HfsHandler.h",
     "third_party/7zip/CPP/7zip/Archive/IArchive.h",
     "third_party/7zip/CPP/7zip/Archive/Iso/IsoHeader.cpp",
     "third_party/7zip/CPP/7zip/Archive/Iso/IsoHeader.h",
@@ -555,25 +547,14 @@
     "src/CPP/7zip/Archive/Base64Handler.cpp",
     "src/CPP/7zip/Archive/Bz2Handler.cpp",
     "src/CPP/7zip/Archive/Common/HandlerOut.h",
-    "src/CPP/7zip/Archive/CpioHandler.cpp",
     "src/CPP/7zip/Archive/ElfHandler.cpp",
-    "src/CPP/7zip/Archive/ExtHandler.cpp",
-    "src/CPP/7zip/Archive/FatHandler.cpp",
     "src/CPP/7zip/Archive/GptHandler.cpp",
     "src/CPP/7zip/Archive/GzHandler.cpp",
     "src/CPP/7zip/Archive/HandlerCont.cpp",
     "src/CPP/7zip/Archive/HandlerCont.h",
-    "src/CPP/7zip/Archive/HfsHandler.cpp",
+    "src/CPP/7zip/Archive/HfsHandler.h",
     "src/CPP/7zip/Archive/IhexHandler.cpp",
-    "src/CPP/7zip/Archive/Iso/IsoHandler.cpp",
-    "src/CPP/7zip/Archive/Iso/IsoHandler.h",
-    "src/CPP/7zip/Archive/Iso/IsoIn.cpp",
-    "src/CPP/7zip/Archive/Iso/IsoIn.h",
-    "src/CPP/7zip/Archive/Iso/IsoItem.h",
-    "src/CPP/7zip/Archive/Iso/IsoRegister.cpp",
     "src/CPP/7zip/Archive/LzmaHandler.cpp",
-    "src/CPP/7zip/Archive/MbrHandler.cpp",
-    "src/CPP/7zip/Archive/NtfsHandler.cpp",
     "src/CPP/7zip/Archive/PeHandler.cpp",
     "src/CPP/7zip/Archive/QcowHandler.cpp",
     "src/CPP/7zip/Archive/Rar/Rar5Handler.cpp",
@@ -581,9 +562,6 @@
     "src/CPP/7zip/Archive/Tar/TarHandler.h",
     "src/CPP/7zip/Archive/Tar/TarIn.cpp",
     "src/CPP/7zip/Archive/Tar/TarIn.h",
-    "src/CPP/7zip/Archive/Udf/UdfHandler.cpp",
-    "src/CPP/7zip/Archive/Udf/UdfIn.cpp",
-    "src/CPP/7zip/Archive/Udf/UdfIn.h",
     "src/CPP/7zip/Archive/UefiHandler.cpp",
     "src/CPP/7zip/Archive/XzHandler.cpp",
     "src/CPP/7zip/Archive/Zip/ZipAddCommon.cpp",
@@ -821,8 +799,14 @@
   ],
   "local": [
     "src/CPP/7zip/Archive/BrotliHandler.cpp",
+    "src/CPP/7zip/Archive/ExtHeader.cpp",
+    "src/CPP/7zip/Archive/ExtHeader.h",
+    "src/CPP/7zip/Archive/FatHeader.cpp",
+    "src/CPP/7zip/Archive/FatHeader.h",
+    "src/CPP/7zip/Archive/HfsDecmpfs.cpp",
     "src/CPP/7zip/Archive/LinuxFrameHandler.cpp",
     "src/CPP/7zip/Archive/Lz4FrameHandler.cpp",
+    "src/CPP/7zip/Archive/MbrProbe.cpp",
     "src/CPP/7zip/Compress/BrotliDecoder.cpp",
     "src/CPP/7zip/Compress/BrotliDecoder.h",
     "src/CPP/7zip/Compress/ZstdEncoder.cpp",
@@ -840,7 +824,6 @@
     "src/C/ZstdDec.c": "83e016b3e45b2d9a27abb91570ddc732eb1a596c74039f1acdecdac524971ab5",
     "src/CPP/7zip/Archive/HandlerCont.cpp": "2e0e38b0d5116c66fad75b624a6997c7bcf2b9a26bea16aa147796d5e884f820",
     "src/CPP/7zip/Archive/HandlerCont.h": "0dc3ecde43894bddb416ae8c47f6aa55ac66450fe8376a1b81c78b24ccafe40e",
-    "src/CPP/7zip/Archive/NtfsHandler.cpp": "e6217266a6dc51208c1a8420ab25ce4731e0c78a9e1984891bd7404334736cf9",
     "src/CPP/7zip/Archive/Zip/ZipAddCommon.cpp": "78cf7d8b18a3e63d5a065ad56c8caa3e8be67d681bfb9e84c5768b14421c338a",
     "src/CPP/7zip/Archive/Zip/ZipHeader.h": "6f64d4d9db3e6ac3173da8d405ec4236e208553f0b5efa02c72d9de9f03b5a24",
     "src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp": "7af000033b8bba197e7d1b1d13e5e25b6b72358730b718d764b02e3640e851cb",
@@ -853,6 +836,58 @@
     "src/CPP/7zip/Bundles/Format7zF/Arc.mak": "21bdec7ef04a92dbb7a19e71146929a85a851a6e7a4d992ac9529e963d9bf381",
     "src/CPP/7zip/Bundles/Format7zF/Arc_gcc.mak": "f24c12cc78399ffabe87ba27adbf4206ca3aad38607129efc7b4d3670f5ab435",
     "third_party/7zip/CPP/7zip/Compress/ShrinkDecoder.cpp": "fab6e97d24d2855f5b979bf00994c97731f232123c18135ef2ebdcb4eb060ac5",
-    "third_party/7zip/CPP/7zip/Compress/ShrinkDecoder.h": "78bbe1b36383885dbd03538e3f764b386b1a1bc3a6983ce534c30d3750a2ea5e"
+    "third_party/7zip/CPP/7zip/Compress/ShrinkDecoder.h": "78bbe1b36383885dbd03538e3f764b386b1a1bc3a6983ce534c30d3750a2ea5e",
+    "src/CPP/7zip/Archive/HfsHandler.h": "be3ed0a048123c8180f506f08ad775e850c59819411d69cfb451767a0ed0f011",
+    "src/gpl/CPP/7zip/Archive/ExtHandler.cpp": "7b42bbb825210e22e12e47ef7feac1b08dc74804a4f5fd51d592fbbbfeba2d11",
+    "src/gpl/CPP/7zip/Archive/FatHandler.cpp": "2c5dcfcd68eec2b56267f636e3c66e630ec2a3796668e30ee58952db8ae9fc87",
+    "src/gpl/CPP/7zip/Archive/HfsHandler.cpp": "b2623be823291c398136030722dcf566c663106445f13bf55ed693a0e926a50f",
+    "src/gpl/CPP/7zip/Archive/MbrHandler.cpp": "e87756d0ce49cc49ee51df22c62e1453dd83c1c401d49812bfb982032490528d"
+  },
+  "runtime_format_sources": [
+    "src/CPP/7zip/Archive/ExtHeader.cpp",
+    "src/CPP/7zip/Archive/FatHeader.cpp",
+    "src/CPP/7zip/Archive/HfsDecmpfs.cpp",
+    "src/CPP/7zip/Archive/MbrProbe.cpp"
+  ],
+  "extracted": {
+    "src/gpl/CPP/7zip/Archive/ExtHandler.cpp": {
+      "local": [
+        "src/CPP/7zip/Archive/ExtHeader.cpp",
+        "src/CPP/7zip/Archive/ExtHeader.h"
+      ],
+      "symbols": [
+        "NExt::CHeader",
+        "NExt::IsArc_Ext",
+        "NExt::IsArc_Ext_PhySize"
+      ]
+    },
+    "src/gpl/CPP/7zip/Archive/FatHandler.cpp": {
+      "local": [
+        "src/CPP/7zip/Archive/FatHeader.cpp",
+        "src/CPP/7zip/Archive/FatHeader.h"
+      ],
+      "symbols": [
+        "NFat::CHeader",
+        "NFat::IsArc_Fat"
+      ]
+    },
+    "src/gpl/CPP/7zip/Archive/HfsHandler.cpp": {
+      "local": [
+        "src/CPP/7zip/Archive/HfsDecmpfs.cpp"
+      ],
+      "symbols": [
+        "NHfs::CCompressHeader",
+        "NHfs::MethodsMaskToProp",
+        "NHfs::CDecoder"
+      ]
+    },
+    "src/gpl/CPP/7zip/Archive/MbrHandler.cpp": {
+      "local": [
+        "src/CPP/7zip/Archive/MbrProbe.cpp"
+      ],
+      "symbols": [
+        "NMbr::GetFileSystem"
+      ]
+    }
   }
 }

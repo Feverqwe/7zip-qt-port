@@ -1,5 +1,6 @@
 # Linux FAT/NLS C code is isolated in a GPL format module.
 add_library(sevenzip_fat MODULE
+    src/CPP/7zip/Archive/FatHeader.cpp
     src/gpl/CPP/7zip/Archive/FatHandler.cpp src/exfatmodule.cpp
     src/fs/fat/inode.c src/fs/fat/misc.c src/fs/fat/dir.c
     src/fs/nls/nls_cp437.c src/fs/nls/nls_base.c

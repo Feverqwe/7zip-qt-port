@@ -193,6 +193,21 @@ class UpstreamBaselineTests(unittest.TestCase):
         self.assertEqual(adapted.read_bytes(), b"new adapted input")
         self.assertEqual(compiled.read_bytes(), b"cached compiler output")
 
+    def test_original_snapshot_ignores_format_support_and_adaptations(self):
+        snapshot = pathlib.Path(self.temporary.name) / "original-runtime"
+        self.manifest["runtime_adapted"] = ["src/" + self.source]
+        self.manifest["runtime_dependencies"] = [self.local]
+        self.manifest["runtime_format_sources"] = [self.local.replace(".h", ".cpp")]
+        self.manifest_path.write_text(json.dumps(self.manifest))
+        with patch.object(sys, "argv", ["upstream_baseline.py", "runtime-snapshot",
+                "--original-only", "--manifest", str(self.manifest_path),
+                "--snapshot", str(snapshot), "--upstream", str(self.upstream)]):
+            self.assertEqual(baseline.main(), 0)
+        original = subprocess.check_output(
+            ["git", "-C", str(self.upstream), "show", self.old + ":" + self.source])
+        self.assertEqual((snapshot / self.source).read_bytes(), original)
+        self.assertFalse((snapshot / self.local.removeprefix("src/")).exists())
+
     def test_runtime_snapshot_drains_archive_padding_before_waiting_for_producer(self):
         snapshot = pathlib.Path(self.temporary.name) / "runtime"
         self.manifest["runtime_adapted"] = ["src/" + self.source]
@@ -265,24 +280,15 @@ class UpstreamBaselineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Original source hash mismatch"):
             baseline.verify(self.manifest, self.upstream)
 
-    def test_license_variants_keep_sdk_runtime_isolated(self):
+    def test_duplicate_source_owner_is_rejected_across_roots(self):
         sdk = "src/" + self.source
         gpl = "src/gpl/" + self.source
         (self.port / gpl).parent.mkdir(parents=True)
         (self.port / gpl).write_bytes(b"Linux reader variant\n")
         self.manifest["adapted"] = sorted([sdk, gpl])
-        self.manifest["runtime_adapted"] = [sdk]
         self.manifest_path.write_text(json.dumps(self.manifest))
-        data = baseline.load_manifest(self.manifest_path)
-        baseline.verify(data, self.upstream)
-        snapshot = pathlib.Path(self.temporary.name) / "runtime"
-        baseline.prepare_runtime_snapshot(data, snapshot, self.upstream)
-        expected = (self.port / sdk).read_bytes()
-        self.assertEqual((snapshot / self.source).read_bytes(), expected)
-        data["runtime_adapted"] = [gpl]
-        with self.assertRaisesRegex(ValueError, "GPL reader variants"):
-            baseline.prepare_runtime_snapshot(data, snapshot, self.upstream)
-        self.assertEqual((snapshot / self.source).read_bytes(), expected)
+        with self.assertRaisesRegex(ValueError, "multiple authoritative implementations"):
+            baseline.load_manifest(self.manifest_path)
 
     def test_runtime_rebuilds_transitive_adapted_header_consumers(self):
         self.assert_runtime_rebuilds_header_consumers(
@@ -316,10 +322,16 @@ class UpstreamBaselineTests(unittest.TestCase):
             "block/reader.h", (("#define DISK_VALUE 3\n", 3), ("#define DISK_VALUE 7\n", 7)),
             "reference_value()", adapted=False, dependency=True, cpp_reference=True)
 
+    def test_format_support_links_and_rebuilds_without_linking_into_console(self):
+        self.assert_runtime_rebuilds_header_consumers(
+            "block/reader.h", (("#define DISK_VALUE 3\n", 3), ("#define DISK_VALUE 7\n", 7)),
+            "reference_value()", adapted=False, dependency=True, cpp_reference=True,
+            directory="CPP/7zip/Bundles/Format7zF", format_only=True)
+
     def assert_runtime_rebuilds_header_consumers(self, header, versions, expression, adapted,
                                                dependency=False, c_reference=False,
                                                cpp_reference=False,
-                                               directory="CPP/7zip/UI/Console"):
+                                               directory="CPP/7zip/UI/Console", format_only=False):
         include = "Model.h" if adapted else "../../../" + header
         files = {
             directory + "/Probe.cpp": '#include "../../Common/Bridge.h"\nint main() { return ' + expression + '; }\n',
@@ -350,6 +362,11 @@ class UpstreamBaselineTests(unittest.TestCase):
                         '$(O)/Probe.o: Probe.cpp\n'
                         f'\t{compiler} -c -o $@ $<\n')
         files[directory + ("/makefile" if windows else "/makefile.gcc")] = makefile
+        if format_only:
+            files[directory + "/Probe.cpp"] += '\nint format_anchor() { return 0; }\n'
+            console = "CPP/7zip/UI/Console"
+            files[console + "/Probe.cpp"] = 'int main() { return 0; }\n'
+            files[console + ("/makefile" if windows else "/makefile.gcc")] = makefile
         for name, contents in files.items():
             if dependency and name == header:
                 continue
@@ -375,6 +392,10 @@ class UpstreamBaselineTests(unittest.TestCase):
                     source = self.port / "src/block/reader.cpp"
                     source.write_text('#include "reader.h"\nint reference_value() { return static_cast<int>(DISK_VALUE); }\n')
                     self.manifest["runtime_dependencies"] = sorted([local, "src/block/reader.cpp"])
+                    if format_only:
+                        self.manifest["runtime_format_sources"] = ["src/block/reader.cpp"]
+                        source.write_text('#include "reader.h"\nint format_anchor();\n'
+                            'int reference_value() { return DISK_VALUE + format_anchor(); }\n')
         self.manifest["runtime_adapted"] = [local] if adapted else []
         snapshot = pathlib.Path(self.temporary.name) / "runtime"
         environment = dict(os.environ)
@@ -405,6 +426,13 @@ class UpstreamBaselineTests(unittest.TestCase):
                 checked = executable.with_name("probe-checked-" + str(expected) + ".exe")
                 shutil.copy2(executable, checked)
             self.assertEqual(subprocess.run([str(checked)]).returncode, expected)
+            if format_only:
+                console_bundle = snapshot / "CPP/7zip/UI/Console"
+                (console_bundle / "objects").mkdir(exist_ok=True)
+                console_build = subprocess.run(command, cwd=console_bundle, env=environment,
+                                               capture_output=True, text=True)
+                self.assertEqual(console_build.returncode, 0,
+                                 console_build.stdout + console_build.stderr)
 
 
 if __name__ == "__main__":

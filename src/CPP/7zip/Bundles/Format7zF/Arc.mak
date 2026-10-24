@@ -66,26 +66,20 @@ AR_OBJS = \
   $O\Base64Handler.obj \
   $O\Bz2Handler.obj \
   $O\ComHandler.obj \
-  $O\CpioHandler.obj \
   $O\DeflateProps.obj \
   $O\DmgHandler.obj \
   $O\ElfHandler.obj \
-  $O\ExtHandler.obj \
-  $O\FatHandler.obj \
   $O\FlvHandler.obj \
   $O\GzHandler.obj \
   $O\GptHandler.obj \
   $O\HandlerCont.obj \
-  $O\HfsHandler.obj \
   $O\IhexHandler.obj \
   $O\LpHandler.obj \
   $O\LzhHandler.obj \
   $O\LzmaHandler.obj \
   $O\MachoHandler.obj \
-  $O\MbrHandler.obj \
   $O\MslzHandler.obj \
   $O\MubHandler.obj \
-  $O\NtfsHandler.obj \
   $O\PeHandler.obj \
   $O\PpmdHandler.obj \
   $O\QcowHandler.obj \
@@ -143,10 +137,7 @@ CHM_OBJS = \
   $O\ChmIn.obj \
 
 ISO_OBJS = \
-  $O\IsoHandler.obj \
   $O\IsoHeader.obj \
-  $O\IsoIn.obj \
-  $O\IsoRegister.obj \
 
 NSIS_OBJS = \
   $O\NsisDecode.obj \
@@ -168,8 +159,6 @@ TAR_OBJS = \
   $O\TarRegister.obj \
 
 UDF_OBJS = \
-  $O\UdfHandler.obj \
-  $O\UdfIn.obj \
 
 WIM_OBJS = \
   $O\WimHandler.obj \

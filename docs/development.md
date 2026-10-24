@@ -53,6 +53,11 @@ app uses this prepared runtime when present; deployed builds look beside the app
 or in `Resources/7zip`. `SEVENZIP_CODEC_MODULE_PATH` explicitly selects a native
 module. The console is shipped as an independent sidecar and used by reference
 tests; neither 7zFM nor 7zG invokes it.
+The console and application use the same deployed filesystem/format modules.
+Build the corresponding CMake module targets as well as preparing the core;
+copying the console and core alone does not provide the external readers.
+Reader source ownership and shared probes are recorded in the
+[source audit](upstream-port-audit/license-variants.md).
 Codecs/Formats discovery and ABI checks follow original LoadCodecs in the selected
 deployment, without executing or parsing console information output.
 The immutable codec image uses Qt's selected temporary directory to copy and
@@ -77,7 +82,7 @@ preserve unchanged source timestamps and use the existing compiler cache when
 available. Runtime provenance records the adapted-source hashes; changing one
 invalidates the prepared-runtime cache. The sibling upstream remains read-only.
 For engine-only checks, `python3 scripts/prepare-runtime.py --codec-only`
-prepares both codec-runtime variants without building SFX.
+prepares the console and codec core without building SFX or external CMake modules.
 Do not install test-only codec fixtures in a production runtime. Earlier ARM64
 builder samples are retained in [the tooling archive](archive/qt-port/workflow-evidence.md).
 

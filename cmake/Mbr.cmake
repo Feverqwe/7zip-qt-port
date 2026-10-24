@@ -1,7 +1,8 @@
 # Linux nested partition readers remain in a separate GPL format module.
 add_library(sevenzip_mbr MODULE
+    src/CPP/7zip/Archive/MbrProbe.cpp src/CPP/7zip/Archive/FatHeader.cpp
     src/gpl/CPP/7zip/Archive/MbrHandler.cpp src/CPP/7zip/Archive/HandlerCont.cpp
-    src/CPP/7zip/Archive/FatHandler.cpp src/exfatmodule.cpp
+    src/exfatmodule.cpp
     src/block/partitions/msdos.c src/block/partitions/reader.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
@@ -23,7 +24,7 @@ add_library(sevenzip_mbr MODULE
 target_include_directories(sevenzip_mbr PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
 target_compile_definitions(sevenzip_mbr PRIVATE SEVENZIP_CONTAINER_ONLY
-    SEVENZIP_FAT_PROBE_ONLY Z7_ST)
+    Z7_ST)
 target_link_libraries(sevenzip_mbr PRIVATE Threads::Threads)
 set_target_properties(sevenzip_mbr PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)

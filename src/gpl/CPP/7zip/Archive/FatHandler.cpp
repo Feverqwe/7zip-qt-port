@@ -4,6 +4,7 @@
 
 #include "C/CpuArch.h"
 
+#include "7zip/Archive/FatHeader.h"
 #include "Common/ComTry.h"
 #include "Common/IntToString.h"
 #include "Common/MyBuffer.h"
@@ -41,87 +42,10 @@
 namespace NArchive {
 namespace NFat {
 
-static const UInt32 kFatItemUsedByDirMask = (UInt32)1 << 31;
-static const UInt32 kFatItemActiveFileMask = (UInt32)1 << 29;
-static const UInt32 kFatItemUnknownMask = (UInt32)1 << 28;
-static const UInt32 kFatItemActiveDirMask = (UInt32)1 << 30;
-
-struct CHeader {
-    Byte NumFatBits;
-    Byte SectorSizeLog;
-    Byte SectorsPerClusterLog;
-    Byte ClusterSizeLog;
-    Byte NumFats;
-    Byte MediaType;
-
-    bool VolFieldsDefined;
-    bool HeadersWarning;
-    bool Dirty = false;
-
-    UInt32 FatSize;
-    UInt32 BadCluster;
-
-    UInt16 NumReservedSectors;
-    UInt32 NumSectors;
-    UInt32 NumFatSectors;
-    UInt32 RootDirSector;
-    UInt32 NumRootDirSectors;
-    UInt32 DataSector;
-
-    UInt16 SectorsPerTrack;
-    UInt16 NumHeads;
-    UInt32 NumHiddenSectors;
-
-    UInt32 VolId;
-    // Byte VolName[11];
-    // Byte FileSys[8];
-    // Byte OemName[5];
-
-    // 32-bit FAT
-    UInt16 Flags;
-    UInt16 FsInfoSector;
-    UInt32 RootCluster;
-
-    bool IsFat32() const { return NumFatBits == 32; }
-    UInt64 GetPhySize() const { return (UInt64)NumSectors << SectorSizeLog; }
-    UInt32 SectorSize() const { return (UInt32)1 << SectorSizeLog; }
-    UInt32 ClusterSize() const { return (UInt32)1 << ClusterSizeLog; }
-    UInt32 ClusterToSector(UInt32 c) const {
-        return DataSector + ((c - 2) << SectorsPerClusterLog);
-    }
-    UInt32 IsEoc(UInt32 c) const { return c > BadCluster; }
-    UInt32 IsEocAndUnused(UInt32 c) const {
-        return c > BadCluster && (c & kFatItemUsedByDirMask) == 0;
-    }
-    UInt32 IsValidCluster(UInt32 c) const { return c >= 2 && c < FatSize; }
-    UInt32 SizeToSectors(UInt32 size) const { return (size + SectorSize() - 1) >> SectorSizeLog; }
-    UInt32 CalcFatSizeInSectors() const {
-        return SizeToSectors((FatSize * (NumFatBits / 4) + 1) / 2);
-    }
-
-    UInt32 GetFatSector() const {
-        UInt32 index = (IsFat32() && (Flags & 0x80) != 0) ? (Flags & 0xF) : 0;
-        if (index >= NumFats)
-            index = 0;
-        return NumReservedSectors + index * NumFatSectors;
-    }
-
-    UInt64 GetFilePackSize(UInt32 unpackSize) const {
-        UInt64 mask = ClusterSize() - 1;
-        return (unpackSize + mask) & ~mask;
-    }
-
-    UInt32 GetNumClusters(UInt32 size) const {
-        return (UInt32)(((UInt64)size + ClusterSize() - 1) >> ClusterSizeLog);
-    }
-
-    bool Parse(const Byte *p);
-};
-
 static const unsigned kHeaderSize = 512;
 
-API_FUNC_IsArc IsArc_Fat(const Byte *p, size_t size);
-API_FUNC_IsArc IsArc_Fat(const Byte *p, size_t size) {
+API_FUNC_IsArc IsArc_Fat_Linux(const Byte *p, size_t size);
+API_FUNC_IsArc IsArc_Fat_Linux(const Byte *p, size_t size) {
     if (size < kHeaderSize)
         return k_IsArc_Res_NEED_MORE;
     CHeader h;
@@ -133,147 +57,6 @@ API_FUNC_IsArc IsArc_Fat(const Byte *p, size_t size) {
     return k_IsArc_Res_NO;
 }
 
-bool CHeader::Parse(const Byte *p) {
-
-    HeadersWarning = false;
-
-    {
-        {
-            const unsigned num = Get16(p + 11);
-            unsigned i = 9;
-            unsigned m = 1 << i;
-            for (;;) {
-                if (m == num)
-                    break;
-                m <<= 1;
-                if (++i > 12)
-                    return false;
-            }
-            SectorSizeLog = (Byte)i;
-        }
-        {
-            const unsigned num = p[13];
-            unsigned i = 0;
-            unsigned m = 1 << i;
-            for (;;) {
-                if (m == num)
-                    break;
-                m <<= 1;
-                if (++i > 7)
-                    return false;
-            }
-            SectorsPerClusterLog = (Byte)i;
-            i += SectorSizeLog;
-            ClusterSizeLog = (Byte)i;
-            // (2^15 = 32 KB is safe cluster size that is suported by all system.
-            // (2^16 = 64 KB is supported by some systems
-            // (128 KB / 256 KB) can be created by some tools, but it is not supported by many
-            // tools.
-            if (i > 19) // Linux accepts 128 sectors of 4096 bytes.
-                return false;
-        }
-    }
-
-    NumReservedSectors = Get16(p + 14);
-    if (NumReservedSectors == 0)
-        return false;
-
-    NumFats = p[16];
-    if (NumFats < 1)
-        return false;
-
-    const unsigned numRootDirEntries = Get16(p + 17);
-    const unsigned rootMask = (1u << (SectorSizeLog - 5)) - 1;
-    if (numRootDirEntries & rootMask)
-        return false;
-    NumRootDirSectors = numRootDirEntries >> (SectorSizeLog - 5);
-    if (Get16(p + 22) == 0 && Get32(p + 36) != 0) {
-        NumFatBits = 32;
-    } else {
-        NumFatBits = 0;
-    }
-
-    NumSectors = Get16(p + 19);
-    if (NumSectors == 0)
-        NumSectors = Get32(p + 32);
-    /*
-    // mkfs.fat could create fat32 image with 16-bit number of sectors.
-    // v23: we allow 16-bit value for number of sectors in fat32.
-    else if (IsFat32())
-      return false;
-    */
-    MediaType = p[21];
-    if (MediaType != 0xF0 && MediaType < 0xF8)
-        return false;
-    NumFatSectors = Get16(p + 22);
-    SectorsPerTrack = Get16(p + 24);
-    NumHeads = Get16(p + 26);
-    NumHiddenSectors = Get32(p + 28);
-    RootCluster = 0;
-
-    // memcpy(OemName, p + 3, 5);
-
-    p += 36;
-    if (IsFat32()) {
-        if (NumFatSectors != 0)
-            return false;
-        NumFatSectors = Get32(p);
-        Flags = Get16(p + 4);
-        RootCluster = Get32(p + 8);
-        FsInfoSector = Get16(p + 12);
-        if (FsInfoSector == 0)
-            FsInfoSector = 1;
-        p += 28;
-    }
-
-    // DriveNumber = p[0];
-    VolFieldsDefined = (p[2] == 0x29); // ExtendedBootSig
-    // Linux reads the BPB volume ID independently of bootstrap code/signature.
-    VolId = Get32(p + 3);
-    // memcpy(VolName, p + 7, 11);
-    // memcpy(FileSys, p + 18, 8);
-
-    if (NumFatSectors == 0)
-        return false;
-    const UInt64 rootDirSector = NumReservedSectors + (UInt64)NumFatSectors * NumFats;
-    const UInt64 dataSector = rootDirSector + NumRootDirSectors;
-    if (dataSector > NumSectors)
-        return false;
-    RootDirSector = (UInt32)rootDirSector;
-    DataSector = (UInt32)dataSector;
-    const UInt32 numDataSectors = NumSectors - DataSector;
-    const UInt32 numClusters = numDataSectors >> SectorsPerClusterLog;
-
-    BadCluster = 0x0FFFFFF7;
-    // v23: we support unusual (< 0xFFF5) numClusters values in fat32 systems
-    if (NumFatBits != 32) {
-        NumFatBits = (Byte)(numClusters < 0xFF5 ? 12 : 16);
-        BadCluster &= (((UInt32)1 << NumFatBits) - 1);
-    }
-
-    const UInt64 fatCapacity = ((UInt64)NumFatSectors << (SectorSizeLog + 3)) / NumFatBits;
-    UInt64 fatSize = (UInt64)numClusters + 2;
-    if (fatSize > fatCapacity) {
-        /* some third-party program can create such FAT image, where
-           size of FAT table (NumFatSectors from headers) is smaller than
-           required value that is calculated from calculated (FatSize) value.
-           Another FAT unpackers probably ignore that error.
-           v23.02: we also ignore that error, and
-           we recalculate (FatSize) value from (NumFatSectors).
-           New (FatSize) will be smaller than original "full" (FatSize) value.
-           So we will have some unused clusters at the end of archive.
-        */
-        fatSize = fatCapacity;
-        HeadersWarning = true;
-    }
-    const UInt64 maxEntries = IsFat32() ? (UInt64)BadCluster + 1 : (UInt64)BadCluster - 1;
-    if (fatSize < 2 || fatSize > maxEntries)
-        return false;
-    FatSize = (UInt32)fatSize;
-    return true;
-}
-
-#ifndef SEVENZIP_FAT_PROBE_ONLY
 class CItem {
     Z7_CLASS_NO_COPY(CItem)
   public:
@@ -1511,7 +1294,7 @@ Z7_COM7F_IMF(CHandler::GetNumberOfItems(UInt32 *numItems)) {
     return S_OK;
 }
 
-REGISTER_ARC_I_NO_SIG("FAT", "fat img", NULL, 0xDA, 0, NArcInfoFlags::kPureStartOpen, IsArc_Fat)
-#endif // SEVENZIP_FAT_PROBE_ONLY
+REGISTER_ARC_I_NO_SIG("FAT", "fat img", NULL, 0xDA, 0, NArcInfoFlags::kPureStartOpen,
+                      IsArc_Fat_Linux)
 }
 }
