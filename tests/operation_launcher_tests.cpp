@@ -5,6 +5,7 @@
 #include "fixtures/operation_temp_cleanup.h"
 #include "qtoperationlauncher.h"
 #include "source_extract_fixture.h"
+#include <QPointer>
 #include <QScopeGuard>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -68,14 +69,17 @@ class OperationLauncherTests final : public QObject {
         QtOperationLauncher launcher;
         QSignalSpy accepted(&launcher, &QtOperationLauncher::accepted);
         QSignalSpy finished(&launcher, &QtOperationLauncher::finished);
-        QtOperationMessage job;
-        job.Type = QtOperationMessage::Kind::Job;
+        bool finishedBeforeAcceptance = false;
+        connect(&launcher, &QtOperationLauncher::finished, this,
+                [&] { finishedBeforeAcceptance = accepted.isEmpty(); });
+        QtOperationJob job;
         job.Paths = {archive};
         job.YesToAll = true; // Original source -y behavior, no terminal modal in this fixture.
         QString error;
         QVERIFY2(launcher.start(guiProgram(), job, error), qPrintable(error));
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 30000);
         QCOMPARE(accepted.size(), 1);
+        QVERIFY(!finishedBeforeAcceptance);
         const auto result = qvariant_cast<QtOperationResult>(finished[0][0]);
         QCOMPARE(result.Status, damaged ? QtOperationResult::Outcome::Failure
                                         : QtOperationResult::Outcome::Success);
@@ -111,14 +115,41 @@ class OperationLauncherTests final : public QObject {
                  SourceExtractFixture::readFile(report + ".diagnostic").constData());
         QCOMPARE(SourceExtractFixture::readFile(archive), before);
     }
+    void acceptedJobSurvivesObserverDeletion() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const auto archive = SourceExtractFixture::makeArchive(directory.path(), "surviving bytes");
+        QVERIFY(!archive.isEmpty());
+        const auto barrier = directory.filePath("continue");
+        const auto report = directory.filePath("result");
+        qputenv("SEVENZIP_OPERATION_BARRIER", barrier.toUtf8());
+        qputenv("SEVENZIP_OPERATION_REPORT", report.toUtf8());
+        const auto restore = qScopeGuard([] {
+            qunsetenv("SEVENZIP_OPERATION_BARRIER");
+            qunsetenv("SEVENZIP_OPERATION_REPORT");
+        });
+        QPointer<QtOperationLauncher> observer = new QtOperationLauncher(this);
+        connect(observer, &QtOperationLauncher::accepted, this, [&] { delete observer.data(); });
+        QtOperationJob job;
+        job.Paths = {archive};
+        job.YesToAll = true;
+        QString error;
+        QVERIFY2(observer->start(QStringLiteral(SEVENZIP_OPERATION_HOST), job, error),
+                 qPrintable(error));
+        QTRY_VERIFY_WITH_TIMEOUT(observer.isNull(), 10000);
+        QVERIFY(!QFileInfo::exists(report));
+        QVERIFY(SourceExtractFixture::writeFile(barrier, "continue"));
+        QTRY_VERIFY_WITH_TIMEOUT(QFileInfo::exists(report), 15000);
+        QVERIFY2(SourceExtractFixture::readFile(report) == QByteArray("0"),
+                 SourceExtractFixture::readFile(report + ".diagnostic").constData());
+    }
     void killedChildAndNextOperation() {
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
         const auto archive = SourceExtractFixture::makeArchive(directory.path(), "unchanged");
         QVERIFY(!archive.isEmpty());
         const auto before = SourceExtractFixture::readFile(archive);
-        QtOperationMessage job;
-        job.Type = QtOperationMessage::Kind::Job;
+        QtOperationJob job;
         job.Paths = {archive};
         for (bool terminate : {true, false}) {
             QtOperationLauncher launcher;
@@ -155,8 +186,7 @@ class OperationLauncherTests final : public QObject {
         const auto before = SourceExtractFixture::readFile(archive);
         qputenv("SEVENZIP_OPERATION_CANCEL_PASSWORD", "1");
         const auto restore = qScopeGuard([] { qunsetenv("SEVENZIP_OPERATION_CANCEL_PASSWORD"); });
-        QtOperationMessage job;
-        job.Type = QtOperationMessage::Kind::Job;
+        QtOperationJob job;
         job.Paths = {archive};
         job.YesToAll = true;
         QtOperationLauncher launcher;

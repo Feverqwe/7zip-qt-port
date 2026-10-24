@@ -103,7 +103,9 @@ int main(int argc, char **argv) {
                             profile == "failure" ? "unavailable-benchmark-method" : "CRC32";
                     }
                     options.NumIterations_Defined = true;
-                    options.NumIterations = 1;
+                    // Cancellation must interrupt unfinished work even when
+                    // the GUI thread is scheduled after a short native pass.
+                    options.NumIterations = profile == "normal-cancel" ? 1000 : 1;
                 };
             }
             return RunSevenzipGUICommand(

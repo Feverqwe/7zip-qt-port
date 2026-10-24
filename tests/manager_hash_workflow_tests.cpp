@@ -28,16 +28,15 @@ QAction *FindShellVerb(QMenu &menu, const QString &verb) {
 }
 class HashBackend final : public ArchiveBackend {
   public:
-    QList<QtOperationMessage> Requests;
+    QList<QtOperationJob> Requests;
     QList<QtOperationResult> Results;
     QString Report, Barrier, ReportTag;
     bool CrashNext = false;
     unsigned Accepted = 0;
     QtOperationLauncher *startGuiHash(const QStringList &paths, const QString &method,
                                       const QString &prefix, bool enter, QString &error) override {
-        QtOperationMessage job;
-        job.Type = QtOperationMessage::Kind::Job;
-        job.Operation = QtOperationMessage::Command::Hash;
+        QtOperationJob job;
+        job.Operation = QtOperationJob::Command::Hash;
         job.Paths = paths;
         job.HashMethod = method;
         job.HashBasePrefix = prefix;
@@ -47,9 +46,8 @@ class HashBackend final : public ArchiveBackend {
     QtOperationLauncher *startGuiCompress(const QString &archive, const QString &type,
                                           bool addExtension, const QStringList &paths, bool email,
                                           bool showDialog, QString &error) override {
-        QtOperationMessage job;
-        job.Type = QtOperationMessage::Kind::Job;
-        job.Operation = QtOperationMessage::Command::Compress;
+        QtOperationJob job;
+        job.Operation = QtOperationJob::Command::Compress;
         job.Paths = paths;
         job.ArchivePath = archive;
         job.ArchiveType = type;
@@ -60,8 +58,7 @@ class HashBackend final : public ArchiveBackend {
     }
     QtOperationLauncher *startGuiTest(const QStringList &paths, QString &error,
                                       bool hashMode = false) override {
-        QtOperationMessage job;
-        job.Type = QtOperationMessage::Kind::Job;
+        QtOperationJob job;
         job.Paths = paths;
         job.HashMode = hashMode;
         job.YesToAll = true;
@@ -69,7 +66,7 @@ class HashBackend final : public ArchiveBackend {
     }
 
   private:
-    QtOperationLauncher *Launch(const QtOperationMessage &job, QString &error) {
+    QtOperationLauncher *Launch(const QtOperationJob &job, QString &error) {
         Requests.append(job);
         ScopedTestEnvironment report("SEVENZIP_OPERATION_HASH_REPORT", Report);
         ScopedTestEnvironment reportTag("SEVENZIP_OPERATION_HASH_UI_TAG", ReportTag);

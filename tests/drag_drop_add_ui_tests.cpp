@@ -24,15 +24,17 @@ class DropBackend final : public ArchiveBackend {
     QtOperationLauncher *startGuiCompress(const QString &archive, const QString &type,
                                           bool addExtension, const QStringList &paths, bool email,
                                           bool showDialog, QString &error) override {
-        QtOperationMessage job;
-        job.Type = QtOperationMessage::Kind::Job;
-        job.Operation = QtOperationMessage::Command::Compress;
+        QtOperationJob job;
+        job.Operation = QtOperationJob::Command::Compress;
         job.ArchivePath = archive;
         job.ArchiveType = Fail ? QStringLiteral("unsupported-drag-format") : type;
         job.AddExtension = addExtension;
         job.Paths = paths;
         job.EMail = email;
         job.ShowDialog = showDialog;
+        // This row verifies the source error result, not the native Windows
+        // MessageBox. Keep that question noninteractive through source -y.
+        job.YesToAll = Fail;
         ScopedTestEnvironment decision("SEVENZIP_OPERATION_CREATE_DECISION",
                                        Cancel ? "cancel" : "accept");
         ScopedTestEnvironment barrier("SEVENZIP_OPERATION_BARRIER", Barrier);
@@ -226,21 +228,22 @@ class DragDropAddUiTests final : public QObject {
         QCOMPARE(result.readAll(), bytes);
     }
 
-    void sourceLifetimeAndIndependentCompletion_data() {
-        QTest::addColumn<bool>("wait");
+    void independentCompletion_data() { sourceLifetimeData(); }
+    void independentCompletion() { verifySourceLifetime(false); }
+    void temporarySourceLifetime_data() { sourceLifetimeData(); }
+    void temporarySourceLifetime() { verifySourceLifetime(true); }
+
+  private:
+    static void sourceLifetimeData() {
         QTest::addColumn<QString>("outcome");
-        for (bool wait : {false, true})
-            for (const QString &outcome :
-                 {QString("create"), QString("cancel"), QString("failure"), QString("crash")})
-                QTest::newRow(
-                    qPrintable(QString("%1-%2").arg(wait ? "temporary" : "ordinary").arg(outcome)))
-                    << wait << outcome;
+        for (const QString &outcome :
+             {QString("create"), QString("cancel"), QString("failure"), QString("crash")})
+            QTest::newRow(qPrintable(outcome)) << outcome;
     }
-    void sourceLifetimeAndIndependentCompletion() {
+    void verifySourceLifetime(bool wait) {
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Requires the official native module");
 #else
-        QFETCH(bool, wait);
         QFETCH(QString, outcome);
         const bool cancel = outcome == "cancel", failure = outcome == "failure",
                    crash = outcome == "crash";
@@ -338,6 +341,7 @@ class DragDropAddUiTests final : public QObject {
 #endif
     }
 
+  private slots:
     void launchFailureReleasesTemporarySource() {
         QTemporaryDir root;
         QVERIFY(root.isValid());

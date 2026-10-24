@@ -113,8 +113,8 @@ class ControlledBackend : public ArchiveBackend {
     QtOperationLauncher *startGuiCompress(const QString &archive, const QString &type,
                                           bool addExtension, const QStringList &paths, bool email,
                                           bool showDialog, QString &error) override {
-        QtOperationMessage job;
-        job.Operation = QtOperationMessage::Command::Compress;
+        QtOperationJob job;
+        job.Operation = QtOperationJob::Command::Compress;
         job.ArchivePath = archive;
         job.ArchiveType = type;
         job.AddExtension = addExtension;
@@ -126,8 +126,8 @@ class ControlledBackend : public ArchiveBackend {
     QtOperationLauncher *startGuiHash(const QStringList &paths, const QString &method,
                                       const QString &basePrefix, bool enterToDirs,
                                       QString &error) override {
-        QtOperationMessage job;
-        job.Operation = QtOperationMessage::Command::Hash;
+        QtOperationJob job;
+        job.Operation = QtOperationJob::Command::Hash;
         job.Paths = paths;
         job.HashMethod = method;
         job.HashBasePrefix = basePrefix;
@@ -136,7 +136,7 @@ class ControlledBackend : public ArchiveBackend {
     }
     QtOperationLauncher *startGuiTest(const QStringList &paths, QString &error,
                                       bool hashMode = false) override {
-        QtOperationMessage job;
+        QtOperationJob job;
         job.Paths = paths;
         job.HashMode = hashMode;
         return captureGuiRequest(std::move(job), error);
@@ -144,8 +144,8 @@ class ControlledBackend : public ArchiveBackend {
     QtOperationLauncher *startGuiExtract(const QStringList &paths, const QString &destination,
                                          bool showDialog, bool elimDup, quint32 writeZone,
                                          QString &error) override {
-        QtOperationMessage job;
-        job.Operation = QtOperationMessage::Command::Extract;
+        QtOperationJob job;
+        job.Operation = QtOperationJob::Command::Extract;
         job.Paths = paths;
         job.Destination = destination;
         job.ShowDialog = showDialog;
@@ -154,12 +154,12 @@ class ControlledBackend : public ArchiveBackend {
         return captureGuiRequest(std::move(job), error);
     }
     QtOperationLauncher *startGuiBenchmark(bool total, QString &error) override {
-        QtOperationMessage job;
-        job.Operation = QtOperationMessage::Command::Benchmark;
+        QtOperationJob job;
+        job.Operation = QtOperationJob::Command::Benchmark;
         job.TotalMode = total;
         return captureGuiRequest(std::move(job), error);
     }
-    QList<QtOperationMessage> GuiRequests;
+    QList<QtOperationJob> GuiRequests;
     void cancel() override {
         ++cancelCalls;
         busy_ = false;
@@ -207,8 +207,7 @@ class ControlledBackend : public ArchiveBackend {
     QString lastTestPassword;
 
   private:
-    QtOperationLauncher *captureGuiRequest(QtOperationMessage job, QString &error) {
-        job.Type = QtOperationMessage::Kind::Job;
+    QtOperationLauncher *captureGuiRequest(QtOperationJob job, QString &error) {
         GuiRequests.append(std::move(job));
         error.clear();
         auto *operation = new QtOperationLauncher(this);

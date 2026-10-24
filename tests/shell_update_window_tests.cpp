@@ -130,7 +130,7 @@ class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSup
         }
         QTRY_COMPARE(backend.GuiRequests.size(), 1);
         const auto &job = backend.GuiRequests.first();
-        QCOMPARE(job.Operation, QtOperationMessage::Command::Compress);
+        QCOMPARE(job.Operation, QtOperationJob::Command::Compress);
         QCOMPARE(job.ShowDialog, modal);
         if (!modal)
             QCOMPARE(job.ArchiveType, type == "hash"  ? QString("hash")

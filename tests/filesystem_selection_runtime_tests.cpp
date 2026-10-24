@@ -80,7 +80,7 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
             action(window, "toolbarAddAction")->trigger();
             if (!backend.GuiRequests.isEmpty()) {
                 const auto &job = backend.GuiRequests.last();
-                QCOMPARE(job.Operation, QtOperationMessage::Command::Compress);
+                QCOMPARE(job.Operation, QtOperationJob::Command::Compress);
                 QVERIFY(job.ShowDialog);
                 sources = job.Paths;
                 for (QString &path : sources)
@@ -195,7 +195,7 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         action(window, "hashSHA256Action")->trigger();
         QCOMPARE(backend.GuiRequests.size(), 1);
         const auto hash = backend.GuiRequests.takeFirst();
-        QCOMPARE(hash.Operation, QtOperationMessage::Command::Hash);
+        QCOMPARE(hash.Operation, QtOperationJob::Command::Hash);
         QCOMPARE(hash.HashMethod, QString("SHA256"));
         QCOMPARE(hash.HashEnterToDirs, !flat);
         QStringList hashSources;
@@ -211,7 +211,7 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         action(window, "toolbarAddAction")->trigger();
         QCOMPARE(backend.GuiRequests.size(), 1);
         const auto add = backend.GuiRequests.takeFirst();
-        QCOMPARE(add.Operation, QtOperationMessage::Command::Compress);
+        QCOMPARE(add.Operation, QtOperationJob::Command::Compress);
         QVERIFY(add.ShowDialog);
         QStringList sources = add.Paths;
         for (QString &path : sources)

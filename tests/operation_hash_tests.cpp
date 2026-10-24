@@ -15,7 +15,7 @@
 namespace {
 using namespace SourceExtractFixture;
 using Outcome = QtOperationResult::Outcome;
-QtOperationResult Run(const QtOperationMessage &job) {
+QtOperationResult Run(const QtOperationJob &job) {
     QtOperationLauncher launcher;
     QEventLoop wait;
     QtOperationResult result{Outcome::ProtocolFailed, 2, "Hash operation did not finish."};
@@ -34,10 +34,9 @@ QtOperationResult Run(const QtOperationMessage &job) {
     wait.exec();
     return result;
 }
-QtOperationMessage Hash(const QString &root, const QStringList &paths, bool panel) {
-    QtOperationMessage job;
-    job.Type = QtOperationMessage::Kind::Job;
-    job.Operation = QtOperationMessage::Command::Hash;
+QtOperationJob Hash(const QString &root, const QStringList &paths, bool panel) {
+    QtOperationJob job;
+    job.Operation = QtOperationJob::Command::Hash;
     job.HashMethod = "SHA256";
     if (panel) {
         job.HashBasePrefix = QDir::toNativeSeparators(root + '/');
@@ -163,8 +162,7 @@ class OperationHashTests final : public QObject {
             QCryptographicHash::hash("abc", QCryptographicHash::Sha256).toHex() + "  " +
             name.toUtf8() + '\n';
         QVERIFY(writeFile(manifest, contents));
-        QtOperationMessage job;
-        job.Type = QtOperationMessage::Kind::Job;
+        QtOperationJob job;
         job.Paths = {manifest};
         job.HashMode = true;
         job.YesToAll = true;

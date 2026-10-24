@@ -5,25 +5,24 @@
 
 int RunOperationParent(QCoreApplication &application, const QString &host) {
     QtOperationLauncher launcher;
-    QtOperationMessage job;
-    job.Type = QtOperationMessage::Kind::Job;
+    QtOperationJob job;
     job.Paths = {qEnvironmentVariable("SEVENZIP_OPERATION_ARCHIVE")};
     job.YesToAll = true;
     if (qEnvironmentVariableIsSet("SEVENZIP_OPERATION_PROBE_BENCHMARK")) {
-        job.Operation = QtOperationMessage::Command::Benchmark;
+        job.Operation = QtOperationJob::Command::Benchmark;
         job.Paths.clear();
     }
     if (qEnvironmentVariableIsSet("SEVENZIP_OPERATION_PROBE_HASH")) {
-        job.Operation = QtOperationMessage::Command::Hash;
+        job.Operation = QtOperationJob::Command::Hash;
         job.HashMethod = "SHA256";
     }
     if (qEnvironmentVariableIsSet("SEVENZIP_OPERATION_PROBE_EXTRACT")) {
-        job.Operation = QtOperationMessage::Command::Extract;
+        job.Operation = QtOperationJob::Command::Extract;
         job.Destination = qEnvironmentVariable("SEVENZIP_OPERATION_DESTINATION");
         job.ShowDialog = false;
     }
     if (qEnvironmentVariableIsSet("SEVENZIP_OPERATION_PROBE_COMPRESS")) {
-        job.Operation = QtOperationMessage::Command::Compress;
+        job.Operation = QtOperationJob::Command::Compress;
         job.ArchivePath = qEnvironmentVariable("SEVENZIP_OPERATION_CREATE_TARGET");
         job.ArchiveType = "zip";
         job.AddExtension = false;

@@ -85,6 +85,7 @@ jobs:
           host: ${{ matrix.qt-host }}
           arch: ${{ matrix.qt-arch }}
           archives: ${{ matrix.qt-archives }}
+          modules: qtremoteobjects
           cache: true
       - name: Install official Windows Qt kit
         if: runner.os == 'Windows'

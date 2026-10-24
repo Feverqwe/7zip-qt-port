@@ -1,5 +1,11 @@
 # Development toolchain
 
+The Qt kit must include Remote Objects and its `repc` compiler. Install the
+`qtremoteobjects` module alongside the selected Qt version on all platforms.
+Both GUI processes must come from the same build: their generated operation
+interface is checked by Qt Remote Objects during connection. Qt's deployment
+tools include the linked runtime module in private installs and packages.
+
 The native panel keyboard adapter requires the private development headers of
 the selected Qt GUI SDK (`Qt6::GuiPrivate`). Install those headers with the same
 Qt build as Core/Gui/Widgets; on distribution SDKs this can be a separate private

@@ -1,148 +1,96 @@
 #include "qtoperationprotocol.h"
-#include <QBuffer>
-#include <QDir>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
+#include "rep_operation_merged.h"
+#include <QRemoteObjectHost>
+#include <QRemoteObjectNode>
 #include <QTemporaryDir>
-#include <QtEndian>
+#include <QUuid>
 #include <QtTest>
+
+namespace {
+class SelectionSource final : public OperationSource {
+  public:
+    OperationRequest Request;
+    bool Accepted = false;
+    OperationRequest request() const override { return Request; }
+    void accept() override { Accepted = true; }
+    void reject(QString) override {}
+    void outputs(QStringList, QStringList) override {}
+    bool complete(OperationReport report) override {
+        QtOperationResult result;
+        return Accepted && OperationResultFromReport(report, result);
+    }
+};
+} // namespace
 
 class OperationProtocolTests final : public QObject {
     Q_OBJECT
-    using Kind = QtOperationMessage::Kind;
-    using State = QtOperationMessageReader::State;
-    static QByteArray Frame(const QJsonObject &object) {
-        const QByteArray body = QJsonDocument(object).toJson(QJsonDocument::Compact);
-        QByteArray frame(4, 0);
-        qToBigEndian(quint32(body.size()), frame.data());
-        return frame + body;
-    }
-
   private slots:
-    void benchmarkHasNoFileSelection() {
-        QtOperationMessage job;
-        job.Type = Kind::Job;
-        job.Operation = QtOperationMessage::Command::Benchmark;
-        job.TotalMode = true;
-        QByteArray bytes;
-        QString error;
-        QVERIFY(EncodeOperationMessage(job, bytes, error));
-        QBuffer input(&bytes);
-        QVERIFY(input.open(QIODevice::ReadOnly));
-        QtOperationMessageReader reader;
-        QtOperationMessage decoded;
-        QCOMPARE(reader.read(input, decoded, error), State::Message);
-        QCOMPARE(decoded.Operation, job.Operation);
-        QVERIFY(decoded.TotalMode && decoded.Paths.isEmpty());
-        job.Paths = {"/unrelated-file"};
-        QVERIFY(!EncodeOperationMessage(job, bytes, error));
-    }
-    void fragmentedLargeSelectionRemainsLiteral() {
+    void largeSelectionRemainsLiteralOverRemoteObjects() {
         QTemporaryDir root;
+#ifdef Q_OS_WIN
+        QTemporaryDir socketRoot;
+        const QUrl url("local:sevenzip-test-" + QUuid::createUuid().toString(QUuid::Id128));
+#else
+        QTemporaryDir socketRoot("/tmp/7zt-XXXXXX");
+        const QUrl url("local:" + socketRoot.filePath("operation"));
+#endif
         QVERIFY(root.isValid());
-        QtOperationMessage job;
-        job.Type = Kind::Job;
+        QVERIFY(socketRoot.isValid());
+        QtOperationJob job;
         for (int i = 0; i < 10000; ++i)
             job.Paths.append(
                 root.filePath(QStringLiteral("空 файл %1 \"quotes\" [literal].zip").arg(i)));
-        QByteArray encoded;
         QString error;
-        QVERIFY2(EncodeOperationMessage(job, encoded, error), qPrintable(error));
-        QByteArray available;
-        QBuffer input(&available);
-        QVERIFY(input.open(QIODevice::ReadOnly));
-        QtOperationMessageReader reader;
-        QtOperationMessage decoded;
-        const int fragments[] = {1, 2, 3, 17, 4096};
-        qsizetype offset = 0;
-        int fragment = 0;
-        while (offset < encoded.size()) {
-            const auto count = qMin(qsizetype(fragments[fragment++ % 5]), encoded.size() - offset);
-            available.append(encoded.mid(offset, count));
-            offset += count;
-            QCOMPARE(reader.read(input, decoded, error),
-                     offset == encoded.size() ? State::Message : State::Pending);
-        }
-        QCOMPARE(decoded.Type, Kind::Job);
-        QCOMPARE(decoded.Paths, job.Paths);
-        QCOMPARE(reader.read(input, decoded, error), State::Pending);
+        QVERIFY2(ValidateOperationJob(job, error), qPrintable(error));
+        SelectionSource source;
+        source.Request = OperationRequestFromJob(job);
+        QRemoteObjectHost host(url);
+        QVERIFY(host.enableRemoting<OperationSourceAPI>(&source));
+        QRemoteObjectNode node;
+        std::unique_ptr<OperationReplica> replica(node.acquire<OperationReplica>());
+        QVERIFY(node.connectToNode(url));
+        QTRY_VERIFY_WITH_TIMEOUT(replica->isInitialized(), 5000);
+        const auto received = OperationJobFromRequest(replica->request());
+        QCOMPARE(received.Paths, job.Paths);
+        QVERIFY2(ValidateOperationJob(received, error), qPrintable(error));
+        QVERIFY(!source.Accepted);
+        replica->accept();
+        QTRY_VERIFY(source.Accepted);
+        auto completion = replica->complete(
+            OperationReportFromResult({QtOperationResult::Outcome::Cancelled, 255, {}}));
+        QVERIFY(completion.waitForFinished(1000));
+        QVERIFY(completion.returnValue());
     }
-    void coalescedMessagesKeepTheirBoundaries() {
-        QByteArray bytes;
+    void benchmarkHasNoFileSelection() {
+        QtOperationJob job;
+        job.Operation = QtOperationJob::Command::Benchmark;
+        job.TotalMode = true;
         QString error;
-        QtOperationMessage message;
-        for (const auto kind : {Kind::Ready, Kind::Accepted, Kind::Result}) {
-            message.Type = kind;
-            message.Result = {QtOperationResult::Outcome::Cancelled, 255, {}};
-            QByteArray frame;
-            QVERIFY(EncodeOperationMessage(message, frame, error));
-            bytes.append(frame);
-        }
-        QBuffer input(&bytes);
-        QVERIFY(input.open(QIODevice::ReadOnly));
-        QtOperationMessageReader reader;
-        for (const auto kind : {Kind::Ready, Kind::Accepted, Kind::Result}) {
-            QCOMPARE(reader.read(input, message, error), State::Message);
-            QCOMPARE(message.Type, kind);
-        }
-        QCOMPARE(message.Result.Status, QtOperationResult::Outcome::Cancelled);
-        QCOMPARE(message.Result.ExitCode, 255);
-        QCOMPARE(reader.read(input, message, error), State::Pending);
+        QVERIFY(ValidateOperationJob(job, error));
+        job.Paths = {"/unrelated-file"};
+        QVERIFY(!ValidateOperationJob(job, error));
     }
-    void malformedMessages_data() {
-        QTest::addColumn<QByteArray>("bytes");
-        QTest::newRow("unsupported version") << Frame({{"version", 2}, {"type", "ready"}});
-        QTest::newRow("fractional version") << Frame({{"version", 1.5}, {"type", "ready"}});
-        QTest::newRow("unknown message") << Frame({{"version", 1}, {"type", "execute"}});
-        QTest::newRow("unsupported command") << Frame({{"version", 1},
-                                                       {"type", "job"},
-                                                       {"command", "update"},
-                                                       {"paths", QJsonArray({"/file"})}});
-        QTest::newRow("contradictory success")
-            << Frame({{"version", 1}, {"type", "result"}, {"outcome", "success"}, {"exitCode", 2}});
-        QTest::newRow("fractional exit") << Frame(
-            {{"version", 1}, {"type", "result"}, {"outcome", "failure"}, {"exitCode", 2.5}});
-        QTest::newRow("unsupported job option") << Frame({{"version", 1},
-                                                          {"type", "job"},
-                                                          {"command", "test"},
-                                                          {"paths", QJsonArray({"/file"})},
-                                                          {"unexpected", true}});
-        QTest::newRow("empty frame") << QByteArray(4, 0);
-        QTest::newRow("oversized frame") << QByteArray(4, char(0xff));
-    }
-    void malformedMessages() {
-        QFETCH(QByteArray, bytes);
-        QBuffer input(&bytes);
-        QVERIFY(input.open(QIODevice::ReadOnly));
-        QtOperationMessageReader reader;
-        QtOperationMessage message;
+    void unavailableSelectionIsRejected() {
+        QtOperationJob job;
         QString error;
-        QCOMPARE(reader.read(input, message, error), State::Error);
-        QVERIFY(!error.isEmpty());
-    }
-    void unavailableSelectionCannotBeEncoded() {
-        QtOperationMessage job;
-        job.Type = Kind::Job;
-        QByteArray frame;
-        QString error;
-        QVERIFY(!EncodeOperationMessage(job, frame, error));
+        QVERIFY(!ValidateOperationJob(job, error));
         job.Paths = {"relative/file.zip"};
-        QVERIFY(!EncodeOperationMessage(job, frame, error));
+        QVERIFY(!ValidateOperationJob(job, error));
         QTemporaryDir root;
         QVERIFY(root.isValid());
         job.Paths = {root.filePath("archive.zip") + QChar::Null + "hidden"};
-        QVERIFY(!EncodeOperationMessage(job, frame, error));
+        QVERIFY(!ValidateOperationJob(job, error));
+        job.Paths = {root.filePath("archive.zip")};
+        job.Operation = QtOperationJob::Command(-1);
+        QVERIFY(!ValidateOperationJob(job, error));
     }
     void panelHashSelectionRejectsTraversalAndKeepsLiteralNames() {
         QTemporaryDir root;
         QVERIFY(root.isValid());
-        QtOperationMessage job;
-        job.Type = Kind::Job;
-        job.Operation = QtOperationMessage::Command::Hash;
+        QtOperationJob job;
+        job.Operation = QtOperationJob::Command::Hash;
         job.HashMethod = "SHA256";
         job.HashBasePrefix = root.path() + '/';
-        QByteArray frame;
         QString error;
         QStringList invalidPaths{"../outside", root.filePath("absolute"), "sub/../../outside"};
 #ifdef Q_OS_WIN
@@ -150,36 +98,34 @@ class OperationProtocolTests final : public QObject {
 #endif
         for (const QString &path : invalidPaths) {
             job.Paths = {path};
-            QVERIFY(!EncodeOperationMessage(job, frame, error));
+            QVERIFY(!ValidateOperationJob(job, error));
         }
         job.Paths = {QStringLiteral("nested/literal [*] 空.txt")};
-        job.HashEnterToDirs = false;
-        QVERIFY(EncodeOperationMessage(job, frame, error));
-        QBuffer input(&frame);
-        QVERIFY(input.open(QIODevice::ReadOnly));
-        QtOperationMessage decoded;
-        QtOperationMessageReader reader;
-        QCOMPARE(reader.read(input, decoded, error), State::Message);
-        QCOMPARE(decoded.Paths, job.Paths);
-        QCOMPARE(decoded.HashBasePrefix, job.HashBasePrefix);
-        QVERIFY(!decoded.HashEnterToDirs);
+        QVERIFY(ValidateOperationJob(job, error));
     }
     void extractionRequiresAbsoluteDestinationAndSupportedZone() {
         QTemporaryDir root;
         QVERIFY(root.isValid());
-        QtOperationMessage job;
-        job.Type = Kind::Job;
-        job.Operation = QtOperationMessage::Command::Extract;
+        QtOperationJob job;
+        job.Operation = QtOperationJob::Command::Extract;
         job.Paths = {root.filePath("archive.zip")};
         job.Destination = "relative output";
-        QByteArray frame;
         QString error;
-        QVERIFY(!EncodeOperationMessage(job, frame, error));
+        QVERIFY(!ValidateOperationJob(job, error));
         job.Destination = root.filePath("output");
         job.WriteZone = 3;
-        QVERIFY(!EncodeOperationMessage(job, frame, error));
+        QVERIFY(!ValidateOperationJob(job, error));
         job.WriteZone = quint32(-1);
-        QVERIFY(EncodeOperationMessage(job, frame, error));
+        QVERIFY(ValidateOperationJob(job, error));
+    }
+    void contradictoryResultCannotBeReportedAsSuccess() {
+        QtOperationResult result;
+        QVERIFY(!OperationResultFromReport(
+            OperationReportFromResult({QtOperationResult::Outcome::Success, 2, {}}), result));
+        QVERIFY(!OperationResultFromReport(
+            OperationReportFromResult({QtOperationResult::Outcome::Crashed, 2, {}}), result));
+        QVERIFY(!OperationResultFromReport(
+            OperationReportFromResult({QtOperationResult::Outcome::Cancelled, 0, {}}), result));
     }
 };
 

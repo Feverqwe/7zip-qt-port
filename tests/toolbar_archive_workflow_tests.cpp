@@ -50,13 +50,12 @@ class GuiTestBackend final : public ArchiveBackend {
     QString ExtractDialogReport;
     QString ExtractDialogTag;
     QString OutputBarrier;
-    QList<QtOperationMessage> ExtractJobs;
+    QList<QtOperationJob> ExtractJobs;
     QtOperationLauncher *startGuiExtract(const QStringList &archives, const QString &destination,
                                          bool showDialog, bool elimDup, quint32 writeZone,
                                          QString &error) override {
-        QtOperationMessage job;
-        job.Type = QtOperationMessage::Kind::Job;
-        job.Operation = QtOperationMessage::Command::Extract;
+        QtOperationJob job;
+        job.Operation = QtOperationJob::Command::Extract;
         job.Paths = archives;
         job.Destination = destination;
         job.ShowDialog = showDialog;
@@ -80,8 +79,7 @@ class GuiTestBackend final : public ArchiveBackend {
     }
     QtOperationLauncher *startGuiTest(const QStringList &archives, QString &error,
                                       bool hashMode = false) override {
-        QtOperationMessage job;
-        job.Type = QtOperationMessage::Kind::Job;
+        QtOperationJob job;
         job.Paths = archives;
         job.HashMode = hashMode;
         job.YesToAll = !CrashNext;
@@ -137,6 +135,15 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
     WidgetDialogFixture dialogs_;
     QString module_;
     quint32 version_ = 0;
+    static bool showTwoPanels(MainWindow &window) {
+        if (!QTest::qWaitFor([&] { return action(window, "refreshAction")->isEnabled(); }))
+            return false;
+        auto *twoPanels = action(window, "twoPanelsAction");
+        if (!twoPanels->isChecked())
+            twoPanels->trigger();
+        return QTest::qWaitFor(
+            [&] { return twoPanels->isChecked() && window.findChild<QWidget *>("filePanel1"); });
+    }
     static FileTable *openPanel(MainWindow &window, unsigned pane, const QString &path) {
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         auto *address = ui->findChild<QLineEdit *>("archivePath");
@@ -248,7 +255,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         window.show();
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
-        action(window, "twoPanelsAction")->trigger();
+        QVERIFY(showTwoPanels(window));
         auto *source = openPanel(window, pane, input);
         QTRY_COMPARE(source->rowCount(), 1);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
@@ -305,7 +312,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         window.show();
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
-        action(window, "twoPanelsAction")->trigger();
+        QVERIFY(showTwoPanels(window));
         auto *peer = openPanel(window, 1 - pane, output);
         QTRY_COMPARE(peer->rowCount(), 1);
         peer->selectRow(0);
@@ -437,7 +444,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         window.show();
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
-        action(window, "twoPanelsAction")->trigger();
+        QVERIFY(showTwoPanels(window));
         auto *source = openPanel(window, 0, input);
         QTRY_COMPARE(source->rowCount(), 2); // The fixture input and its archive.
         auto *peer = openPanel(window, 1, output);
@@ -527,7 +534,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         window.show();
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
-        action(window, "twoPanelsAction")->trigger();
+        QVERIFY(showTwoPanels(window));
         auto *source = openPanel(window, pane, input);
         QTRY_COMPARE(source->rowCount(), 2);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());

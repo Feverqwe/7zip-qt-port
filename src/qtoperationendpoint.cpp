@@ -5,22 +5,24 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "Windows/FileName.h"
 #include "qtoperationprotocol.h"
+#include "rep_operation_merged.h"
 #include <QApplication>
 #include <QCoreApplication>
 #include <QFileInfo>
-#include <QLocalSocket>
+#include <QRemoteObjectNode>
 #include <QTimer>
+#include <memory>
 
 namespace {
-void OperationOptions(const QtOperationMessage &job, CArcCmdLineOptions &options) {
+void OperationOptions(const QtOperationJob &job, CArcCmdLineOptions &options) {
     // Parse the source command defaults, without putting selection in argv or
     // recreating Parse1/Parse2's initialization/platform policy in Qt glue.
     CArcCmdLineParser parser;
     UStringVector defaults;
-    const bool extract = job.Operation == QtOperationMessage::Command::Extract;
-    const bool compress = job.Operation == QtOperationMessage::Command::Compress;
-    const bool hash = job.Operation == QtOperationMessage::Command::Hash;
-    const bool benchmark = job.Operation == QtOperationMessage::Command::Benchmark;
+    const bool extract = job.Operation == QtOperationJob::Command::Extract;
+    const bool compress = job.Operation == QtOperationJob::Command::Compress;
+    const bool hash = job.Operation == QtOperationJob::Command::Hash;
+    const bool benchmark = job.Operation == QtOperationJob::Command::Benchmark;
     defaults.Add(benchmark ? L"b" : hash ? L"h" : compress ? L"a" : extract ? L"x" : L"t");
     if (!benchmark)
         defaults.Add(L"-an");
@@ -99,117 +101,76 @@ QtOperationResult Result(int code) {
             code,
             {}};
 }
-bool Send(QLocalSocket &socket, const QtOperationMessage &message) {
-    QByteArray frame;
-    QString error;
-    if (!EncodeOperationMessage(message, frame, error))
-        return false;
-    if (socket.write(frame) != frame.size())
-        return false;
-    socket.flush();
-    return true;
-}
 } // namespace
 
 int RunGUIOperationEndpoint(QApplication &application, const QString &channel,
                             const QtGUIOperationRunner &run) {
-    QLocalSocket socket;
-    socket.setReadBufferSize(64 * 1024 * 1024 + 4);
-    QtOperationMessageReader reader;
+    QRemoteObjectNode node;
+    std::unique_ptr<OperationReplica> replica(node.acquire<OperationReplica>());
     QTimer startup;
     startup.setSingleShot(true);
     bool accepted = false;
-    bool scheduled = false;
-    QObject context; // Disconnect stack callbacks before socket/timer destruction.
+    QObject context; // Disconnect stack callbacks before node/timer destruction.
     QObject::connect(&startup, &QTimer::timeout, &context,
                      [&] { application.exit(NExitCode::kUserError); });
-    QObject::connect(&socket, &QLocalSocket::connected, &context, [&] {
-        QtOperationMessage ready;
-        Send(socket, ready);
-    });
-    QObject::connect(&socket, &QLocalSocket::disconnected, &context, [&] {
-        if (!accepted)
-            application.exit(NExitCode::kUserError);
-        // An accepted job owns its request and source UI. Loss of the parent
-        // is deliberately not an engine cancel or an application quit request.
-    });
-    QObject::connect(&socket, &QLocalSocket::errorOccurred, &context,
-                     [&](QLocalSocket::LocalSocketError) {
-                         if (!accepted)
+    QObject::connect(replica.get(), &QRemoteObjectReplica::stateChanged, &context,
+                     [&](QRemoteObjectReplica::State state, QRemoteObjectReplica::State) {
+                         if (!accepted && (state == QRemoteObjectReplica::Suspect ||
+                                           state == QRemoteObjectReplica::SignatureMismatch))
                              application.exit(NExitCode::kUserError);
+                         // Losing a source after acceptance never cancels native work.
                      });
-    QObject::connect(&socket, &QLocalSocket::readyRead, &context, [&] {
-        for (;;) {
-            QtOperationMessage job;
-            QString error;
-            const auto state = reader.read(socket, job, error);
-            if (state == QtOperationMessageReader::State::Pending)
-                return;
-            if (state == QtOperationMessageReader::State::Error ||
-                job.Type != QtOperationMessage::Kind::Job || scheduled) {
-                if (!accepted) {
-                    QtOperationMessage rejection;
-                    rejection.Type = QtOperationMessage::Kind::Rejected;
-                    rejection.Result.Error =
-                        error.isEmpty() ? QCoreApplication::translate("QtOperation",
-                                                                      "Expected one operation job.")
-                                        : error;
-                    Send(socket, rejection);
-                    application.exit(NExitCode::kUserError);
-                }
-                socket.disconnectFromServer();
-                return;
-            }
-            // Capture the complete request before acknowledgement. Test inputs
-            // are ordinary filesystem sources; no parent-owned spool is used.
-            scheduled = accepted = true;
-            startup.stop();
-            QtOperationMessage acknowledgement;
-            acknowledgement.Type = QtOperationMessage::Kind::Accepted;
-            Send(socket, acknowledgement);
-            QTimer::singleShot(0, &context, [&, job] {
-                QStringList changedDirectories;
-                QStringList changedArchives;
-                QtGUICommandSource command;
-                command.Configure = [&](CArcCmdLineOptions &options) {
-                    OperationOptions(job, options);
-                };
-                if (job.Operation == QtOperationMessage::Command::Hash &&
-                    !job.HashBasePrefix.isEmpty())
-                    command.FileHash =
-                        QtGUIFileHashSelection{job.HashBasePrefix, job.Paths, job.HashEnterToDirs};
-                const int code = run(command, [&](const QString &path, QtGUIOutputKind kind) {
-                    const QString directory =
-                        kind == QtGUIOutputKind::Archive ? QFileInfo(path).absolutePath() : path;
-                    if (kind == QtGUIOutputKind::Archive && !changedArchives.contains(path))
-                        changedArchives.append(path);
-                    if (!changedDirectories.contains(directory))
-                        changedDirectories.append(directory);
-                    if (socket.state() == QLocalSocket::ConnectedState) {
-                        QtOperationMessage update;
-                        update.Type = QtOperationMessage::Kind::Outputs;
-                        update.Result.ChangedDirectories = changedDirectories;
-                        update.Result.ChangedArchives = changedArchives;
-                        Send(socket, update);
-                    }
-                });
-                if (socket.state() == QLocalSocket::ConnectedState) {
-                    QtOperationMessage result;
-                    result.Type = QtOperationMessage::Kind::Result;
-                    result.Result = Result(code);
-                    result.Result.ChangedDirectories = changedDirectories;
-                    result.Result.ChangedArchives = changedArchives;
-                    Send(socket, result);
-                    if (socket.bytesToWrite())
-                        socket.waitForBytesWritten(1000);
-                }
-                application.exit(code);
-            });
+    QObject::connect(replica.get(), &QRemoteObjectReplica::initialized, &context, [&] {
+        if (accepted)
+            return;
+        const QtOperationJob job = OperationJobFromRequest(replica->request());
+        QString error;
+        if (!ValidateOperationJob(job, error)) {
+            replica->reject(error);
+            application.exit(NExitCode::kUserError);
+            return;
         }
+        // Capture all request values before the explicit acceptance call. No
+        // native operation depends on the parent's replica/property lifetime.
+        accepted = true;
+        startup.stop();
+        replica->accept();
+        QTimer::singleShot(0, &context, [&, job] {
+            QStringList changedDirectories;
+            QStringList changedArchives;
+            QtGUICommandSource command;
+            command.Configure = [&](CArcCmdLineOptions &options) {
+                OperationOptions(job, options);
+            };
+            if (job.Operation == QtOperationJob::Command::Hash && !job.HashBasePrefix.isEmpty())
+                command.FileHash =
+                    QtGUIFileHashSelection{job.HashBasePrefix, job.Paths, job.HashEnterToDirs};
+            const int code = run(command, [&](const QString &path, QtGUIOutputKind kind) {
+                const QString directory =
+                    kind == QtGUIOutputKind::Archive ? QFileInfo(path).absolutePath() : path;
+                if (kind == QtGUIOutputKind::Archive && !changedArchives.contains(path))
+                    changedArchives.append(path);
+                if (!changedDirectories.contains(directory))
+                    changedDirectories.append(directory);
+                if (replica->isReplicaValid())
+                    replica->outputs(changedDirectories, changedArchives);
+            });
+            if (replica->isReplicaValid()) {
+                auto result = Result(code);
+                result.ChangedDirectories = changedDirectories;
+                result.ChangedArchives = changedArchives;
+                auto completion = replica->complete(OperationReportFromResult(result));
+                // Await delivery, not just a local socket write. A departed
+                // manager cannot hold the independent child open indefinitely.
+                completion.waitForFinished(1000);
+            }
+            application.exit(code);
+        });
     });
     QTimer::singleShot(0, &context, [&] {
         startup.start(10000);
-        socket.connectToServer(channel, QIODevice::ReadWrite);
+        if (!node.connectToNode(QUrl(QStringLiteral("local:") + channel)))
+            application.exit(NExitCode::kUserError);
     });
     return application.exec();
 }

@@ -1480,3 +1480,95 @@ The final guest receipts are `20261024T054044Z-1f69eae2` (source update) and
 are `20261024T050918Z-087dae69` (Linux) and
 `20261024T051558Z-510c8938` (Windows). This does not change the full-gate limits
 listed above.
+
+### Qt Remote Objects operation exchange — 2026-10-24
+
+Scope: replace the custom framed JSON exchange between the manager and its
+independent operation GUI with a generated Qt Remote Objects interface. The
+selected scenario includes Test, Extract, Create/Update, checksum/manifest and
+Benchmark, toolbar/context consumers and drag-created archives with temporary
+source lifetimes. Existing stream/device/open-container boundaries are retained.
+
+Before editing, compared complete current protocol, launcher, native process
+adapter and endpoint bodies, backend factories, manager observation/refresh,
+drag waitFinish, GUI entry/dispatcher and all operation fixtures. Compared
+upstream Common/CompressCall (Call7zGui/CreateMap and all operation wrappers),
+Common/ArchiveCommandLine (ParseMapWithPaths/CEventSetEnd), Windows/ProcessUtils,
+GUI dispatch and PanelDrag against the existing port. The selected original
+files have no changes between `9128b80e3a471108678e2b3ec3c985861c8d7b0f`
+and current `b88c6bc09339de32f7d18bbab900686b244f42ba`. Existing mixed source
+baselines in the provenance inventory remain unchanged. Source parser/defaults,
+native engine/GUI workers, native process launch/observation and temporary-source
+ownership are not reimplemented. The upstream mapping/event transport has no
+portable Qt Remote Objects implementation to transfer; this is a platform-service
+adaptation of the previously audited independent-process boundary.
+
+`src/operation.rep` defines immutable job data, output notifications, explicit
+accept/reject calls and a completion call with a delivery acknowledgement.
+`repc` generates marshalling and the interface signature. The application retains
+path/option/outcome validation, startup deadline, native crash/exit-code checks,
+metadata retention and independent child lifetime. A child copies and validates
+the full request before accept; source loss after that point does not cancel it.
+Completion waits at most one second for the observer's reply. Native work and
+error/cancel policy still belong to the original dispatcher. The old JSON
+encoder, decoder, framing and manual socket pump are removed; native Windows
+shell argv/mapping entry remains supported by the original source parser.
+
+Qt Remote Objects is a linked SDK/runtime dependency, not vendored or adapted
+source. CMake generates both source and replica from the same contract; release
+kit installation includes the module, and Qt deployment resolves the linked
+library. Official source: <https://github.com/qt/qtremoteobjects.git>, tag
+`v6.12.0`, commit `5add069a1b80a345690b911b9c55826a21ca251c`.
+Core/Network and `repc` are required; optional QML/Bluetooth/WebSockets transports
+are unused. The local shared macOS SDK addition builds that unmodified tag for
+arm64/x86_64 with the existing compiler cache. Runtime uses its LGPL-3.0 option;
+the SDK retains original notices/licenses. No Qt source snippet was imported
+into the application or its third_party inventory.
+
+Source-port review: the selected exchange and its consumers are connected for
+all operation families above; no parallel framed-JSON implementation remains.
+The original parser, dispatcher, workers and native process adapter are retained.
+QtRO's source dispatcher still uses its connection after invoking a source slot,
+so public acceptance is queued outside that stack. A behavior regression deletes
+the observer from its accepted signal, then releases the child and verifies its
+successful completion. Acceptance precedes the public finished signal. Existing
+tests also cover parent exit, crash/retry, errors/cancellation, output metadata,
+Unicode/literal paths and temporary drag sources. Wire-fragment tests were
+replaced by a real QtRO large-selection exchange and semantic validation checks.
+
+Validation on macOS: 11 focused operation/consumer suites passed (68.40 seconds),
+four direct UI consumers passed (27.78 seconds), and the installed Cocoa runtime
+passed seven suites (81.68 seconds), including 7zFM/7zG entry and independent
+7z sidecar round trips. After the observer-lifetime fix, affected installed
+launcher/extraction suites passed again. Final drag groups passed (16.66 seconds)
+and toolbar/runner checks passed (33.60 seconds).
+
+Windows installed native acceptance passed all eight suites (143.85 seconds,
+run `20261024T114150Z-983753d6`), including package/registered-shell entry and
+the independent sidecar. Protocol/hash and toolbar-creation focused checks also
+passed. Final drag and toolbar groups passed all five suites (116.24 seconds,
+run `20261024T121415Z-2db794f0`). The interactive runner's old `current`-only
+guard required a branch-worktree correction. Rebase retains the equivalent
+correction already integrated in master, with its unsafe-root behavior test.
+Complementary elevated installed startup/symlink acceptance passed (74.88 seconds,
+run `20261024T122012Z-430537e8`).
+
+Early Linux installed attempts reported native-discovery/source failures and
+startup deadlines; later focused follow-ups passed the selected operation and
+consumer scenarios. Final Linux drag and toolbar groups passed all five suites
+(244.41 seconds, run `20261024T121732Z-4c5cfd86`).
+Final installed Linux XCB acceptance passed all seven suites (169.33 seconds,
+run `20261024T122326Z-9c41a05c`), including GUI entry and the independent sidecar.
+Aggregate toolbar and drag tests exceeded their existing budgets, so their
+registrations now separate cohesive scenarios with the same
+timeouts and complete original data rows. They share UI locks and each receives
+a private startup directory. Test setup now waits before enabling the second
+pane; negative-format automation uses original source `-y` to avoid an unhandled
+native Windows MessageBox. The benchmark cancellation fixture keeps native work
+unfinished until Cancel; extraction's fixture watchdog reaps its own timed-out
+child. These changes do not relax production deadlines or alter operation policy.
+
+Validation used the existing incremental builds and compiler caches. No full or
+slow suites were run. XCB checks used a virtual display; these results establish
+no rendered Windows pixel-parity acceptance. Source completeness above is
+separate from runtime evidence on these three checked platforms.

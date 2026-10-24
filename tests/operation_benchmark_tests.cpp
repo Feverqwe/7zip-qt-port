@@ -24,7 +24,7 @@ class OperationBenchmarkTests final : public QObject {
         QTest::addColumn<Outcome>("expected");
         QTest::newRow("native LZMA") << QString("bounded") << false << Outcome::Success;
         QTest::newRow("native error") << QString("failure") << false << Outcome::Failure;
-        QTest::newRow("normal cancel") << QString("cancel") << false << Outcome::Cancelled;
+        QTest::newRow("normal cancel") << QString("normal-cancel") << false << Outcome::Cancelled;
         QTest::newRow("total cancel") << QString("cancel") << true << Outcome::Cancelled;
         QTest::newRow("total native hash report") << QString("total") << true << Outcome::Success;
     }
@@ -43,9 +43,8 @@ class OperationBenchmarkTests final : public QObject {
         ScopedTestEnvironment bounded("SEVENZIP_OPERATION_BENCHMARK_PROFILE", profile);
         const auto report = directory.filePath("benchmark.json");
         ScopedTestEnvironment output("SEVENZIP_OPERATION_BENCHMARK_REPORT", report);
-        QtOperationMessage job;
-        job.Type = QtOperationMessage::Kind::Job;
-        job.Operation = QtOperationMessage::Command::Benchmark;
+        QtOperationJob job;
+        job.Operation = QtOperationJob::Command::Benchmark;
         job.TotalMode = total;
         QtOperationLauncher launcher;
         QEventLoop wait;

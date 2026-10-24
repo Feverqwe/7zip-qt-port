@@ -24,15 +24,14 @@ QAction *FindShellVerb(QMenu &menu, const QString &verb) {
 class CreationBackend final : public ArchiveBackend {
   public:
     QList<QtOperationResult> Results;
-    QList<QtOperationMessage> Requests;
+    QList<QtOperationJob> Requests;
     QString Target;
     bool Cancel = false;
     QtOperationLauncher *startGuiCompress(const QString &archive, const QString &type,
                                           bool addExtension, const QStringList &paths, bool email,
                                           bool showDialog, QString &error) override {
-        QtOperationMessage job;
-        job.Type = QtOperationMessage::Kind::Job;
-        job.Operation = QtOperationMessage::Command::Compress;
+        QtOperationJob job;
+        job.Operation = QtOperationJob::Command::Compress;
         job.Paths = paths;
         job.ArchivePath = archive;
         job.ArchiveType = type;
