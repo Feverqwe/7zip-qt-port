@@ -500,6 +500,10 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *callback) {
 
         const UInt32 v = GetUi32(sb.GetPtr());
         if (v != kDataFrameSignature32) {
+            // LZ4 shares the skippable-frame namespace. Do not claim its
+            // leading metadata as a complete Zstd archive before its reader runs.
+            if (p->num_DataFrames == 0 && v == 0x184d2204)
+                return S_FALSE;
             if ((v & kSkipFrameSignature_Mask) != kSkipFrameSignature)
                 break;
             _phySize = sb.GetCurOffset() + 8;

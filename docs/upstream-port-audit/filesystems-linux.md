@@ -487,7 +487,7 @@ path, с сохранением ADS и WSL metadata.
 [Сравнение и исправление существующего чтения](squashfs-linux.md) охватывает
 оба engines: корректные границы metadata/data, пустые тома без fragments,
 независимость потоков и передачу ошибок. Актуализация также
-подключает Linux C LZ4/LZO, compressor options, index/xattr metadata,
+подключает официальный C LZ4 и Linux C LZO, compressor options, index/xattr metadata,
 inode/link properties и публичные owned xattr streams, включая OOL values,
 root/directory/hardlink metadata. Source scope и границы standalone/archive ABI описаны
 в linked audit; runtime evidence не заменяет проверку остальных строк.

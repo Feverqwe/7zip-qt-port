@@ -29,6 +29,11 @@ framing. Повторного compression algorithm не добавлено. `Li
 
 ## Адаптации границ
 
+Raw LZ4 decoder и скопированный Linux header заменены общей официальной
+библиотекой LZ4 без изменения Linux legacy framing loop;
+[источник, совместимость API и проверки](lz4-frame.md). Политика ниже описывает
+сохранённый framing, а не прежнюю реализацию raw decoder.
+
 Kernel callbacks не имеют opaque context. Здесь I/O services передаются явно
 для каждой операции, без общего mutable callback state. C остаётся C;
 C linkage сохранён. Ошибки source/output/progress и allocation передаются через

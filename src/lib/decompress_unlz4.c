@@ -7,7 +7,7 @@
 
 /* Sevenzip userspace I/O adaptation; original wrapper flow retained. */
 #include "framecompat.h"
-#include "../include/linux/lz4.h"
+#include <lz4.h>
 
 /*
  * Note: Uncompressed chunk size is used in the compressor side
@@ -151,12 +151,12 @@ int unlz4(struct sevenzip_linux_frame_io *io, uint64_t *posp)
 		} else
 			dest_len = out_len;
 
-		ret = LZ4_decompress_fast(inp, outp, dest_len);
+		ret = LZ4_decompress_fast((const char *)inp, (char *)outp, dest_len);
 		chunksize = ret;
 #else
 		dest_len = uncomp_chunksize;
 
-		ret = LZ4_decompress_safe(inp, outp, chunksize, dest_len);
+		ret = LZ4_decompress_safe((const char *)inp, (char *)outp, chunksize, dest_len);
 		dest_len = ret;
 #endif
 		if (ret < 0) {

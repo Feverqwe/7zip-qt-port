@@ -102,7 +102,6 @@ static inline void *bvec_virt(struct bio_vec *segment) { return (void *)segment-
 static inline void bio_free_pages(struct bio *bio) { free((void *)bio->segment.data); }
 #define bio_uninit(bio) ((void)(bio))
 int squashfs_bio_read(struct super_block *, u64, int, struct bio **, int *);
-int LZ4_decompress_safe(const char *, char *, int, int);
 int lzo1x_decompress_safe(const unsigned char *, size_t, unsigned char *, size_t *);
 #include "../../include/linux/lzo.h"
 void *sevenzip_squashfs_external_init(struct squashfs_sb_info *, void *);
