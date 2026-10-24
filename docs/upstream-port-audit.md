@@ -57,6 +57,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Общие XXHash и Adler32](upstream-port-audit/shared-checksums.md)
+  — повторное использование libzstd xxHash и zlib с сохранением контрактов SDK.
+
 - [Файловая панель: Qt Model/View](upstream-port-audit/file-panel-model-view.md)
   — собственная модель над исходными folder providers и общий выбор видов.
 

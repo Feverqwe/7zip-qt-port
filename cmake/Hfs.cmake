@@ -12,7 +12,7 @@ add_library(sevenzip_hfs MODULE
     third_party/7zip/CPP/7zip/Common/InBuffer.cpp
     third_party/7zip/CPP/7zip/Common/OutBuffer.cpp
     third_party/7zip/CPP/7zip/Common/PropId.cpp
-    third_party/7zip/CPP/7zip/Compress/ZlibDecoder.cpp
+    src/CPP/7zip/Compress/ZlibDecoder.cpp
     third_party/7zip/CPP/7zip/Compress/DeflateDecoder.cpp
     third_party/7zip/CPP/7zip/Compress/BitlDecoder.cpp
     third_party/7zip/CPP/7zip/Compress/LzOutWindow.cpp
@@ -31,7 +31,10 @@ add_library(sevenzip_hfs MODULE
 target_include_directories(sevenzip_hfs PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
 target_compile_definitions(sevenzip_hfs PRIVATE Z7_ST)
-target_link_libraries(sevenzip_hfs PRIVATE Threads::Threads)
+target_link_libraries(sevenzip_hfs PRIVATE Threads::Threads sevenzip_zisofs_zlib)
+target_include_directories(sevenzip_hfs PRIVATE third_party)
+set_source_files_properties(src/CPP/7zip/Compress/ZlibDecoder.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Compress")
 set_target_properties(sevenzip_hfs PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
 if(UNIX AND NOT APPLE)

@@ -6,7 +6,8 @@ set_target_properties(sevenzip_lz4 PROPERTIES AUTOMOC OFF AUTOUIC OFF
 
 add_library(sevenzip_lz4_frame_core STATIC
     src/lz4frameio.c
-    third_party/lz4/lib/lz4hc.c third_party/lz4/lib/lz4frame.c third_party/lz4/lib/xxhash.c)
-target_link_libraries(sevenzip_lz4_frame_core PUBLIC sevenzip_lz4)
+    third_party/lz4/lib/lz4hc.c third_party/lz4/lib/lz4frame.c)
+target_include_directories(sevenzip_lz4_frame_core PRIVATE src/zstd/lib/common)
+target_link_libraries(sevenzip_lz4_frame_core PUBLIC sevenzip_lz4 sevenzip_zstd)
 set_target_properties(sevenzip_lz4_frame_core PROPERTIES AUTOMOC OFF AUTOUIC OFF
     POSITION_INDEPENDENT_CODE ON C_STANDARD 99 C_STANDARD_REQUIRED ON)

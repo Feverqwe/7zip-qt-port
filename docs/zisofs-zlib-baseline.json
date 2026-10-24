@@ -56,7 +56,9 @@
     "src/squashfszlib.cpp",
     "src/squashfszlib.h",
     "cmake/Erofs.cmake",
-    "src/erofsnativedecoders.c"
+    "src/erofsnativedecoders.c",
+    "src/CPP/7zip/Compress/ZlibDecoder.cpp",
+    "cmake/Hfs.cmake"
   ],
-  "scope": "Official zlib 1.3.2 inflate and Adler-32 APIs shared by Zisofs, SquashFS zlib blocks and EROFS raw DEFLATE extents; unchanged portable C decoder subset; NO_GZIP omits gzip decoding/CRC, encoder, file API and platform assembly are not built. Z_PREFIX isolates library symbols."
+  "scope": "Official zlib 1.3.2 inflate and Adler-32 APIs shared by Zisofs, SquashFS, EROFS and the SDK HFS/APFS zlib wrapper; unchanged portable C decoder subset. Native runtime uses the same Adler source. NO_GZIP omits gzip decoding/CRC, encoder, file API and platform assembly are not built. Z_PREFIX isolates library symbols."
 }

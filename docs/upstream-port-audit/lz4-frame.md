@@ -6,7 +6,9 @@ Official library: <https://github.com/lz4/lz4.git>, v1.10.0, commit
 `ebb370ca83af193212df4dcbadcc5d87bc0de2f0`.
 [Baseline](../lz4-frame-baseline.json) pins complete original inventory units,
 SHA256 values and local owners. `third_party/lz4/lib/` contains unchanged C
-`lz4`, `lz4hc`, `lz4frame`, `xxhash` sources/headers and the BSD-2-Clause license.
+`lz4`, `lz4hc`, `lz4frame` sources/headers and the BSD-2-Clause license.
+XXHash is shared with libzstd; the former LZ4 copy remains an inventory-only
+reference. See [shared checksums](shared-checksums.md).
 Source language, public types and algorithms are preserved.
 
 Compared before integration: complete Frame header/decoder bodies, callers,

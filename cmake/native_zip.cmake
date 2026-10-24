@@ -88,6 +88,15 @@ set_source_files_properties(src/C/XzIn.c src/C/XzDec.c PROPERTIES
 target_link_libraries(sevenzip_zip PUBLIC sevenzip_common sevenzip_zstd PRIVATE sevenzip_crypto_provider)
 
 if(BUILD_TESTING)
+    qt_add_executable(shared_checksum_tests tests/shared_checksum_tests.cpp src/lib/xxhash.c
+        src/CPP/7zip/Compress/ZlibDecoder.cpp
+        third_party/7zip/CPP/7zip/Compress/DeflateDecoder.cpp
+        third_party/7zip/CPP/7zip/Compress/BitlDecoder.cpp
+        third_party/7zip/CPP/7zip/Compress/LzOutWindow.cpp)
+    target_include_directories(shared_checksum_tests PRIVATE third_party)
+    target_link_libraries(shared_checksum_tests PRIVATE sevenzip_zip sevenzip_zisofs_zlib Qt6::Test)
+    add_test(NAME shared_checksum COMMAND shared_checksum_tests -silent)
+    set_tests_properties(shared_checksum PROPERTIES TIMEOUT 30)
     add_executable(crypto_hash_tests tests/crypto_hash_tests.cpp)
     set_target_properties(crypto_hash_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF)
     target_link_libraries(crypto_hash_tests PRIVATE sevenzip_zip OpenSSL::Crypto)

@@ -9,3 +9,5 @@ set_target_properties(sevenzip_zstd PROPERTIES AUTOMOC OFF AUTOUIC OFF
     POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
 set_source_files_properties(src/C/ZstdDec.c PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/C")
+set_source_files_properties(src/C/Xxh64.c PROPERTIES
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/C")

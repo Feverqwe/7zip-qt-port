@@ -22,8 +22,6 @@
     "lib/lz4hc.h": "third_party/lz4/lib/lz4hc.h",
     "lib/lz4frame.c": "third_party/lz4/lib/lz4frame.c",
     "lib/lz4frame.h": "third_party/lz4/lib/lz4frame.h",
-    "lib/xxhash.c": "third_party/lz4/lib/xxhash.c",
-    "lib/xxhash.h": "third_party/lz4/lib/xxhash.h",
     "lib/LICENSE": "third_party/lz4/lib/LICENSE",
     "programs/lz4io.c": "src/lz4frameio.c"
   },
@@ -55,8 +53,6 @@
     "lib/lz4hc.h": "third_party/lz4/lib/lz4hc.h",
     "lib/lz4frame.c": "third_party/lz4/lib/lz4frame.c",
     "lib/lz4frame.h": "third_party/lz4/lib/lz4frame.h",
-    "lib/xxhash.c": "third_party/lz4/lib/xxhash.c",
-    "lib/xxhash.h": "third_party/lz4/lib/xxhash.h",
     "lib/LICENSE": "third_party/lz4/lib/LICENSE"
   },
   "local_integration": [
@@ -65,5 +61,6 @@
     "src/lz4framestream.h",
     "cmake/Lz4.cmake",
     "cmake/Lz4Frame.cmake"
-  ]
+  ],
+  "scope": "Official LZ4 Frame uses the existing libzstd XXH32 implementation via its header include path; bundled lib/xxhash.c and .h are inventory-only references and are omitted locally. No decoder/framing algorithms changed."
 }

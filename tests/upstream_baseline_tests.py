@@ -322,6 +322,12 @@ class UpstreamBaselineTests(unittest.TestCase):
             "block/reader.h", (("#define DISK_VALUE 3\n", 3), ("#define DISK_VALUE 7\n", 7)),
             "reference_value()", adapted=False, dependency=True, cpp_reference=True)
 
+    def test_runtime_links_vendored_c_and_rebuilds_after_header_change(self):
+        self.assert_runtime_rebuilds_header_consumers(
+            "block/reader.h", (("#define DISK_VALUE 3\n", 3), ("#define DISK_VALUE 7\n", 7)),
+            "reference_value()", adapted=False, dependency=True, c_reference=True,
+            dependency_root="third_party")
+
     def test_format_support_links_and_rebuilds_without_linking_into_console(self):
         self.assert_runtime_rebuilds_header_consumers(
             "block/reader.h", (("#define DISK_VALUE 3\n", 3), ("#define DISK_VALUE 7\n", 7)),
@@ -331,7 +337,8 @@ class UpstreamBaselineTests(unittest.TestCase):
     def assert_runtime_rebuilds_header_consumers(self, header, versions, expression, adapted,
                                                dependency=False, c_reference=False,
                                                cpp_reference=False,
-                                               directory="CPP/7zip/UI/Console", format_only=False):
+                                               directory="CPP/7zip/UI/Console", format_only=False,
+                                               dependency_root="src"):
         include = "Model.h" if adapted else "../../../" + header
         files = {
             directory + "/Probe.cpp": '#include "../../Common/Bridge.h"\nint main() { return ' + expression + '; }\n',
@@ -376,7 +383,7 @@ class UpstreamBaselineTests(unittest.TestCase):
         git(self.upstream, "add", ".")
         git(self.upstream, "commit", "-qm", "native dependency fixture")
         self.manifest["revision"] = git(self.upstream, "rev-parse", "HEAD")
-        local = "src/" + header
+        local = dependency_root + "/" + header
         if adapted or dependency:
             (self.port / local).parent.mkdir(parents=True, exist_ok=True)
             (self.port / local).write_text(files[header])
@@ -385,9 +392,9 @@ class UpstreamBaselineTests(unittest.TestCase):
             else:
                 self.manifest["runtime_dependencies"] = [local]
                 if c_reference:
-                    source = self.port / "src/block/reader.c"
+                    source = self.port / dependency_root / "block/reader.c"
                     source.write_text('#include "reader.h"\nint reference_value(void) { return DISK_VALUE; }\n')
-                    self.manifest["runtime_dependencies"] = sorted([local, "src/block/reader.c"])
+                    self.manifest["runtime_dependencies"] = sorted([local, dependency_root + "/block/reader.c"])
                 if cpp_reference:
                     source = self.port / "src/block/reader.cpp"
                     source.write_text('#include "reader.h"\nint reference_value() { return static_cast<int>(DISK_VALUE); }\n')

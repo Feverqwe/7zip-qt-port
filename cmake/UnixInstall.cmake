@@ -10,6 +10,8 @@ else()
     install(PROGRAMS "$<TARGET_FILE_DIR:sevenzip_desktop>/7zFM"
         "$<TARGET_FILE_DIR:sevenzip_desktop>/7zG" DESTINATION bin)
 endif()
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib/LICENSE"
+    DESTINATION "${notices_destination}/zlib")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/openssl/LICENSE.txt"
     DESTINATION "${notices_destination}/openssl")
 install(PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z"

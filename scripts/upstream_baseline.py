@@ -158,13 +158,16 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                 # Keep unchanged third-party C at CMake/MSVC's normal warning
                 # level rather than the 7-Zip-specific /Wall pragma contract.
                 flags = '$(CFLAGS_O2:-Wall=-W3) -DZSTD_DISABLE_ASM' if name.startswith("zstd/") else '$(CFLAGS_O2)'
+                if name.startswith("zlib/"):
+                    flags = '$(subst -Gr,-Gd,$(CFLAGS_O2:-Wall=-W3)) -DZ_PREFIX'
                 if name.startswith("crypto/openssl"):
                     # OpenSSL declarations use the C ABI, rather than the
                     # native x86 /Gr default; adapter declarations agree.
                     flags = '$(subst -Gr,-Gd,$(CFLAGS_O2:-Wall=-W3)) ' + ('-std:c++17' if cpp else '-std:c11')
                 lines.append(('\t$(CC) ' + flags + ' ' + ('-TP' if cpp else '-TC') + ' -Fo"' + target + '" "' + source + '"')
                              if windows else ('\t$(CXX) $(CXXFLAGS) ' if cpp else
-                                              '\t$(CC) $(CFLAGS) ' + ('-DZSTD_DISABLE_ASM ' if name.startswith("zstd/") else '')) +
+                                              '\t$(CC) $(CFLAGS) ' + ('-DZSTD_DISABLE_ASM ' if name.startswith("zstd/") else
+                                                                      '-DZ_PREFIX ' if name.startswith("zlib/") else '')) +
                              (('-std=c++17 ' if cpp else '-std=c11 ')
                               if name.startswith("crypto/openssl") else '') + source)
                 extra_objects.append(target)
@@ -206,6 +209,7 @@ def prepare_runtime_snapshot(data, snapshot, upstream):
     dependencies = data.get("runtime_dependencies", [])
     if dependencies != sorted(set(dependencies)):
         raise ValueError("Runtime dependencies must be sorted and unique")
+    dependency_paths = {}
     format_sources = data.get("runtime_format_sources", [])
     if (not isinstance(format_sources, list) or format_sources != sorted(set(format_sources)) or
             set(format_sources) - set(dependencies) or
@@ -213,11 +217,15 @@ def prepare_runtime_snapshot(data, snapshot, upstream):
         raise ValueError("Format support sources must be selected runtime dependencies")
     for path in dependencies:
         relative = pathlib.PurePosixPath(path)
-        if (relative.parts[:1] != ("src",) or ".." in relative.parts or
+        if (relative.parts[:1] not in (("src",), ("third_party",)) or ".." in relative.parts or
                 relative.suffix not in (".h", ".c", ".cpp") or path.startswith("src/gpl/") or
                 path in paths or (ROOT / path).is_symlink() or not (ROOT / path).is_file()):
             raise ValueError("Unsafe runtime source dependency: " + path)
-        overlays[str(relative.relative_to("src"))] = ROOT / path
+        destination = str(pathlib.PurePosixPath(*relative.parts[1:]))
+        if destination in overlays:
+            raise ValueError("Duplicate runtime source destination: " + destination)
+        dependency_paths[path] = destination
+        overlays[destination] = ROOT / path
     members = []
     process = subprocess.Popen(["git", "-C", str(upstream), "archive", data["revision"]],
                                stdout=subprocess.PIPE)
@@ -272,15 +280,15 @@ def prepare_runtime_snapshot(data, snapshot, upstream):
     hashes = {}
     for path in paths + exact_overrides + dependencies:
         source = ROOT / path
-        destination = snapshot / (path[len("src/"):] if path in dependencies else source_path(path))
+        destination = snapshot / (dependency_paths[path] if path in dependencies else source_path(path))
         if source.is_symlink() or destination.is_symlink() or not destination.is_file():
             raise ValueError("Runtime adaptation requires regular source files: " + path)
         hashes[path] = hashlib.sha256(destination.read_bytes()).hexdigest()
     (snapshot / "runtime-adaptations.json").write_text(json.dumps(hashes, indent=2) + "\n")
     runtime_header_dependencies(snapshot, members, overlays,
-                                [path[len("src/"):] for path in dependencies
+                                [dependency_paths[path] for path in dependencies
                                  if path.endswith((".c", ".cpp")) and path not in format_sources],
-                                [path[len("src/"):] for path in format_sources])
+                                [dependency_paths[path] for path in format_sources])
 
 
 def verify(data, upstream):

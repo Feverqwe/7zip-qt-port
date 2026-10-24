@@ -24,7 +24,7 @@ add_library(sevenzip_btrfs_core STATIC
     third_party/7zip/C/Alloc.c
     src/C/Sha256.c
     third_party/7zip/C/Sha256Opt.c
-    third_party/7zip/C/Xxh64.c
+    src/C/Xxh64.c
     third_party/7zip/C/CpuArch.c)
 target_include_directories(sevenzip_btrfs_core PRIVATE src src/include
     third_party/linux/include)

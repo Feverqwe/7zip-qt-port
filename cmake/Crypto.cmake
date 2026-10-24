@@ -24,11 +24,12 @@ if(APPLE)
     # Reject a library whose minimum OS exceeds the app's deployment target.
     set(CMAKE_REQUIRED_LINK_OPTIONS "-Wl,-fatal_warnings")
 endif()
-set(crypto_api_probe "SEVENZIP_OPENSSL_REQUIRED_${crypto_probe_id}")
+set(crypto_api_probe "SEVENZIP_OPENSSL_REQUIRED_WITH_EVP_${crypto_probe_id}")
 check_c_source_compiles("#define OPENSSL_SUPPRESS_DEPRECATED
     #include <openssl/sha.h>
     #include <openssl/md5.h>
     #include <openssl/kdf.h>
+    #include <openssl/evp.h>
     int main(void) { SHA_CTX a; SHA256_CTX b; SHA512_CTX c; MD5_CTX d;
         unsigned char bytes[16] = {0};
         SHA1_Init(&a); SHA256_Init(&b); SHA512_Init(&c); MD5_Init(&d);

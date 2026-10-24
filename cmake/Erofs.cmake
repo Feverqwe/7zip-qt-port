@@ -23,7 +23,7 @@ add_library(sevenzip_erofs_core STATIC
     src/fs/erofs/decompressor_deflate.c src/fs/erofs/decompressor_zstd.c
     src/lib/crc/crc32-main.c
     src/erofsnativedecoders.c
-    src/C/ZstdDec.c third_party/7zip/C/Xxh64.c
+    src/C/ZstdDec.c src/C/Xxh64.c
     third_party/7zip/C/Alloc.c third_party/7zip/C/CpuArch.c)
 target_include_directories(sevenzip_erofs_core PRIVATE src)
 target_link_libraries(sevenzip_erofs_core PUBLIC sevenzip_lz4 sevenzip_zstd

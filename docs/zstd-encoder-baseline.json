@@ -135,6 +135,6 @@
     "lib/zstd.h": "src/zstd/lib/zstd.h",
     "lib/zstd_errors.h": "src/zstd/lib/zstd_errors.h"
   },
-  "scope": "Unchanged official libzstd 1.5.7 common/compression/decompression C sources; shared encoder and block decoder. No ASM, CLI, dictionary builder or nested workers. Upstream 7-Zip framing/recovery API retained in src/C/ZstdDec.c.",
+  "scope": "Unchanged official libzstd 1.5.7 common/compression/decompression C sources; shared encoder, block decoder and XXHash implementation for SDK XXH64, EROFS and LZ4 Frame. No ASM, CLI, dictionary builder or nested workers. Upstream 7-Zip framing/recovery API retained in src/C/ZstdDec.c.",
   "kind": "unchanged-dependencies"
 }

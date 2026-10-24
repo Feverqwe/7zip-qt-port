@@ -7,6 +7,18 @@
 #include "../Common/StreamUtils.h"
 
 #include "ZlibDecoder.h"
+#ifndef Z_PREFIX
+#define Z_PREFIX
+#endif
+#ifdef _MSC_VER
+#define ZEXPORT __cdecl // Match zlib C even when the native SDK is built with /Gr.
+#pragma warning(push)
+#pragma warning(disable : 4668) // Unchanged zlib configuration uses undefined feature macros.
+#endif
+#include "zlib/zlib.h"
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 namespace NCompress {
 namespace NZlib {
@@ -14,45 +26,10 @@ namespace NZlib {
 #define DEFLATE_TRY_BEGIN try {
 #define DEFLATE_TRY_END } catch(...) { return S_FALSE; }
 
-#define ADLER_MOD 65521
-#define ADLER_LOOP_MAX 5550
-
 UInt32 Adler32_Update(UInt32 adler, const Byte *data, size_t size);
-UInt32 Adler32_Update(UInt32 adler, const Byte *data, size_t size)
-{
-  if (size == 0)
-    return adler;
-  UInt32 a = adler & 0xffff;
-  UInt32 b = adler >> 16;
-  do
-  {
-    size_t cur = size;
-    if (cur > ADLER_LOOP_MAX)
-        cur = ADLER_LOOP_MAX;
-    size -= cur;
-    const Byte *lim = data + cur;
-    if (cur >= 4)
-    {
-      lim -= 4 - 1;
-      do
-      {
-        a += data[0];  b += a;
-        a += data[1];  b += a;
-        a += data[2];  b += a;
-        a += data[3];  b += a;
-        data += 4;
-      }
-      while (data < lim);
-      lim += 4 - 1;
-    }
-    if (data != lim) { a += *data++;  b += a;
-    if (data != lim) { a += *data++;  b += a;
-    if (data != lim) { a += *data++;  b += a; }}}
-    a %= ADLER_MOD;
-    b %= ADLER_MOD;
-  }
-  while (size);
-  return (b << 16) + a;
+UInt32 Adler32_Update(UInt32 adler, const Byte *data, size_t size) {
+    // Unlike zlib's initialization convention, an empty SDK update retains its seed.
+    return size == 0 ? adler : (UInt32)adler32_z(adler, data, size);
 }
 
 Z7_COM7F_IMF(COutStreamWithAdler::Write(const void *data, UInt32 size, UInt32 *processedSize))

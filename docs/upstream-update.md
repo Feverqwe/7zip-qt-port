@@ -29,7 +29,8 @@ compiler outputs. They do not compile in the upstream checkout. GPL reader
 sources are excluded from this overlay and built as separate CMake modules;
 the snapshot preparer rejects a full GPL reader in `runtime_adapted`.
 `runtime_dependencies` adds non-7-Zip C modules and headers needed by these
-modules at their declared snapshot paths. Their source revisions and licenses
+modules, removing the owning `src/` or `third_party/` prefix in the snapshot.
+Colliding destination paths are rejected. Their source revisions and licenses
 belong in the existing port audit. Runtime fingerprints and transitive dependencies
 include them; generated native rules compile C sources as C while preserving
 incremental build outputs. `runtime_format_sources` selects dependencies linked
