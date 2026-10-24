@@ -36,6 +36,9 @@ See [direct device access](docs/direct-device-reading.md) for usage and limits.
 Read-only [F2FS support](docs/f2fs-reading.md) adds browsing and copying from
 compatible Android and flash-drive images.
 
+Experimental XFS reading provides access to server and NAS filesystem images;
+see [support and limits](docs/upstream-port-audit/xfs.md).
+
 Archive creation and updates support compression settings, encryption, volumes
 and self-extracting archives. Available formats and operations depend on the
 selected engine. Extraction supports password and overwrite prompts; an error
