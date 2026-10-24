@@ -36,7 +36,7 @@ add_library(sevenzip_linux_frames MODULE
     third_party/7zip/C/XzCrc64.c third_party/7zip/C/XzCrc64Opt.c
     third_party/7zip/C/Sha256.c third_party/7zip/C/Sha256Opt.c
     third_party/7zip/C/Bra.c third_party/7zip/C/Bra86.c third_party/7zip/C/BraIA64.c
-    third_party/7zip/C/Delta.c third_party/7zip/C/ZstdDec.c third_party/7zip/C/Xxh64.c
+    third_party/7zip/C/Delta.c src/C/ZstdDec.c third_party/7zip/C/Xxh64.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Archive/Common/DummyOutStream.cpp
     third_party/7zip/CPP/7zip/Archive/Common/FindSignature.cpp
@@ -55,7 +55,7 @@ target_compile_definitions(sevenzip_linux_frames PRIVATE Z7_ST)
 set_source_files_properties(src/CPP/7zip/Archive/GzHandler.cpp
     src/CPP/7zip/Archive/LzmaHandler.cpp PROPERTIES
     COMPILE_DEFINITIONS SEVENZIP_INITRAMFS_FRAME_ONLY)
-target_link_libraries(sevenzip_linux_frames PRIVATE sevenzip_linux_frames_core)
+target_link_libraries(sevenzip_linux_frames PRIVATE sevenzip_linux_frames_core sevenzip_zstd)
 set_target_properties(sevenzip_linux_frames PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX "")
 if(UNIX AND NOT APPLE)
     target_link_options(sevenzip_linux_frames PRIVATE "-Wl,-Bsymbolic")

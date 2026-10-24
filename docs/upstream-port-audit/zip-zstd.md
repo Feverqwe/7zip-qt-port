@@ -256,6 +256,10 @@ Linux/Windows differential runtime и реальные damaged media не про
 
 ### Рекомендация
 
+Исторический вывод сравнения ниже относится к прямой замене через frame/stream
+API. Его продолжение с сохранением upstream framing — в разделе
+[общего encoder/decoder](#общий-libzstd-encoderdecoder--2026-10-24).
+
 Не заменять SDK decoder одним вызовом `ZSTD_decompress`/`ZSTD_decompressStream`.
 Для законченной миграции сначала нужен compatibility adapter с доказанными
 partial-output, frame/consumed и diagnostic contracts. Наиболее узкий первый
@@ -268,3 +272,133 @@ ZIP recovery сложнее. Пока SDK остаётся для других c
 около 7164 без ASM. Общие libzstd units уже есть из encoder; величина adapter
 и итоговый binary footprint не измерялись. Дополнительные dictionaries/legacy
 modes библиотеки не становятся возможностями приложения без отдельной интеграции.
+
+## Общий libzstd encoder/decoder — 2026-10-24
+
+Feature branch: `feature/zstd-decoder-libzstd`, baseline Desktop `67d50fbc`.
+Замена сохраняет upstream `C/ZstdDec.c` framing/state/result API, raw/RLE
+partial reads, window/output bounds, XXH64, metadata, skipped/concatenated
+frames и consumed/unused bytes. Его единственный owner перемещён в
+`src/C/ZstdDec.c`. Полный оригинал SDK 26.05
+`b88c6bc09339de32f7d18bbab900686b244f42ba`, repository
+<https://github.com/ip7z/7zip.git>, закреплён SHA256 в существующем
+[SDK manifest](../upstream-baseline.json). C++ Code/Read и все consumers
+остаются upstream adapters. Самостоятельные SDK Huffman/FSE/LZ bodies,
+их tables, SIMD helpers и literals allocation удалены из сборки и source tree.
+
+Официальный `ZSTD_decompressBlock` выполняет compressed-block decode;
+`ZSTD_insertBlock` сообщает raw/RLE history. Контекст использует переданный
+SDK allocator; reset выполняется на каждом frame. Upstream cyclic window и
+caller-buffer modes сохранены. Алгоритмов декодирования в glue нет.
+Поблочный API помечен libzstd как deprecated и относится к static API;
+его использование ограничено version-pinned адаптацией. При обновлении
+библиотеки этот boundary нужно сверять; warning отключён только в адаптере
+через предусмотренный библиотекой macro, без изменения library sources.
+
+Семь decoder inventory units libzstd 1.5.7
+`f8745da6ff1ad1e7bab384bd1f9d742439278e99`, repository
+<https://github.com/facebook/zstd.git>, перенесены из `reference_only` в
+unchanged dependencies `src/zstd/lib/decompress/`. Их оригинальные SHA256
+и mapping — в том же [libzstd manifest](../zstd-encoder-baseline.json).
+Common/compress closure остаётся общей; CMake static library используется ZIP,
+EROFS, SquashFS и initramfs. Native runtime overlay включает тот же decoder,
+поэтому standalone `.zst`, ZIP, QCOW и SDK SquashFS используют его также.
+ASM не импортируется; `ZSTD_DISABLE_ASM` задан одинаково для CMake и обоих
+runtime builders. CLI, dictionary builder и legacy decoders не импортируются.
+Сохранены notices: SDK frame parser BSD-3-Clause, libzstd BSD или GPL;
+используется BSD, SDK types/COM adapters сохраняют прежние лицензии.
+
+Прямая замена `ZSTD_decompressStream` не выбрана: функция возвращает ошибку
+до публикации последней output position. Bufferless frame API отдельно
+проверяет checksum и сохраняет CRC output, но теряет reported output при
+несоответствии frame content size; он также сам по себе не сохраняет
+truncated raw prefix. Сохранённый SDK parser решает обе границы, а compressed
+block API возвращает размер до проверки frame size/checksum в SDK parser.
+Ошибка остаётся ошибкой, выданные данные не объявляются проверенными.
+
+Повторяемая source verification/review использует команды выше; SDK:
+`python3 scripts/upstream_baseline.py verify --upstream <sdk-checkout>` и
+`review --upstream <sdk-checkout> --new-revision <commit> --path src/C/ZstdDec.c --output <report>`.
+Новый snapshot сравнивается с полным original и локальным parser, не заменяет
+частичную адаптацию полным SDK module.
+Текущее отличие parser от исходного SDK воспроизводится отдельно:
+`git -C <sdk-checkout> show b88c6bc09339de32f7d18bbab900686b244f42ba:C/ZstdDec.c | diff -u --label SDK-original - src/C/ZstdDec.c`.
+Такой diff сохранён в `build/zstd-recovery/source-review.md`: кроме удаления
+SDK compressed-block implementation, context/allocator glue и raw/RLE history
+registration frame parser не переписывался. Разница форматирования отдельно
+ограничена удалением trailing whitespace из 12 пустых строк перенесённого SDK
+parser; source algorithm и branches от этого не менялись. Неизменённые libzstd
+units не форматировались.
+
+### Проверка сохранения данных
+
+macOS arm64 diagnostic сравнил SDK и адаптер на 36 valid/malformed inputs,
+input chunks 1/13/65536, caller-buffer и cyclic-buffer modes: 216/216 совпали
+по output bytes, result, unfinished flag, blocks и frames. Дополнительно
+24 мутации compressed payload совпали по тем же результатам. Смешанный
+raw/RLE/compressed поток 2.77 MB многократно оборачивает 128 KiB window и
+совпал с оригиналом в обоих modes. Это focused evidence, не доказательство
+эквивалентности для всех повреждений. Diagnostic sources и результаты —
+`build/zstd-recovery/`; disposable inputs/outputs автоматически удаляются.
+
+Регрессии проверяют error exit вместе с доступными bytes для checksum-bad,
+late-crc, truncated raw body и несогласованного content size; mixed-history
+fixture проверяет использование raw/RLE history и window wrapping.
+
+Дополнительный official-encoder probe создал unknown-size поток 2.8 MB
+с 128 KiB window и повторениями на расстоянии 70000 bytes. SDK и адаптер
+совпали по всем bytes в caller/cyclic modes как при верной checksum, так и
+при повреждённой: весь output сохранён, ошибочный результат остаётся CRC.
+
+macOS arm64 / Qt 6.12: приложение собрано, 14/14 focused suites PASS:
+`zstd`, `zstd_stream`, `zip_zstd`, `native_zip_writer`, `erofs`, `erofs_reader`,
+`erofs_module`, `squashfs`, `squashfs_stream`, `initramfs`, `archive_layer_chain`,
+`upstream_baseline`, `upstream_inventory`, `runtime_cache` (61.57s).
+Native ZIP требует unsandboxed запуска из-за platform service restrictions.
+Первый isolated-worktree запуск обнаружил недостающую MBR runtime dependency
+у layer-chain test; она добавлена рядом с существующей Ext dependency.
+Последний LastTest.log содержит успешный повтор, устаревшие failure markers
+и failed verify receipt удалены. Полные SDK original hashes проверены:
+414 exact / 270 adapted / 15 local owners; все 65 libzstd owners побайтно
+совпадают с закреплёнными оригиналами. Sibling upstream остаётся read-only;
+для проверки/сборки использован отдельный clone точной SDK revision.
+
+До local/remote validation у этой ветки не было старых guest build/fixtures.
+Свободное место перед remote build: Linux около 52 GiB, Windows 31.6 GiB;
+на macOS 184 GiB. Disposable inputs/outputs создаются с auto-cleanup,
+incremental builds и общий compiler cache сохранены. Полный gate и slow suites
+не запрашивались и не запускались; UI не менялся.
+
+Linux x64 / GCC / Qt 6.12, runner batch `20261024T103202Z-3f292ca1`:
+13/14 suites PASS. Широкая `archive_layer_chain` (54 data rows разных методов)
+достигла своего 60-second timeout, поэтому её полная приёмка не заявляется.
+Отдельно на том же собранном snapshot выполнены все 12 Zstandard rows:
+обычный и extended QCOW × success/cancel/source-failure/read-cancel/automatic/tar;
+12/12 PASS (Qt totals 14 с init/cleanup, 12.77s). Лог —
+`build/zstd-recovery/linux-zstd-layer-acceptance.log`. Синтетический QCOW,
+оставшийся после timeout в task-owned `runner-tmp`, удалён после завершения
+прогона; free space после сборки/cleanup — 51 GiB. Runtime/build/cache сохранены.
+
+Windows 11 x64 / MSVC / Qt 6.12: native module/sidecar и все выбранные CMake
+consumers собраны. В первом batch `20261024T103202Z-3f292ca1` 10/14 suites PASS;
+layer-chain и общий baseline-tool suite достигли 60/120-second timeouts.
+Все 12 Zstandard layer-chain rows отдельно PASS (Qt totals 14, 22.97s), лог —
+`build/zstd-recovery/windows-zstd-layer-acceptance.log`. EROFS backend discovery
+сначала достиг deadline, без изменения product code повторный `erofs_module`
+полностью PASS в batch `20261024T105234Z-9f840592`.
+
+Повтор выявил и устранил независимый дефект runtime-cache test isolation:
+mock общего `subprocess.run` перехватывал lazy Windows platform probe Python.
+Тестовый fixture теперь получает реальные system/machine до builder mock и
+фиксирует эти platform probes на время теста; production fingerprint не менялся.
+Повтор `runtime_cache` PASS на Windows в том же batch, на Linux —
+`20261024T105302Z-afe8a4cf`, на macOS — 0.38s. Это исправление существующей
+поведенческой проверки, новых configuration/source-text assertions нет.
+
+Итого Windows: 12 focused suites приняты, плюс 12 Zstandard layer-chain rows;
+полные широкие `upstream_baseline` и `archive_layer_chain` остаются с timeout.
+Временные fixtures завершённых failed tests в task-owned `runner-tmp` удалены
+после проверки отсутствия активных процессов; свободно 28.3 GiB. Build trees,
+compiler caches, текущие логи и unresolved timeout evidence сохранены.
+После whitespace-only очистки перенесённого parser на macOS повторно собран
+native runtime через compiler cache (0.77s); функциональный код не менялся.

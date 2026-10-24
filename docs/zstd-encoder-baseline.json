@@ -125,19 +125,16 @@
     "lib/compress/zstd_preSplit.h": "src/zstd/lib/compress/zstd_preSplit.h",
     "lib/compress/zstdmt_compress.c": "src/zstd/lib/compress/zstdmt_compress.c",
     "lib/compress/zstdmt_compress.h": "src/zstd/lib/compress/zstdmt_compress.h",
+    "lib/decompress/huf_decompress.c": "src/zstd/lib/decompress/huf_decompress.c",
+    "lib/decompress/zstd_ddict.c": "src/zstd/lib/decompress/zstd_ddict.c",
+    "lib/decompress/zstd_ddict.h": "src/zstd/lib/decompress/zstd_ddict.h",
+    "lib/decompress/zstd_decompress.c": "src/zstd/lib/decompress/zstd_decompress.c",
+    "lib/decompress/zstd_decompress_block.c": "src/zstd/lib/decompress/zstd_decompress_block.c",
+    "lib/decompress/zstd_decompress_block.h": "src/zstd/lib/decompress/zstd_decompress_block.h",
+    "lib/decompress/zstd_decompress_internal.h": "src/zstd/lib/decompress/zstd_decompress_internal.h",
     "lib/zstd.h": "src/zstd/lib/zstd.h",
     "lib/zstd_errors.h": "src/zstd/lib/zstd_errors.h"
   },
-  "scope": "Unchanged official libzstd 1.5.7 common/compression sources, compiled as C; ZIP encoding only, no decoder, CLI, dictionary builder or nested worker threads.",
-  "kind": "unchanged-dependencies",
-  "reference_only": [
-    "lib/decompress/huf_decompress.c",
-    "lib/decompress/zstd_ddict.c",
-    "lib/decompress/zstd_ddict.h",
-    "lib/decompress/zstd_decompress.c",
-    "lib/decompress/zstd_decompress_block.c",
-    "lib/decompress/zstd_decompress_block.h",
-    "lib/decompress/zstd_decompress_internal.h"
-  ],
-  "reference_scope": "Decoder source comparison only; reference_only units are not copied into the product. Compiled public-API probes use ZSTD_DISABLE_ASM on macOS arm64."
+  "scope": "Unchanged official libzstd 1.5.7 common/compression/decompression C sources; shared encoder and block decoder. No ASM, CLI, dictionary builder or nested workers. Upstream 7-Zip framing/recovery API retained in src/C/ZstdDec.c.",
+  "kind": "unchanged-dependencies"
 }
