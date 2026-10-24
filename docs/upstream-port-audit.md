@@ -51,6 +51,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [ZIP: официальный компонент и независимые эталоны](upstream-port-audit/zip-refresh.md)
+  — выбор основы и дополнительные проверки разрядности Shrink.
+
 - [Полное обновление 7-Zip до 26.05](upstream-port-audit/upstream-26.05.md)
   — native engine/SFX, адаптации NTFS/container/progress и проверки платформ.
 
