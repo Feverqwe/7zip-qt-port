@@ -63,11 +63,6 @@ bool Inspect(HDEVINFO devices, SP_DEVINFO_DATA &info, const QString &path, Candi
     storage.resize(bytes);
     const auto *descriptor =
         reinterpret_cast<const STORAGE_DEVICE_DESCRIPTOR *>(storage.constData());
-    STORAGE_HOTPLUG_INFO hotplug{};
-    Query(handle, IOCTL_STORAGE_GET_HOTPLUG_INFO, hotplug);
-    if (!(descriptor->RemovableMedia || hotplug.DeviceHotplug ||
-          descriptor->BusType == BusTypeUsb || descriptor->BusType == BusType1394))
-        return false;
     FILETIME arrival{};
     DEVPROPTYPE type = 0;
     if (!SetupDiGetDevicePropertyW(devices, &info, &DEVPKEY_Device_LastArrivalDate, &type,

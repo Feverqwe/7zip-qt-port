@@ -1,5 +1,24 @@
 # Прямое read-only чтение устройств
 
+## Fixed disks in Windows — 2026-10-24
+
+Убран local transport filter, скрывавший non-removable SATA/NVMe disks без
+hot-plug capability. Сравнены полные `CFSDrives::LoadItems`, device-path/CopyTo
+consumers и headers в upstream <https://github.com/ip7z/7zip.git>, commit
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`,
+`CPP/7zip/UI/FileManager/FSDrives.{cpp,h}`: upstream physical-drive listing
+не ограничен внешними интерфейсами. Новые тела upstream не копировались;
+SetupAPI enumeration остаётся платформенной адаптацией существующего transport.
+Проверены callers chooser и elevated reader: они используют один snapshot/open
+путь. Проверки mounted volumes, identity, размера/сектора, повторной проверки
+после открытия и read-only handle сохранены. macOS/Linux transport не менялся.
+Реальный SATA-диск пользователя автоматикой не проверялся.
+Focused Windows x64 build и `device_access_win`/`device_pipe_win` PASS,
+receipt `20261024T051400Z-35b465ba`; incremental tree и ccache сохранены.
+Эти проверки покрывают native read handle, stale selection/cancellation и
+helper transport, но не обнаружение физического SATA-носителя. `git diff --check`
+PASS. macOS/Linux не запускались: изменение ограничено Windows enumeration.
+
 ## Все поддерживаемые filesystem readers — 2026-10-23
 
 Область расширения: существующий device transport теперь перебирает filesystem

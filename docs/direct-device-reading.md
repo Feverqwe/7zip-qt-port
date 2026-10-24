@@ -15,6 +15,8 @@ through the existing file manager.
    source are unavailable.
 
 Refresh updates the device list; Back returns from partitions to devices.
+On Windows, the list also includes fixed disks connected through SATA or NVMe.
+Disks with volumes in use by Windows cannot be opened for direct access.
 Cancel leaves the current panel unchanged. After a denied authorization request
 you can retry. If a device is busy, close files on it and unmount its volumes;
 Sevenzip does not force an unmount. If it is disconnected, reconnect it and open
