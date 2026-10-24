@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "external_editor_fixture.h"
+#include "filetable.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
@@ -155,7 +156,8 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
                  answer == QMessageBox::Yes ? modified : QByteArray("original"));
         QTRY_COMPARE(table(window)->rowCount(), 1);
         if (answer == QMessageBox::Yes) {
-            QCOMPARE(table(window)->item(0, 2)->text(), QString::number(modified.size()));
+            QCOMPARE(table(window)->model()->index(0, 2).data().toString(),
+                     QString::number(modified.size()));
             QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
         }
     }
@@ -280,7 +282,11 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
                 QCOMPARE(contents(archive, name), modified);
                 if (outcome == 3)
                     QCOMPARE(QDir::cleanPath(rightAddress->text()), fixture.path());
-                QCOMPARE(leftPanel->findChild<QTableWidget *>("archiveTable")->item(0, 2)->text(),
+                QCOMPARE(leftPanel->findChild<FileTable *>("archiveTable")
+                             ->model()
+                             ->index(0, 2)
+                             .data()
+                             .toString(),
                          QString::number(modified.size()));
             }
         }

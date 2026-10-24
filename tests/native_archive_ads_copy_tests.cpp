@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "archivecodeccatalog.h"
 #include "copydialog.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
@@ -16,7 +17,8 @@ class NativeArchiveAdsCopyTests final : public QObject, protected MainWindowTest
     enum Outcome { Copy, DialogCancel, Skip, OverwriteCancel, UnsupportedMove };
     static int row(FileTable &view, const QString &name) {
         for (int i = 0; i < view.rowCount(); ++i)
-            if (view.item(i, 0)->text().normalized(QString::NormalizationForm_C) == name)
+            if (view.model()->index(i, 0).data().toString().normalized(
+                    QString::NormalizationForm_C) == name)
                 return i;
         return -1;
     }
@@ -26,7 +28,7 @@ class NativeArchiveAdsCopyTests final : public QObject, protected MainWindowTest
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        return static_cast<FileTable *>(panel->findChild<QTableWidget *>("archiveTable"));
+        return static_cast<FileTable *>(panel->findChild<FileTable *>("archiveTable"));
     }
     static void inspect(MainWindow &window, const QString &tag) {
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {

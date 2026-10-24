@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "archivecodeccatalog.h"
 #include "copydialog.h"
+#include "filetable.h"
 #include "fixtures/signal_wait_support.h"
 #include "layout_inspection.h"
 #include "qtfilemanagerstartup.h"
@@ -97,9 +98,8 @@ class NativeZoneCopyTests final : public QObject, protected MainWindowTestSuppor
         auto *sourceUi = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
         QVERIFY(sourceUi && peerUi);
-        auto *source =
-            static_cast<FileTable *>(sourceUi->findChild<QTableWidget *>("archiveTable"));
-        auto *peer = static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        auto *source = static_cast<FileTable *>(sourceUi->findChild<FileTable *>("archiveTable"));
+        auto *peer = static_cast<FileTable *>(peerUi->findChild<FileTable *>("archiveTable"));
         QVERIFY(source && peer);
         QVERIFY2(SignalWaitSupport::waitForCount(*source->model(), 2),
                  qPrintable(QString("native WIM root rows=%1").arg(source->rowCount())));
@@ -115,7 +115,7 @@ class NativeZoneCopyTests final : public QObject, protected MainWindowTestSuppor
         QVERIFY(dynamic_cast<CAgentFolder *>(provider.Interface()));
         panel.SelectAll(true);
         for (int i = 0; i < peer->rowCount(); ++i)
-            if (peer->item(i, 0)->text() == "peer control.txt")
+            if (peer->model()->index(i, 0).data().toString() == "peer control.txt")
                 peer->selectRow(i);
         CSelectedState peerSelection;
         peerPanel.SaveSelectedState(peerSelection);

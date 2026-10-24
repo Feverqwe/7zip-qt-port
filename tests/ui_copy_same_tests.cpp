@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "copydialog.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "native_archive_fixture.h"
 #include "window_state_support.h"
@@ -55,8 +56,8 @@ class UiCopySameTests final : public QObject, protected MainWindowTestSupport {
         auto *right = window.findChild<QWidget *>("filePanel1");
         QVERIFY(left && right);
         auto *address = left->findChild<QLineEdit *>("archivePath");
-        auto *source = left->findChild<QTableWidget *>("archiveTable");
-        auto *peer = right->findChild<QTableWidget *>("archiveTable");
+        auto *source = left->findChild<FileTable *>("archiveTable");
+        auto *peer = right->findChild<FileTable *>("archiveTable");
         QVERIFY(address && source && peer);
         address->setFocus();
         address->setText(fixture.path());
@@ -322,7 +323,7 @@ class UiCopySameTests final : public QObject, protected MainWindowTestSupport {
         QTRY_VERIFY(
             QFileInfo::exists(QDir(movedDestination).filePath(QStringLiteral("second file.txt"))));
         QTRY_COMPARE(view->rowCount(), 1);
-        QCOMPARE(view->item(0, 0)->text(), QStringLiteral("first file.txt"));
+        QCOMPARE(view->model()->index(0, 0).data().toString(), QStringLiteral("first file.txt"));
     }
 };
 

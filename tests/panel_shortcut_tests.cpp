@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/ComboDialog.h"
 #include "CPP/7zip/UI/FileManager/CopyDialog.h"
+#include "filetable.h"
 #include "fixtures/panel_keys.h"
 #include "fixtures/widget_dialogs.h"
 #include "fixtures/window_activation.h"
@@ -12,9 +13,9 @@
 #include <memory>
 
 namespace {
-int row(QTableWidget &table, const QString &name) {
+int row(FileTable &table, const QString &name) {
     for (int i = 0; i < table.rowCount(); ++i)
-        if (table.item(i, 0)->text() == name)
+        if (table.model()->index(i, 0).data().toString() == name)
             return i;
     return -1;
 }
@@ -59,7 +60,7 @@ class PanelShortcutTests final : public QObject, protected MainWindowTestSupport
         window.show();
         QVERIFY(WindowActivation::waitForActive(window));
         auto *panel = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *table = panel->findChild<QTableWidget *>("archiveTable");
+        auto *table = panel->findChild<FileTable *>("archiveTable");
         QTRY_VERIFY(row(*table, name) >= 0);
         table->setCurrentCell(row(*table, name), 0);
         table->selectRow(row(*table, name));
@@ -108,7 +109,7 @@ class PanelShortcutTests final : public QObject, protected MainWindowTestSupport
         MainWindow window(&backend);
         window.show();
         QVERIFY(WindowActivation::waitForActive(window));
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *path = window.findChild<QLineEdit *>("archivePath");
         QTRY_VERIFY(table->isEnabled());
         table->setFocus();
@@ -173,7 +174,7 @@ class PanelShortcutTests final : public QObject, protected MainWindowTestSupport
         MainWindow window(&backend);
         window.show();
         QVERIFY(WindowActivation::waitForActive(window));
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *path = window.findChild<QLineEdit *>("archivePath");
         QTRY_VERIFY(row(*table, name) >= 0);
         table->setCurrentCell(row(*table, name), 0);
@@ -287,7 +288,7 @@ class PanelShortcutTests final : public QObject, protected MainWindowTestSupport
         MainWindow window(&backend);
         window.show();
         QVERIFY(WindowActivation::waitForActive(window));
-        auto *view = window.findChild<QTableWidget *>("archiveTable");
+        auto *view = window.findChild<FileTable *>("archiveTable");
         QTRY_VERIFY(view->isEnabled() && row(*view, "a.txt") >= 0);
         view->setCurrentCell(row(*view, "a.txt"), 0);
         view->selectRow(row(*view, "a.txt"));

@@ -16,7 +16,7 @@ QJsonObject OpenNested(FileTable &list, int row) {
     auto &panel = *list.sourcePanel;
     panel.Set_AutoRefresh_Mode(false);
     CMyComPtr<IFolderFolder> outer = panel.GetFolder();
-    const UInt32 index = list.item(row, 0)->data(Qt::UserRole + 6).toUInt();
+    const UInt32 index = list.model()->index(row, 0).data(Qt::UserRole + 6).toUInt();
     panel.OpenItem(index, true, false, L"7z");
     const bool opened = panel.GetParentFolders().Size() == 2;
     bool copied = false;
@@ -79,12 +79,12 @@ int main(int argc, char **argv) {
                 continue;
             auto *owner = window->findChild<QWidget *>(QString("filePanel%1").arg(pane));
             auto *list =
-                owner ? dynamic_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"))
+                owner ? dynamic_cast<FileTable *>(owner->findChild<FileTable *>("archiveTable"))
                       : nullptr;
             if (!list || !list->isEnabled() || !list->sourcePanel)
                 continue;
             for (int row = 0; row < list->rowCount(); ++row) {
-                if (list->item(row, 0)->text() != member)
+                if (list->model()->index(row, 0).data().toString() != member)
                     continue;
                 driver.stop();
                 bound = true;

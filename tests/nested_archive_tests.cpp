@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
 #include "dot_path_cpio_fixture.h"
+#include "filetable.h"
 #include "fixtures/progress_dialog.h"
 #include "mainwindow.h"
 #include "native_archive_fixture.h"
@@ -143,13 +144,14 @@ class NestedArchiveTests : public QObject {
         }
         MainWindow window(&backend);
         window.show();
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *inside = window.findChild<QAction *>("openInsideAction");
         QVERIFY(table && inside);
         window.openArchive(fixture.filePath("installer.zip"));
         const auto row = [&](const QString &name) {
             for (int i = 0; i < table->rowCount(); ++i)
-                if (table->item(i, 0) && table->item(i, 0)->text() == name)
+                if (table->model()->index(i, 0).isValid() &&
+                    table->model()->index(i, 0).data().toString() == name)
                     return i;
             return -1;
         };
@@ -206,7 +208,7 @@ class NestedArchiveTests : public QObject {
         MainWindow window(&backend);
         window.show();
         const QString initialDirectory = window.findChild<QLineEdit *>("archivePath")->text();
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *inside = window.findChild<QAction *>("openInsideAction");
         auto *back = window.findChild<QAction *>("backAction");
         QVERIFY(table && inside && back);
@@ -214,21 +216,22 @@ class NestedArchiveTests : public QObject {
         address->setText(unknown);
         QTest::keyClick(address, Qt::Key_Return);
         QTRY_COMPARE(table->rowCount(), 1);
-        QCOMPARE(table->item(0, 0)->text().normalized(QString::NormalizationForm_C),
-                 QStringLiteral("данные с пробелом.txt"));
+        QCOMPARE(
+            table->model()->index(0, 0).data().toString().normalized(QString::NormalizationForm_C),
+            QStringLiteral("данные с пробелом.txt"));
 
         window.openArchive(outer);
-        QTRY_VERIFY(table->rowCount() == 1 && table->item(0, 0) &&
-                    table->item(0, 0)->text() == QStringLiteral("inner.bin"));
+        QTRY_VERIFY(table->rowCount() == 1 && table->model()->index(0, 0).isValid() &&
+                    table->model()->index(0, 0).data().toString() == QStringLiteral("inner.bin"));
         table->selectRow(0);
         QVERIFY(inside->isEnabled());
         inside->trigger();
-        QTRY_VERIFY(table->rowCount() == 1 && table->item(0, 0) &&
-                    table->item(0, 0)->text().normalized(QString::NormalizationForm_C) ==
-                        QStringLiteral("данные с пробелом.txt"));
+        QTRY_VERIFY(table->rowCount() == 1 && table->model()->index(0, 0).isValid() &&
+                    table->model()->index(0, 0).data().toString().normalized(
+                        QString::NormalizationForm_C) == QStringLiteral("данные с пробелом.txt"));
         back->trigger();
-        QTRY_VERIFY(table->rowCount() == 1 && table->item(0, 0) &&
-                    table->item(0, 0)->text() == QStringLiteral("inner.bin"));
+        QTRY_VERIFY(table->rowCount() == 1 && table->model()->index(0, 0).isValid() &&
+                    table->model()->index(0, 0).data().toString() == QStringLiteral("inner.bin"));
 
         QFile plain(dir.filePath("plain.bin"));
         QVERIFY(plain.open(QIODevice::WriteOnly));
@@ -270,7 +273,7 @@ class NestedArchiveTests : public QObject {
         MainWindow window(&backend);
         window.show();
         window.openArchive(archive);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *add = window.findChild<QAction *>("toolbarAddAction");
         auto *remove = window.findChild<QAction *>("deleteAction");
         auto *rename = window.findChild<QAction *>("renameAction");
@@ -278,7 +281,9 @@ class NestedArchiveTests : public QObject {
         auto *edit = window.findChild<QAction *>("editFileAction");
         QVERIFY(table && add && remove && rename && move && edit);
         QTRY_COMPARE(table->rowCount(), 1);
-        QCOMPARE(table->item(0, 0)->text().normalized(QString::NormalizationForm_C), sourceName);
+        QCOMPARE(
+            table->model()->index(0, 0).data().toString().normalized(QString::NormalizationForm_C),
+            sourceName);
         table->selectRow(0);
         QVERIFY(add->isEnabled());
         QVERIFY(remove->isEnabled());
@@ -307,18 +312,18 @@ class NestedArchiveTests : public QObject {
         QCOMPARE(compressor.exitCode(), 0);
         window.openArchive(compressed);
         QTRY_COMPARE(table->rowCount(), 1);
-        QCOMPARE(table->item(0, 0)->text(), QStringLiteral("sample.tar"));
+        QCOMPARE(table->model()->index(0, 0).data().toString(), QStringLiteral("sample.tar"));
         table->selectRow(0);
         auto *inside = window.findChild<QAction *>("openInsideAction");
         auto *back = window.findChild<QAction *>("backAction");
         QVERIFY(inside && back);
         QVERIFY(inside->isEnabled());
         inside->trigger();
-        QTRY_VERIFY(table->rowCount() == 1 && table->item(0, 0) &&
-                    table->item(0, 0)->text().normalized(QString::NormalizationForm_C) ==
-                        sourceName);
+        QTRY_VERIFY(table->rowCount() == 1 && table->model()->index(0, 0).isValid() &&
+                    table->model()->index(0, 0).data().toString().normalized(
+                        QString::NormalizationForm_C) == sourceName);
         back->trigger();
-        QTRY_COMPARE(table->item(0, 0)->text(), QStringLiteral("sample.tar"));
+        QTRY_COMPARE(table->model()->index(0, 0).data().toString(), QStringLiteral("sample.tar"));
     }
 
     void opensRealNestedArchive() {
@@ -339,18 +344,18 @@ class NestedArchiveTests : public QObject {
         MainWindow window(&backend);
         window.show();
         window.openArchive(outer);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *inside = window.findChild<QAction *>("openInsideAction");
         auto *back = window.findChild<QAction *>("backAction");
         QVERIFY(table && inside && back);
-        QTRY_VERIFY(table->rowCount() == 1 && table->item(0, 0) &&
-                    table->item(0, 0)->text().normalized(QString::NormalizationForm_C) ==
-                        QStringLiteral("вложенный архив.zip"));
+        QTRY_VERIFY(table->rowCount() == 1 && table->model()->index(0, 0).isValid() &&
+                    table->model()->index(0, 0).data().toString().normalized(
+                        QString::NormalizationForm_C) == QStringLiteral("вложенный архив.zip"));
         table->selectRow(0);
         inside->trigger();
-        QTRY_VERIFY(table->rowCount() == 1 && table->item(0, 0) &&
-                    table->item(0, 0)->text().normalized(QString::NormalizationForm_C) ==
-                        QStringLiteral("δ с пробелом.txt"));
+        QTRY_VERIFY(table->rowCount() == 1 && table->model()->index(0, 0).isValid() &&
+                    table->model()->index(0, 0).data().toString().normalized(
+                        QString::NormalizationForm_C) == QStringLiteral("δ с пробелом.txt"));
         const QString output = dir.filePath("extracted");
         QVERIFY(QDir().mkpath(output));
         QFile existing(QDir(output).filePath(QFileInfo(source).fileName()));
@@ -390,8 +395,9 @@ class NestedArchiveTests : public QObject {
         QCOMPARE(existing.readAll(), QByteArray("nested data"));
         existing.close();
         back->trigger();
-        QCOMPARE(table->item(0, 0)->text().normalized(QString::NormalizationForm_C),
-                 QStringLiteral("вложенный архив.zip"));
+        QCOMPARE(
+            table->model()->index(0, 0).data().toString().normalized(QString::NormalizationForm_C),
+            QStringLiteral("вложенный архив.zip"));
     }
 
     void opensNestedArchiveAndReturnsToParent() {
@@ -408,7 +414,7 @@ class NestedArchiveTests : public QObject {
         });
         window.show();
         window.openArchive(dir.filePath("outer.7z"));
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *address = window.findChild<QLineEdit *>("archivePath");
         auto *inside = window.findChild<QAction *>("openInsideAction");
         auto *outside = window.findChild<QAction *>("openOutsideAction");
@@ -418,16 +424,17 @@ class NestedArchiveTests : public QObject {
         QVERIFY(table && address && inside && outside && add && remove && back);
         QTRY_COMPARE(table->rowCount(), 1);
         table->selectRow(0);
-        QVERIFY(table->item(0, 0)->data(Qt::UserRole + 1).toBool());
+        QVERIFY(table->model()->index(0, 0).data(Qt::UserRole + 1).toBool());
         inside->trigger();
-        QTRY_COMPARE(table->item(0, 0)->text(), QStringLiteral("вложенный архив.zip"));
+        QTRY_COMPARE(table->model()->index(0, 0).data().toString(),
+                     QStringLiteral("вложенный архив.zip"));
         table->selectRow(0);
         QTRY_VERIFY(inside->isEnabled());
         QVERIFY(outside->isEnabled());
         inside->trigger();
         QTRY_COMPARE(backend.listed.size(), 2);
-        QTRY_VERIFY(table->rowCount() == 1 && table->item(0, 0) &&
-                    table->item(0, 0)->text() == "inside.txt");
+        QTRY_VERIFY(table->rowCount() == 1 && table->model()->index(0, 0).isValid() &&
+                    table->model()->index(0, 0).data().toString() == "inside.txt");
         QCOMPARE(backend.extracted.size(), 1);
         QCOMPARE(QDir::fromNativeSeparators(backend.extracted.first()),
                  QStringLiteral("folder/вложенный архив.zip"));
@@ -437,7 +444,8 @@ class NestedArchiveTests : public QObject {
         QVERIFY(add->isEnabled());
         QVERIFY(remove->isEnabled());
         back->trigger();
-        QCOMPARE(table->item(0, 0)->text(), QStringLiteral("вложенный архив.zip"));
+        QCOMPARE(table->model()->index(0, 0).data().toString(),
+                 QStringLiteral("вложенный архив.zip"));
         QVERIFY(!QFileInfo::exists(backend.listed.last()));
         table->selectRow(0);
         QVERIFY(outside->isEnabled());
@@ -455,18 +463,20 @@ class NestedArchiveTests : public QObject {
         outer.close();
         MainWindow window(&backend);
         window.openArchive(dir.filePath("outer.7z"));
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *inside = window.findChild<QAction *>("openInsideAction");
         QVERIFY(table && inside);
         QTRY_COMPARE(table->rowCount(), 1);
-        emit table->cellDoubleClicked(0, 0);
-        QTRY_COMPARE(table->item(0, 0)->text(), QStringLiteral("вложенный архив.zip"));
+        emit table->doubleClicked(table->model()->index(0, 0));
+        QTRY_COMPARE(table->model()->index(0, 0).data().toString(),
+                     QStringLiteral("вложенный архив.zip"));
         table->selectRow(0);
         inside->trigger();
         QTRY_VERIFY(!backend.temporary.isEmpty());
         QTRY_VERIFY(!QFileInfo::exists(backend.temporary));
         QCOMPARE(backend.listed.size(), 1);
-        QCOMPARE(table->item(0, 0)->text(), QStringLiteral("вложенный архив.zip"));
+        QCOMPARE(table->model()->index(0, 0).data().toString(),
+                 QStringLiteral("вложенный архив.zip"));
     }
 
     void failedNestedListingRestoresParent() {
@@ -479,13 +489,14 @@ class NestedArchiveTests : public QObject {
         outer.close();
         MainWindow window(&backend);
         window.openArchive(dir.filePath("outer.7z"));
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *inside = window.findChild<QAction *>("openInsideAction");
         auto *address = window.findChild<QLineEdit *>("archivePath");
         QVERIFY(table && inside && address);
         QTRY_COMPARE(table->rowCount(), 1);
-        emit table->cellDoubleClicked(0, 0);
-        QTRY_COMPARE(table->item(0, 0)->text(), QStringLiteral("вложенный архив.zip"));
+        emit table->doubleClicked(table->model()->index(0, 0));
+        QTRY_COMPARE(table->model()->index(0, 0).data().toString(),
+                     QStringLiteral("вложенный архив.zip"));
         table->selectRow(0);
         QTimer dismiss;
         connect(&dismiss, &QTimer::timeout, &window, [] {
@@ -502,7 +513,8 @@ class NestedArchiveTests : public QObject {
         inside->trigger();
         QTRY_COMPARE(backend.listed.size(), 2);
         QTRY_VERIFY(!QFileInfo::exists(backend.listed.last()));
-        QCOMPARE(table->item(0, 0)->text(), QStringLiteral("вложенный архив.zip"));
+        QCOMPARE(table->model()->index(0, 0).data().toString(),
+                 QStringLiteral("вложенный архив.zip"));
         QVERIFY(address->text().endsWith("outer.7z / folder"));
     }
 };

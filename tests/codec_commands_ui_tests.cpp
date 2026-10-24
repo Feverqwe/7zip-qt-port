@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
+#include "filetable.h"
 #include "fixtures/progress_dialog.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
@@ -164,12 +165,12 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
             action(window, "twoPanelsAction")->trigger();
         auto *left = window.findChild<QWidget *>("filePanel0");
         auto *leftAddress = left->findChild<QLineEdit *>("archivePath");
-        auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
+        auto *leftTable = left->findChild<FileTable *>("archiveTable");
         leftAddress->setText(fixture.path());
         emit leftAddress->returnPressed();
         QTRY_VERIFY(leftTable->isEnabled());
         auto *right = window.findChild<QWidget *>("filePanel1");
-        auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
+        auto *rightTable = right->findChild<FileTable *>("archiveTable");
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         rightTable->setFocus();
@@ -186,7 +187,8 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         QTRY_VERIFY(leftTable->hasFocus());
         int sourceRow = -1;
         for (int row = 0; row < leftTable->rowCount(); ++row)
-            if (leftTable->item(row, 0)->text().normalized(QString::NormalizationForm_C) == name)
+            if (leftTable->model()->index(row, 0).data().toString().normalized(
+                    QString::NormalizationForm_C) == name)
                 sourceRow = row;
         QVERIFY(sourceRow >= 0);
         leftTable->selectRow(sourceRow);
@@ -315,13 +317,13 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         const QString initialDirectory = address->text();
         QStringList initialRows;
         for (int row = 0; row < table(window)->rowCount(); ++row)
-            initialRows.append(table(window)->item(row, 0)->text());
+            initialRows.append(table(window)->model()->index(row, 0).data().toString());
         window.openArchive(archive);
         QTRY_VERIFY(!messages.Errors.isEmpty());
         QCOMPARE(address->text(), initialDirectory);
         QStringList rows;
         for (int row = 0; row < table(window)->rowCount(); ++row)
-            rows.append(table(window)->item(row, 0)->text());
+            rows.append(table(window)->model()->index(row, 0).data().toString());
         QCOMPARE(rows, initialRows);
         QVERIFY(table(window)->isEnabled());
         QVERIFY(action(window, "refreshAction")->isEnabled());
@@ -360,7 +362,7 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
             QVERIFY(!action(window, "toolbarAddAction")->isEnabled());
         } else {
             QCOMPARE(table(window)->rowCount(), 1);
-            QCOMPARE(table(window)->item(0, 0)->text(), QString("payload.bin"));
+            QCOMPARE(table(window)->model()->index(0, 0).data().toString(), QString("payload.bin"));
             QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         }
         QVERIFY2(messages.Errors.isEmpty(), qPrintable(messages.Errors.join('\n')));

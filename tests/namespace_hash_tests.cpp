@@ -97,7 +97,7 @@ class NamespaceHashTests final : public QObject, protected MainWindowTestSupport
         auto *view = table(window);
         int child = -1;
         for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 0)->data(Qt::UserRole + 6).toUInt() == index)
+            if (view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt() == index)
                 child = row;
         QVERIFY(child >= 0);
         view->setCurrentCell(child, 0);
@@ -154,7 +154,8 @@ class NamespaceHashTests final : public QObject, protected MainWindowTestSupport
         auto *view = table(window);
         int selected = -1;
         for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 0)->data(Qt::UserRole + 3).toString() == disk.device().mid(4))
+            if (view->model()->index(row, 0).data(Qt::UserRole + 3).toString() ==
+                disk.device().mid(4))
                 selected = row;
         QVERIFY(selected >= 0);
         view->setCurrentCell(selected, 0);

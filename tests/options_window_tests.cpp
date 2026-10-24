@@ -1,3 +1,4 @@
+#include "filetable.h"
 #include "window_state_support.h"
 #include <QCheckBox>
 #include <QDialogButtonBox>
@@ -26,7 +27,7 @@ class OptionsWindowTests : public QObject, protected MainWindowTestSupport {
         auto *leftPanel = window.findChild<QWidget *>("filePanel0");
         QVERIFY(leftPanel);
         navigate(leftPanel, left);
-        auto *leftTable = leftPanel->findChild<QTableWidget *>("archiveTable");
+        auto *leftTable = leftPanel->findChild<FileTable *>("archiveTable");
         QTRY_COMPARE(leftTable->rowCount(), 1);
         leftTable->selectRow(0);
         leftTable->setCurrentCell(0, 0);
@@ -34,7 +35,7 @@ class OptionsWindowTests : public QObject, protected MainWindowTestSupport {
         auto *rightPanel = window.findChild<QWidget *>("filePanel1");
         QVERIFY(rightPanel);
         navigate(rightPanel, right);
-        auto *rightTable = rightPanel->findChild<QTableWidget *>("archiveTable");
+        auto *rightTable = rightPanel->findChild<FileTable *>("archiveTable");
         QTRY_COMPARE(rightTable->rowCount(), 1);
         rightTable->selectRow(0);
         rightTable->setCurrentCell(0, 0);
@@ -58,12 +59,14 @@ class OptionsWindowTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(applied);
         for (auto *table : {leftTable, rightTable}) {
             QTRY_COMPARE(table->rowCount(), 3);
-            QCOMPARE(table->item(0, 0)->text(), QString(".."));
+            QCOMPARE(table->model()->index(0, 0).data().toString(), QString(".."));
             QVERIFY(table->showGrid());
             QCOMPARE(table->selectionModel()->selectedRows().size(), 1);
         }
-        QCOMPARE(leftTable->item(leftTable->currentRow(), 0)->text(), QString("left.txt"));
-        QCOMPARE(rightTable->item(rightTable->currentRow(), 0)->text(), QString("right.txt"));
+        QCOMPARE(leftTable->model()->index(leftTable->currentRow(), 0).data().toString(),
+                 QString("left.txt"));
+        QCOMPARE(rightTable->model()->index(rightTable->currentRow(), 0).data().toString(),
+                 QString("right.txt"));
     }
 };
 QTEST_MAIN(OptionsWindowTests)

@@ -4,6 +4,7 @@
 #include "copydialog.h"
 #include "deviceselectiondialog.h"
 #include "exfat_fixture.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
 #include "qtlanguageservices.h"
@@ -58,9 +59,10 @@ QTreeWidget *Items(DeviceSelectionDialog &dialog) {
 QPushButton *Open(DeviceSelectionDialog &dialog) {
     return dialog.findChild<QPushButton *>("deviceOpenButton");
 }
-int Row(QTableWidget &table, const QString &name) {
+int Row(FileTable &table, const QString &name) {
     for (int row = 0; row < table.rowCount(); ++row)
-        if (table.item(row, 0) && table.item(row, 0)->text() == name)
+        if (table.model()->index(row, 0).isValid() &&
+            table.model()->index(row, 0).data().toString() == name)
             return row;
     return -1;
 }
@@ -438,7 +440,7 @@ class DeviceUiTests final : public QObject {
             }
         } else
             QCOMPARE(stage, 2u);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         QVERIFY(table);
         const QString folder = exfat || copyCommand.isEmpty()
                                    ? QStringLiteral("папка 空")
@@ -467,8 +469,9 @@ class DeviceUiTests final : public QObject {
         }
         for (const QString &part : folders) {
             QTRY_VERIFY(Row(*table, part) >= 0);
-            QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
-                                              Q_ARG(int, Row(*table, part)), Q_ARG(int, 0)));
+            QVERIFY(QMetaObject::invokeMethod(
+                table, "doubleClicked", Qt::DirectConnection,
+                Q_ARG(QModelIndex, table->model()->index(Row(*table, part), 0))));
         }
         QString name = exfat                   ? QStringLiteral("данные с пробелом.sql.gz")
                        : copyCommand.isEmpty() ? QStringLiteral("данные с пробелом.txt")
@@ -476,8 +479,9 @@ class DeviceUiTests final : public QObject {
         const QString outerName = name;
         if (nestedArchive) {
             QTRY_VERIFY(Row(*table, name) >= 0);
-            QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
-                                              Q_ARG(int, Row(*table, name)), Q_ARG(int, 0)));
+            QVERIFY(QMetaObject::invokeMethod(
+                table, "doubleClicked", Qt::DirectConnection,
+                Q_ARG(QModelIndex, table->model()->index(Row(*table, name), 0))));
             name.chop(3);
 #ifdef Q_OS_WIN
             // The nameless gzip derives its name from the platform-corrected

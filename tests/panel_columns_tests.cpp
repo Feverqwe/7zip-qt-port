@@ -3,8 +3,10 @@
 #include "Windows/PropVariant.h"
 #include "filetable.h"
 #include "layout_inspection.h"
+#include "panel_model_support.h"
 #include "window_state_support.h"
 
+#include <QAbstractItemModelTester>
 #include <QHeaderView>
 
 struct CurrentDirectoryGuard {
@@ -124,6 +126,47 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
         QVERIFY(panel.CompareItemIndices(0, 1, kpidName) > 0);
     }
 
+    void modelPreservesSelectionAndPersistentIndexes() {
+        QTemporaryDir temp;
+        CMyComPtr<IFolderFolder> folder = new RawPropertyFolder;
+        CPanel panel(folder);
+        panel.AttachFolderManager(nullptr, temp.filePath("settings.ini"));
+        QCOMPARE(panel.LoadListItems(), S_OK);
+        FileTable view(1);
+        view.sourcePanel = &panel;
+        view.textFolder = folder;
+        view.propertyIds = {kpidName};
+        auto *model = view.panelModel();
+        QAbstractItemModelTester tester(model,
+                                        QAbstractItemModelTester::FailureReportingMode::QtTest);
+        for (quint32 i : {0u, 1u}) {
+            FilePanelModel::Row row;
+            row.sourceIndex = i;
+            row.name = ToQString(panel.GetItemName(i));
+            model->append(std::move(row));
+        }
+        view.setSelectionBehavior(QAbstractItemView::SelectRows);
+        panel.AttachSelectionView(&view);
+        view.selectRow(0);
+        view.setCurrentCell(0, 0, QItemSelectionModel::NoUpdate);
+        QPersistentModelIndex selected = model->index(0, 0);
+        view.sortItems(0, Qt::AscendingOrder);
+        QCOMPARE(selected.row(), 1);
+        QCOMPARE(selected.data(Qt::UserRole + 6).toUInt(), 0u);
+        QVERIFY(view.selectionModel()->isSelected(selected));
+        QCOMPARE(view.currentIndex(), selected);
+        model->setColumns({"Name", "Extra"});
+        QCOMPARE(selected.row(), 1);
+        QVERIFY(view.selectionModel()->isSelected(selected));
+        QVERIFY(model->setData(model->index(selected.row(), 1), true, QtPanelList::MarkedRole));
+        QVERIFY(selected.data(Qt::BackgroundRole).isValid());
+        model->removeRow(0);
+        QCOMPARE(selected.row(), 0);
+        QCOMPARE(selected.data(Qt::UserRole + 6).toUInt(), 0u);
+        model->removeRow(0);
+        QVERIFY(!selected.isValid());
+    }
+
     void tableRequestsSourceTextOnlyForDisplay() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
@@ -132,34 +175,34 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
         CPanel panel(folder);
         panel.AttachFolderManager(nullptr, temp.filePath("settings.ini"));
         QCOMPARE(panel.InitColumns(), S_OK);
-        FileTable list(2, 8);
+        FileTable list(8);
         list.sourcePanel = &panel;
         list.textFolder = folder;
         list.propertyIds.fill(kpidNoProperty, 8);
         list.propertyIds[7] = kpidCRC;
         for (int row = 0; row < 2; ++row) {
-            auto *item = new ArchiveTableItem("stale projection");
-            item->setData(Qt::UserRole + 6, row);
-            list.setItem(row, 7, item);
+            FilePanelModel::Row item;
+            item.sourceIndex = row;
+            list.panelModel()->append(std::move(item));
         }
         QCOMPARE(provider->rawRequests, 0u);
-        QCOMPARE(list.item(1, 7)->data(Qt::UserRole + 6).toUInt(), 1u);
+        QCOMPARE(list.model()->index(1, 7).data(Qt::UserRole + 6).toUInt(), 1u);
         QCOMPARE(provider->rawRequests, 0u);
-        QCOMPARE(list.item(1, 7)->text(), QString("DEADBEEF"));
+        QCOMPARE(list.model()->index(1, 7).data().toString(), QString("DEADBEEF"));
         QCOMPARE(provider->rawRequests, 1u);
-        QCOMPARE(list.item(1, 7)->text(), QString("DEADBEEF"));
+        QCOMPARE(list.model()->index(1, 7).data().toString(), QString("DEADBEEF"));
         QCOMPARE(provider->rawRequests, 1u);
-        QCOMPARE(list.item(0, 7)->text(), QString());
+        QCOMPARE(list.model()->index(0, 7).data().toString(), QString());
         QCOMPARE(provider->rawRequests, 2u);
         {
             CPanel::CDisableNotify guard(panel);
-            list.item(1, 7)->setData(Qt::DisplayRole, QVariant());
-            QCOMPARE(list.item(1, 7)->text(), QString());
+            SetPanelData(list.model()->index(1, 7), QVariant(), Qt::DisplayRole);
+            QCOMPARE(list.model()->index(1, 7).data().toString(), QString());
             QCOMPARE(provider->rawRequests, 2u);
         }
-        QCOMPARE(list.item(1, 7)->text(), QString("DEADBEEF"));
+        QCOMPARE(list.model()->index(1, 7).data().toString(), QString("DEADBEEF"));
         QCOMPARE(provider->rawRequests, 3u);
-        list.setRowCount(0);
+        list.clearRows();
         QCOMPARE(provider->rawRequests, 3u);
     }
 
@@ -187,7 +230,8 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
             QVERIFY(createdTimeColumn >= 0);
             QVERIFY(files->isColumnHidden(accessTimeColumn));
             QVERIFY(!files->isColumnHidden(createdTimeColumn));
-            accessTimeLabel = files->horizontalHeaderItem(accessTimeColumn)->text();
+            accessTimeLabel =
+                files->model()->headerData(accessTimeColumn, Qt::Horizontal).toString();
             QTimer::singleShot(0, [&] {
                 auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
                 QVERIFY(menu);
@@ -201,9 +245,11 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
             QVERIFY(!files->isColumnHidden(accessTimeColumn));
             bool foundFile = false;
             for (int row = 0; row < files->rowCount(); ++row) {
-                if (files->item(row, 0)->text() == QStringLiteral("имя с пробелом.txt")) {
+                if (files->model()->index(row, 0).data().toString() ==
+                    QStringLiteral("имя с пробелом.txt")) {
                     foundFile = true;
-                    QVERIFY(!files->item(row, accessTimeColumn)->text().isEmpty());
+                    QVERIFY(
+                        !files->model()->index(row, accessTimeColumn).data().toString().isEmpty());
                 }
             }
             QVERIFY(foundFile);
@@ -261,7 +307,8 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
             auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
             QVERIFY(menu);
             for (QAction *option : menu->actions())
-                if (option->text() == files->horizontalHeaderItem(diskSize)->text())
+                if (option->text() ==
+                    files->model()->headerData(diskSize, Qt::Horizontal).toString())
                     option->trigger();
             menu->close();
         });
@@ -313,26 +360,29 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
                 QVERIFY(!action->text().isEmpty());
             }
             files->sortItems(4, Qt::AscendingOrder);
-            QCOMPARE(files->item(0, 0)->text(), QStringLiteral("earlier.txt"));
+            QCOMPARE(files->model()->index(0, 0).data().toString(), QStringLiteral("earlier.txt"));
             auto *day = window.findChild<QAction *>("timestampLevel0Action");
             day->trigger();
-            QCOMPARE(files->item(0, 4)->text().size(), 10);
-            QCOMPARE(files->item(1, 4)->text(), files->item(0, 4)->text());
-            QCOMPARE(files->item(0, 0)->text(), QStringLiteral("earlier.txt"));
+            QCOMPARE(files->model()->index(0, 4).data().toString().size(), 10);
+            QCOMPARE(files->model()->index(1, 4).data().toString(),
+                     files->model()->index(0, 4).data().toString());
+            QCOMPARE(files->model()->index(0, 0).data().toString(), QStringLiteral("earlier.txt"));
             auto *utc = window.findChild<QAction *>("timestampUtcAction");
             utc->trigger();
-            QVERIFY(files->item(0, 4)->text().endsWith('Z'));
+            QVERIFY(files->model()->index(0, 4).data().toString().endsWith('Z'));
             auto *seconds = window.findChild<QAction *>("timestampLevel2Action");
             seconds->trigger();
-            QVERIFY(files->item(0, 4)->text().contains(QStringLiteral("04:05:06")));
-            QCOMPARE(files->item(0, 0)->text(), QStringLiteral("earlier.txt"));
+            QVERIFY(
+                files->model()->index(0, 4).data().toString().contains(QStringLiteral("04:05:06")));
+            QCOMPARE(files->model()->index(0, 0).data().toString(), QStringLiteral("earlier.txt"));
         }
         {
             MainWindow reopened;
             reopened.show();
             auto *files = static_cast<FileTable *>(table(reopened));
-            QVERIFY(files->item(0, 4)->text().endsWith('Z'));
-            QVERIFY(files->item(0, 4)->text().contains(QStringLiteral("04:05:06")));
+            QVERIFY(files->model()->index(0, 4).data().toString().endsWith('Z'));
+            QVERIFY(
+                files->model()->index(0, 4).data().toString().contains(QStringLiteral("04:05:06")));
             auto *viewMenu = reopened.findChild<QMenu *>("viewMenu");
             QVERIFY(QMetaObject::invokeMethod(viewMenu, "aboutToShow", Qt::DirectConnection));
             QVERIFY(reopened.findChild<QAction *>("timestampLevel2Action")->isChecked());
@@ -356,12 +406,13 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
             openListedArchive(archive, backend, temp.filePath("time.7z"), {entry});
             QTRY_COMPARE(table(archive)->rowCount(), 1);
             auto *files = static_cast<FileTable *>(table(archive));
-            QVERIFY(files->item(0, 4)->text().contains(QStringLiteral("04:05:06")));
-            QVERIFY(files->item(0, 4)->text().endsWith('Z'));
+            QVERIFY(
+                files->model()->index(0, 4).data().toString().contains(QStringLiteral("04:05:06")));
+            QVERIFY(files->model()->index(0, 4).data().toString().endsWith('Z'));
             QVERIFY(QMetaObject::invokeMethod(archive.findChild<QMenu *>("viewMenu"), "aboutToShow",
                                               Qt::DirectConnection));
             archive.findChild<QAction *>("timestampLevel0Action")->trigger();
-            QCOMPARE(files->item(0, 4)->text().size(), 11);
+            QCOMPARE(files->model()->index(0, 4).data().toString().size(), 11);
         }
     }
 };

@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "external_editor_fixture.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QEventLoop>
@@ -40,8 +41,9 @@ class ArchiveRenameWindowTests final : public QObject, protected MainWindowTestS
         QVERIFY(editor);
         editor->setText(renamed);
         QTest::keyClick(editor, Qt::Key_Return);
-        QTRY_COMPARE(view->item(0, 0)->data(Qt::UserRole + 3).toString(), renamed);
-        QCOMPARE(view->item(0, 0)->text(), QStringLiteral("renamed ... _δ.txt"));
+        QTRY_COMPARE(view->model()->index(0, 0).data(Qt::UserRole + 3).toString(), renamed);
+        QCOMPARE(view->model()->index(0, 0).data().toString(),
+                 QStringLiteral("renamed ... _δ.txt"));
         CMyComPtr<IFolderGetItemName> fast;
         CMyComPtr<IFolderFolder> folder = view->sourcePanel->GetFolder();
         QCOMPARE(folder.QueryInterface(IID_IFolderGetItemName, &fast), S_OK);
@@ -59,7 +61,7 @@ class ArchiveRenameWindowTests final : public QObject, protected MainWindowTestS
         editor->setText("discarded.txt");
         QTest::keyClick(editor, Qt::Key_Escape);
         QApplication::processEvents();
-        QCOMPARE(view->item(0, 0)->data(Qt::UserRole + 3).toString(), renamed);
+        QCOMPARE(view->model()->index(0, 0).data(Qt::UserRole + 3).toString(), renamed);
         QCOMPARE(ExternalEditorFixture::contents(zip, renamed), QByteArray("control"));
         QTimer closeError;
         QString message;
@@ -88,7 +90,7 @@ class ArchiveRenameWindowTests final : public QObject, protected MainWindowTestS
         QCOMPARE(errorObject, QString("panelArchiveError"));
         QCOMPARE(message, ToQString(HResultToMessage(E_INVALIDARG)));
         closeError.stop();
-        QCOMPARE(view->item(0, 0)->data(Qt::UserRole + 3).toString(), renamed);
+        QCOMPARE(view->model()->index(0, 0).data(Qt::UserRole + 3).toString(), renamed);
         QCOMPARE(ExternalEditorFixture::contents(zip, renamed), QByteArray("control"));
     }
 
@@ -142,8 +144,8 @@ class ArchiveRenameWindowTests final : public QObject, protected MainWindowTestS
                 }
         });
         connect(&publication, &QTimer::timeout, &window, [&] {
-            if (view->rowCount() == 1 && view->item(0, 0) &&
-                view->item(0, 0)->data(Qt::UserRole + 3).toString() == directory)
+            if (view->rowCount() == 1 && view->model()->index(0, 0).isValid() &&
+                view->model()->index(0, 0).data(Qt::UserRole + 3).toString() == directory)
                 completion.quit();
         });
         responder.start(2);
@@ -154,7 +156,7 @@ class ArchiveRenameWindowTests final : public QObject, protected MainWindowTestS
         completion.exec();
         QVERIFY2(message.isEmpty(), qPrintable(message));
         QCOMPARE(view->rowCount(), 1);
-        QCOMPARE(view->item(0, 0)->data(Qt::UserRole + 3).toString(), directory);
+        QCOMPARE(view->model()->index(0, 0).data(Qt::UserRole + 3).toString(), directory);
         QCOMPARE(view->sourcePanel->GetFolder(), provider.Interface());
         QCOMPARE(view->sourcePanel->GetCurrentFolderPrefix(), prefix);
         QCOMPARE(ExternalEditorFixture::contents(archive, renamed + (folder ? "/item.txt" : "")),
@@ -220,7 +222,7 @@ class ArchiveRenameWindowTests final : public QObject, protected MainWindowTestS
         QCOMPARE(ExternalEditorFixture::read(sentinel), QByteArray("sentinel"));
         QCOMPARE(ExternalEditorFixture::read(fixture.filePath(original)), QByteArray("control"));
         QCOMPARE(view->rowCount(), 1);
-        QCOMPARE(view->item(0, 0)->data(Qt::UserRole + 3).toString(), original);
+        QCOMPARE(view->model()->index(0, 0).data(Qt::UserRole + 3).toString(), original);
     }
 };
 

@@ -1,6 +1,8 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
+#include "panel_model_support.h"
 #include "qtlangcontrols.h"
 #include "window_state_support.h"
 
@@ -20,22 +22,22 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         window.show();
         openRootNamespace(window);
         auto *view = table(window);
-        QTableWidgetItem *computer = nullptr;
+        QPersistentModelIndex computer;
         for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 0)->data(Qt::UserRole + 6).toUInt() == 0u)
-                computer = view->item(row, 0);
-        QVERIFY(computer);
-        view->selectRow(computer->row());
+            if (view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt() == 0u)
+                computer = view->model()->index(row, 0);
+        QVERIFY(computer.isValid());
+        view->selectRow(computer.row());
         const int count = view->rowCount();
         for (const char *lang : {"ru", "-"}) {
             SaveRegLang(UString(lang), settingsPath);
             ReloadLang(settingsPath);
             QtNotifyLanguageChanged();
             QCOMPARE(view->rowCount(), count);
-            QCOMPARE(view->item(computer->row(), 0), computer);
-            QVERIFY(computer->isSelected());
-            QCOMPARE(computer->text(), QString::fromWCharArray(LangString(IDS_COMPUTER)));
-            QCOMPARE(computer->data(Qt::UserRole + 3).toString(), computer->text());
+            QCOMPARE(view->model()->index(computer.row(), 0), computer);
+            QVERIFY(PanelIndexSelected(computer));
+            QCOMPARE(computer.data().toString(), QString::fromWCharArray(LangString(IDS_COMPUTER)));
+            QCOMPARE(computer.data(Qt::UserRole + 3).toString(), computer.data().toString());
             QCOMPARE(backend.listCalls, 0);
             for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
                 window.resize(size);
@@ -62,9 +64,9 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
             if (view->propertyId(column) == kpidType)
                 typeColumn = column;
         QVERIFY(typeColumn >= 0);
-        auto *type = view->item(0, typeColumn);
-        auto *name = view->item(0, 0);
-        const QString originalName = name->text();
+        const QPersistentModelIndex type = view->model()->index(0, typeColumn);
+        const QPersistentModelIndex name = view->model()->index(0, 0);
+        const QString originalName = name.data().toString();
         view->selectRow(0);
         const int count = view->rowCount();
         for (const char *language : {"ru", "-"}) {
@@ -72,10 +74,11 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
             ReloadLang(settingsPath);
             QtNotifyLanguageChanged();
             QCOMPARE(view->rowCount(), count);
-            QCOMPARE(view->item(name->row(), 0), name);
-            QCOMPARE(name->text(), originalName);
-            QVERIFY(name->isSelected());
-            QCOMPARE(type->text(), QString::fromUtf8(language[0] == 'r' ? "Локальный" : "Fixed"));
+            QCOMPARE(view->model()->index(name.row(), 0), name);
+            QCOMPARE(name.data().toString(), originalName);
+            QVERIFY(PanelIndexSelected(name));
+            QCOMPARE(type.data().toString(),
+                     QString::fromUtf8(language[0] == 'r' ? "Локальный" : "Fixed"));
         }
     }
     void networkNamespaceOpensWithoutRemoteServices() {
@@ -86,7 +89,7 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         openRootNamespace(window);
         int networkRow = -1;
         for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 0)->data(Qt::UserRole + 6).toUInt() == 2u)
+            if (view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt() == 2u)
                 networkRow = row;
         QVERIFY(networkRow >= 0);
         view->selectRow(networkRow);
@@ -125,7 +128,7 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         openRootNamespace(window);
         int mountsRow = -1;
         for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 0)->data(Qt::UserRole + 6).toUInt() == 1u)
+            if (view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt() == 1u)
                 mountsRow = row;
         QVERIFY(mountsRow >= 0);
         view->setCurrentCell(mountsRow, 0);
@@ -173,10 +176,10 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
 #endif
         int computerRow = -1;
         for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 0)->data(Qt::UserRole + 6).toUInt() == 0u)
+            if (view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt() == 0u)
                 computerRow = row;
         QVERIFY(computerRow >= 0);
-        QVERIFY(!view->item(computerRow, 0)->data(Qt::UserRole + 3).toString().isEmpty());
+        QVERIFY(!view->model()->index(computerRow, 0).data(Qt::UserRole + 3).toString().isEmpty());
         QVERIFY(address->text().isEmpty());
         QCOMPARE(window.windowTitle(), QStringLiteral("7-Zip"));
         QVERIFY(!action(window, "parentFolderAction")->isEnabled());

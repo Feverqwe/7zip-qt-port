@@ -1,5 +1,7 @@
 #include "filetable.h"
 #include "panel_load_folder.h"
+#include "panel_model_support.h"
+#include <QTableWidget>
 #include <QtTest>
 
 class PanelRefreshNotificationsTests final : public QObject {
@@ -27,22 +29,22 @@ class PanelRefreshNotificationsTests final : public QObject {
         spec->secondName = L"second δ.txt";
         CPanel panel(folder);
         QCOMPARE(panel.LoadListItems(), S_OK);
-        FileTable view(2, 1);
+        FileTable view(1);
         view.sourcePanel = &panel;
         view.textFolder = folder;
         view.propertyIds = {kpidName};
         view.setSelectionBehavior(QAbstractItemView::SelectRows);
         for (int row = 0; row < 2; ++row) {
-            auto *item = new ArchiveTableItem("uncached display");
-            item->setData(Qt::UserRole + 6, 1 - row);
-            view.setItem(row, 0, item);
+            FilePanelModel::Row item;
+            item.sourceIndex = 1 - row;
+            view.panelModel()->append(std::move(item));
         }
         panel.AttachSelectionView(&view);
         panel.SetAlternativeSelection(alternative);
         const int target = fallback ? 1 : 0;
         view.setCurrentCell(1 - target, 0, QItemSelectionModel::NoUpdate);
         // Leave the target uncached, as on the first callback after publication.
-        view.item(target, 0)->setData(Qt::UserRole + 6, 1 - target);
+
         CSelectedState state;
         state.FocusedName = fallback ? UString(L"missing.txt") : spec->secondName;
         state.FocusedName_Defined = true;
@@ -52,11 +54,13 @@ class PanelRefreshNotificationsTests final : public QObject {
         int requests = 0;
         bool callbacksEnabled = false;
         QString displayed;
-        connect(&view, &QTableWidget::currentCellChanged, &view, [&](int row) {
-            ++requests;
-            callbacksEnabled = panel.ShouldProcessNotifications();
-            displayed = view.item(row, 0)->text();
-        });
+        connect(view.selectionModel(), &QItemSelectionModel::currentChanged, &view,
+                [&](const QModelIndex &index) {
+                    const int row = index.row();
+                    ++requests;
+                    callbacksEnabled = panel.ShouldProcessNotifications();
+                    displayed = view.model()->index(row, 0).data().toString();
+                });
         QCOMPARE(panel.RefreshListCtrl(state), S_OK);
         QCOMPARE(requests, 1);
         QVERIFY(callbacksEnabled);

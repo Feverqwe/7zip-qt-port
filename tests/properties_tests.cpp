@@ -1,7 +1,9 @@
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
+#include "panel_model_support.h"
 #include "property_projection_support.h"
 #include "qtlocationfolder.h"
 #include "window_state_support.h"
@@ -83,7 +85,7 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
         openListedArchive(window, backend, "folder.7z",
                           {ArchiveEntry{QStringLiteral("папка/внутри.txt"), 13, 5},
                            ArchiveEntry{QStringLiteral("папка/sub/ещё.txt"), 7, 3}});
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *action = window.findChild<QAction *>("selectedPropertiesAction");
         QCOMPARE(table->rowCount(), 1);
         table->selectRow(0);
@@ -196,19 +198,19 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
         openListedArchive(window, backend, "metadata.7z",
                           {ArchiveEntry{"unknown.txt", -1, -1, "2026-09-28 12:34:56.1234567"},
                            ArchiveEntry{"zero.txt", 0, 0}});
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *action = window.findChild<QAction *>("selectedPropertiesAction");
         QVERIFY(table && action);
         int unknownRow = -1;
         for (int row = 0; row < table->rowCount(); ++row)
-            if (table->item(row, 0)->text() == "unknown.txt")
+            if (table->model()->index(row, 0).data().toString() == "unknown.txt")
                 unknownRow = row;
         QVERIFY(unknownRow >= 0);
         table->selectRow(unknownRow);
         // Presentation cells are not authoritative metadata.
-        table->item(unknownRow, 2)->setText("999");
-        table->item(unknownRow, 3)->setText("888");
-        table->item(unknownRow, 4)->setText("changed presentation");
+        SetPanelData(table->model()->index(unknownRow, 2), "999", Qt::EditRole);
+        SetPanelData(table->model()->index(unknownRow, 3), "888", Qt::EditRole);
+        SetPanelData(table->model()->index(unknownRow, 4), "changed presentation", Qt::EditRole);
         bool inspected = false;
         QTimer::singleShot(0, [&] {
             auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");

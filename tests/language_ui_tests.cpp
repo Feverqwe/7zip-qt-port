@@ -1,9 +1,11 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "createarchivedialog.h"
+#include "filetable.h"
 #include "fixtures/options_presentation.h"
 #include "fixtures/translation_catalog.h"
 #include "layout_inspection.h"
+#include "panel_model_support.h"
 #include "qtcompressoptionsdialog.h"
 #include "qtfmoptionsdialog.h"
 #include "qtlangcontrols.h"
@@ -93,7 +95,7 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(directory.path());
         QTest::keyClick(address, Qt::Key_Return);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         QTRY_COMPARE(table->rowCount(), 1);
         auto *toolbar = window.findChild<QToolBar *>("archiveToolbar");
         QVERIFY(toolbar);
@@ -326,10 +328,10 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(directory.path());
         QTest::keyClick(address, Qt::Key_Return);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         QTRY_COMPARE(table->rowCount(), 1);
-        auto *item = table->item(0, 0);
-        const QString tooltip = item->toolTip();
+        const QPersistentModelIndex item = table->model()->index(0, 0);
+        const QString tooltip = item.data(Qt::ToolTipRole).toString();
         QCOMPARE(tooltip, QFileInfo(child).canonicalFilePath());
         table->selectRow(0);
         for (const char *lang : {"ru", "-"}) {
@@ -337,9 +339,9 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
             ReloadLang(settingsPath());
             QtNotifyLanguageChanged();
             QCOMPARE(table->rowCount(), 1);
-            QCOMPARE(table->item(0, 0), item);
-            QCOMPARE(item->toolTip(), tooltip);
-            QVERIFY(item->isSelected());
+            QCOMPARE(table->model()->index(0, 0), item);
+            QCOMPARE(item.data(Qt::ToolTipRole).toString(), tooltip);
+            QVERIFY(PanelIndexSelected(item));
             QCOMPARE(address->text(), QFileInfo(directory.path()).canonicalFilePath());
             QCOMPARE(address->placeholderText(), QString(lang) == "ru"
                                                      ? QStringLiteral("Путь к папке или архиву")
@@ -358,7 +360,7 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(directory.path());
         QTest::keyClick(address, Qt::Key_Return);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         QTRY_COMPARE(table->rowCount(), 1);
 #ifdef Q_OS_WIN
         // Windows filesystem Properties belongs to the OS. Qt language changes
@@ -424,14 +426,14 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(directory.path());
         QTest::keyClick(address, Qt::Key_Return);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         QTRY_COMPARE(table->rowCount(), 1);
         table->selectRow(0);
         table->setCurrentCell(0, 0);
         auto *rename = window.findChild<QAction *>("renameAction");
         const QKeySequence shortcut = rename->shortcut();
         const bool enabled = rename->isEnabled();
-        const QStringList fileNames = {table->item(0, 0)->text()};
+        const QStringList fileNames = {table->model()->index(0, 0).data().toString()};
         auto *fileMenu = window.findChild<QMenu *>("fileMenu");
         auto *parentButton = window.findChild<QAbstractButton *>("panelParentButton0");
         QVERIFY(parentButton && !parentButton->icon().isNull());
@@ -461,10 +463,10 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(rename->shortcut(), shortcut);
         QCOMPARE(rename->isEnabled(), enabled);
         QTRY_COMPARE(table->rowCount(), 1);
-        QCOMPARE(table->item(0, 0)->text(), fileNames.first());
+        QCOMPARE(table->model()->index(0, 0).data().toString(), fileNames.first());
         QCOMPARE(table->currentRow(), 0);
         QCOMPARE(table->selectionModel()->selectedRows().size(), 1);
-        QCOMPARE(table->horizontalHeaderItem(0)->text(), QStringLiteral("Имя"));
+        QCOMPARE(table->model()->headerData(0, Qt::Horizontal).toString(), QStringLiteral("Имя"));
         QCOMPARE(address->placeholderText(), QStringLiteral("Путь к папке или архиву"));
         QCOMPARE(address->text(), QFileInfo(directory.path()).canonicalFilePath());
         QCOMPARE(table->accessibleName(), QStringLiteral("Список файлов"));
@@ -508,7 +510,7 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(window.findChild<QAction *>("editFileAction")->text(), QString("&Edit"));
         QVERIFY(!parentButton->icon().isNull());
         QCOMPARE(button->text(), QString("Copy"));
-        QCOMPARE(table->horizontalHeaderItem(0)->text(), QString("Name"));
+        QCOMPARE(table->model()->headerData(0, Qt::Horizontal).toString(), QString("Name"));
         QCOMPARE(address->placeholderText(), QString("Path to folder or archive"));
         QCOMPARE(table->accessibleName(), QString("File list"));
         QCOMPARE(window.findChild<QListView *>("iconList")->accessibleName(), QString("File list"));

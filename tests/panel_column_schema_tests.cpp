@@ -1,5 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
+#include "panel_model_support.h"
 #include "qtlangcontrols.h"
 #include "schema_folder.h"
 #include "window_state_support.h"
@@ -30,7 +32,7 @@ class PanelColumnSchemaTests final : public QObject, protected MainWindowTestSup
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         auto *spec = new SchemaFolder;
         const PROPID customId = 65536;
         const QString customName = QStringLiteral("Method 空");
@@ -46,14 +48,14 @@ class PanelColumnSchemaTests final : public QObject, protected MainWindowTestSup
         const int name = propertyColumn(*view, kpidName, false);
         QVERIFY(custom >= 0);
         QVERIFY(name >= 0);
-        QCOMPARE(view->horizontalHeaderItem(custom)->text(), customName);
+        QCOMPARE(view->model()->headerData(custom, Qt::Horizontal).toString(), customName);
         const unsigned queries = spec->propertyInfoQueries;
         for (const char *language : {"ru", "-"}) {
             SaveRegLang(UString(language), settings);
             ReloadLang(settings);
             QtNotifyLanguageChanged();
-            QCOMPARE(view->horizontalHeaderItem(custom)->text(), customName);
-            QCOMPARE(view->horizontalHeaderItem(name)->text(),
+            QCOMPARE(view->model()->headerData(custom, Qt::Horizontal).toString(), customName);
+            QCOMPARE(view->model()->headerData(name, Qt::Horizontal).toString(),
                      QString(language) == "ru" ? QStringLiteral("Имя") : QString("Name"));
             QCOMPARE(panel.GetFolder(), (IFolderFolder *)provider);
             QCOMPARE(spec->propertyInfoQueries, queries);
@@ -90,7 +92,7 @@ class PanelColumnSchemaTests final : public QObject, protected MainWindowTestSup
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         ui->findChild<QLineEdit *>("archivePath")->setFocus();
         action(window, "openRootAction")->trigger();
         auto *spec = new SchemaFolder;
@@ -103,7 +105,7 @@ class PanelColumnSchemaTests final : public QObject, protected MainWindowTestSup
         panel.OnReload();
         QCOMPARE(view->rowCount(), 2);
         auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *peer = static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        auto *peer = static_cast<FileTable *>(peerUi->findChild<FileTable *>("archiveTable"));
         CMyComPtr<IFolderFolder> peerProvider = peer->sourcePanel->GetFolder();
         peer->sourcePanel->Set_AutoRefresh_Mode(false);
         const int peerRows = peer->rowCount();
@@ -122,11 +124,14 @@ class PanelColumnSchemaTests final : public QObject, protected MainWindowTestSup
                 rawSource = int(index);
         QVERIFY(rawSource >= 0);
         for (int row = 0; row < view->rowCount(); ++row) {
-            const UInt32 source = view->item(row, 0)->data(Qt::UserRole + 6).toUInt();
-            QCOMPARE(view->item(row, raw)->text(),
+            const UInt32 source = view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt();
+            QCOMPARE(view->model()->index(row, raw).data().toString(),
                      panel.GetItemText(source, panel.GetColumns()[rawSource]));
-            QVERIFY(view->item(row, raw)->text() != view->item(row, generic)->text());
-            QCOMPARE(view->item(row, raw)->textAlignment(), GetColumnAlign(spec->rawId, VT_EMPTY));
+            QVERIFY(view->model()->index(row, raw).data().toString() !=
+                    view->model()->index(row, generic).data().toString());
+            QCOMPARE(
+                view->model()->index(row, raw).data(Qt::TextAlignmentRole).value<Qt::Alignment>(),
+                GetColumnAlign(spec->rawId, VT_EMPTY));
         }
         panel.SelectAll(true);
         const CPropColumns catalog = panel.GetColumns();
@@ -157,19 +162,21 @@ class PanelColumnSchemaTests final : public QObject, protected MainWindowTestSup
         const unsigned queries = spec->rawQueries;
         {
             CPanel::CDisableNotify guard(panel);
-            view->item(0, raw)->setData(Qt::DisplayRole, QVariant());
-            view->item(0, raw)->text();
+            SetPanelData(view->model()->index(0, raw), QVariant(), Qt::DisplayRole);
+            view->model()->index(0, raw).data().toString();
             QCOMPARE(spec->rawQueries, queries);
         }
-        QCOMPARE(view->item(0, raw)->text(), reserved ? QString("deadbeef") : QString("DEADBEEF"));
+        QCOMPARE(view->model()->index(0, raw).data().toString(),
+                 reserved ? QString("deadbeef") : QString("DEADBEEF"));
         for (HRESULT result : {E_FAIL, E_ABORT}) {
             spec->rawResult = result;
-            view->item(0, raw)->setData(Qt::DisplayRole, QVariant());
-            QVERIFY(view->item(0, raw)->text().isEmpty());
+            SetPanelData(view->model()->index(0, raw), QVariant(), Qt::DisplayRole);
+            QVERIFY(view->model()->index(0, raw).data().toString().isEmpty());
         }
         spec->rawResult = S_OK;
-        view->item(0, raw)->setData(Qt::DisplayRole, QVariant());
-        QCOMPARE(view->item(0, raw)->text(), reserved ? QString("deadbeef") : QString("DEADBEEF"));
+        SetPanelData(view->model()->index(0, raw), QVariant(), Qt::DisplayRole);
+        QCOMPARE(view->model()->index(0, raw).data().toString(),
+                 reserved ? QString("deadbeef") : QString("DEADBEEF"));
         auto toggleRaw = [&] {
             QTimer::singleShot(0, [&] {
                 auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
@@ -196,11 +203,15 @@ class PanelColumnSchemaTests final : public QObject, protected MainWindowTestSup
         QCOMPARE(view->horizontalHeader()->sectionSize(appended), int(catalog[rawSource].Width));
         QCOMPARE(view->horizontalHeader()->logicalIndex(view->columnCount() - 1), appended);
         for (int row = 0; row < view->rowCount(); ++row) {
-            QVERIFY(view->item(row, appended));
-            QCOMPARE(view->item(row, appended)->data(Qt::UserRole + 6),
-                     view->item(row, 0)->data(Qt::UserRole + 6));
-            QCOMPARE(view->item(row, appended)->text(), view->item(row, raw)->text());
-            QCOMPARE(view->item(row, appended)->textAlignment(),
+            QVERIFY(view->model()->index(row, appended).isValid());
+            QCOMPARE(view->model()->index(row, appended).data(Qt::UserRole + 6),
+                     view->model()->index(row, 0).data(Qt::UserRole + 6));
+            QCOMPARE(view->model()->index(row, appended).data().toString(),
+                     view->model()->index(row, raw).data().toString());
+            QCOMPARE(view->model()
+                         ->index(row, appended)
+                         .data(Qt::TextAlignmentRole)
+                         .value<Qt::Alignment>(),
                      GetColumnAlign(spec->rawId, VT_EMPTY));
         }
         view->horizontalHeader()->resizeSection(appended, 211);

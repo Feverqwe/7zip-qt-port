@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "external_editor_fixture.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QTreeWidget>
@@ -8,7 +9,7 @@ class PersistedLocationTests final : public QObject, protected MainWindowTestSup
     Q_OBJECT
     static FileTable *leftTable(MainWindow &window) {
         return static_cast<FileTable *>(
-            window.findChild<QWidget *>("filePanel0")->findChild<QTableWidget *>("archiveTable"));
+            window.findChild<QWidget *>("filePanel0")->findChild<FileTable *>("archiveTable"));
     }
     static QString prefix(MainWindow &window) {
         return ToQString(leftTable(window)->sourcePanel->GetCurrentFolderPrefix());
@@ -182,7 +183,8 @@ class PersistedLocationTests final : public QObject, protected MainWindowTestSup
             QTRY_COMPARE(table(window)->rowCount(), 1);
             if (nested) {
                 openRow(window, 0);
-                QTRY_COMPARE(table(window)->item(0, 0)->text(), QStringLiteral("папка space"));
+                QTRY_COMPARE(table(window)->model()->index(0, 0).data().toString(),
+                             QStringLiteral("папка space"));
             }
             openRow(window, rowWithPath(window, QStringLiteral("папка space")));
             source = prefix(window);
@@ -261,7 +263,7 @@ class PersistedLocationTests final : public QObject, protected MainWindowTestSup
         action(window, "openBookmark0Action")->trigger();
         const QString source = prefix(window);
         QCOMPARE(QDir::fromNativeSeparators(source), archive + '/' + folder + '/');
-        QCOMPARE(table(window)->item(table(window)->rowCount() - 1, 0)->text(),
+        QCOMPARE(table(window)->model()->index(table(window)->rowCount() - 1, 0).data().toString(),
                  QString("keep.txt"));
         action(window, "openRootAction")->trigger();
         QTimer::singleShot(0, &window, [&] {

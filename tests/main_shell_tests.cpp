@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/BrowseDialog2.h"
 #include "CPP/7zip/UI/FileManager/CopyDialog.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
 #include "qtstatuslabel.h"
@@ -421,7 +422,7 @@ class MainShellTests final : public QObject {
         window.show();
         auto *leftPanel = window.findChild<QWidget *>("filePanel0");
         QVERIFY(leftPanel);
-        auto *leftTable = leftPanel->findChild<QTableWidget *>("archiveTable");
+        auto *leftTable = leftPanel->findChild<FileTable *>("archiveTable");
         auto *leftAddress = leftPanel->findChild<QLineEdit *>("archivePath");
         leftAddress->setText(left);
         QTest::keyClick(leftAddress, Qt::Key_Return);
@@ -433,10 +434,10 @@ class MainShellTests final : public QObject {
         window.findChild<QAction *>("twoPanelsAction")->trigger();
         auto *rightPanel = window.findChild<QWidget *>("filePanel1");
         QVERIFY(rightPanel && rightPanel->isVisible());
-        auto *rightTable = rightPanel->findChild<QTableWidget *>("archiveTable");
+        auto *rightTable = rightPanel->findChild<FileTable *>("archiveTable");
         QTRY_VERIFY(rightTable->rowCount() > 0);
         for (int row = 0; row < rightTable->rowCount(); ++row) {
-            if (rightTable->item(row, 0)->text() == QStringLiteral("имя.txt")) {
+            if (rightTable->model()->index(row, 0).data().toString() == QStringLiteral("имя.txt")) {
                 rightTable->selectRow(row);
                 rightTable->setCurrentCell(row, 0);
                 break;

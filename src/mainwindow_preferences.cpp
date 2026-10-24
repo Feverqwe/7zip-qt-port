@@ -211,14 +211,16 @@ void MainWindow::applyFileListSettings(const CFmSettings &settings) {
 
 void MainWindow::updateFilesystemIcons() {
     for (int row = 0; row < table_->rowCount(); ++row) {
-        const QFileInfo file(table_->item(row, 1)->text());
-        table_->item(row, 0)->setIcon(
+        const QFileInfo file(table_->model()->index(row, 1).data().toString());
+        table_->model()->setData(
+            table_->model()->index(row, 0),
             fileListSettings_.ShowRealFileIcons
                 ? g_Ext_to_Icon_Map.GetIcon(file.isDir() ? FILE_ATTRIBUTE_DIRECTORY
                                                          : FILE_ATTRIBUTE_ARCHIVE,
                                             file.fileName())
                 : QApplication::style()->standardIcon(file.isDir() ? QStyle::SP_DirIcon
-                                                                   : QStyle::SP_FileIcon));
+                                                                   : QStyle::SP_FileIcon),
+            Qt::DecorationRole);
     }
 }
 

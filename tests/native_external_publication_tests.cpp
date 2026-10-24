@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "external_editor_fixture.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "native_property_failure_runtime.h"
 #include "qtarchivefileresource.h"
@@ -23,7 +24,7 @@ class NativeExternalPublicationTests final : public QObject, protected MainWindo
             for (unsigned pane : {0u, 1u}) {
                 auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
                 auto *address = owner->findChild<QLineEdit *>("archivePath");
-                auto *table = owner->findChild<QTableWidget *>("archiveTable");
+                auto *table = owner->findChild<FileTable *>("archiveTable");
                 QWidget *view = table->isVisible() ? static_cast<QWidget *>(table)
                                                    : owner->findChild<QListView *>("iconList");
                 QVERIFY(address->isEnabled() && view->isEnabled());
@@ -134,7 +135,7 @@ class NativeExternalPublicationTests final : public QObject, protected MainWindo
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *list = static_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"));
+        auto *list = static_cast<FileTable *>(owner->findChild<FileTable *>("archiveTable"));
         auto &panel = *list->sourcePanel;
         panel.Set_AutoRefresh_Mode(false);
         QTRY_COMPARE(list->rowCount(), count);
@@ -145,7 +146,7 @@ class NativeExternalPublicationTests final : public QObject, protected MainWindo
         auto *resource = dynamic_cast<QtArchiveFileResource *>(agent->GetEngineResource());
         QVERIFY(resource && resource->HasNativeUpdateService());
         auto *peer = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *peerList = static_cast<FileTable *>(peer->findChild<QTableWidget *>("archiveTable"));
+        auto *peerList = static_cast<FileTable *>(peer->findChild<FileTable *>("archiveTable"));
         peerList->sourcePanel->Set_AutoRefresh_Mode(false);
         CMyComPtr<IFolderFolder> peerProvider = peerList->sourcePanel->GetFolder();
         auto *view =

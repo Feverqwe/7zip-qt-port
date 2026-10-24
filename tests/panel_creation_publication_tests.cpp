@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "archivecodeccatalog.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "qtfilemanagerstartup.h"
 #include "source_extract_fixture.h"
@@ -186,7 +187,7 @@ class PanelCreationPublicationTests final : public QObject, protected MainWindow
         bool observed = false, started = false;
         int rowsBeforeSecond = -1;
         CMyComPtr<IFolderFolder> firstProvider;
-        QTableWidget *observedList = nullptr;
+        FileTable *observedList = nullptr;
         backend.BeforeProbe = [&] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 auto *window = dynamic_cast<MainWindow *>(widget);
@@ -195,8 +196,7 @@ class PanelCreationPublicationTests final : public QObject, protected MainWindow
                 auto *ui = window->findChild<QWidget *>(QString("filePanel%1").arg(pane));
                 if (!ui)
                     continue;
-                auto *list =
-                    static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+                auto *list = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
                 if (!list)
                     continue;
                 observed = true;
@@ -229,7 +229,7 @@ class PanelCreationPublicationTests final : public QObject, protected MainWindow
         QVERIFY(QTest::qWaitForWindowActive(&window));
         if (late) {
             auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-            auto *list = ui->findChild<QTableWidget *>("archiveTable");
+            auto *list = ui->findChild<FileTable *>("archiveTable");
             QTRY_COMPARE(list->rowCount(), count);
             QTRY_VERIFY(list->isEnabled() && list->updatesEnabled());
             QVERIFY(!observed);
@@ -244,9 +244,8 @@ class PanelCreationPublicationTests final : public QObject, protected MainWindow
         QCOMPARE(backend.listCalls, kind == "filesystem" ? 1 : 2);
         auto *firstUi = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         auto *secondUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *first = static_cast<FileTable *>(firstUi->findChild<QTableWidget *>("archiveTable"));
-        auto *second =
-            static_cast<FileTable *>(secondUi->findChild<QTableWidget *>("archiveTable"));
+        auto *first = static_cast<FileTable *>(firstUi->findChild<FileTable *>("archiveTable"));
+        auto *second = static_cast<FileTable *>(secondUi->findChild<FileTable *>("archiveTable"));
         for (FileTable *table : {first, second}) {
             QTRY_COMPARE(table->rowCount(), count);
             QTRY_VERIFY(table->isEnabled() && table->updatesEnabled());
@@ -306,7 +305,7 @@ class PanelCreationPublicationTests final : public QObject, protected MainWindow
             for (QWidget *ui : {firstUi, secondUi}) {
                 auto *visible =
                     icons ? static_cast<QAbstractItemView *>(ui->findChild<QListView *>("iconList"))
-                          : ui->findChild<QTableWidget *>("archiveTable");
+                          : ui->findChild<FileTable *>("archiveTable");
                 QVERIFY(visible->isEnabled());
                 QVERIFY(UiInspection::fullyVisible(*visible, window));
             }

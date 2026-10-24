@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "copydialog.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
@@ -10,9 +11,10 @@ using namespace SourceExtractFixture;
 
 class AgentStreamCopyUiTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
-    static int row(QTableWidget &view, const QString &name) {
+    static int row(FileTable &view, const QString &name) {
         for (int i = 0; i < view.rowCount(); ++i)
-            if (view.item(i, 0)->text().normalized(QString::NormalizationForm_C) == name)
+            if (view.model()->index(i, 0).data().toString().normalized(
+                    QString::NormalizationForm_C) == name)
                 return i;
         return -1;
     }
@@ -22,7 +24,7 @@ class AgentStreamCopyUiTests final : public QObject, protected MainWindowTestSup
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        return static_cast<FileTable *>(panel->findChild<QTableWidget *>("archiveTable"));
+        return static_cast<FileTable *>(panel->findChild<FileTable *>("archiveTable"));
     }
     static void inspectWindow(MainWindow &window, const QString &tag) {
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
@@ -30,7 +32,7 @@ class AgentStreamCopyUiTests final : public QObject, protected MainWindowTestSup
             QApplication::processEvents();
             for (unsigned pane : {0u, 1u}) {
                 auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-                QVERIFY(UiInspection::fullyVisible(*ui->findChild<QTableWidget *>("archiveTable"),
+                QVERIFY(UiInspection::fullyVisible(*ui->findChild<FileTable *>("archiveTable"),
                                                    window));
                 QVERIFY(
                     UiInspection::fullyVisible(*ui->findChild<QLineEdit *>("archivePath"), window));

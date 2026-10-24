@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "archivecodeccatalog.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
@@ -27,7 +28,7 @@ class PanelActivationTests final : public QObject, protected MainWindowTestSuppo
     static FileTable &list(MainWindow &window, unsigned pane) {
         return *static_cast<FileTable *>(
             window.findChild<QWidget *>(QString("filePanel%1").arg(pane))
-                ->findChild<QTableWidget *>("archiveTable"));
+                ->findChild<FileTable *>("archiveTable"));
     }
     static QLineEdit &address(MainWindow &window, unsigned pane) {
         return *window.findChild<QWidget *>(QString("filePanel%1").arg(pane))
@@ -79,7 +80,8 @@ class PanelActivationTests final : public QObject, protected MainWindowTestSuppo
         QTRY_VERIFY(view.isVisible() && view.isEnabled());
         const auto previous = view.sourcePanel->GetCurrentFolderPrefix();
         int row = 0;
-        while (row < view.rowCount() && view.item(row, 0)->text() != "broken.pkg")
+        while (row < view.rowCount() &&
+               view.model()->index(row, 0).data().toString() != "broken.pkg")
             ++row;
         QVERIFY(row < view.rowCount());
         view.setCurrentCell(row, 0);
@@ -200,7 +202,7 @@ class PanelActivationTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(control);
         int row = -1;
         for (int i = 0; i < view.rowCount(); ++i)
-            if (view.item(i, 0)->text() == target)
+            if (view.model()->index(i, 0).data().toString() == target)
                 row = i;
         QVERIFY(row >= 0);
         control->setFocus();
@@ -333,7 +335,8 @@ class PanelActivationTests final : public QObject, protected MainWindowTestSuppo
                           ->findChild<QListView *>("iconList");
         QVERIFY(control);
         int row = 0;
-        while (row < view.rowCount() && view.item(row, 0)->text() != QFileInfo(target).fileName())
+        while (row < view.rowCount() &&
+               view.model()->index(row, 0).data().toString() != QFileInfo(target).fileName())
             ++row;
         QVERIFY(row < view.rowCount());
         control->setFocus();

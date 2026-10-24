@@ -1,3 +1,4 @@
+#include "panel_model_support.h"
 #include "window_state_support.h"
 
 class CommandPolicyRuntimeTests : public QObject, protected MainWindowTestSupport {
@@ -105,8 +106,8 @@ class CommandPolicyRuntimeTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(view->rowCount(), 2);
         view->selectAll();
         for (int row = 0; row < 2; ++row) {
-            view->item(row, 0)->setText("forged name");
-            view->item(row, 1)->setText("/missing/forged path");
+            SetPanelData(view->model()->index(row, 0), "forged name", Qt::EditRole);
+            SetPanelData(view->model()->index(row, 1), "/missing/forged path", Qt::EditRole);
         }
         auto *outside = action(window, "openOutsideAction");
         outside->trigger();

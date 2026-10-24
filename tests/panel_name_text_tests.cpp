@@ -2,8 +2,10 @@
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "external_editor_fixture.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "panel_load_folder.h"
+#include "panel_model_support.h"
 #include "window_state_support.h"
 
 namespace {
@@ -218,23 +220,23 @@ class PanelNameTextTests final : public QObject, protected MainWindowTestSupport
         spec->firstName = ToUString(raw);
         view->sourcePanel->SetNewFolder(folder);
         QCOMPARE(view->sourcePanel->RefreshListCtrl_SaveFocused(), S_OK);
-        QTableWidgetItem *item = nullptr;
+        QPersistentModelIndex item;
         for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 0)->data(Qt::UserRole + 6).toUInt() == 0)
-                item = view->item(row, 0);
-        QVERIFY(item);
-        QCOMPARE(item->text(), shown);
-        QCOMPARE(item->data(Qt::EditRole).toString(), raw.normalized(QString::NormalizationForm_C));
-        QCOMPARE(item->data(Qt::UserRole + 3).toString(), raw);
-        QCOMPARE(item->data(Qt::UserRole + 6).toUInt(), 0u);
+            if (view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt() == 0)
+                item = view->model()->index(row, 0);
+        QVERIFY(item.isValid());
+        QCOMPARE(item.data().toString(), shown);
+        QCOMPARE(item.data(Qt::EditRole).toString(), raw.normalized(QString::NormalizationForm_C));
+        QCOMPARE(item.data(Qt::UserRole + 3).toString(), raw);
+        QCOMPARE(item.data(Qt::UserRole + 6).toUInt(), 0u);
         {
             CPanel::CDisableNotify guard(*view->sourcePanel);
-            item->setData(Qt::UserRole + 6, 0u);
-            QCOMPARE(item->text(), QString());
-            QCOMPARE(item->data(Qt::EditRole).toString(),
+            SetPanelData(item, QVariant(), Qt::DisplayRole);
+            QCOMPARE(item.data().toString(), QString());
+            QCOMPARE(item.data(Qt::EditRole).toString(),
                      raw.normalized(QString::NormalizationForm_C));
         }
-        QCOMPARE(item->text(), shown);
+        QCOMPARE(item.data().toString(), shown);
         window.show();
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);

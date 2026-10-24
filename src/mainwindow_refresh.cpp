@@ -62,15 +62,14 @@ HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState
         autoRefreshSnapshot_.clear();
         autoRefreshSnapshot_.insert(directory_, filesystemSignature(directory_));
         table_->clearSelection();
-        table_->setRowCount(0);
+        table_->clearRows();
         statusBar()->showMessage(
             QCoreApplication::translate("mainwindow_refresh", "Folder not found: ") + directory_);
         refreshActions();
         return loaded;
     }
     const int firstRow = table_->rowAt(0);
-    autoRefreshTopPath_ =
-        firstRow >= 0 && table_->item(firstRow, 1) ? table_->item(firstRow, 1)->text() : QString();
+    autoRefreshTopPath_ = table_->model()->index(firstRow, 1).data().toString();
     autoRefreshScrollValue_ = table_->verticalScrollBar()->value();
     return refreshFilesystem(selection, true);
 }
@@ -201,13 +200,13 @@ void MainWindow::restoreAutoRefreshViewport() {
         return;
     int row = -1;
     for (int i = 0; i < table_->rowCount(); ++i) {
-        if (table_->item(i, 1) && table_->item(i, 1)->text() == autoRefreshTopPath_) {
+        if (table_->model()->index(i, 1).data().toString() == autoRefreshTopPath_) {
             row = i;
             break;
         }
     }
     if (row >= 0)
-        table_->scrollToItem(table_->item(row, 0), QAbstractItemView::PositionAtTop);
+        table_->scrollTo(table_->model()->index(row, 0), QAbstractItemView::PositionAtTop);
     else
         table_->verticalScrollBar()->setValue(autoRefreshScrollValue_);
     autoRefreshTopPath_.clear();

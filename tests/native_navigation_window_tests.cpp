@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
 #include "native_archive_fixture.h"
@@ -22,7 +23,7 @@ class NativeNavigationWindowTests : public QObject, protected MainWindowTestSupp
         auto *panel = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         QVERIFY(panel);
         auto *address = panel->findChild<QLineEdit *>("archivePath");
-        auto *list = panel->findChild<QTableWidget *>("archiveTable");
+        auto *list = panel->findChild<FileTable *>("archiveTable");
         QVERIFY(address && list);
         address->setFocus();
         QTRY_VERIFY(address->hasFocus());
@@ -89,7 +90,7 @@ class NativeNavigationWindowTests : public QObject, protected MainWindowTestSupp
         }
         auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         auto *peer = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *table = owner->findChild<QTableWidget *>("archiveTable");
+        auto *table = owner->findChild<FileTable *>("archiveTable");
         auto *address = owner->findChild<QLineEdit *>("archivePath");
         auto *peerAddress = peer->findChild<QLineEdit *>("archivePath");
         const QString draft = QStringLiteral("peer черновик 密碼");
@@ -110,10 +111,10 @@ class NativeNavigationWindowTests : public QObject, protected MainWindowTestSupp
         QTRY_COMPARE(address->text(), QFileInfo(fixture.path()).canonicalFilePath());
         QTRY_VERIFY(table->isEnabled());
         QTRY_VERIFY(table->currentRow() >= 0);
-        QTRY_COMPARE(table->item(table->currentRow(), 0)->text(), childName);
+        QTRY_COMPARE(table->model()->index(table->currentRow(), 0).data().toString(), childName);
         QTRY_COMPARE(window.focusWidget(), expected);
         QCOMPARE(peerAddress->text(), draft);
-        QCOMPARE(peer->findChild<QTableWidget *>("archiveTable")->rowCount(), 1);
+        QCOMPARE(peer->findChild<FileTable *>("archiveTable")->rowCount(), 1);
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);
             QApplication::processEvents();
@@ -163,7 +164,7 @@ class NativeNavigationWindowTests : public QObject, protected MainWindowTestSupp
         }
         auto *owner = window.findChild<QWidget *>("filePanel0");
         auto *peer = window.findChild<QWidget *>("filePanel1");
-        auto *list = owner->findChild<QTableWidget *>("archiveTable");
+        auto *list = owner->findChild<FileTable *>("archiveTable");
         auto *address = owner->findChild<QLineEdit *>("archivePath");
         auto *peerAddress = peer->findChild<QLineEdit *>("archivePath");
         list->setFocus();
@@ -189,7 +190,7 @@ class NativeNavigationWindowTests : public QObject, protected MainWindowTestSupp
         if (interaction == 1)
             QCOMPARE(address->text(), draft);
         QCOMPARE(peerAddress->text(), QFileInfo(child).canonicalFilePath());
-        QCOMPARE(peer->findChild<QTableWidget *>("archiveTable")->rowCount(), 1);
+        QCOMPARE(peer->findChild<FileTable *>("archiveTable")->rowCount(), 1);
         QVERIFY(payload.open(QIODevice::ReadOnly));
         QCOMPARE(payload.readAll(), QByteArray("protected"));
         QCOMPARE(backend.extractCalls, 0);
@@ -211,7 +212,7 @@ class NativeNavigationWindowTests : public QObject, protected MainWindowTestSupp
         MainWindow window(&backend);
         window.show();
         window.openArchive(archive);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *address = window.findChild<QLineEdit *>("archivePath");
         auto *refresh = window.findChild<QAction *>("refreshAction");
         auto *parent = window.findChild<QAction *>("parentFolderAction");
@@ -237,7 +238,7 @@ class NativeNavigationWindowTests : public QObject, protected MainWindowTestSupp
         refresh->trigger();
         QCOMPARE(table->rowCount(), 1);
         // OnReload loads the bound proxy; physical changes require reopening.
-        QCOMPARE(table->item(0, 2)->text(), QStringLiteral("6"));
+        QCOMPARE(table->model()->index(0, 2).data().toString(), QStringLiteral("6"));
         QCOMPARE(table->selectionModel()->selectedRows().size(), 1);
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
@@ -246,11 +247,12 @@ class NativeNavigationWindowTests : public QObject, protected MainWindowTestSupp
         QTRY_VERIFY(table->hasFocus());
         parent->trigger();
         QCOMPARE(address->text(), QFileInfo(dir.path()).canonicalFilePath());
-        QCOMPARE(table->item(table->currentRow(), 0)->text(), QStringLiteral("address.zip"));
+        QCOMPARE(table->model()->index(table->currentRow(), 0).data().toString(),
+                 QStringLiteral("address.zip"));
         QTRY_VERIFY(table->hasFocus());
         window.openArchive(archive);
         QCOMPARE(table->rowCount(), 1);
-        QCOMPARE(table->item(0, 2)->text(), QStringLiteral("35"));
+        QCOMPARE(table->model()->index(0, 2).data().toString(), QStringLiteral("35"));
     }
 };
 QTEST_MAIN(NativeNavigationWindowTests)

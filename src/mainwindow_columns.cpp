@@ -12,7 +12,7 @@ void MainWindow::configureColumns(bool initialized) {
     const QSignalBlocker blocked(table_->horizontalHeader());
     auto *fileTable = static_cast<FileTable *>(table_);
     const CPropColumns &columns = panel.GetColumns();
-    table_->setRowCount(0);
+    table_->clearRows();
     fileTable->textFolder = panel.GetFolder();
     fileTable->propertyIds = {kpidName,  kpidPath,      kpidSize,      kpidPackSize,
                               kpidMTime, kpidExtension, kpidNoProperty};
@@ -45,19 +45,13 @@ void MainWindow::configureColumns(bool initialized) {
         fileTable->rawProperties[column] = prop.IsRawProp;
         labels[column] = ToQString(prop.Name);
     }
-    table_->setColumnCount(fileTable->propertyIds.size());
+    table_->panelModel()->setColumns(labels);
     FOR_VECTOR(i, columns) {
         const CPropColumn &prop = columns[i];
         const int column = fileTable->columnForCatalogProperty(i);
         table_->setColumnWidth(column, qMax(32, int(prop.Width)));
         table_->setColumnHidden(column, !prop.IsVisible);
     }
-    table_->setHorizontalHeaderLabels(labels);
-    for (int column = 0; column < table_->columnCount(); ++column)
-        table_->horizontalHeaderItem(column)->setData(
-            Qt::InitialSortOrderRole, CPanel::GetDefaultSortAscending(fileTable->propertyId(column))
-                                          ? Qt::AscendingOrder
-                                          : Qt::DescendingOrder);
     for (int column : {1, 5, 6})
         table_->setColumnHidden(column, true);
     for (int column : {0, 2, 3, 4}) {
@@ -166,19 +160,6 @@ void MainWindow::showColumnsMenu(const QPoint &pos) {
         focused->setFocus(Qt::PopupFocusReason);
 }
 
-QString MainWindow::sourceColumnText(UInt32 itemIndex, int column) {
-    const auto *fileTable = static_cast<const FileTable *>(table_);
-    const auto &panel = app_.GetFocusedPanel();
-    const CPropColumn *prop = fileTable->sourceColumn(column);
-    return prop ? panel.GetItemText(itemIndex, *prop) : QString();
-}
-
-Qt::Alignment MainWindow::sourceColumnAlignment(int column) const {
-    const auto *fileTable = static_cast<const FileTable *>(table_);
-    const CPropColumn *prop = fileTable->sourceColumn(column);
-    return prop ? GetColumnAlign(prop->ID, prop->Type) : Qt::AlignLeft | Qt::AlignVCenter;
-}
-
 void MainWindow::redrawTimestampColumns() {
     if (!table_ || !app_.GetFocusedPanel().GetFolder())
         return;
@@ -187,9 +168,7 @@ void MainWindow::redrawTimestampColumns() {
         const CPropColumn *prop = fileTable->sourceColumn(column);
         if (!prop || prop->Type != VT_FILETIME)
             continue;
-        for (int row = 0; row < table_->rowCount(); ++row)
-            if (auto *item = table_->item(row, column))
-                item->setData(Qt::DisplayRole, QVariant());
+        table_->panelModel()->invalidateText(column);
     }
     table_->viewport()->update();
 }

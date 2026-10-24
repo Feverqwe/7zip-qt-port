@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ListViewDialog.h"
 #include "archivecodeccatalog.h"
+#include "panel_model_support.h"
 #include "window_state_support.h"
 #ifdef Q_OS_WIN
 #include "native_properties_fixture.h"
@@ -13,7 +14,7 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
 
     static int diskRow(MainWindow &window, const QString &path) {
         for (int row = 0; row < table(window)->rowCount(); ++row)
-            if (table(window)->item(row, 1)->text() == path)
+            if (table(window)->model()->index(row, 1).data().toString() == path)
                 return row;
         return -1;
     }
@@ -63,8 +64,9 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         table(window)->clearSelection();
         table(window)->setCurrentCell(0, 0, QItemSelectionModel::NoUpdate);
         QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 0);
-        table(window)->item(0, 1)->setText(root.filePath("forged-focused.txt"));
-        table(window)->item(0, 0)->setData(Qt::UserRole + 1, true);
+        SetPanelData(table(window)->model()->index(0, 1), root.filePath("forged-focused.txt"),
+                     Qt::EditRole);
+        SetPanelData(table(window)->model()->index(0, 0), true, Qt::UserRole + 1);
         QStringList sources;
         int errors = 0;
         auto cancelCreate = [&] {
@@ -187,8 +189,9 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         action(window, "selectedPropertiesAction")->trigger();
 #endif
         for (int row : {firstRow, secondRow}) {
-            table(window)->item(row, 1)->setText(root.filePath("forged/display-only.txt"));
-            table(window)->item(row, 0)->setData(Qt::UserRole + 1, true);
+            SetPanelData(table(window)->model()->index(row, 1),
+                         root.filePath("forged/display-only.txt"), Qt::EditRole);
+            SetPanelData(table(window)->model()->index(row, 0), true, Qt::UserRole + 1);
         }
         QStringList expected = {root.filePath(name), second};
         expected.sort();

@@ -97,16 +97,16 @@ class PanelArchiveSortTests final : public QObject {
         if (flat)
             panel.ChangeFlatMode();
         QCOMPARE(panel.LoadListItems(), S_OK);
-        FileTable view(3, 1);
+        FileTable view(1);
         view.sourcePanel = &panel;
         view.textFolder = folder;
         view.propertyIds = {property};
         view.rawProperties = {true};
         view.setSelectionBehavior(QAbstractItemView::SelectRows);
         for (int row = 0; row < entries.size(); ++row) {
-            auto *item = new ArchiveTableItem(entries[row].path);
-            item->setData(Qt::UserRole + 6, row);
-            view.setItem(row, 0, item);
+            FilePanelModel::Row item;
+            item.sourceIndex = row;
+            view.panelModel()->append(std::move(item));
         }
         panel.AttachSelectionView(&view);
         view.selectRow(1);
@@ -115,7 +115,7 @@ class PanelArchiveSortTests final : public QObject {
         view.sortItems(0, descending ? Qt::DescendingOrder : Qt::AscendingOrder);
         QList<quint32> order;
         for (int row = 0; row < view.rowCount(); ++row)
-            order.append(view.item(row, 0)->data(Qt::UserRole + 6).toUInt());
+            order.append(view.model()->index(row, 0).data(Qt::UserRole + 6).toUInt());
         QCOMPARE(order, descending ? QList<quint32>({0, 2, 1}) : QList<quint32>({1, 2, 0}));
         CRecordVector<UInt32> selected;
         panel.Get_ItemIndices_Selected(selected);

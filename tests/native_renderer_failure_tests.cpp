@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "native_property_failure_runtime.h"
 #include "qtarchivefileresource.h"
@@ -22,7 +23,7 @@ class NativeRendererFailureTests final : public QObject, protected MainWindowTes
             QApplication::processEvents();
             for (unsigned index : {0u, 1u}) {
                 auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(index));
-                auto *table = owner->findChild<QTableWidget *>("archiveTable");
+                auto *table = owner->findChild<FileTable *>("archiveTable");
                 auto *icons = owner->findChild<QListView *>("iconList");
                 QWidget *view = table->isVisible() ? static_cast<QWidget *>(table) : icons;
                 auto *address = owner->findChild<QLineEdit *>("archivePath");
@@ -127,7 +128,7 @@ class NativeRendererFailureTests final : public QObject, protected MainWindowTes
         startup.NeedOpenArc = true;
         MainWindow window(&backend, {}, nullptr, &startup);
         auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *list = static_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"));
+        auto *list = static_cast<FileTable *>(owner->findChild<FileTable *>("archiveTable"));
         QTRY_COMPARE(list->rowCount(), 301);
         QTRY_VERIFY(list->isEnabled() && list->updatesEnabled());
         window.show();
@@ -229,7 +230,7 @@ class NativeRendererFailureTests final : public QObject, protected MainWindowTes
                     for (unsigned index : {0u, 1u}) {
                         auto *ui = shown->findChild<QWidget *>(QString("filePanel%1").arg(index));
                         auto *list =
-                            static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+                            static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
                         messageIdle = messageIdle && list->isEnabled() && list->updatesEnabled() &&
                                       list->sourcePanel->ShouldProcessNotifications();
                     }
@@ -244,11 +245,11 @@ class NativeRendererFailureTests final : public QObject, protected MainWindowTes
         shown = &window;
         window.show();
         auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *list = static_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"));
+        auto *list = static_cast<FileTable *>(owner->findChild<FileTable *>("archiveTable"));
         auto &panel = *list->sourcePanel;
         panel.Set_AutoRefresh_Mode(false);
         auto *peer = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *peerList = static_cast<FileTable *>(peer->findChild<QTableWidget *>("archiveTable"));
+        auto *peerList = static_cast<FileTable *>(peer->findChild<FileTable *>("archiveTable"));
         peerList->sourcePanel->Set_AutoRefresh_Mode(false);
         CMyComPtr<IFolderFolder> peerProvider = peerList->sourcePanel->GetFolder();
         const int peerRows = peerList->rowCount();

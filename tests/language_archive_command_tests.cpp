@@ -4,6 +4,7 @@
 #include "7zip/UI/GUI/ExtractRes.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
 #include "window_state_support.h"
@@ -91,10 +92,10 @@ class LanguageArchiveCommandTests final : public QObject {
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(fixture.path());
         QTest::keyClick(address, Qt::Key_Return);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         int row = -1;
         for (int i = 0; i < table->rowCount(); ++i)
-            if (table->item(i, 0)->text() == QFileInfo(path).fileName())
+            if (table->model()->index(i, 0).data().toString() == QFileInfo(path).fileName())
                 row = i;
         QVERIFY(row >= 0);
         table->selectRow(row);
@@ -128,7 +129,8 @@ class LanguageArchiveCommandTests final : public QObject {
                     QVERIFY(geometry && reported);
                     QCOMPARE(backend.extractCalls, 0);
                     QCOMPARE(backend.listCalls, 0);
-                    QCOMPARE(table->item(row, 0)->text(), QFileInfo(path).fileName());
+                    QCOMPARE(table->model()->index(row, 0).data().toString(),
+                             QFileInfo(path).fileName());
                     QCOMPARE(table->selectionModel()->selectedRows().size(), 1);
                 }
             }

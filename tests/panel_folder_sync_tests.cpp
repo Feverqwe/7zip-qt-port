@@ -1,4 +1,6 @@
+#include "filetable.h"
 #include "layout_inspection.h"
+#include "panel_model_support.h"
 #include "window_state_support.h"
 
 class PanelFolderSyncTests final : public QObject, protected MainWindowTestSupport {
@@ -46,7 +48,7 @@ class PanelFolderSyncTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *left = window.findChild<QWidget *>("filePanel0");
         auto *sourceAddress = left->findChild<QLineEdit *>("archivePath");
-        auto *sourceTable = left->findChild<QTableWidget *>("archiveTable");
+        auto *sourceTable = left->findChild<FileTable *>("archiveTable");
         sourceAddress->setText(source);
         QTest::keyClick(sourceAddress, Qt::Key_Return);
         QTRY_VERIFY(sourceTable->isEnabled());
@@ -54,10 +56,11 @@ class PanelFolderSyncTests final : public QObject, protected MainWindowTestSuppo
         auto *right = window.findChild<QWidget *>("filePanel1");
         QVERIFY(right);
         auto *destinationAddress = right->findChild<QLineEdit *>("archivePath");
-        auto *destinationTable = right->findChild<QTableWidget *>("archiveTable");
+        auto *destinationTable = right->findChild<FileTable *>("archiveTable");
         int childRow = -1;
         for (int row = 0; row < sourceTable->rowCount(); ++row)
-            if (sourceTable->item(row, 0)->text() == QFileInfo(child).fileName())
+            if (sourceTable->model()->index(row, 0).data().toString() ==
+                QFileInfo(child).fileName())
                 childRow = row;
         QVERIFY(childRow >= 0);
         sourceTable->setCurrentCell(childRow, 0);
@@ -115,16 +118,16 @@ class PanelFolderSyncTests final : public QObject, protected MainWindowTestSuppo
         window.show();
         auto *left = window.findChild<QWidget *>("filePanel0");
         auto *address = left->findChild<QLineEdit *>("archivePath");
-        auto *table = left->findChild<QTableWidget *>("archiveTable");
+        auto *table = left->findChild<FileTable *>("archiveTable");
         address->setText(fixture.path());
         QTest::keyClick(address, Qt::Key_Return);
         if (twoPanels)
             action(window, "twoPanelsAction")->trigger();
         table->setFocus();
         QTRY_VERIFY(table->hasFocus());
-        const auto matches = table->findItems(QFileInfo(file).fileName(), Qt::MatchExactly);
+        const auto matches = PanelMatches(*table, QFileInfo(file).fileName());
         QVERIFY(!matches.isEmpty());
-        table->setCurrentCell(focusedFile ? matches.first()->row() : -1, focusedFile ? 0 : -1);
+        table->setCurrentCell(focusedFile ? matches.first().row() : -1, focusedFile ? 0 : -1);
         QCOMPARE(table->currentIndex().isValid(), focusedFile);
         QTest::keyClick(table, Qt::Key(key), Qt::AltModifier | Qt::ShiftModifier);
         QCOMPARE(QDir::cleanPath(address->text()), fixture.path());
@@ -157,7 +160,7 @@ class PanelFolderSyncTests final : public QObject, protected MainWindowTestSuppo
         window.show();
         auto *left = window.findChild<QWidget *>("filePanel0");
         auto *address = left->findChild<QLineEdit *>("archivePath");
-        auto *table = left->findChild<QTableWidget *>("archiveTable");
+        auto *table = left->findChild<FileTable *>("archiveTable");
         address->setText(source);
         QTest::keyClick(address, Qt::Key_Return);
         action(window, "twoPanelsAction")->trigger();
@@ -167,9 +170,9 @@ class PanelFolderSyncTests final : public QObject, protected MainWindowTestSuppo
             action(window, "openRootAction")->trigger();
             action(window, "parentFolderAction")->trigger();
         } else {
-            const auto dots = table->findItems("..", Qt::MatchExactly);
+            const auto dots = PanelMatches(*table, "..");
             QVERIFY(!dots.isEmpty());
-            table->setCurrentCell(dots.first()->row(), 0);
+            table->setCurrentCell(dots.first().row(), 0);
         }
         table->setFocus();
         QTRY_VERIFY(table->hasFocus());
@@ -177,7 +180,7 @@ class PanelFolderSyncTests final : public QObject, protected MainWindowTestSuppo
                         Qt::AltModifier | Qt::ShiftModifier);
         auto *right = window.findChild<QWidget *>("filePanel1");
         auto *destinationAddress = right->findChild<QLineEdit *>("archivePath");
-        auto *destinationTable = right->findChild<QTableWidget *>("archiveTable");
+        auto *destinationTable = right->findChild<FileTable *>("archiveTable");
         QTRY_COMPARE(destinationAddress->text(), root ? QString() : fixture.path());
         QVERIFY(table->hasFocus());
         QVERIFY(destinationTable->isEnabled());
@@ -185,7 +188,8 @@ class PanelFolderSyncTests final : public QObject, protected MainWindowTestSuppo
             QVERIFY(static_cast<FileTable *>(destinationTable)->sourcePanel->IsRootFolder());
             QCOMPARE(destinationTable->rowCount(), table->rowCount());
             for (int row = 0; row < table->rowCount(); ++row)
-                QCOMPARE(destinationTable->item(row, 0)->text(), table->item(row, 0)->text());
+                QCOMPARE(destinationTable->model()->index(row, 0).data().toString(),
+                         table->model()->index(row, 0).data().toString());
         }
     }
     void replacementCancelsOnlyDestinationPublication_data() {
@@ -215,33 +219,34 @@ class PanelFolderSyncTests final : public QObject, protected MainWindowTestSuppo
         window.show();
         auto *left = window.findChild<QWidget *>("filePanel0");
         auto *address = left->findChild<QLineEdit *>("archivePath");
-        auto *table = left->findChild<QTableWidget *>("archiveTable");
+        auto *table = left->findChild<FileTable *>("archiveTable");
         address->setText(fixture.path());
         QTest::keyClick(address, Qt::Key_Return);
         action(window, "twoPanelsAction")->trigger();
         table->setFocus();
         QTRY_VERIFY(table->hasFocus());
-        const auto oldFolder = table->findItems(QFileInfo(first).fileName(), Qt::MatchExactly);
-        const auto newFolder = table->findItems(QFileInfo(second).fileName(), Qt::MatchExactly);
+        const auto oldFolder = PanelMatches(*table, QFileInfo(first).fileName());
+        const auto newFolder = PanelMatches(*table, QFileInfo(second).fileName());
         QVERIFY(!oldFolder.isEmpty());
         QVERIFY(!newFolder.isEmpty());
-        table->setCurrentCell(oldFolder.first()->row(), 0);
+        table->setCurrentCell(oldFolder.first().row(), 0);
         QTest::keyClick(table, Qt::Key_Right, Qt::AltModifier | Qt::ShiftModifier);
         auto *right = window.findChild<QWidget *>("filePanel1");
         auto *destinationAddress = right->findChild<QLineEdit *>("archivePath");
-        auto *destinationTable = right->findChild<QTableWidget *>("archiveTable");
+        auto *destinationTable = right->findChild<FileTable *>("archiveTable");
         QVERIFY(!destinationTable->isEnabled());
         QVERIFY(table->isEnabled());
         QVERIFY(table->hasFocus());
         if (!closeInstead) {
-            table->setCurrentCell(newFolder.first()->row(), 0);
+            table->setCurrentCell(newFolder.first().row(), 0);
             QTest::keyClick(table, Qt::Key_Left, Qt::AltModifier | Qt::ShiftModifier);
             QTRY_COMPARE(destinationAddress->text(), second);
             QTRY_VERIFY(destinationTable->isEnabled());
             QTRY_COMPARE(destinationTable->rowCount(), 1);
             QTest::qWait(100); // deliver any canceled worker's queued completion
             QCOMPARE(destinationTable->rowCount(), 1);
-            QCOMPARE(destinationTable->item(0, 0)->text(), QStringLiteral("new.txt"));
+            QCOMPARE(destinationTable->model()->index(0, 0).data().toString(),
+                     QStringLiteral("new.txt"));
             QCOMPARE(address->text(), fixture.path());
             QVERIFY(table->hasFocus());
         }
@@ -264,20 +269,20 @@ class PanelFolderSyncTests final : public QObject, protected MainWindowTestSuppo
         window.show();
         auto *left = window.findChild<QWidget *>("filePanel0");
         auto *address = left->findChild<QLineEdit *>("archivePath");
-        auto *table = left->findChild<QTableWidget *>("archiveTable");
+        auto *table = left->findChild<FileTable *>("archiveTable");
         address->setText(fixture.path());
         QTest::keyClick(address, Qt::Key_Return);
         action(window, "twoPanelsAction")->trigger();
         action(window, "autoRefreshAction")->setChecked(false);
-        const auto matches = table->findItems(QFileInfo(missing).fileName(), Qt::MatchExactly);
+        const auto matches = PanelMatches(*table, QFileInfo(missing).fileName());
         QVERIFY(!matches.isEmpty());
-        table->setCurrentCell(matches.first()->row(), 0);
+        table->setCurrentCell(matches.first().row(), 0);
         table->setFocus();
         QTRY_VERIFY(table->hasFocus());
         QVERIFY(QDir().rmdir(missing));
         QTest::keyClick(table, Qt::Key_Right, Qt::AltModifier | Qt::ShiftModifier);
         auto *right = window.findChild<QWidget *>("filePanel1");
-        auto *destinationTable = right->findChild<QTableWidget *>("archiveTable");
+        auto *destinationTable = right->findChild<FileTable *>("archiveTable");
         QCOMPARE(right->findChild<QLineEdit *>("archivePath")->text(), destination);
         QCOMPARE(
             QDir::cleanPath(ToQString(
@@ -312,17 +317,17 @@ class PanelFolderSyncTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *left = window.findChild<QWidget *>("filePanel0");
         auto *address = left->findChild<QLineEdit *>("archivePath");
-        auto *table = left->findChild<QTableWidget *>("archiveTable");
-        const auto matches = table->findItems(folder, Qt::MatchExactly);
+        auto *table = left->findChild<FileTable *>("archiveTable");
+        const auto matches = PanelMatches(*table, folder);
         QVERIFY(!matches.isEmpty());
         QVERIFY(table->isVisible());
         QVERIFY(table->isEnabled());
-        table->setCurrentCell(matches.first()->row(), 0);
+        table->setCurrentCell(matches.first().row(), 0);
         table->setFocus();
         QTRY_VERIFY(table->hasFocus());
         QTest::keyClick(table, Qt::Key_Right, Qt::AltModifier | Qt::ShiftModifier);
         auto *right = window.findChild<QWidget *>("filePanel1");
-        auto *destinationTable = right->findChild<QTableWidget *>("archiveTable");
+        auto *destinationTable = right->findChild<FileTable *>("archiveTable");
         QTRY_VERIFY(destinationTable->isEnabled());
         QTRY_COMPARE(destinationTable->rowCount(), items);
         QVERIFY(destinationTable->updatesEnabled());

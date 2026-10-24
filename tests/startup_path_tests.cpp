@@ -38,7 +38,8 @@ class StartupPathTests final : public QObject, protected MainWindowTestSupport {
         QTRY_VERIFY(table(window)->rowCount() >= 1);
         bool found = false;
         for (int row = 0; row < table(window)->rowCount(); ++row)
-            found |= table(window)->item(row, 0)->text() == QStringLiteral("данные.txt");
+            found |= table(window)->model()->index(row, 0).data().toString() ==
+                     QStringLiteral("данные.txt");
         QVERIFY(found);
         QCOMPARE(backend.listCalls, 0);
         QCOMPARE(QFileInfo(window.findChild<QComboBox *>("pathCombo")->currentText())

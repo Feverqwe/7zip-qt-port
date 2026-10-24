@@ -92,31 +92,32 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
 
         QVERIFY(setListOptions(window, action(window, "settingsAction"), true));
         QCOMPARE(files->rowCount(), 2);
-        QCOMPARE(files->item(0, 0)->text(), QStringLiteral(".."));
-        QCOMPARE(files->item(0, 0)->toolTip(), QStringLiteral("Parent folder"));
+        QCOMPARE(files->model()->index(0, 0).data().toString(), QStringLiteral(".."));
+        QCOMPARE(files->model()->index(0, 0).data(Qt::ToolTipRole).toString(),
+                 QStringLiteral("Parent folder"));
         QCOMPARE(files->accessibleName(), QStringLiteral("File list"));
-        auto *parent = files->item(0, 0);
+        const QPersistentModelIndex parent = files->model()->index(0, 0);
         const QString languageSettings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
         SaveRegLang(UString("ru"), languageSettings);
         ReloadLang(languageSettings);
         QtNotifyLanguageChanged();
-        QCOMPARE(files->item(0, 0), parent);
+        QCOMPARE(files->model()->index(0, 0), parent);
         QCOMPARE(files->rowCount(), 2);
-        QCOMPARE(parent->toolTip(), QStringLiteral("Родительская папка"));
+        QCOMPARE(parent.data(Qt::ToolTipRole).toString(), QStringLiteral("Родительская папка"));
         QCOMPARE(files->accessibleName(), QStringLiteral("Список файлов"));
         SaveRegLang(UString("-"), languageSettings);
         ReloadLang(languageSettings);
         QtNotifyLanguageChanged();
-        QCOMPARE(parent->toolTip(), QString("Parent folder"));
+        QCOMPARE(parent.data(Qt::ToolTipRole).toString(), QString("Parent folder"));
         QCOMPARE(files->accessibleName(), QString("File list"));
-        QCOMPARE(files->item(1, 0)->toolTip(),
+        QCOMPARE(files->model()->index(1, 0).data(Qt::ToolTipRole).toString(),
                  QFileInfo(temp.filePath(QStringLiteral("child.txt"))).canonicalFilePath());
         files->sortItems(0, Qt::DescendingOrder);
-        QCOMPARE(files->item(0, 0)->text(), QStringLiteral(".."));
+        QCOMPARE(files->model()->index(0, 0).data().toString(), QStringLiteral(".."));
         files->sortItems(0, Qt::AscendingOrder);
 
         files->selectRow(1);
-        const QRect selectedSizeCell = files->visualItemRect(files->item(1, 2));
+        const QRect selectedSizeCell = files->visualRect(files->model()->index(1, 2));
         const QPoint selectedPixel(selectedSizeCell.left() + 5, selectedSizeCell.center().y());
         const QColor fullRowColor = files->viewport()->grab().toImage().pixelColor(selectedPixel);
         if (qEnvironmentVariableIntValue("SEVENZIP_CAPTURE_SCREENSHOTS") == 1)
@@ -157,7 +158,7 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
         inspectMenu.start(5);
         QVERIFY(QMetaObject::invokeMethod(
             files, "customContextMenuRequested", Qt::DirectConnection,
-            Q_ARG(QPoint, files->visualItemRect(files->item(1, 0)).center())));
+            Q_ARG(QPoint, files->visualRect(files->model()->index(1, 0)).center())));
         QVERIFY(menuInspected);
         QVERIFY(action(window, "settingsAction")->isEnabled());
 
@@ -179,7 +180,7 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
         QVERIFY(setListOptions(window, action(window, "settingsAction"), false));
         QCOMPARE(files->rowCount(), 1);
         files->selectRow(0);
-        const QRect nameOnlySizeCell = files->visualItemRect(files->item(0, 2));
+        const QRect nameOnlySizeCell = files->visualRect(files->model()->index(0, 2));
         const QPoint nameOnlyPixel(nameOnlySizeCell.left() + 5, nameOnlySizeCell.center().y());
         const QColor nameOnlyColor = files->viewport()->grab().toImage().pixelColor(nameOnlyPixel);
         QVERIFY(fullRowColor != nameOnlyColor);
@@ -250,15 +251,15 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
             QCOMPARE(files->currentRow(), 4);
         }
 
-        const QString focusedName = files->item(files->currentRow(), 0)->text();
+        const QString focusedName = files->model()->index(files->currentRow(), 0).data().toString();
         const QModelIndex removed = files->model()->index(12, 0);
         icons->scrollTo(removed);
         moveOver(*icons, removed);
-        QVERIFY(QFile::remove(files->item(12, 1)->text()));
+        QVERIFY(QFile::remove(files->model()->index(12, 1).data().toString()));
         action(window, "refreshAction")->trigger();
         QCOMPARE(files->rowCount(), 59);
         QTest::qWait(500);
-        QCOMPARE(files->item(files->currentRow(), 0)->text(), focusedName);
+        QCOMPARE(files->model()->index(files->currentRow(), 0).data().toString(), focusedName);
     }
 
     void parentItemInArchiveAndVirtualRoot() {
@@ -276,12 +277,12 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
         QTRY_VERIFY_WITH_TIMEOUT(table(window)->rowCount() >= 2, 1500);
         for (int mode = 0; mode < 4; ++mode) {
             action(window, qPrintable(QStringLiteral("viewMode%1Action").arg(mode)))->trigger();
-            QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral(".."));
+            QCOMPARE(table(window)->model()->index(0, 0).data().toString(), QStringLiteral(".."));
         }
         openRow(window, 0);
         QTRY_COMPARE_WITH_TIMEOUT(window.findChild<QLineEdit *>("archivePath")->text(),
                                   QFileInfo(temp.path()).canonicalFilePath(), 1500);
-        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral(".."));
+        QCOMPARE(table(window)->model()->index(0, 0).data().toString(), QStringLiteral(".."));
         action(window, "openRootAction")->trigger();
         QVERIFY(filesystemRow(window, QStringLiteral("..")) < 0);
     }

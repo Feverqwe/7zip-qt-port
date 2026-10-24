@@ -85,7 +85,7 @@ class FileRowDelegate final : public QStyledItemDelegate {
                 editor->style()->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, editor);
             editor->setGeometry(editor->geometry().adjusted(margin, 0, -margin, 0));
         }
-        if (qobject_cast<QTableWidget *>(parent()) &&
+        if (qobject_cast<QTableView *>(parent()) &&
             editor->testAttribute(Qt::WA_MacShowFocusRect)) {
             // Cocoa paints QFocusFrame outside the editor. Keep its vertical
             // margin inside the row, including the first visible row.
@@ -145,19 +145,19 @@ QAbstractItemDelegate *CreateFileRowDelegate(QWidget *parent) {
     return new FileRowDelegate(parent);
 }
 
-FileTable::FileTable(int rows, int columns, QWidget *parent) : QTableWidget(rows, columns, parent) {
+FileTable::FileTable(int columns, QWidget *parent)
+    : QTableView(parent), model_(new FilePanelModel(*this)) {
+    setModel(model_);
+    QStringList labels;
+    for (int i = 0; i < columns; ++i)
+        labels << QString();
+    model_->setColumns(labels);
     setItemDelegate(CreateFileRowDelegate(this));
     setHorizontalHeader(new FileColumnHeader(Qt::Horizontal, this));
     horizontalHeader()->setSectionsClickable(true);
 }
 
-void FileTable::invalidateLanguageText() {
-    for (int row = 0; row < rowCount(); ++row)
-        for (int column = 0; column < columnCount(); ++column)
-            if (auto *cell = dynamic_cast<ArchiveTableItem *>(item(row, column)))
-                cell->sourceTextStale_ = true;
-    viewport()->update();
-}
+void FileTable::invalidateLanguageText() { model_->invalidateLanguageText(); }
 
 bool FileTable::takeSourceColumnClick() {
     auto *header = dynamic_cast<FileColumnHeader *>(horizontalHeader());
@@ -257,27 +257,13 @@ void FileTable::appendSourceColumn(unsigned catalogIndex) {
         rawProperties.append(prop.IsRawProp);
         sourceColumnIndices.append(int(catalogIndex));
         visibleColumnIndices.append(-1);
-        setColumnCount(column + 1);
-        auto *label = new QTableWidgetItem(ToQString(prop.Name));
-        label->setData(Qt::InitialSortOrderRole, CPanel::GetDefaultSortAscending(prop.ID)
-                                                     ? Qt::AscendingOrder
-                                                     : Qt::DescendingOrder);
-        setHorizontalHeaderItem(column, label);
-        for (int row = 0; row < rowCount(); ++row) {
-            const auto *primary = dynamic_cast<const ArchiveTableItem *>(item(row, 0));
-            if (!primary)
-                continue;
-            auto *cell = new ArchiveTableItem(*primary);
-            cell->setData(Qt::DisplayRole, QVariant());
-            cell->setData(Qt::DecorationRole, QVariant());
-            cell->setFlags(cell->flags() & ~Qt::ItemIsEditable);
-            cell->setTextAlignment(GetColumnAlign(prop.ID, prop.Type));
-            setItem(row, column, cell);
-        }
+        QStringList labels;
+        for (int i = 0; i < column; ++i)
+            labels << model_->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
+        labels << ToQString(prop.Name);
+        model_->setColumns(labels);
     } else {
-        for (int row = 0; row < rowCount(); ++row)
-            if (auto *cell = item(row, column))
-                cell->setData(Qt::DisplayRole, QVariant());
+        model_->invalidateText(column);
     }
     visibleColumnIndices[column] = int(index);
     setColumnWidth(column, qMax(32, int(prop.Width)));
@@ -294,26 +280,13 @@ void FileTable::setFullRowHighlight(bool enabled) {
     viewport()->update();
 }
 
-QMimeData *FileTable::mimeData(const QList<QTableWidgetItem *> &items) const {
-    auto *data = new QMimeData;
-    if (!filesystem)
-        return data;
-    QList<QUrl> urls;
-    for (QTableWidgetItem *item : items) {
-        if (item->column() == 1)
-            urls << QUrl::fromLocalFile(item->text());
-    }
-    data->setUrls(urls);
-    return data;
-}
-
 void FileTable::startDrag(Qt::DropActions actions) {
     if (dragStarter)
         dragStarter();
     else
-        QTableWidget::startDrag(actions);
+        QTableView::startDrag(actions);
 }
-void FileTable::handleDefaultKeyPress(QKeyEvent *event) { QTableWidget::keyPressEvent(event); }
+void FileTable::handleDefaultKeyPress(QKeyEvent *event) { QTableView::keyPressEvent(event); }
 void FileIconList::handleDefaultKeyPress(QKeyEvent *event) { QListView::keyPressEvent(event); }
 void FileIconList::startDrag(Qt::DropActions actions) {
     if (dragStarter)
@@ -351,114 +324,4 @@ void FileIconList::changeEvent(QEvent *event) {
         SetListViewMode(mode_);
         setDragEnabled(drag);
     }
-}
-
-QVariant ArchiveTableItem::data(int role) const {
-    if (role == Qt::BackgroundRole && QTableWidgetItem::data(QtPanelList::MarkedRole).toBool()) {
-        if (const auto *table = tableWidget())
-            return QBrush(QtSemanticColors::marked(table->palette()));
-    }
-    if (role == Qt::DecorationRole && column() != 0) {
-        const auto *table = dynamic_cast<const FileTable *>(tableWidget());
-        if (table && column() == table->columnForVisibleProperty(0))
-            if (const auto *primary = table->item(row(), 0))
-                return primary->data(role);
-    }
-    if (role == Qt::ForegroundRole) {
-        const auto *table = dynamic_cast<const FileTable *>(tableWidget());
-        if (!table || !table->sourcePanel || !table->sourcePanel->ShouldProcessNotifications() ||
-            !table->textFolder || table->sourcePanel->GetFolder() != table->textFolder)
-            return {};
-        const QVariant index = QTableWidgetItem::data(Qt::UserRole + 6);
-        if (!index.isValid())
-            return {};
-        // Provider exceptions cannot escape Qt's paint callback. The source
-        // property body retains its exception policy; failed paint uses the palette.
-        try {
-            const QColor color = table->sourcePanel->OnCustomDraw(index.toUInt());
-            if (!color.isValid())
-                return {};
-            const QVariant background = data(Qt::BackgroundRole);
-            return QBrush(QtSemanticColors::readable(
-                color, background.isValid() ? qvariant_cast<QBrush>(background).color()
-                                            : table->palette().color(QPalette::Base)));
-        } catch (...) {
-            return {};
-        }
-    }
-    if (role != Qt::DisplayRole && role != Qt::EditRole)
-        return QTableWidgetItem::data(role);
-    // PanelItems inserts callback text; PanelListNotify formats only requested
-    // cells. Keep the owning panel, rather than the currently focused panel,
-    // authoritative when Qt paints either side of a two-panel window.
-    const auto *table = dynamic_cast<const FileTable *>(tableWidget());
-    const int col = column();
-    if (table && table->sourcePanel && role == Qt::DisplayRole &&
-        !table->sourcePanel->ShouldDisplayItemText())
-        return QString();
-    if (table && table->sourcePanel && col != 1 && col != 5 && col != 6 &&
-        (col != 0 || role == Qt::DisplayRole)) {
-        // Native OnNotify suppresses callbacks while archive reopening can
-        // invalidate the old proxy inside a nested event loop.
-        if (!table->sourcePanel->ShouldProcessNotifications())
-            return sourceTextDefined_
-                       ? sourceText_
-                       : (col == 0 ? QVariant(QString()) : QTableWidgetItem::data(role));
-        const QVariant index = QTableWidgetItem::data(Qt::UserRole + 6);
-        const CPropColumn *property = table->sourceColumn(col);
-        if (index.isValid() && property && table->textFolder &&
-            table->sourcePanel->GetFolder() == table->textFolder) {
-            if (!sourceTextDefined_ || sourceTextStale_) {
-                sourceText_ = table->sourcePanel->GetItemText(index.toUInt(), *property);
-                if (col == 0)
-                    sourceText_ = (QTableWidgetItem::data(Qt::UserRole + 5).toString() +
-                                   sourceText_.toString())
-                                      .normalized(QString::NormalizationForm_C);
-                sourceTextDefined_ = true;
-                sourceTextStale_ = false;
-            }
-            return sourceText_;
-        }
-    }
-    return QTableWidgetItem::data(role);
-}
-
-void ArchiveTableItem::setData(int role, const QVariant &value) {
-    if (role == Qt::DisplayRole || role == Qt::EditRole || role == Qt::UserRole + 6)
-        sourceTextDefined_ = false;
-    QTableWidgetItem::setData(role, value);
-}
-
-bool ArchiveTableItem::operator<(const QTableWidgetItem &other) const {
-    // Qt reverses the whole comparison for descending order. Compensate only
-    // the folder grouping: upstream reverses property order after this check.
-    const bool firstParent = data(Qt::UserRole + 6).toUInt() == UInt32(-1);
-    const bool secondParent = other.data(Qt::UserRole + 6).toUInt() == UInt32(-1);
-    if (firstParent || secondParent) {
-        if (firstParent == secondParent)
-            return false;
-        return !tableWidget() ||
-                       tableWidget()->horizontalHeader()->sortIndicatorOrder() == Qt::AscendingOrder
-                   ? firstParent
-                   : secondParent;
-    }
-    const bool folder = data(Qt::UserRole + 1).toBool();
-    if (folder != other.data(Qt::UserRole + 1).toBool() && tableWidget())
-        return tableWidget()->horizontalHeader()->sortIndicatorOrder() == Qt::AscendingOrder
-                   ? folder
-                   : !folder;
-    auto *table = static_cast<FileTable *>(tableWidget());
-    if (table && table->sourcePanel && table->sourcePanel->GetFolder()) {
-        const int columnIndex = column();
-        if (columnIndex >= 0 && columnIndex < table->columnCount()) {
-            const UInt32 first = data(Qt::UserRole + 6).toUInt();
-            const UInt32 second = other.data(Qt::UserRole + 6).toUInt();
-            return table->sourcePanel->CompareItemIndices(
-                       first, second, table->propertyId(columnIndex),
-                       table->sourceColumnIndices.isEmpty()
-                           ? table->isRawProperty(columnIndex)
-                           : table->sourcePanel->_isRawSortProp != 0) < 0;
-        }
-    }
-    return QTableWidgetItem::operator<(other);
 }

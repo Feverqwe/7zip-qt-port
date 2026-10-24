@@ -4,6 +4,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
 #include "copydialog.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
@@ -124,7 +125,7 @@ class InterarchiveRefreshTests final : public QObject, protected MainWindowTestS
             QVERIFY(QTest::qWaitForWindowActive(&window));
             ui->findChild<QLineEdit *>("archivePath")->setFocus();
             window.openArchive(ui == targetUi ? targetArchive : sourceArchive);
-            auto *list = ui->findChild<QTableWidget *>("archiveTable");
+            auto *list = ui->findChild<FileTable *>("archiveTable");
             QTRY_COMPARE(list->rowCount(), ui == targetUi ? originalCount : 2);
             QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
             if (icons)
@@ -132,10 +133,8 @@ class InterarchiveRefreshTests final : public QObject, protected MainWindowTestS
         }
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
-        auto *source =
-            static_cast<FileTable *>(sourceUi->findChild<QTableWidget *>("archiveTable"));
-        auto *target =
-            static_cast<FileTable *>(targetUi->findChild<QTableWidget *>("archiveTable"));
+        auto *source = static_cast<FileTable *>(sourceUi->findChild<FileTable *>("archiveTable"));
+        auto *target = static_cast<FileTable *>(targetUi->findChild<FileTable *>("archiveTable"));
         auto &sourcePanel = *source->sourcePanel;
         auto &destination = *target->sourcePanel;
         for (CPanel *panel : {&sourcePanel, &destination})

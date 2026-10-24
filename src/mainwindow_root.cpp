@@ -39,7 +39,7 @@ HRESULT MainWindow::renderRootFolder(bool updateAddress) {
                               false);
     const auto finish = [&](HRESULT result) {
         if (result != S_OK)
-            table_->setRowCount(0);
+            table_->clearRows();
         table_->setSortingEnabled(true);
         applySortMode();
         // Restore the row-rebuild guard before End releases operation guards.
@@ -69,31 +69,21 @@ HRESULT MainWindow::renderRootFolder(bool updateAddress) {
         if (result != S_OK)
             return finish(result);
         const bool isDirectory = panel.IsItem_Folder(index);
-        const int row = table_->rowCount();
-        table_->insertRow(row);
-        for (int column = 0; column < table_->columnCount(); ++column) {
-            auto *item = new ArchiveTableItem;
-            item->setData(Qt::UserRole + 6, index);
-            item->setData(Qt::UserRole + 3, nativeName);
-            item->setData(Qt::UserRole + 1, isDirectory);
-            if (!isDirectory)
-                item->setData(Qt::UserRole, path_->text() + nativeName);
-            if (column == 0) {
-                item->setText(nativeName.normalized(QString::NormalizationForm_C));
-                item->setIcon(QApplication::style()->standardIcon(!isDirectory ? QStyle::SP_FileIcon
-                                                                  : drives ? QStyle::SP_DriveHDIcon
-                                                                  : network
-                                                                      ? QStyle::SP_DirIcon
-                                                                      : QStyle::SP_ComputerIcon));
+        FilePanelModel::Row row;
+        row.sourceIndex = index;
+        row.name = nativeName;
+        row.directory = isDirectory;
+        if (!isDirectory)
+            row.operationPath = path_->text() + nativeName;
+        row.icon = QApplication::style()->standardIcon(!isDirectory ? QStyle::SP_FileIcon
+                                                       : drives     ? QStyle::SP_DriveHDIcon
+                                                       : network    ? QStyle::SP_DirIcon
+                                                                    : QStyle::SP_ComputerIcon);
 #ifdef Q_OS_WIN
-                if (!panel.IsRootFolder())
-                    item->setIcon(icon);
+        if (!panel.IsRootFolder())
+            row.icon = icon;
 #endif
-            } else if (drives || network || streams || column >= 7)
-                item->setText(sourceColumnText(index, column));
-            item->setTextAlignment(sourceColumnAlignment(column));
-            table_->setItem(row, column, item);
-        }
+        table_->panelModel()->append(std::move(row));
     }
     return finish(S_OK);
 }

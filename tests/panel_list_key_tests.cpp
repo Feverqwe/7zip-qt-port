@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
+#include "filetable.h"
 #include "fixtures/widget_dialogs.h"
 #include "window_state_support.h"
 #include <QStandardPaths>
@@ -67,8 +68,8 @@ class PanelListKeyTests final : public QObject, protected MainWindowTestSupport 
         auto *owner = window.findChild<QWidget *>(pane ? "filePanel1" : "filePanel0");
         auto *peer = window.findChild<QWidget *>(pane ? "filePanel0" : "filePanel1");
         auto *path = owner->findChild<QLineEdit *>("archivePath");
-        auto *list = static_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"));
-        auto *peerList = static_cast<FileTable *>(peer->findChild<QTableWidget *>("archiveTable"));
+        auto *list = static_cast<FileTable *>(owner->findChild<FileTable *>("archiveTable"));
+        auto *peerList = static_cast<FileTable *>(peer->findChild<FileTable *>("archiveTable"));
         path->setFocus();
         path->setText(fixture.path());
         QTest::keyClick(path, Qt::Key_Return);
@@ -87,7 +88,7 @@ class PanelListKeyTests final : public QObject, protected MainWindowTestSupport 
             QVERIFY(QTest::qWaitForWindowActive(&window));
             int row = -1;
             for (int i = 0; i < list->rowCount(); ++i)
-                if (list->item(i, 0)->data(Qt::EditRole).toString() == name)
+                if (list->model()->index(i, 0).data(Qt::EditRole).toString() == name)
                     row = i;
             QVERIFY(row >= 0);
             list->clearSelection();

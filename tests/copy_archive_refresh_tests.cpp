@@ -4,6 +4,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
 #include "copydialog.h"
+#include "filetable.h"
 #include "fixtures/signal_wait_support.h"
 #include "layout_inspection.h"
 #include "qtfilemanagerstartup.h"
@@ -125,8 +126,7 @@ class CopyArchiveRefreshTests final : public QObject, protected MainWindowTestSu
         QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *sourceUi = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         auto *targetUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *target =
-            static_cast<FileTable *>(targetUi->findChild<QTableWidget *>("archiveTable"));
+        auto *target = static_cast<FileTable *>(targetUi->findChild<FileTable *>("archiveTable"));
         auto &destination = *target->sourcePanel;
         destination.Set_AutoRefresh_Mode(false);
         QVERIFY(SignalWaitSupport::waitForCount(*target->model(), originalCount));
@@ -143,8 +143,7 @@ class CopyArchiveRefreshTests final : public QObject, protected MainWindowTestSu
         QCOMPARE(selection.SelectedNames.Size(), 1u);
         auto *address = sourceUi->findChild<QLineEdit *>("archivePath");
         address->setFocus();
-        auto *source =
-            static_cast<FileTable *>(sourceUi->findChild<QTableWidget *>("archiveTable"));
+        auto *source = static_cast<FileTable *>(sourceUi->findChild<FileTable *>("archiveTable"));
         QVERIFY(SignalWaitSupport::waitForCount(*source->model(), 1));
         QCOMPARE(source->rowCount(), 1);
         QVERIFY(SignalWaitSupport::waitForEnabled(*action(window, "refreshAction")));

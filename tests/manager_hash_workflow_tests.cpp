@@ -1,4 +1,5 @@
 #include "Common/MyTypes.h"
+#include "filetable.h"
 
 #include "7zip/UI/Explorer/ContextMenuFlags.h"
 #include "CPP/7zip/UI/Common/ZipRegistry.h"
@@ -96,7 +97,7 @@ class ManagerHashWorkflowTests final : public QObject, protected MainWindowTestS
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        return static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        return static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
     }
     static bool containsDigest(const QString &report, const QByteArray &payload) {
         return SourceExtractFixture::readFile(report).contains(
@@ -231,7 +232,8 @@ class ManagerHashWorkflowTests final : public QObject, protected MainWindowTestS
         QTRY_COMPARE(table->rowCount(), 2);
         table->clearSelection();
         for (int row = 0; row < table->rowCount(); ++row)
-            if (table->item(row, 0)->text().normalized(QString::NormalizationForm_C) ==
+            if (table->model()->index(row, 0).data().toString().normalized(
+                    QString::NormalizationForm_C) ==
                 QFileInfo(manifest).fileName().normalized(QString::NormalizationForm_C))
                 table->selectRow(row);
         QVERIFY(QMetaObject::invokeMethod(menu, "aboutToShow", Qt::DirectConnection));

@@ -4,6 +4,7 @@
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "Windows/PropVariant.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
@@ -41,7 +42,7 @@ class FilesystemCommentTests final : public QObject, protected MainWindowTestSup
     Q_OBJECT
     static int FsRow(MainWindow &window, const QString &name) {
         for (int row = 0; row < table(window)->rowCount(); ++row)
-            if (table(window)->item(row, 0)->data(Qt::UserRole + 3).toString() == name)
+            if (table(window)->model()->index(row, 0).data(Qt::UserRole + 3).toString() == name)
                 return row;
         return -1;
     }
@@ -129,7 +130,7 @@ class FilesystemCommentTests final : public QObject, protected MainWindowTestSup
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(sourceIndex));
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         auto *address = ui->findChild<QLineEdit *>("archivePath");
         address->setFocus();
         address->setText(fixture.path());
@@ -137,7 +138,7 @@ class FilesystemCommentTests final : public QObject, protected MainWindowTestSup
         QTRY_COMPARE(view->rowCount(), 2);
         int row = -1;
         for (int i = 0; i < view->rowCount(); ++i)
-            if (view->item(i, 0)->data(Qt::UserRole + 3).toString() == name)
+            if (view->model()->index(i, 0).data(Qt::UserRole + 3).toString() == name)
                 row = i;
         QVERIFY(row >= 0);
         view->selectRow(row);
@@ -148,8 +149,7 @@ class FilesystemCommentTests final : public QObject, protected MainWindowTestSup
         auto *filesystem = dynamic_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder);
         QVERIFY(filesystem);
         auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - sourceIndex));
-        auto *peerView =
-            static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        auto *peerView = static_cast<FileTable *>(peerUi->findChild<FileTable *>("archiveTable"));
         peerView->sourcePanel->Set_AutoRefresh_Mode(false);
         CMyComPtr<IFolderFolder> peerFolder = peerView->sourcePanel->GetFolder();
         const int peerRows = peerView->rowCount();

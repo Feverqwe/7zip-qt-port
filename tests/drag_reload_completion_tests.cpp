@@ -1,6 +1,7 @@
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "filetable.h"
 #include "fixtures/drag_event_position.h"
 #include "layout_inspection.h"
 #include "source_extract_fixture.h"
@@ -83,8 +84,8 @@ class DragReloadCompletionTests final : public QObject, protected MainWindowTest
         }
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
-        auto *list = static_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"));
-        auto *peerList = static_cast<FileTable *>(peer->findChild<QTableWidget *>("archiveTable"));
+        auto *list = static_cast<FileTable *>(owner->findChild<FileTable *>("archiveTable"));
+        auto *peerList = static_cast<FileTable *>(peer->findChild<FileTable *>("archiveTable"));
         auto &panel = *list->sourcePanel;
         panel.Set_AutoRefresh_Mode(false);
         peerList->sourcePanel->Set_AutoRefresh_Mode(false);

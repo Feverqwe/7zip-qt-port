@@ -120,7 +120,7 @@ class PanelFilesystemSortTests final : public QObject {
         QCOMPARE(text(folder, second, kpidComment), QStringLiteral("same"));
 
         // The displayed comments are equal; source comparison includes the metadata suffix.
-        FileTable view(2, 1);
+        FileTable view(1);
         view.sourcePanel = &panel;
         view.textFolder = folder;
         view.propertyIds = {kpidComment};
@@ -128,14 +128,15 @@ class PanelFilesystemSortTests final : public QObject {
         view.setSelectionBehavior(QAbstractItemView::SelectRows);
         const QList<UInt32> indices = {first, second};
         for (int row = 0; row < 2; ++row) {
-            auto *item = new ArchiveTableItem("same");
-            item->setData(Qt::UserRole + 6, indices[row]);
-            view.setItem(row, 0, item);
+            FilePanelModel::Row item;
+            item.sourceIndex = indices[row];
+            view.panelModel()->append(std::move(item));
         }
         panel.AttachSelectionView(&view);
         view.selectRow(0);
         view.sortItems(0, descending ? Qt::DescendingOrder : Qt::AscendingOrder);
-        QCOMPARE(view.item(0, 0)->data(Qt::UserRole + 6).toUInt(), descending ? first : second);
+        QCOMPARE(view.model()->index(0, 0).data(Qt::UserRole + 6).toUInt(),
+                 descending ? first : second);
         CRecordVector<UInt32> selected;
         panel.Get_ItemIndices_Selected(selected);
         QCOMPARE(selected.Size(), 1u);

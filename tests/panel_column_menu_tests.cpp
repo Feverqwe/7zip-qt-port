@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 
@@ -45,7 +46,8 @@ class PanelColumnMenuTests final : public QObject, protected MainWindowTestSuppo
                     continue;
                 QVERIFY(actionIndex < menu->actions().size());
                 const auto *option = menu->actions()[actionIndex++];
-                QCOMPARE(option->text(), view.horizontalHeaderItem(logical)->text());
+                QCOMPARE(option->text(),
+                         view.model()->headerData(logical, Qt::Horizontal).toString());
                 QVERIFY(option->isCheckable());
                 QCOMPARE(option->isChecked(), prop.IsVisible);
                 QCOMPARE(option->isEnabled(), index != 0);
@@ -96,7 +98,7 @@ class PanelColumnMenuTests final : public QObject, protected MainWindowTestSuppo
         QLineEdit *addresses[2];
         for (unsigned index : {0u, 1u}) {
             auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(index));
-            views[index] = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+            views[index] = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
             addresses[index] = ui->findChild<QLineEdit *>("archivePath");
             addresses[index]->setFocus();
             addresses[index]->setText(fixture.path());
@@ -120,7 +122,7 @@ class PanelColumnMenuTests final : public QObject, protected MainWindowTestSuppo
         const int column = view.columnForProperty(kpidATime);
         QVERIFY(column >= 0);
         QVERIFY(view.isColumnHidden(column));
-        const QString label = view.horizontalHeaderItem(column)->text();
+        const QString label = view.model()->headerData(column, Qt::Horizontal).toString();
         toggle(*view.horizontalHeader(), label);
         QVERIFY(!view.isColumnHidden(column));
         const CPropColumns shownCatalog = panel.GetColumns();
@@ -142,12 +144,12 @@ class PanelColumnMenuTests final : public QObject, protected MainWindowTestSuppo
         QCOMPARE(window.focusWidget(), focused);
         inspectAndCancel(view);
         view.sortItems(2, Qt::AscendingOrder);
-        QCOMPARE(view.item(0, 0)->data(Qt::UserRole + 3).toString(), QString("z.txt"));
-        const auto firstIndex = view.item(0, 0)->data(Qt::UserRole + 6);
-        toggle(*view.horizontalHeader(), view.horizontalHeaderItem(2)->text());
-        QCOMPARE(view.item(0, 0)->data(Qt::UserRole + 6), firstIndex);
+        QCOMPARE(view.model()->index(0, 0).data(Qt::UserRole + 3).toString(), QString("z.txt"));
+        const auto firstIndex = view.model()->index(0, 0).data(Qt::UserRole + 6);
+        toggle(*view.horizontalHeader(), view.model()->headerData(2, Qt::Horizontal).toString());
+        QCOMPARE(view.model()->index(0, 0).data(Qt::UserRole + 6), firstIndex);
         panel.OnReload();
-        QCOMPARE(view.item(0, 0)->data(Qt::UserRole + 3).toString(),
+        QCOMPARE(view.model()->index(0, 0).data(Qt::UserRole + 3).toString(),
                  QStringLiteral("control 文件.txt"));
         QCOMPARE(visibleOrder(view).last(), column);
         QCOMPARE(view.horizontalHeader()->sectionSize(column), catalogWidth);

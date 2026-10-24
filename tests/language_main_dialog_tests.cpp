@@ -2,6 +2,7 @@
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/PropertyName.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
 #include "window_state_support.h"
@@ -91,7 +92,7 @@ class LanguageMainDialogTests final : public QObject {
             backend.completeList({ArchiveEntry{QStringLiteral("δ space.txt"), 3, 7}});
         });
         window.openArchive(archive);
-        window.findChild<QTableWidget *>("archiveTable")->selectRow(0);
+        window.findChild<FileTable *>("archiveTable")->selectRow(0);
         const int calls = backend.listCalls;
         bool inspected = false;
         QTimer::singleShot(0, &window, [&] {

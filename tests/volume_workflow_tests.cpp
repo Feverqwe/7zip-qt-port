@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "CPP/7zip/UI/FileManager/SplitDialog.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
 #include "window_state_support.h"
@@ -27,7 +28,7 @@ class VolumeWorkflowTests : public QObject, protected MainWindowTestSupport {
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        return static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        return static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
     }
     static void language(bool russian) {
         const QString path = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
@@ -86,7 +87,7 @@ class VolumeWorkflowTests : public QObject, protected MainWindowTestSupport {
             action(window, "flatViewAction")->trigger();
         QTRY_COMPARE(source->rowCount(), (combine ? 2 : 1) + (flat ? 1 : 0));
         for (int row = 0; row < source->rowCount(); ++row)
-            if (source->item(row, 0)->data(Qt::UserRole + 3).toString() == name)
+            if (source->model()->index(row, 0).data(Qt::UserRole + 3).toString() == name)
                 source->selectRow(row);
         QCOMPARE(source->selectionModel()->selectedRows().size(), 1);
         source->setFocus();

@@ -36,12 +36,12 @@ QtPanelContextMenu::~QtPanelContextMenu() {
     window.refreshActions();
 }
 bool QtPanelContextMenu::IsHeader(QWidget *handle) const {
-    auto *table = qobject_cast<QTableWidget *>(&impl_->view);
+    auto *table = qobject_cast<QTableView *>(&impl_->view);
     return table && handle == table->horizontalHeader();
 }
 bool QtPanelContextMenu::IsList(QWidget *handle) const { return handle == &impl_->view; }
 void QtPanelContextMenu::ShowColumnsContextMenu(int x, int y) {
-    auto *table = qobject_cast<QTableWidget *>(&impl_->view);
+    auto *table = qobject_cast<QTableView *>(&impl_->view);
     // Some Qt platforms restore peer focus before QAction::toggled. Keep
     // the source column mutation on the header's captured owner until return.
     CPanel::CDisableNotify left(impl_->window.app_.Panels[0]);

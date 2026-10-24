@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "fixtures/signal_wait_support.h"
 #include "layout_inspection.h"
 #include "qtfilemanagerstartup.h"
@@ -108,7 +109,7 @@ class PanelCreationPathTests final : public QObject, protected MainWindowTestSup
             QFileInfo(mainUi->findChild<QLineEdit *>("archivePath")->text()).canonicalFilePath(),
             QFileInfo(requested).canonicalFilePath());
         if (overrideFocus && large)
-            QCOMPARE(mainUi->findChild<QTableWidget *>("archiveTable")->rowCount(), 0);
+            QCOMPARE(mainUi->findChild<FileTable *>("archiveTable")->rowCount(), 0);
         window.show();
         if (immediatePeer) {
             QVERIFY(!peerUi);
@@ -138,7 +139,7 @@ class PanelCreationPathTests final : public QObject, protected MainWindowTestSup
             QCOMPARE(QFileInfo(QDir::cleanPath(ui->findChild<QLineEdit *>("archivePath")->text()))
                          .canonicalFilePath(),
                      QFileInfo(expected).canonicalFilePath());
-            auto *list = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+            auto *list = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
             const int expectedRows = immediatePeer && index == pane ? 2 : count;
             QVERIFY(SignalWaitSupport::waitForCount(*list->model(), expectedRows));
             QCOMPARE(list->rowCount(), expectedRows);
@@ -179,7 +180,7 @@ class PanelCreationPathTests final : public QObject, protected MainWindowTestSup
                 auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(index));
                 auto *view =
                     icons ? static_cast<QAbstractItemView *>(ui->findChild<QListView *>("iconList"))
-                          : ui->findChild<QTableWidget *>("archiveTable");
+                          : ui->findChild<FileTable *>("archiveTable");
                 QVERIFY(view->isEnabled());
                 QVERIFY(UiInspection::fullyVisible(*view, window));
             }

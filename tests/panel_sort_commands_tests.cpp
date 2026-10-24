@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QHeaderView>
@@ -27,12 +28,12 @@ class PanelSortCommandsTests final : public QObject, protected MainWindowTestSup
         view->sourcePanel->SortItemsWithPropID(kpidSha1);
         QCOMPARE(view->horizontalHeader()->sortIndicatorSection(), column);
         QCOMPARE(view->horizontalHeader()->sortIndicatorOrder(), Qt::AscendingOrder);
-        QCOMPARE(view->item(0, 0)->data(Qt::UserRole + 3).toString(), entries[1].path);
-        QCOMPARE(view->item(1, 0)->data(Qt::UserRole + 3).toString(), entries[2].path);
-        QCOMPARE(view->item(2, 0)->data(Qt::UserRole + 3).toString(), entries[0].path);
+        QCOMPARE(view->model()->index(0, 0).data(Qt::UserRole + 3).toString(), entries[1].path);
+        QCOMPARE(view->model()->index(1, 0).data(Qt::UserRole + 3).toString(), entries[2].path);
+        QCOMPARE(view->model()->index(2, 0).data(Qt::UserRole + 3).toString(), entries[0].path);
         view->sourcePanel->SortItemsWithPropID(kpidSha1);
         QCOMPARE(view->horizontalHeader()->sortIndicatorOrder(), Qt::DescendingOrder);
-        QCOMPARE(view->item(0, 0)->data(Qt::UserRole + 3).toString(), entries[0].path);
+        QCOMPARE(view->model()->index(0, 0).data(Qt::UserRole + 3).toString(), entries[0].path);
     }
     void inactiveHeaderKeepsPeerSortState() {
         QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -52,7 +53,7 @@ class PanelSortCommandsTests final : public QObject, protected MainWindowTestSup
         for (unsigned index = 0; index < 2; ++index) {
             auto *pane = window.findChild<QWidget *>(QString("filePanel%1").arg(index));
             QVERIFY(pane);
-            views.append(static_cast<FileTable *>(pane->findChild<QTableWidget *>("archiveTable")));
+            views.append(static_cast<FileTable *>(pane->findChild<FileTable *>("archiveTable")));
             addresses.append(pane->findChild<QLineEdit *>("archivePath"));
             addresses.back()->setFocus();
             addresses.back()->setText(fixture.path());
@@ -140,7 +141,7 @@ class PanelSortCommandsTests final : public QObject, protected MainWindowTestSup
         action(window, "sort3Action")->trigger();
         QCOMPARE(view->sourcePanel->_sortID, PROPID(kpidSize));
         QVERIFY(!view->sourcePanel->_ascending);
-        QCOMPARE(view->item(view->currentRow(), 0)->data(Qt::UserRole + 3).toString(),
+        QCOMPARE(view->model()->index(view->currentRow(), 0).data(Qt::UserRole + 3).toString(),
                  entries[0].path);
         const QRect focused = view->visualRect(view->currentIndex());
         QVERIFY(view->viewport()->rect().contains(focused));
@@ -155,7 +156,7 @@ class PanelSortCommandsTests final : public QObject, protected MainWindowTestSup
         action(window, "refreshAction")->trigger();
         QCOMPARE(view->sourcePanel->_sortID, PROPID(kpidSize));
         QVERIFY(view->sourcePanel->_ascending);
-        QCOMPARE(view->item(view->currentRow(), 0)->data(Qt::UserRole + 3).toString(),
+        QCOMPARE(view->model()->index(view->currentRow(), 0).data(Qt::UserRole + 3).toString(),
                  entries[0].path);
         QVERIFY(view->viewport()->rect().contains(view->visualRect(view->currentIndex())));
     }

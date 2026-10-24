@@ -1,4 +1,5 @@
 #include "Common/MyTypes.h"
+#include "filetable.h"
 
 #include "7zip/UI/Explorer/ContextMenuFlags.h"
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
@@ -41,9 +42,9 @@ bool write(const QString &path, const QByteArray &bytes) {
     return file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size();
 }
 int rowNamed(MainWindow &window, const QString &name) {
-    auto *view = window.findChild<QTableWidget *>("archiveTable");
+    auto *view = window.findChild<FileTable *>("archiveTable");
     for (int row = 0; row < view->rowCount(); ++row)
-        if (view->item(row, 0)->text() == name)
+        if (view->model()->index(row, 0).data().toString() == name)
             return row;
     return -1;
 }
@@ -269,7 +270,7 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
         action(window, "twoPanelsAction")->trigger();
         auto *right = window.findChild<QWidget *>("filePanel1");
         QVERIFY(right);
-        auto *rightView = right->findChild<QTableWidget *>("archiveTable");
+        auto *rightView = right->findChild<FileTable *>("archiveTable");
         QVERIFY(rightView);
         rightView->setFocus();
         QTRY_VERIFY(rightView->hasFocus());
@@ -430,7 +431,8 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
                 0, [&] { inspect(qobject_cast<QMenu *>(QApplication::activePopupWidget())); });
             QVERIFY(QMetaObject::invokeMethod(
                 view, "customContextMenuRequested", Qt::DirectConnection,
-                Q_ARG(QPoint, view->visualItemRect(view->item(view->currentRow(), 0)).center())));
+                Q_ARG(QPoint,
+                      view->visualRect(view->model()->index(view->currentRow(), 0)).center())));
         }
         QVERIFY(inspected);
     }
@@ -512,7 +514,8 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
                 0, [&] { invoke(qobject_cast<QMenu *>(QApplication::activePopupWidget())); });
             QVERIFY(QMetaObject::invokeMethod(
                 view, "customContextMenuRequested", Qt::DirectConnection,
-                Q_ARG(QPoint, view->visualItemRect(view->item(view->currentRow(), 0)).center())));
+                Q_ARG(QPoint,
+                      view->visualRect(view->model()->index(view->currentRow(), 0)).center())));
         }
         dismissal.stop();
         QVERIFY(invoked);
@@ -525,7 +528,7 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
         QCOMPARE(view->selectionModel()->selectedRows().size(), outcome == "success" ? 0 : 1);
         if (outcome == "success") {
             QCOMPARE(table(*receiver)->rowCount(), 1);
-            QCOMPARE(table(*receiver)->item(0, 0)->text(), fileName);
+            QCOMPARE(table(*receiver)->model()->index(0, 0).data().toString(), fileName);
             QVERIFY(errors.isEmpty());
             QVERIFY(!passwordCanceled);
         } else {

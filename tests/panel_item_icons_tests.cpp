@@ -4,6 +4,7 @@
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "Windows/PropVariant.h"
 #include "external_editor_fixture.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "panel_load_folder.h"
 #include "qtfolderprojection.h"
@@ -264,10 +265,12 @@ class PanelItemIconsTests final : public QObject, protected MainWindowTestSuppor
         for (int row = 0; row < view->rowCount(); ++row) {
             QIcon source;
             QCOMPARE(view->sourcePanel->GetItemIcon(
-                         view->item(row, 0)->data(Qt::UserRole + 6).toUInt(), source),
+                         view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt(), source),
                      S_OK);
             QVERIFY(!source.isNull());
-            QCOMPARE(view->item(row, 0)->icon().cacheKey(), source.cacheKey());
+            QCOMPARE(
+                view->model()->index(row, 0).data(Qt::DecorationRole).value<QIcon>().cacheKey(),
+                source.cacheKey());
         }
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);

@@ -1,4 +1,5 @@
 #include "archivebackend.h"
+#include "filetable.h"
 #include "fixtures/slow_codec.h"
 #include "fixtures/widget_dialogs.h"
 #include "mainwindow.h"
@@ -56,25 +57,27 @@ class AssociatedWindowTests final : public QObject {
         events.Activate();
         QTRY_COMPARE(windows_.size(), 1);
         QTRY_VERIFY(!windows_[0].isNull());
-        auto *first = windows_[0]->findChild<QTableWidget *>("archiveTable");
+        auto *first = windows_[0]->findChild<FileTable *>("archiveTable");
         QVERIFY(first);
-        QTRY_VERIFY(first->rowCount() == 1 && first->item(0, 0)->text() == name);
+        QTRY_VERIFY(first->rowCount() == 1 &&
+                    first->model()->index(0, 0).data().toString() == name);
         QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
 
         QFileOpenEvent repeated(archive);
         QVERIFY(QApplication::sendEvent(&source, &repeated));
         QTRY_COMPARE(windows_.size(), 2);
         QVERIFY(windows_[0] != windows_[1]);
-        auto *second = windows_[1]->findChild<QTableWidget *>("archiveTable");
+        auto *second = windows_[1]->findChild<FileTable *>("archiveTable");
         QVERIFY(second);
-        QTRY_VERIFY(second->rowCount() == 1 && second->item(0, 0)->text() == name);
+        QTRY_VERIFY(second->rowCount() == 1 &&
+                    second->model()->index(0, 0).data().toString() == name);
         QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
-        QCOMPARE(first->item(0, 0)->text(), name);
+        QCOMPARE(first->model()->index(0, 0).data().toString(), name);
         QCOMPARE(SourceExtractFixture::readFile(archive), original);
         QCOMPARE(SourceExtractFixture::readFile(fixture.filePath(name)), payload);
         QVERIFY(windows_[1]->close());
         QTRY_VERIFY(windows_[1].isNull());
-        QCOMPARE(first->item(0, 0)->text(), name);
+        QCOMPARE(first->model()->index(0, 0).data().toString(), name);
     }
     void closeDuringDiscoveryJoinsAndDoesNotOpenAnArchive() {
         QTemporaryDir fixture;
@@ -170,8 +173,9 @@ class AssociatedWindowTests final : public QObject {
                     visible.append(window);
             int archives = 0;
             for (auto *window : visible) {
-                auto *table = window->findChild<QTableWidget *>("archiveTable");
-                if (table && table->rowCount() == 1 && table->item(0, 0)->text() == "inside") {
+                auto *table = window->findChild<FileTable *>("archiveTable");
+                if (table && table->rowCount() == 1 &&
+                    table->model()->index(0, 0).data().toString() == "inside") {
                     ++archives;
                     if (!first)
                         first = window;

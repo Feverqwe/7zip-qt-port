@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "color_contrast.h"
 #include "deleted_folder.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QPainter>
@@ -145,7 +146,7 @@ class PanelDeletedDrawTests final : public QObject, protected MainWindowTestSupp
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         auto *iconView = ui->findChild<QListView *>("iconList");
         auto *address = ui->findChild<QLineEdit *>("archivePath");
         address->setFocus();
@@ -168,46 +169,50 @@ class PanelDeletedDrawTests final : public QObject, protected MainWindowTestSupp
         int deletedRow = -1;
         int ordinaryRow = -1;
         for (int row = 0; row < view->rowCount(); ++row)
-            (view->item(row, 0)->data(Qt::UserRole + 6).toUInt() == 0 ? deletedRow : ordinaryRow) =
-                row;
+            (view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt() == 0 ? deletedRow
+                                                                               : ordinaryRow) = row;
         QVERIFY(deletedRow >= 0 && ordinaryRow >= 0);
         auto *peer = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *peerView = static_cast<FileTable *>(peer->findChild<QTableWidget *>("archiveTable"));
+        auto *peerView = static_cast<FileTable *>(peer->findChild<FileTable *>("archiveTable"));
         CMyComPtr<IFolderFolder> peerProvider = peerView->sourcePanel->GetFolder();
         peerView->sourcePanel->Set_AutoRefresh_Mode(false);
         const int peerRows = peerView->rowCount();
         for (int column = 0; column < view->columnCount(); ++column) {
-            const QColor foreground =
-                view->item(deletedRow, column)->data(Qt::ForegroundRole).value<QBrush>().color();
-            const QColor background = alternative ? view->item(deletedRow, column)
-                                                        ->data(Qt::BackgroundRole)
+            const QColor foreground = view->model()
+                                          ->index(deletedRow, column)
+                                          .data(Qt::ForegroundRole)
+                                          .value<QBrush>()
+                                          .color();
+            const QColor background = alternative ? view->model()
+                                                        ->index(deletedRow, column)
+                                                        .data(Qt::BackgroundRole)
                                                         .value<QBrush>()
                                                         .color()
                                                   : view->palette().color(QPalette::Base);
             QVERIFY(foreground.red() > foreground.green());
             QVERIFY(foreground.red() > foreground.blue());
             QVERIFY(textContrast(foreground, background) >= 4.5);
-            QVERIFY(!view->item(ordinaryRow, column)->data(Qt::ForegroundRole).isValid());
+            QVERIFY(!view->model()->index(ordinaryRow, column).data(Qt::ForegroundRole).isValid());
         }
         QCOMPARE(
             qvariant_cast<QBrush>(iconView->model()->index(deletedRow, 0).data(Qt::ForegroundRole))
                 .color(),
-            view->item(deletedRow, 0)->data(Qt::ForegroundRole).value<QBrush>().color());
+            view->model()->index(deletedRow, 0).data(Qt::ForegroundRole).value<QBrush>().color());
         if (alternative)
-            QVERIFY(view->item(deletedRow, 0)->data(Qt::BackgroundRole).isValid());
+            QVERIFY(view->model()->index(deletedRow, 0).data(Qt::BackgroundRole).isValid());
         const unsigned queries = spec->deletedQueries;
         {
             CPanel::CDisableNotify guard(panel);
-            QVERIFY(!view->item(deletedRow, 0)->data(Qt::ForegroundRole).isValid());
+            QVERIFY(!view->model()->index(deletedRow, 0).data(Qt::ForegroundRole).isValid());
             QCOMPARE(spec->deletedQueries, queries);
         }
         const auto savedTextFolder = view->textFolder;
         view->textFolder = peerProvider;
-        QVERIFY(!view->item(deletedRow, 0)->data(Qt::ForegroundRole).isValid());
+        QVERIFY(!view->model()->index(deletedRow, 0).data(Qt::ForegroundRole).isValid());
         QCOMPARE(spec->deletedQueries, queries);
         view->textFolder = savedTextFolder;
         spec->deletedResult = E_FAIL;
-        QVERIFY(!view->item(deletedRow, 0)->data(Qt::ForegroundRole).isValid());
+        QVERIFY(!view->model()->index(deletedRow, 0).data(Qt::ForegroundRole).isValid());
         spec->deletedResult = S_OK;
         QCOMPARE(view->currentRow(), focus);
         CRecordVector<UInt32> after;
@@ -239,17 +244,17 @@ class PanelDeletedDrawTests final : public QObject, protected MainWindowTestSupp
         panel.OnReload();
         const unsigned before = spec->deletedQueries;
         for (int row = 0; row < view->rowCount(); ++row)
-            QVERIFY(!view->item(row, 0)->data(Qt::ForegroundRole).isValid());
+            QVERIFY(!view->model()->index(row, 0).data(Qt::ForegroundRole).isValid());
         QCOMPARE(spec->deletedQueries, before);
         spec->archiveHasDeleted = true;
         spec->firstDeleted = false;
         panel.OnReload();
         for (int row = 0; row < view->rowCount(); ++row)
-            QVERIFY(!view->item(row, 0)->data(Qt::ForegroundRole).isValid());
+            QVERIFY(!view->model()->index(row, 0).data(Qt::ForegroundRole).isValid());
         panel.SetNewFolder(new LoadFolder);
         panel.OnReload();
         for (int row = 0; row < view->rowCount(); ++row)
-            QVERIFY(!view->item(row, 0)->data(Qt::ForegroundRole).isValid());
+            QVERIFY(!view->model()->index(row, 0).data(Qt::ForegroundRole).isValid());
         QCOMPARE(peerView->sourcePanel->GetFolder(), (IFolderFolder *)peerProvider);
         QCOMPARE(peerView->rowCount(), peerRows);
         QCOMPARE(backend.listCalls, 0);

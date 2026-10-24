@@ -1,5 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
+#include "panel_model_support.h"
 #include "qtlangcontrols.h"
 #include "schema_folder.h"
 #include "window_state_support.h"
@@ -8,8 +10,8 @@
 class PanelCellTextTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
     static QString uncached(FileTable &view, int column) {
-        view.item(0, column)->setData(Qt::DisplayRole, QVariant());
-        return view.item(0, column)->text();
+        SetPanelData(view.model()->index(0, column), QVariant(), Qt::DisplayRole);
+        return view.model()->index(0, column).data().toString();
     }
     static void reportViews(MainWindow &window, QWidget &visibleView, FileTable &peer,
                             const QString &phase) {
@@ -55,7 +57,7 @@ class PanelCellTextTests final : public QObject, protected MainWindowTestSupport
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         ui->findChild<QLineEdit *>("archivePath")->setFocus();
         action(window, "openRootAction")->trigger();
         if (icons)
@@ -72,7 +74,7 @@ class PanelCellTextTests final : public QObject, protected MainWindowTestSupport
         view->setCurrentCell(0, 0, QItemSelectionModel::NoUpdate);
         panel.SetAlternativeSelection(alternative);
         auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *peer = static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        auto *peer = static_cast<FileTable *>(peerUi->findChild<FileTable *>("archiveTable"));
         peer->sourcePanel->Set_AutoRefresh_Mode(false);
         CMyComPtr<IFolderFolder> peerProvider = peer->sourcePanel->GetFolder();
         const int peerRows = peer->rowCount();
@@ -88,12 +90,12 @@ class PanelCellTextTests final : public QObject, protected MainWindowTestSupport
             ++callbacks;
             valid &= panel.ShouldProcessNotifications() == !outer;
             for (int row = 0; row < view->rowCount(); ++row) {
-                const UInt32 index = view->item(row, 0)->data(Qt::UserRole + 6).toUInt();
+                const UInt32 index = view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt();
                 const QString expected =
                     outer ? QString()
                           : ToQString(index ? spec->items->secondName : spec->items->firstName);
-                view->item(row, 0)->setData(Qt::DisplayRole, QVariant());
-                valid &= view->item(row, 0)->text() == expected;
+                SetPanelData(view->model()->index(row, 0), QVariant(), Qt::DisplayRole);
+                valid &= view->model()->index(row, 0).data().toString() == expected;
                 valid &= panel.IsItemMarked(index) == selected;
             }
             reading = false;
@@ -128,11 +130,11 @@ class PanelCellTextTests final : public QObject, protected MainWindowTestSupport
         disconnect(paintConnection);
         QVERIFY(panel.ShouldProcessNotifications());
         for (int row = 0; row < view->rowCount(); ++row) {
-            const UInt32 index = view->item(row, 0)->data(Qt::UserRole + 6).toUInt();
+            const UInt32 index = view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt();
             QVERIFY(!panel.IsItemMarked(index));
-            QVERIFY(!view->item(row, 0)->data(Qt::BackgroundRole).isValid());
-            view->item(row, 0)->setData(Qt::DisplayRole, QVariant());
-            QCOMPARE(view->item(row, 0)->text(),
+            QVERIFY(!view->model()->index(row, 0).data(Qt::BackgroundRole).isValid());
+            SetPanelData(view->model()->index(row, 0), QVariant(), Qt::DisplayRole);
+            QCOMPARE(view->model()->index(row, 0).data().toString(),
                      ToQString(index ? spec->items->secondName : spec->items->firstName));
         }
         QCOMPARE(panel.GetFolder(), (IFolderFolder *)provider);
@@ -173,7 +175,7 @@ class PanelCellTextTests final : public QObject, protected MainWindowTestSupport
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         ui->findChild<QLineEdit *>("archivePath")->setFocus();
         action(window, "openRootAction")->trigger();
         if (icons)
@@ -192,13 +194,13 @@ class PanelCellTextTests final : public QObject, protected MainWindowTestSupport
         const int raw = view->columnForCatalogProperty(3);
         QVERIFY(generic >= 0 && raw >= 0 && generic != raw);
         auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *peer = static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        auto *peer = static_cast<FileTable *>(peerUi->findChild<FileTable *>("archiveTable"));
         peer->sourcePanel->Set_AutoRefresh_Mode(false);
         CMyComPtr<IFolderFolder> peerProvider = peer->sourcePanel->GetFolder();
         const int peerRows = peer->rowCount();
         peerUi->findChild<QLineEdit *>("archivePath")->setFocus();
         QWidget *const focused = window.focusWidget();
-        const UInt32 sourceIndex = view->item(0, 0)->data(Qt::UserRole + 6).toUInt();
+        const UInt32 sourceIndex = view->model()->index(0, 0).data(Qt::UserRole + 6).toUInt();
         const QString sourceName =
             ToQString(sourceIndex ? spec->items->secondName : spec->items->firstName);
         for (HRESULT result : {S_FALSE, E_FAIL, E_ABORT}) {
@@ -217,17 +219,17 @@ class PanelCellTextTests final : public QObject, protected MainWindowTestSupport
         }
         spec->items->countResult = S_OK;
         spec->crcResult = E_FAIL;
-        auto *errorItem = view->item(0, generic);
+        const QPersistentModelIndex errorItem = view->model()->index(0, generic);
         const QString initialError = uncached(*view, generic);
         {
             CPanel::CDisableNotify guard(panel);
             SaveRegLang(UString(russian ? L"-" : L"ru"), settings);
             ReloadLang(settings);
             QtNotifyLanguageChanged();
-            QCOMPARE(errorItem->text(), initialError);
+            QCOMPARE(errorItem.data().toString(), initialError);
         }
-        QCOMPARE(errorItem->text(), QString::fromUtf8(russian ? "Error: " : "Ошибка: "));
-        QCOMPARE(view->item(0, generic), errorItem);
+        QCOMPARE(errorItem.data().toString(), QString::fromUtf8(russian ? "Error: " : "Ошибка: "));
+        QCOMPARE(view->model()->index(0, generic), errorItem);
         QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
         spec->crcResult = S_OK;
         SaveRegLang(UString(russian ? L"ru" : L"-"), settings);
@@ -238,7 +240,7 @@ class PanelCellTextTests final : public QObject, protected MainWindowTestSupport
         const unsigned rawQueries = spec->rawQueries;
         {
             CPanel::CDisableNotify guard(panel);
-            QCOMPARE(view->item(0, raw)->text(), QString("DEADBEEF"));
+            QCOMPARE(view->model()->index(0, raw).data().toString(), QString("DEADBEEF"));
             QCOMPARE(uncached(*view, raw), QString());
             QCOMPARE(spec->rawQueries, rawQueries);
         }
@@ -268,7 +270,7 @@ class PanelCellTextTests final : public QObject, protected MainWindowTestSupport
         panel.OnReload();
         QVERIFY(!previous.isValid());
         QCOMPARE(view->rowCount(), 2);
-        const UInt32 replacementIndex = view->item(0, 0)->data(Qt::UserRole + 6).toUInt();
+        const UInt32 replacementIndex = view->model()->index(0, 0).data(Qt::UserRole + 6).toUInt();
         QCOMPARE(uncached(*view, 0), ToQString(replacementIndex ? replacement->items->secondName
                                                                 : replacement->items->firstName));
         reportViews(window, visibleView, *peer, "rebind");

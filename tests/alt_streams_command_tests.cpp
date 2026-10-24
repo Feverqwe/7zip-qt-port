@@ -140,7 +140,7 @@ class AltStreamsCommandTests final : public QObject, protected MainWindowTestSup
         const QString renamed = QStringLiteral("переименованный δ");
         editor->setText(renamed);
         QTest::keyClick(editor, Qt::Key_Return);
-        QTRY_COMPARE(table(window)->item(0, 0)->text(), renamed);
+        QTRY_COMPARE(table(window)->model()->index(0, 0).data().toString(), renamed);
         QTRY_VERIFY(QFileInfo::exists(basePath + ':' + renamed));
         QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
         QVERIFY(!QFileInfo::exists(stream.fileName()));
@@ -181,9 +181,9 @@ class AltStreamsCommandTests final : public QObject, protected MainWindowTestSup
             QFAIL(qPrintable(QStringLiteral("OpenAltStreams source exception %1").arg(code)));
         }
         QTRY_COMPARE(table(window)->rowCount(), 1);
-        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("поток δ"));
-        QCOMPARE(table(window)->item(0, 0)->data(Qt::UserRole + 1).toBool(), false);
-        QCOMPARE(table(window)->item(0, 0)->data(Qt::UserRole).toString(),
+        QCOMPARE(table(window)->model()->index(0, 0).data().toString(), QStringLiteral("поток δ"));
+        QCOMPARE(table(window)->model()->index(0, 0).data(Qt::UserRole + 1).toBool(), false);
+        QCOMPARE(table(window)->model()->index(0, 0).data(Qt::UserRole).toString(),
                  address->text() + QStringLiteral("поток δ"));
         QVERIFY(address->text().endsWith(name + ':'));
         QVERIFY(!streams->isEnabled());

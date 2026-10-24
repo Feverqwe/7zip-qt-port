@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/EditPage.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "filetable.h"
 #include "fixtures/options_presentation.h"
 #include "layout_inspection.h"
 #include "qtfmoptionsdialog.h"
@@ -193,8 +194,9 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
         QTRY_VERIFY(action(window, "diffAction")->isEnabled());
         const int firstRow = filesystemRow(window, "a.txt");
         const int secondRow = filesystemRow(window, QStringLiteral("б с пробелом.txt"));
-        const bool firstInSourceOrder = view->item(firstRow, 0)->data(Qt::UserRole + 6).toUInt() <
-                                        view->item(secondRow, 0)->data(Qt::UserRole + 6).toUInt();
+        const bool firstInSourceOrder =
+            view->model()->index(firstRow, 0).data(Qt::UserRole + 6).toUInt() <
+            view->model()->index(secondRow, 0).data(Qt::UserRole + 6).toUInt();
         const QStringList expected =
             firstInSourceOrder ? QStringList({first, second}) : QStringList({second, first});
         action(window, "diffAction")->trigger();
@@ -240,7 +242,7 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
         window.show();
         window.activateWindow();
         auto *leftPanel = window.findChild<QWidget *>("filePanel0");
-        auto *leftTable = leftPanel->findChild<QTableWidget *>("archiveTable");
+        auto *leftTable = leftPanel->findChild<FileTable *>("archiveTable");
         QTRY_VERIFY(leftTable->rowCount() > 0);
         leftTable->setFocus();
         if (flat)
@@ -253,7 +255,7 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
         action(window, "twoPanelsAction")->trigger();
         QVERIFY(action(window, "twoPanelsAction")->isChecked());
         auto *rightPanel = window.findChild<QWidget *>("filePanel1");
-        auto *rightTable = rightPanel->findChild<QTableWidget *>("archiveTable");
+        auto *rightTable = rightPanel->findChild<FileTable *>("archiveTable");
         auto *address = rightPanel->findChild<QLineEdit *>("archivePath");
         address->setFocus();
         address->setText(right);
@@ -276,7 +278,7 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
         QTRY_VERIFY(leftTable->hasFocus());
         const auto sourceRow = [&] {
             for (int row = 0; row < leftTable->rowCount(); ++row)
-                if (leftTable->item(row, 0)->text() == displayed)
+                if (leftTable->model()->index(row, 0).data().toString() == displayed)
                     return row;
             return -1;
         };

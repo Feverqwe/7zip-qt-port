@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "copydialog.h"
+#include "filetable.h"
 #include "fixtures/window_activation.h"
 #include "layout_inspection.h"
 #include "native_archive_fixture.h"
@@ -24,22 +25,22 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
     static void createArchive(const QString &path, const QStringList &files) {
         QVERIFY(NativeArchiveFixture::WriteFiles(path, files));
     }
-    static int row(QTableWidget &view, const QString &name) {
+    static int row(FileTable &view, const QString &name) {
         for (int i = 0; i < view.rowCount(); ++i)
-            if (view.item(i, 0)->text().normalized(QString::NormalizationForm_C) ==
-                name.normalized(QString::NormalizationForm_C))
+            if (view.model()->index(i, 0).data().toString().normalized(
+                    QString::NormalizationForm_C) == name.normalized(QString::NormalizationForm_C))
                 return i;
         return -1;
     }
-    static QTableWidget *openPanel(MainWindow &window, unsigned index, const QString &path) {
+    static FileTable *openPanel(MainWindow &window, unsigned index, const QString &path) {
         auto *panel = window.findChild<QWidget *>(QString("filePanel%1").arg(index));
         auto *address = panel->findChild<QLineEdit *>("archivePath");
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        return panel->findChild<QTableWidget *>("archiveTable");
+        return panel->findChild<FileTable *>("archiveTable");
     }
-    static QString inspectAndCancel(MainWindow &window, QTableWidget &view, bool move, bool menu,
+    static QString inspectAndCancel(MainWindow &window, FileTable &view, bool move, bool menu,
                                     const QSize &size, const QString &tag) {
         bool seen = false;
         bool inspected = false;
@@ -65,7 +66,7 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QTest::qVerify(inspected, "inspected", "Widget JSON written", __FILE__, __LINE__);
         return summary;
     }
-    static void submit(MainWindow &window, QTableWidget &sourceView, int secondRow, bool move,
+    static void submit(MainWindow &window, FileTable &sourceView, int secondRow, bool move,
                        bool &dialogSeen, QString &errors) {
         QTimer driver;
         connect(&driver, &QTimer::timeout, &window, [&] {
@@ -90,8 +91,8 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QTest::keyClick(&sourceView, move ? Qt::Key_F6 : Qt::Key_F5);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
     }
-    static void inspectCompletedPanels(MainWindow &window, QTableWidget &source,
-                                       QTableWidget &target, const QString &tag) {
+    static void inspectCompletedPanels(MainWindow &window, FileTable &source, FileTable &target,
+                                       const QString &tag) {
         for (const QSize size : {QSize(1100, 640), QSize(640, 400)}) {
             window.resize(size);
             QApplication::processEvents();
@@ -110,11 +111,11 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QVERIFY(view->sourcePanel->IsFSDrivesFolder());
         const int count = view->rowCount();
         QVERIFY(count > 0);
-        view->setRowCount(0);
+        view->clearRows();
         view->sourcePanel->OnReload();
         QCOMPARE(view->rowCount(), count);
         QCOMPARE(
-            view->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+            view->model()->index(0, 0).data().toString().normalized(QString::NormalizationForm_C),
             ToQString(view->sourcePanel->GetItemName(0)).normalized(QString::NormalizationForm_C));
     }
     void outsidePeerStillRefreshesDestination_data() {
@@ -193,9 +194,11 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QCOMPARE(read(QDir(input).filePath(name)),
                  move ? QByteArray() : QByteArray("control bytes"));
         QCOMPARE(peerView->selectionModel()->selectedRows().size(), 1);
-        QCOMPARE(
-            peerView->item(peerView->selectionModel()->selectedRows().first().row(), 0)->text(),
-            QString("seed.txt"));
+        QCOMPARE(peerView->model()
+                     ->index(peerView->selectionModel()->selectedRows().first().row(), 0)
+                     .data()
+                     .toString(),
+                 QString("seed.txt"));
         inspectCompletedPanels(
             window, *sourceView, *peerView,
             QString("copy-outside-peer-%1-%2-%3").arg(sourceIndex).arg(large).arg(outcome));
@@ -245,7 +248,7 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         MainWindow window(&backend);
         window.show();
         QVERIFY(WindowActivation::waitForActive(window));
-        QTableWidget *view = openPanel(window, 0, source);
+        FileTable *view = openPanel(window, 0, source);
         QTRY_COMPARE(static_cast<FileTable *>(view)->sourcePanel->GetParentFolders().Size(),
                      archive ? 1u : 0u);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
@@ -350,12 +353,12 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QVERIFY(WindowActivation::waitForActive(window));
         action(window, "twoPanelsAction")->trigger();
         QVERIFY(action(window, "twoPanelsAction")->isChecked());
-        QTableWidget *sourceView = openPanel(window, sourceIndex, source);
+        FileTable *sourceView = openPanel(window, sourceIndex, source);
         QTRY_COMPARE(static_cast<FileTable *>(sourceView)->sourcePanel->GetParentFolders().Size(),
                      sourceArchive ? 1u : 0u);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
         QTRY_COMPARE(sourceView->rowCount(), largeLists ? 302 : 2);
-        QTableWidget *targetView = openPanel(window, 1 - sourceIndex, target);
+        FileTable *targetView = openPanel(window, 1 - sourceIndex, target);
         QTRY_COMPARE(static_cast<FileTable *>(targetView)->sourcePanel->GetParentFolders().Size(),
                      targetArchive ? 1u : 0u);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
@@ -417,13 +420,16 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QTRY_VERIFY_WITH_TIMEOUT(sourceView->hasFocus(), 1000);
         QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(window.windowTitle())),
                  QDir::cleanPath(QDir::fromNativeSeparators(source)));
-        QVERIFY(sourceView->currentItem());
-        QCOMPARE(sourceView->currentItem()->text().normalized(QString::NormalizationForm_C),
-                 second);
-        QCOMPARE(targetView->selectionModel()->selectedRows().size(), 1);
+        QVERIFY(sourceView->currentIndex().isValid());
         QCOMPARE(
-            targetView->item(targetView->selectionModel()->selectedRows().first().row(), 0)->text(),
-            QString("seed.txt"));
+            sourceView->currentIndex().data().toString().normalized(QString::NormalizationForm_C),
+            second);
+        QCOMPARE(targetView->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(targetView->model()
+                     ->index(targetView->selectionModel()->selectedRows().first().row(), 0)
+                     .data()
+                     .toString(),
+                 QString("seed.txt"));
         QCOMPARE(read(QDir(output).filePath("seed.txt")), QByteArray("seed control"));
         inspectCompletedPanels(window, *sourceView, *targetView,
                                QString("copy-completed-%1-%2-%3-%4-%5")

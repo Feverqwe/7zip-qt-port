@@ -37,7 +37,8 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         const QString name = QFileInfo(source).fileName().normalized(QString::NormalizationForm_C);
         int row = -1;
         for (int i = 0; i < table(window)->rowCount(); ++i)
-            if (table(window)->item(i, 0)->text().normalized(QString::NormalizationForm_C) == name)
+            if (table(window)->model()->index(i, 0).data().toString().normalized(
+                    QString::NormalizationForm_C) == name)
                 row = i;
         QVERIFY(row >= 0);
         table(window)->selectRow(row);

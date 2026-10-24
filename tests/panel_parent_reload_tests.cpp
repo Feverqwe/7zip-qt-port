@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "fixtures/panel_keys.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
@@ -12,7 +13,7 @@ class PanelParentReloadTests final : public QObject, protected MainWindowTestSup
     static FileTable *panelView(MainWindow &window, unsigned index) {
         return static_cast<FileTable *>(
             window.findChild<QWidget *>(QString("filePanel%1").arg(index))
-                ->findChild<QTableWidget *>("archiveTable"));
+                ->findChild<FileTable *>("archiveTable"));
     }
     static QLineEdit *panelAddress(MainWindow &window, unsigned index) {
         return window.findChild<QWidget *>(QString("filePanel%1").arg(index))
@@ -104,12 +105,13 @@ class PanelParentReloadTests final : public QObject, protected MainWindowTestSup
             panel.SaveSelectedState(restored);
             QCOMPARE(restored.SelectFocused, dots);
             if (dots) {
-                QCOMPARE(view->item(0, 0)->text(), QString(".."));
-                QCOMPARE(view->item(0, 0)->data(Qt::UserRole + 6).toUInt(), UInt32(-1));
-                QVERIFY(!view->item(0, 0)->icon().isNull());
-                QCOMPARE(view->item(0, 0)->toolTip(), language == "ru"
-                                                          ? QStringLiteral("Родительская папка")
-                                                          : QStringLiteral("Parent folder"));
+                QCOMPARE(view->model()->index(0, 0).data().toString(), QString(".."));
+                QCOMPARE(view->model()->index(0, 0).data(Qt::UserRole + 6).toUInt(), UInt32(-1));
+                QVERIFY(
+                    !view->model()->index(0, 0).data(Qt::DecorationRole).value<QIcon>().isNull());
+                QCOMPARE(view->model()->index(0, 0).data(Qt::ToolTipRole).toString(),
+                         language == "ru" ? QStringLiteral("Родительская папка")
+                                          : QStringLiteral("Parent folder"));
             }
             CRecordVector<UInt32> indices;
             panel.Get_ItemIndices_Selected(indices);

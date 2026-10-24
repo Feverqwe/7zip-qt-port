@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "schema_folder.h"
 #include "window_state_support.h"
@@ -46,13 +47,18 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
                 ++visibleCount;
                 const CPropColumn *prop = view.sourceColumn(column);
                 QVERIFY(prop);
-                QCOMPARE(view.horizontalHeaderItem(column)->text(), ToQString(prop->Name));
+                QCOMPARE(view.model()->headerData(column, Qt::Horizontal).toString(),
+                         ToQString(prop->Name));
                 for (int row = 0; row < view.rowCount(); ++row) {
-                    QCOMPARE(view.item(row, column)->textAlignment(),
+                    QCOMPARE(view.model()
+                                 ->index(row, column)
+                                 .data(Qt::TextAlignmentRole)
+                                 .value<Qt::Alignment>(),
                              GetColumnAlign(prop->ID, prop->Type));
-                    QCOMPARE(view.item(row, column)->text(),
-                             view.sourcePanel->GetItemText(
-                                 view.item(row, 0)->data(Qt::UserRole + 6).toUInt(), *prop));
+                    QCOMPARE(
+                        view.model()->index(row, column).data().toString(),
+                        view.sourcePanel->GetItemText(
+                            view.model()->index(row, 0).data(Qt::UserRole + 6).toUInt(), *prop));
                 }
             }
         QCOMPARE(visibleCount, view.sourcePanel->GetVisibleColumns().Size());
@@ -64,14 +70,15 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
             for (int row = 0; row < view.rowCount(); ++row) {
                 QCOMPARE(icons->model()->index(row, icons->modelColumn()).data().toString(),
                          view.sourcePanel->GetItemText(
-                             view.item(row, 0)->data(Qt::UserRole + 6).toUInt(),
+                             view.model()->index(row, 0).data(Qt::UserRole + 6).toUInt(),
                              view.sourcePanel->GetVisibleColumns()[0]));
-                QVERIFY(!view.item(row, 0)->icon().isNull());
+                QVERIFY(
+                    !view.model()->index(row, 0).data(Qt::DecorationRole).value<QIcon>().isNull());
                 QCOMPARE(
                     qvariant_cast<QIcon>(
                         icons->model()->index(row, icons->modelColumn()).data(Qt::DecorationRole))
                         .cacheKey(),
-                    view.item(row, 0)->icon().cacheKey());
+                    view.model()->index(row, 0).data(Qt::DecorationRole).value<QIcon>().cacheKey());
             }
         }
         if (!columns.IsEmpty())
@@ -145,7 +152,7 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         ui->findChild<QLineEdit *>("archivePath")->setFocus();
         action(window, "openRootAction")->trigger();
         action(window, qPrintable(QString("viewMode%1Action").arg(mode)))->trigger();
@@ -159,7 +166,7 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
         QCOMPARE(view->rowCount(), 2);
         panel.SelectAll(true);
         auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *peer = static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        auto *peer = static_cast<FileTable *>(peerUi->findChild<FileTable *>("archiveTable"));
         peer->sourcePanel->Set_AutoRefresh_Mode(false);
         CMyComPtr<IFolderFolder> peerProvider = peer->sourcePanel->GetFolder();
         const int peerRows = peer->rowCount();

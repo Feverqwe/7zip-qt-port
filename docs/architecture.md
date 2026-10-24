@@ -41,6 +41,12 @@ Original item indices, marks and focused row are distinct from display text and
 Qt selection. Sorting, column metadata and native namespaces retain their source
 owners; presentation does not infer operation paths from rendered cells.
 
+The table and icon views share a Qt table model and selection model. The model
+publishes source item identities and row presentation metadata; property text and
+comparison remain delegated to the source panel and its folder providers. Model
+changes preserve Qt persistent indexes and selection across sorting and column
+changes. The model does not retain providers beyond the panel's lifetime.
+
 Main-window chrome has a scoped Qt presentation adapter for toolbar spacing,
 labels and the parent button. It does not style dialogs or own commands; the
 editable address retains the original panel address/navigation owner.

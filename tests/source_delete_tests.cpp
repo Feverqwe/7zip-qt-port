@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "filetable.h"
 #include "fixtures/panel_keys.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
@@ -91,7 +92,7 @@ class SourceDeleteTests final : public QObject, protected MainWindowTestSupport 
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        return static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        return static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
     }
   private slots:
     void refusedConfirmation_data() {
@@ -385,7 +386,7 @@ class SourceDeleteTests final : public QObject, protected MainWindowTestSupport 
         view->selectRow(0);
         view->setCurrentCell(0, 0);
         view->setFocus();
-        const QString removed = view->item(0, 0)->data(Qt::UserRole + 3).toString();
+        const QString removed = view->model()->index(0, 0).data(Qt::UserRole + 3).toString();
         QTimer answer;
         dialogs_.connectResponder(answer, &window, [&] {
             if (auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog())) {
@@ -405,9 +406,9 @@ class SourceDeleteTests final : public QObject, protected MainWindowTestSupport 
         QTRY_VERIFY(view->isEnabled() && view->rowCount() == 257);
         QVERIFY(panel.ShouldProcessNotifications());
         QVERIFY(!QFileInfo::exists(fixture.filePath(removed)));
-        QCOMPARE(view->item(view->currentRow(), 0)->text(),
-                 view->item(view->currentRow(), 0)->data(Qt::UserRole + 3).toString());
-        QVERIFY(!view->item(view->currentRow(), 0)->text().isEmpty());
+        QCOMPARE(view->model()->index(view->currentRow(), 0).data().toString(),
+                 view->model()->index(view->currentRow(), 0).data(Qt::UserRole + 3).toString());
+        QVERIFY(!view->model()->index(view->currentRow(), 0).data().toString().isEmpty());
         QFile keep(fixture.filePath("entry-257.bin"));
         QVERIFY(keep.open(QIODevice::ReadOnly));
         QCOMPARE(keep.readAll(), QByteArray("protected bytes"));

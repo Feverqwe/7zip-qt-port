@@ -1,7 +1,9 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "external_editor_fixture.h"
+#include "filetable.h"
 #include "layout_inspection.h"
+#include "panel_model_support.h"
 #include "qtlangcontrols.h"
 #include "window_state_support.h"
 
@@ -65,8 +67,8 @@ class RootCommandTests final : public QObject, protected MainWindowTestSupport {
         QVERIFY(left && right);
         auto *leftAddress = left->findChild<QLineEdit *>("archivePath");
         auto *rightAddress = right->findChild<QLineEdit *>("archivePath");
-        auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
-        auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
+        auto *leftTable = left->findChild<FileTable *>("archiveTable");
+        auto *rightTable = right->findChild<FileTable *>("archiveTable");
         QVERIFY(leftAddress && rightAddress && leftTable && rightTable);
         enterFolder(*leftAddress, leftPath);
         action(window, "viewMode3Action")->trigger();
@@ -140,12 +142,12 @@ class RootCommandTests final : public QObject, protected MainWindowTestSupport {
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         QLineEdit *addresses[2];
-        QTableWidget *views[2];
+        FileTable *views[2];
         for (unsigned i = 0; i < 2; ++i) {
             auto *panel = window.findChild<QWidget *>(QString("filePanel%1").arg(i));
             QVERIFY(panel);
             addresses[i] = panel->findChild<QLineEdit *>("archivePath");
-            views[i] = panel->findChild<QTableWidget *>("archiveTable");
+            views[i] = panel->findChild<FileTable *>("archiveTable");
             addresses[i]->setFocus();
             QTRY_VERIFY(addresses[i]->hasFocus());
             action(window, "viewMode3Action")->trigger();
@@ -154,8 +156,8 @@ class RootCommandTests final : public QObject, protected MainWindowTestSupport {
         }
         views[1]->setCurrentCell(0, 0);
         views[1]->selectRow(0);
-        auto *selected = views[1]->item(0, 0);
-        QVERIFY(selected && selected->isSelected());
+        const QPersistentModelIndex selected = views[1]->model()->index(0, 0);
+        QVERIFY(selected.isValid() && PanelIndexSelected(selected));
         const int count = views[1]->rowCount();
         const QString edit = QStringLiteral("черновик / path 密碼");
         if (pending)
@@ -168,8 +170,8 @@ class RootCommandTests final : public QObject, protected MainWindowTestSupport {
             QCOMPARE(addresses[1]->text(), drivePrefix(language));
             QCOMPARE(window.windowTitle(), drivePrefix(language));
             QCOMPARE(views[1]->rowCount(), count);
-            QCOMPARE(views[1]->item(0, 0), selected);
-            QVERIFY(selected->isSelected());
+            QCOMPARE(views[1]->model()->index(0, 0), selected);
+            QVERIFY(PanelIndexSelected(selected));
             QVERIFY(action(window, "openItemAction")->isEnabled());
             for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
                 window.resize(size);
@@ -211,7 +213,8 @@ class RootCommandTests final : public QObject, protected MainWindowTestSupport {
         QTRY_COMPARE(table(window)->rowCount(), 1);
         if (nested) {
             openRow(window, 0);
-            QTRY_COMPARE(table(window)->item(0, 0)->text(), QStringLiteral("папка space"));
+            QTRY_COMPARE(table(window)->model()->index(0, 0).data().toString(),
+                         QStringLiteral("папка space"));
         }
         action(window, "openRootAction")->trigger();
         auto *address = window.findChild<QLineEdit *>("archivePath");

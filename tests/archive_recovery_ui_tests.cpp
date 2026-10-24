@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivebackend.h"
 #include "archivenativeopen.h"
+#include "filetable.h"
 #include "fixtures/progress_dialog.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
@@ -21,9 +22,10 @@
 #include <QtTest>
 
 namespace {
-int Row(QTableWidget &table, const QString &name) {
+int Row(FileTable &table, const QString &name) {
     for (int i = 0; i < table.rowCount(); ++i)
-        if (table.item(i, 0) && table.item(i, 0)->text() == name)
+        if (table.model()->index(i, 0).isValid() &&
+            table.model()->index(i, 0).data().toString() == name)
             return i;
     return -1;
 }
@@ -246,7 +248,7 @@ class ArchiveRecoveryUiTests final : public QObject {
             QVERIFY(badge);
             QCOMPARE(badge->isVisible(), accept);
             if (accept) {
-                auto *table = window.findChild<QTableWidget *>("archiveTable");
+                auto *table = window.findChild<FileTable *>("archiveTable");
                 QVERIFY(table);
                 QTRY_VERIFY(Row(*table, healthyName) >= 0);
                 table->selectRow(Row(*table, healthyName));

@@ -26,7 +26,7 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         auto names = [&] {
             QStringList result;
             for (int row = 0; row < table(window)->rowCount(); ++row)
-                result << table(window)->item(row, 0)->text();
+                result << table(window)->model()->index(row, 0).data().toString();
             return result;
         };
         QCOMPARE(names(), (QStringList{"a.txt", "c.bin", "z.bin"}));
@@ -232,15 +232,19 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(QFileInfo(folder).isDir());
         QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
         QCOMPARE(table(window)
-                     ->item(table(window)->selectionModel()->selectedRows().first().row(), 0)
-                     ->text(),
+                     ->model()
+                     ->index(table(window)->selectionModel()->selectedRows().first().row(), 0)
+                     .data()
+                     .toString(),
                  QStringLiteral("папка с пробелом"));
 
         action(window, "invertSelectionAction")->trigger();
         QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
         QCOMPARE(table(window)
-                     ->item(table(window)->selectionModel()->selectedRows().first().row(), 0)
-                     ->text(),
+                     ->model()
+                     ->index(table(window)->selectionModel()->selectedRows().first().row(), 0)
+                     .data()
+                     .toString(),
                  QStringLiteral("файл с пробелом.txt"));
         action(window, "deselectAllAction")->trigger();
         QVERIFY(table(window)->selectionModel()->selectedRows().isEmpty());
@@ -253,8 +257,10 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(table(window)->rowCount(), 3);
         QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
         QCOMPARE(table(window)
-                     ->item(table(window)->selectionModel()->selectedRows().first().row(), 0)
-                     ->text(),
+                     ->model()
+                     ->index(table(window)->selectionModel()->selectedRows().first().row(), 0)
+                     .data()
+                     .toString(),
                  QStringLiteral("файл с пробелом.txt"));
         QCOMPARE(backend.listCalls, 0);
     }
@@ -280,7 +286,10 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
             QCOMPARE(publication.count(), count);
             QCOMPARE(list->rowCount(), 1);
             QCOMPARE(list->selectionModel()->selectedRows().size(), 1);
-            QCOMPARE(list->item(list->selectionModel()->selectedRows().first().row(), 0)->text(),
+            QCOMPARE(list->model()
+                         ->index(list->selectionModel()->selectedRows().first().row(), 0)
+                         .data()
+                         .toString(),
                      QStringLiteral("первый.txt"));
             QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(), address);
             QVERIFY(action(window, "refreshAction")->isEnabled());

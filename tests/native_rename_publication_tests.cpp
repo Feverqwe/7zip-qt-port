@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "external_editor_fixture.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "native_property_failure_runtime.h"
 #include "qtarchivefileresource.h"
@@ -23,7 +24,7 @@ class NativeRenamePublicationTests final : public QObject, protected MainWindowT
             for (unsigned pane : {0u, 1u}) {
                 auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
                 auto *address = owner->findChild<QLineEdit *>("archivePath");
-                auto *table = owner->findChild<QTableWidget *>("archiveTable");
+                auto *table = owner->findChild<FileTable *>("archiveTable");
                 QWidget *view = table->isVisible() ? static_cast<QWidget *>(table)
                                                    : owner->findChild<QListView *>("iconList");
                 QVERIFY(address->isEnabled() && view->isEnabled());
@@ -100,7 +101,7 @@ class NativeRenamePublicationTests final : public QObject, protected MainWindowT
         QVERIFY(QTest::qWaitForWindowActive(&window));
         window.openPath(fixture.path());
         auto *list = static_cast<FileTable *>(
-            window.findChild<QWidget *>("filePanel0")->findChild<QTableWidget *>("archiveTable"));
+            window.findChild<QWidget *>("filePanel0")->findChild<FileTable *>("archiveTable"));
         QTRY_COMPARE(list->rowCount(), 1);
         unsigned guardedStatus = 0;
         list->sourcePanel->AttachStatusPresentation([&](const CPanelStatus &) {
@@ -186,7 +187,7 @@ class NativeRenamePublicationTests final : public QObject, protected MainWindowT
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *list = static_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"));
+        auto *list = static_cast<FileTable *>(owner->findChild<FileTable *>("archiveTable"));
         auto &panel = *list->sourcePanel;
         panel.Set_AutoRefresh_Mode(false);
         QTRY_COMPARE(list->rowCount(), count);
@@ -197,7 +198,7 @@ class NativeRenamePublicationTests final : public QObject, protected MainWindowT
         auto *resource = dynamic_cast<QtArchiveFileResource *>(agent->GetEngineResource());
         QVERIFY(resource && resource->HasNativeUpdateService());
         auto *peer = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *peerList = static_cast<FileTable *>(peer->findChild<QTableWidget *>("archiveTable"));
+        auto *peerList = static_cast<FileTable *>(peer->findChild<FileTable *>("archiveTable"));
         peerList->sourcePanel->Set_AutoRefresh_Mode(false);
         CMyComPtr<IFolderFolder> peerProvider = peerList->sourcePanel->GetFolder();
         auto *view =
@@ -301,7 +302,8 @@ class NativeRenamePublicationTests final : public QObject, protected MainWindowT
         QCOMPARE(ExternalEditorFixture::contents(path, wanted), QByteArray("item 000 空.bin"));
         if (rendered == int(S_OK)) {
             QTRY_VERIFY(list->currentRow() >= 0);
-            QCOMPARE(list->item(list->currentRow(), 0)->data(Qt::UserRole + 3).toString(), wanted);
+            QCOMPARE(list->model()->index(list->currentRow(), 0).data(Qt::UserRole + 3).toString(),
+                     wanted);
             CRecordVector<UInt32> marks;
             panel.Get_ItemIndices_Selected(marks);
             QCOMPARE(marks.Size(), alternative && HRESULT(written) == S_OK ? 0u : 1u);
@@ -321,7 +323,8 @@ class NativeRenamePublicationTests final : public QObject, protected MainWindowT
             retrying = true;
             injected = false;
             for (int row = 0; row < list->rowCount(); ++row)
-                if (list->item(row, 0)->data(Qt::UserRole + 3).toString() == "item 000 空.bin") {
+                if (list->model()->index(row, 0).data(Qt::UserRole + 3).toString() ==
+                    "item 000 空.bin") {
                     view->setCurrentIndex(view->model()->index(row, 0));
                     QTest::mouseClick(view->viewport(), Qt::LeftButton, Qt::NoModifier,
                                       view->visualRect(view->model()->index(row, 0)).center());
@@ -339,8 +342,9 @@ class NativeRenamePublicationTests final : public QObject, protected MainWindowT
             QTRY_COMPARE(list->rowCount(), count);
             QTRY_VERIFY(list->isEnabled() && list->updatesEnabled());
             QTRY_VERIFY(list->currentRow() >= 0);
-            QTRY_COMPARE(list->item(list->currentRow(), 0)->data(Qt::UserRole + 3).toString(),
-                         renamed);
+            QTRY_COMPARE(
+                list->model()->index(list->currentRow(), 0).data(Qt::UserRole + 3).toString(),
+                renamed);
             QCOMPARE(ExternalEditorFixture::contents(path, renamed), QByteArray("item 000 空.bin"));
             QCOMPARE(panel.GetFolder(), provider.Interface());
             inspect(window, "writer-retried");

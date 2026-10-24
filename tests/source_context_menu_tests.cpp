@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/ComboDialog.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "filetable.h"
 #include "fixtures/widget_dialogs.h"
 #include "fixtures/window_activation.h"
 #include "layout_inspection.h"
@@ -25,11 +26,11 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        return static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        return static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
     }
     static int row(FileTable &view, const QString &name) {
         for (int i = 0; i < view.rowCount(); ++i)
-            if (view.item(i, 0)->data(Qt::UserRole + 3).toString() == name)
+            if (view.model()->index(i, 0).data(Qt::UserRole + 3).toString() == name)
                 return i;
         return -1;
     }
@@ -112,7 +113,8 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
             const auto close = qScopeGuard([&] { menu->close(); });
             headerObserved = true;
             for (QAction *option : menu->actions())
-                if (option->text() == owner->horizontalHeaderItem(timeColumn)->text()) {
+                if (option->text() ==
+                    owner->model()->headerData(timeColumn, Qt::Horizontal).toString()) {
                     menu->setActiveAction(option);
                     QTest::keyClick(menu, Qt::Key_Return);
                     return;

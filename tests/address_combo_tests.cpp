@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "address_popup_support.h"
 #include "external_editor_fixture.h"
+#include "filetable.h"
 #include "fixtures/native_shell_icon.h"
 #include "fixtures/window_activation.h"
 #include "layout_inspection.h"
@@ -195,7 +196,8 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         QVERIFY(!QTest::currentTestFailed());
         QTRY_COMPARE(QDir::cleanPath(address->text()), QFileInfo(parent).canonicalFilePath());
         QTRY_COMPARE(table(window)->rowCount(), 1);
-        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("внутри 密碼"));
+        QCOMPARE(table(window)->model()->index(0, 0).data().toString(),
+                 QStringLiteral("внутри 密碼"));
         AddressPopupSupport::show(*combo);
         QApplication::processEvents();
         const int computer = combo->findText(QString::fromWCharArray(LangString(IDS_COMPUTER)));
@@ -244,9 +246,11 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         QTRY_VERIFY(action(window, "parentFolderAction")->isEnabled());
         if (nested) {
             QTRY_COMPARE(table(window)->rowCount(), 1);
-            QTRY_COMPARE(table(window)->item(0, 0)->text(), QFileInfo(archive).fileName());
+            QTRY_COMPARE(table(window)->model()->index(0, 0).data().toString(),
+                         QFileInfo(archive).fileName());
             openRow(window, 0);
-            QTRY_COMPARE(table(window)->item(0, 0)->text(), QStringLiteral("внешняя space"));
+            QTRY_COMPARE(table(window)->model()->index(0, 0).data().toString(),
+                         QStringLiteral("внешняя space"));
         }
         const QString archiveAddress = address->text();
         auto *currentIcon = address->findChild<QAction *>("currentAddressIcon");
@@ -258,7 +262,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         address->setText(archiveAddress + QStringLiteral(" / внешняя space/内側 密碼"));
         QTest::keyClick(address, Qt::Key_Return);
         QTRY_COMPARE(table(window)->rowCount(), 1);
-        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("keep.txt"));
+        QCOMPARE(table(window)->model()->index(0, 0).data().toString(), QStringLiteral("keep.txt"));
         QCOMPARE(currentIcon->icon().pixmap(16, 16).toImage(),
                  QFileIconProvider().icon(QFileIconProvider::Folder).pixmap(16, 16).toImage());
         AddressPopupSupport::show(*combo);
@@ -269,7 +273,8 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         AddressPopupSupport::selectRow(*combo, parent);
         QVERIFY(!QTest::currentTestFailed());
         QTRY_COMPARE(address->text(), archiveAddress + QStringLiteral(" / внешняя space"));
-        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("内側 密碼"));
+        QCOMPARE(table(window)->model()->index(0, 0).data().toString(),
+                 QStringLiteral("内側 密碼"));
         QCOMPARE(ExternalEditorFixture::read(archive), original);
         if (nested)
             QCOMPARE(ExternalEditorFixture::read(outer), originalOuter);
@@ -363,7 +368,8 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
                                     : "none")
                            .arg(table(window)->isEnabled())));
         QCOMPARE(table(window)->rowCount(), 1);
-        QCOMPARE(table(window)->item(0, 0)->text(), QFileInfo(control).fileName());
+        QCOMPARE(table(window)->model()->index(0, 0).data().toString(),
+                 QFileInfo(control).fileName());
         QVERIFY(action(window, "createFolderAction")->isEnabled());
         QCOMPARE(ExternalEditorFixture::read(control), bytes);
         QCOMPARE(backend.listCalls, 0);
@@ -390,7 +396,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         for (unsigned i = 0; i < 2; ++i) {
             QVERIFY(panels[i]);
             auto *address = panels[i]->findChild<QLineEdit *>("archivePath");
-            auto *view = panels[i]->findChild<QTableWidget *>("archiveTable");
+            auto *view = panels[i]->findChild<FileTable *>("archiveTable");
             address->setFocus();
             QTRY_VERIFY(address->hasFocus());
             action(window, "viewMode3Action")->trigger();
@@ -428,7 +434,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
             address->setText(QStringLiteral("uncommitted address"));
             QTest::keyClick(address, Qt::Key_Escape);
             QCOMPARE(QDir::cleanPath(address->text()), QFileInfo(paths[i]).canonicalFilePath());
-            QTRY_VERIFY(panels[i]->findChild<QTableWidget *>("archiveTable")->hasFocus());
+            QTRY_VERIFY(panels[i]->findChild<FileTable *>("archiveTable")->hasFocus());
         }
         QCOMPARE(backend.listCalls, 0);
     }

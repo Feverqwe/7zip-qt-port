@@ -4,6 +4,7 @@
 #include "Common/MyCom.h"
 #include "Windows/PropVariant.h"
 #include "filesystemscanner.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QSet>
@@ -27,11 +28,11 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
     static int diskRow(MainWindow &window, const QString &path) {
         auto *view = table(window);
         for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 1)->text() == path)
+            if (view->model()->index(row, 1).data().toString() == path)
                 return row;
         return -1;
     }
-    static void selectOnly(QTableWidget *view, int row) {
+    static void selectOnly(FileTable *view, int row) {
         QVERIFY(row >= 0);
         view->clearSelection();
         view->selectionModel()->select(view->model()->index(row, 0),
@@ -145,7 +146,7 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
             QCOMPARE(count, UInt32(view->rowCount()));
             QSet<quint32> indices;
             for (int row = 0; row < view->rowCount(); ++row) {
-                const quint32 index = view->item(row, 0)->data(Qt::UserRole + 6).toUInt();
+                const quint32 index = view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt();
                 QVERIFY(index < count && !indices.contains(index));
                 indices.insert(index);
                 CPropVariant sourceName, prefix;
@@ -154,7 +155,7 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
                 const QString relPath = (QString::fromWCharArray(prefix.bstrVal) +
                                          QString::fromWCharArray(sourceName.bstrVal))
                                             .normalized(QString::NormalizationForm_C);
-                QCOMPARE(QDir::fromNativeSeparators(view->item(row, 0)->text()),
+                QCOMPARE(QDir::fromNativeSeparators(view->model()->index(row, 0).data().toString()),
                          QDir::fromNativeSeparators(relPath));
             }
         }
@@ -168,10 +169,10 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(view->rowCount(), flat ? 5 : 4);
         const int archiveRow = rowWithPath(window, name);
         QVERIFY(archiveRow >= 0);
-        QCOMPARE(view->item(archiveRow, 2)->text(), QStringLiteral("11"));
+        QCOMPARE(view->model()->index(archiveRow, 2).data().toString(), QStringLiteral("11"));
         const int unknownRow = rowWithPath(window, "unknown");
         QVERIFY(unknownRow >= 0);
-        QVERIFY(view->item(unknownRow, 2)->text().isEmpty());
+        QVERIFY(view->model()->index(unknownRow, 2).data().toString().isEmpty());
         selectOnly(view, archiveRow);
         view->setCurrentCell(unknownRow, 0, QItemSelectionModel::NoUpdate);
         navigate(window, root.path());
@@ -180,16 +181,20 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(view->selectionModel()->selectedRows().isEmpty());
         const int diskFile = diskRow(window, root.filePath(name));
         QVERIFY(diskFile >= 0);
-        QCOMPARE(view->item(diskFile, 2)->text(), QStringLiteral("7"));
+        QCOMPARE(view->model()->index(diskFile, 2).data().toString(), QStringLiteral("7"));
         selectOnly(view, diskFile);
         const int zeroRow = diskRow(window, root.filePath("zero"));
         QVERIFY(zeroRow >= 0);
         view->setCurrentCell(zeroRow, 0, QItemSelectionModel::NoUpdate);
         action(window, "refreshAction")->trigger();
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
-        QCOMPARE(view->item(view->currentRow(), 1)->text(), root.filePath("zero"));
+        QCOMPARE(view->model()->index(view->currentRow(), 1).data().toString(),
+                 root.filePath("zero"));
         QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
-        QCOMPARE(view->item(view->selectionModel()->selectedRows().first().row(), 1)->text(),
+        QCOMPARE(view->model()
+                     ->index(view->selectionModel()->selectedRows().first().row(), 1)
+                     .data()
+                     .toString(),
                  root.filePath(name));
         action(window, "flatViewAction")->setChecked(false);
     }
@@ -216,10 +221,10 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(changed);
         const int row = diskRow(window, filePath);
         QVERIFY(row >= 0);
-        QCOMPARE(table(window)->item(row, 2)->text(), QStringLiteral("7"));
+        QCOMPARE(table(window)->model()->index(row, 2).data().toString(), QStringLiteral("7"));
         QCOMPARE(QFileInfo(filePath).size(), qint64(23));
         action(window, "flatViewAction")->setChecked(false);
-        QCOMPARE(table(window)->item(0, 2)->text(), QStringLiteral("23"));
+        QCOMPARE(table(window)->model()->index(0, 2).data().toString(), QStringLiteral("23"));
     }
 
     void archiveNavigationRejectsUnfinishedFilesystemOwner() {
@@ -241,14 +246,14 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
         openListedArchive(window, backend, temp.filePath("replacement.zip"), {{"source", 29, 17}});
         auto *view = table(window);
         QCOMPARE(view->rowCount(), 1);
-        QCOMPARE(view->item(0, 2)->text(), QStringLiteral("29"));
+        QCOMPARE(view->model()->index(0, 2).data().toString(), QStringLiteral("29"));
         // Retired native workers are deleted only after their queued handoff.
         QTRY_VERIFY(window.findChildren<QThread *>().isEmpty());
         QCoreApplication::processEvents();
         QCOMPARE(readyCount, 0);
         QCOMPARE(finished.size(), 0);
         QCOMPARE(view->rowCount(), 1);
-        QCOMPARE(view->item(0, 2)->text(), QStringLiteral("29"));
+        QCOMPARE(view->model()->index(0, 2).data().toString(), QStringLiteral("29"));
         action(window, "flatViewAction")->setChecked(false);
     }
 };

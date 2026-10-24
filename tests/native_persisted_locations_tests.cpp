@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "filetable.h"
 #include "fixtures/native_network_share.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
@@ -16,7 +17,7 @@ class NativePersistedLocationsTests final : public QObject, protected MainWindow
     }
     static FileTable *list(MainWindow &window, unsigned index) {
         return static_cast<FileTable *>(
-            pane(window, index)->findChild<QTableWidget *>("archiveTable"));
+            pane(window, index)->findChild<FileTable *>("archiveTable"));
     }
     static QString prefix(MainWindow &window, unsigned index) {
         return ToQString(list(window, index)->sourcePanel->GetCurrentFolderPrefix());

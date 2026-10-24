@@ -8,7 +8,8 @@ class NativePropertiesWindowTests final : public QObject, protected MainWindowTe
     static int filesystemRow(MainWindow &window, const QString &path) {
         auto *view = table(window);
         for (int row = 0; row < view->rowCount(); ++row)
-            if (QDir::cleanPath(QDir::fromNativeSeparators(view->item(row, 1)->text())) == path)
+            if (QDir::cleanPath(QDir::fromNativeSeparators(
+                    view->model()->index(row, 1).data().toString())) == path)
                 return row;
         return -1;
     }

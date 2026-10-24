@@ -70,7 +70,7 @@ HRESULT MainWindow::renderArchiveFolder(bool updateAddress) {
                     QScopedValueRollback<unsigned> projection(panelProjectionDepth_,
                                                               panelProjectionDepth_ + 1);
                     if (result != S_OK) {
-                        table_->setRowCount(0);
+                        table_->clearRows();
                         scanSelectedState_.reset();
                         scanSelectedPaths_.reset();
                     }
@@ -93,7 +93,7 @@ HRESULT MainWindow::renderArchiveFolder(bool updateAddress) {
     for (unsigned index = 0; index < archiveFolder->GetNumberOfItems(); ++index) {
         const HRESULT result = appendArchiveEntry(*archiveFolder, index, prefix, flat);
         if (result != S_OK) {
-            table_->setRowCount(0);
+            table_->clearRows();
             return result;
         }
     }
@@ -107,58 +107,17 @@ HRESULT MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, con
                                        bool flat) {
     QIcon icon;
     RINOK(app_.GetFocusedPanel().GetItemIcon(index, icon))
-    const bool isDir = app_.GetFocusedPanel().IsItem_Folder(index);
-    const int realIndex = folder.GetRealIndex(index);
-    ArchiveEntry entry;
-    entry.directory = isDir;
-    const QString name = ToQString(folder.GetName(index));
+    FilePanelModel::Row row;
+    row.sourceIndex = index;
+    row.directory = app_.GetFocusedPanel().IsItem_Folder(index);
+    row.name = ToQString(folder.GetName(index));
     const QString panelPrefix = QDir::fromNativeSeparators(ToQString(folder.GetFullPrefix(index)));
-    entry.path = panelPrefix + name;
-    const QString displayName = flat ? panelPrefix.mid(prefix.size()) + name : name;
-    const int row = table_->rowCount();
-    table_->insertRow(row);
-    const int sourceOrder = int(index);
-    NWindows::NCOM::CPropVariant size, packedSize, modified;
-    folder.GetProperty(index, kpidSize, &size);
-    folder.GetProperty(index, kpidPackSize, &packedSize);
-    folder.GetProperty(index, kpidMTime, &modified);
-    if (modified.vt == VT_FILETIME) {
-        char text[64];
-        if (ConvertUtcFileTimeToString(modified.filetime, text))
-            entry.modified = QString::fromLatin1(text);
-    }
-    const QVariant sizeValue =
-        size.vt == VT_UI8 ? QVariant::fromValue(quint64(size.uhVal.QuadPart)) : QVariant();
-    const QVariant packedValue = packedSize.vt == VT_UI8
-                                     ? QVariant::fromValue(quint64(packedSize.uhVal.QuadPart))
-                                     : QVariant();
-    QStringList values = {displayName,
-                          entry.path,
-                          entry.directory ? QString() : sizeValue.toString(),
-                          entry.directory ? QString() : packedValue.toString(),
-                          entry.modified,
-                          GetExtensionPtr(QStringView(name)).toString(),
-                          QString::number(sourceOrder)};
-    for (int col = 7; col < table_->columnCount(); ++col)
-        values << QString();
-    for (int col = 0; col < values.size(); ++col) {
-        auto *item = new ArchiveTableItem(values[col]);
-        item->setData(Qt::UserRole, entry.path);
-        item->setData(Qt::UserRole + 1, entry.directory);
-        item->setData(Qt::UserRole + 3, name);
-        item->setData(Qt::UserRole + 5, flat ? panelPrefix.mid(prefix.size()) : QString());
-        item->setData(Qt::UserRole + 6, sourceOrder);
-        item->setToolTip(entry.path);
-        if (col == 0)
-            item->setIcon(icon);
-        if (!entry.directory && (col == 2 || col == 3))
-            item->setData(Qt::UserRole + 2, col == 2 ? sizeValue : packedValue);
-        if (col == 6)
-            item->setData(Qt::UserRole + 2, sourceOrder);
-        if (col != 1 && col != 5 && col != 6)
-            item->setTextAlignment(sourceColumnAlignment(col));
-        table_->setItem(row, col, item);
-    }
+    row.path = panelPrefix + row.name;
+    row.operationPath = row.path;
+    row.prefix = flat ? panelPrefix.mid(prefix.size()) : QString();
+    row.toolTip = row.path;
+    row.icon = icon;
+    table_->panelModel()->append(std::move(row));
     return S_OK;
 }
 

@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/ListViewDialog.h"
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "filetable.h"
 #include "fixtures/widget_dialogs.h"
 #include "mainwindow.h"
 #include "native_archive_fixture.h"
@@ -90,7 +91,7 @@ class ChecksumTests : public QObject {
 
         MainWindow window(&backend);
         window.show();
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *action = window.findChild<QAction *>("hashSHA256Action");
         QVERIFY(table && action);
         const QString digest = QString::fromLatin1(
@@ -154,7 +155,7 @@ class ChecksumTests : public QObject {
         MainWindow window(&backend);
         window.show();
         window.openArchive(archive);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         QTRY_COMPARE(table->rowCount(), 1);
         table->selectRow(0);
         QString results;

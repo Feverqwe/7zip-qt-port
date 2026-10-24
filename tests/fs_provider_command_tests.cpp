@@ -17,10 +17,10 @@ class FsProviderCommandTests final : public QObject, protected MainWindowTestSup
             return {};
         return file.readAll();
     }
-    static int row(QTableWidget &view, const QString &name) {
+    static int row(FileTable &view, const QString &name) {
         for (int i = 0; i < view.rowCount(); ++i)
-            if (view.item(i, 0)->text().normalized(QString::NormalizationForm_C) ==
-                name.normalized(QString::NormalizationForm_C))
+            if (view.model()->index(i, 0).data().toString().normalized(
+                    QString::NormalizationForm_C) == name.normalized(QString::NormalizationForm_C))
                 return i;
         return -1;
     }
@@ -30,7 +30,7 @@ class FsProviderCommandTests final : public QObject, protected MainWindowTestSup
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        return static_cast<FileTable *>(panel->findChild<QTableWidget *>("archiveTable"));
+        return static_cast<FileTable *>(panel->findChild<FileTable *>("archiveTable"));
     }
     static void inspectPanels(MainWindow &window, FileTable &source, FileTable &peer,
                               const QString &tag) {

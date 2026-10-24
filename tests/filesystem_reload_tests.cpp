@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "filesystemscanner.h"
+#include "filetable.h"
 #include "fixtures/widget_dialogs.h"
 #include "window_state_support.h"
 
@@ -56,7 +57,7 @@ class FilesystemReloadTests final : public QObject, protected MainWindowTestSupp
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         QTRY_COMPARE(view->rowCount(), 1);
         view->setFocus();
         action(window, "selectAllAction")->trigger();
@@ -126,7 +127,7 @@ class FilesystemReloadTests final : public QObject, protected MainWindowTestSupp
         action(window, "twoPanelsAction")->trigger();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(sourceIndex));
         auto *address = ui->findChild<QLineEdit *>("archivePath");
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         address->setFocus();
         address->setText(smallPath);
         QTest::keyClick(address, Qt::Key_Return);

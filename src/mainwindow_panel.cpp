@@ -86,7 +86,7 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
         if (projectedPanel_ == index && app_.Panels[index].ShouldProcessNotifications())
             refreshActions();
     });
-    connect(table_, &QTableWidget::currentCellChanged, this, [this, index] {
+    connect(table_->selectionModel(), &QItemSelectionModel::currentChanged, this, [this, index] {
         if (projectedPanel_ == index && app_.Panels[index].ShouldProcessNotifications())
             refreshActions();
     });
@@ -102,7 +102,7 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     iconList_->addActions(panelShortcutActions_);
     app_.GetFocusedPanel().SetListViewMode(app_.GetFocusedPanel().GetListViewMode());
     statusBar()->setSizeGripEnabled(false);
-    if (index == 0) {
+    if (!deviceReadOnly_) {
         auto *feedback = statusBar();
         feedback->setObjectName("operationStatusBar");
         deviceReadOnly_ = new QLabel(feedback);
@@ -117,16 +117,19 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
                     feedback->setVisible(!message.isEmpty() || !deviceReadOnly_->isHidden());
                 });
     }
-    connect(table_, &QTableWidget::cellDoubleClicked, this, [this](int row, int) {
+    connect(table_, &QTableView::doubleClicked, this, [this](const QModelIndex &index) {
+        const int row = index.row();
         if (!fileListSettings_.SingleClick)
             activateRow(row, selectionClickModifiers_);
     });
-    connect(table_, &QTableWidget::cellClicked, this,
-            [this](int row, int) { activateSingleClickedRow(row); });
+    connect(table_, &QTableView::clicked, this, [this](const QModelIndex &index) {
+        const int row = index.row();
+        activateSingleClickedRow(row);
+    });
 }
 
 void MainWindow::createFileTable(QWidget *central) {
-    table_ = new FileTable(0, 7, central);
+    table_ = new FileTable(7, central);
     auto *fileTable = static_cast<FileTable *>(table_);
     fileTable->setFullRowHighlight(fileListSettings_.FullRow);
     fileTable->sourcePanel = &app_.GetFocusedPanel();
@@ -137,11 +140,8 @@ void MainWindow::createFileTable(QWidget *central) {
     QtBindLocalText(table_, "mainwindow_panel", QT_TRANSLATE_NOOP("mainwindow_panel", "File list"),
                     true);
     table_->verticalHeader()->hide();
-    table_->setHorizontalHeaderLabels(
+    table_->panelModel()->setColumns(
         {"Name", "Path", "Size", "Packed Size", "Modified", "Type", "Order"});
-    for (int column : {2, 3, 4})
-        table_->horizontalHeaderItem(column)->setData(Qt::InitialSortOrderRole,
-                                                      Qt::DescendingOrder);
     table_->setColumnHidden(1, true);
     table_->setColumnHidden(5, true);
     table_->setColumnHidden(6, true);
@@ -185,8 +185,10 @@ void MainWindow::createFileTable(QWidget *central) {
             });
     table_->installEventFilter(this);
     table_->viewport()->installEventFilter(this);
-    connect(table_, &QTableWidget::cellClicked, this,
-            [this](int row, int) { handleSelectionClick(row); });
+    connect(table_, &QTableView::clicked, this, [this](const QModelIndex &index) {
+        const int row = index.row();
+        handleSelectionClick(row);
+    });
     table_->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(table_, &QWidget::customContextMenuRequested, this,
             [this, owner = projectedPanel_, view = table_](const QPoint &pos) {
@@ -272,19 +274,12 @@ void MainWindow::appendParentEntry() {
         return;
     const bool sorting = table_->isSortingEnabled();
     table_->setSortingEnabled(false);
-    const int row = table_->rowCount();
-    table_->insertRow(row);
-    for (int column = 0; column < table_->columnCount(); ++column) {
-        auto *item = new ArchiveTableItem(column == 0 ? QStringLiteral("..") : QString());
-        item->setData(Qt::UserRole + 1, true);
-        item->setData(Qt::UserRole + 3, QStringLiteral(".."));
-        item->setData(Qt::UserRole + 6, quint32(-1));
-        if (column == 0) {
-            item->setIcon(QApplication::style()->standardIcon(QStyle::SP_DirIcon));
-            item->setToolTip(QCoreApplication::translate("mainwindow_panel", "Parent folder"));
-        }
-        table_->setItem(row, column, item);
-    }
+    FilePanelModel::Row row;
+    row.name = QStringLiteral("..");
+    row.directory = true;
+    row.icon = QApplication::style()->standardIcon(QStyle::SP_DirIcon);
+    row.toolTip = QCoreApplication::translate("mainwindow_panel", "Parent folder");
+    table_->panelModel()->append(std::move(row));
     table_->setSortingEnabled(sorting);
 }
 
@@ -292,9 +287,8 @@ void MainWindow::updateParentEntry() {
     if (!table_)
         return;
     for (int row = 0; row < table_->rowCount(); ++row) {
-        if (table_->item(row, 0) &&
-            table_->item(row, 0)->data(Qt::UserRole + 6).toUInt() == UInt32(-1)) {
-            table_->removeRow(row);
+        if (table_->model()->index(row, 0).data(Qt::UserRole + 6).toUInt() == UInt32(-1)) {
+            table_->model()->removeRow(row);
             break;
         }
     }

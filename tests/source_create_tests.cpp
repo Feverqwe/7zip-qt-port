@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
@@ -15,11 +16,11 @@ class SourceCreateTests final : public QObject, protected MainWindowTestSupport 
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        return static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        return static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
     }
     static int row(FileTable *view, const QString &name) {
         for (int i = 0; i < view->rowCount(); ++i)
-            if (view->item(i, 0)->data(Qt::UserRole + 3).toString() == name)
+            if (view->model()->index(i, 0).data(Qt::UserRole + 3).toString() == name)
                 return i;
         return -1;
     }
@@ -193,7 +194,7 @@ class SourceCreateTests final : public QObject, protected MainWindowTestSupport 
         QTRY_VERIFY(view->isEnabled() && view->rowCount() == 258);
         QVERIFY(panel.ShouldProcessNotifications());
         QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
-        QCOMPARE(view->item(view->currentRow(), 0)->text(), name);
+        QCOMPARE(view->model()->index(view->currentRow(), 0).data().toString(), name);
         QVERIFY(QFileInfo::exists(fixture.filePath(name)));
         QFile keep(fixture.filePath("old-0.bin"));
         QVERIFY(keep.open(QIODevice::ReadOnly));

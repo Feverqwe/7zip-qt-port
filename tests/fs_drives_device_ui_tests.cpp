@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "copydialog.h"
+#include "filetable.h"
 #include "fixtures/read_only_virtual_disk.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
@@ -9,7 +10,7 @@ class FsDrivesDeviceUiTests final : public QObject, protected MainWindowTestSupp
     static int deviceRow(MainWindow &window, const QString &name) {
         auto *view = table(window);
         for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 0)->data(Qt::UserRole + 3).toString() == name)
+            if (view->model()->index(row, 0).data(Qt::UserRole + 3).toString() == name)
                 return row;
         return -1;
     }
@@ -63,7 +64,7 @@ class FsDrivesDeviceUiTests final : public QObject, protected MainWindowTestSupp
         auto *view = table(window);
         int volumes = -1;
         for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 0)->data(Qt::UserRole + 6).toUInt() == 3)
+            if (view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt() == 3)
                 volumes = row;
         QVERIFY(volumes >= 0);
         view->setCurrentCell(volumes, 0);
@@ -73,7 +74,7 @@ class FsDrivesDeviceUiTests final : public QObject, protected MainWindowTestSupp
         const int row = deviceRow(window, disk.device().mid(4));
         view->setCurrentCell(row, 0);
         view->selectRow(row);
-        QCOMPARE(view->item(row, 0)->data(Qt::UserRole + 1).toBool(), false);
+        QCOMPARE(view->model()->index(row, 0).data(Qt::UserRole + 1).toBool(), false);
         QTRY_VERIFY(action(window, "copyAction")->isEnabled());
         for (const char *command : {"moveAction", "deleteAction", "renameAction",
                                     "createFolderAction", "createFileAction"})

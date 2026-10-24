@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "address_popup_support.h"
+#include "filetable.h"
 #include "fixtures/native_network_share.h"
 #include "fixtures/native_shell_icon.h"
 #include "fixtures/widget_dialogs.h"
@@ -22,7 +23,7 @@ class NativeAddressNavigationTests final : public QObject, protected MainWindowT
     }
     static FileTable *view(MainWindow &window, unsigned owner) {
         return static_cast<FileTable *>(
-            pane(window, owner)->findChild<QTableWidget *>("archiveTable"));
+            pane(window, owner)->findChild<FileTable *>("archiveTable"));
     }
     static QString prefix(MainWindow &window, unsigned owner) {
         return ToQString(view(window, owner)->sourcePanel->GetCurrentFolderPrefix());
@@ -147,7 +148,7 @@ class NativeAddressNavigationTests final : public QObject, protected MainWindowT
         auto *list = view(window, owner);
         int row = -1;
         for (int i = 0; i < list->rowCount(); ++i)
-            if (list->item(i, 0)->text() == share.name())
+            if (list->model()->index(i, 0).data().toString() == share.name())
                 row = i;
         QVERIFY(row >= 0);
         QCOMPARE(share.remove(), 0ul);
@@ -224,7 +225,8 @@ class NativeAddressNavigationTests final : public QObject, protected MainWindowT
             QVERIFY(view(window, owner)->sourcePanel->IsAltStreamsFolder());
             bool found = false;
             for (int row = 0; row < view(window, owner)->rowCount(); ++row)
-                found |= view(window, owner)->item(row, 0)->text() == QStringLiteral("stream 空");
+                found |= view(window, owner)->model()->index(row, 0).data().toString() ==
+                         QStringLiteral("stream 空");
             QVERIFY(found);
         } else if (kind == "device")
             QVERIFY(view(window, owner)->sourcePanel->IsFSDrivesFolder());

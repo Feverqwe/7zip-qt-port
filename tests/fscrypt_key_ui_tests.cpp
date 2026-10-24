@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "archivebackend.h"
 #include "deviceselectiondialog.h"
+#include "filetable.h"
 #include "fixtures/widget_dialogs.h"
 #include "fscryptkeydialog.h"
 #include "layout_inspection.h"
@@ -40,9 +41,10 @@ class MemoryDevice final : public DeviceReadHandle {
         return S_OK;
     }
 };
-int Row(const QTableWidget &table, const QString &name) {
+int Row(const FileTable &table, const QString &name) {
     for (int i = 0; i < table.rowCount(); ++i)
-        if (table.item(i, 0) && table.item(i, 0)->text() == name)
+        if (table.model()->index(i, 0).isValid() &&
+            table.model()->index(i, 0).data().toString() == name)
             return i;
     return -1;
 }
@@ -247,7 +249,7 @@ class FscryptKeyUiTests final : public QObject {
         QVERIFY2(openingError.isEmpty(), qPrintable(openingError));
         QVERIFY(!ordinaryPassword);
         QCOMPARE(prompts, 1u);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         QVERIFY(table);
         if (mode == "cancel") {
             QVERIFY(Row(*table, QFileInfo(image).fileName()) >= 0);
@@ -255,9 +257,9 @@ class FscryptKeyUiTests final : public QObject {
         }
         const auto item = cases.first().toObject();
         QTRY_VERIFY(Row(*table, item["name"].toString()) >= 0);
-        QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
-                                          Q_ARG(int, Row(*table, item["name"].toString())),
-                                          Q_ARG(int, 0)));
+        QVERIFY(QMetaObject::invokeMethod(
+            table, "doubleClicked", Qt::DirectConnection,
+            Q_ARG(QModelIndex, table->model()->index(Row(*table, item["name"].toString()), 0))));
         const QString name = item[mode == "keys" ? "filename" : "nokey_name"].toString();
         QTRY_VERIFY(Row(*table, name) >= 0);
         window.findChild<QAction *>("refreshAction")->trigger();

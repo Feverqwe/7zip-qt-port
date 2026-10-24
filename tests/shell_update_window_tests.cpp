@@ -1,4 +1,5 @@
 #include "Common/MyTypes.h"
+#include "filetable.h"
 #include "fixtures/archive_sections.h"
 
 #include "7zip/UI/Explorer/ContextMenuFlags.h"
@@ -31,9 +32,9 @@ struct CCurrentDirectory {
     ~CCurrentDirectory() { QDir::setCurrent(Path); }
 };
 int rowNamed(MainWindow &window, const QString &name) {
-    auto *view = window.findChild<QTableWidget *>("archiveTable");
+    auto *view = window.findChild<FileTable *>("archiveTable");
     for (int row = 0; row < view->rowCount(); ++row)
-        if (view->item(row, 0)->text() == name)
+        if (view->model()->index(row, 0).data().toString() == name)
             return row;
     return -1;
 }
@@ -125,7 +126,8 @@ class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSup
             });
             QVERIFY(QMetaObject::invokeMethod(
                 view, "customContextMenuRequested", Qt::DirectConnection,
-                Q_ARG(QPoint, view->visualItemRect(view->item(view->currentRow(), 0)).center())));
+                Q_ARG(QPoint,
+                      view->visualRect(view->model()->index(view->currentRow(), 0)).center())));
             QVERIFY(invoked);
         }
         QTRY_COMPARE(backend.GuiRequests.size(), 1);
@@ -221,7 +223,7 @@ class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSup
         });
         QVERIFY(QMetaObject::invokeMethod(
             view, "customContextMenuRequested", Qt::DirectConnection,
-            Q_ARG(QPoint, view->visualItemRect(view->item(view->currentRow(), 0)).center())));
+            Q_ARG(QPoint, view->visualRect(view->model()->index(view->currentRow(), 0)).center())));
         QVERIFY(inspected);
     }
 };

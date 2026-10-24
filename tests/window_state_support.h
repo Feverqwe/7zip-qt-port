@@ -1,4 +1,5 @@
 #pragma once
+#include "filetable.h"
 
 #include "mainwindow.h"
 #include "qtoperationlauncher.h"
@@ -238,22 +239,23 @@ class MainWindowTestSupport {
         Q_ASSERT(result);
         return result;
     }
-    static QTableWidget *table(MainWindow &window) {
-        auto *result = window.findChild<QTableWidget *>("archiveTable");
+    static FileTable *table(MainWindow &window) {
+        auto *result = window.findChild<FileTable *>("archiveTable");
         Q_ASSERT(result);
         return result;
     }
     static int rowWithPath(MainWindow &window, const QString &path) {
         for (int row = 0; row < table(window)->rowCount(); ++row) {
-            if (table(window)->item(row, 0)->data(Qt::UserRole).toString() == path)
+            if (table(window)->model()->index(row, 0).data(Qt::UserRole).toString() == path)
                 return row;
         }
         return -1;
     }
     static void openRow(MainWindow &window, int row) {
         QVERIFY(row >= 0);
-        QVERIFY(QMetaObject::invokeMethod(table(window), "cellDoubleClicked", Qt::DirectConnection,
-                                          Q_ARG(int, row), Q_ARG(int, 0)));
+        QVERIFY(
+            QMetaObject::invokeMethod(table(window), "doubleClicked", Qt::DirectConnection,
+                                      Q_ARG(QModelIndex, table(window)->model()->index(row, 0))));
     }
     static void dismissWarnings() {
         for (QWidget *widget : QApplication::topLevelWidgets()) {
@@ -261,13 +263,13 @@ class MainWindowTestSupport {
                 box->accept();
         }
     }
-    static void pressSelectAll(QTableWidget *view) {
+    static void pressSelectAll(FileTable *view) {
         const QKeyCombination key = QKeySequence(QKeySequence::SelectAll)[0];
         QTest::keyClick(view, key.key(), key.keyboardModifiers());
     }
     static int filesystemRow(MainWindow &window, const QString &name) {
         for (int row = 0; row < table(window)->rowCount(); ++row) {
-            if (table(window)->item(row, 0)->text() == name)
+            if (table(window)->model()->index(row, 0).data().toString() == name)
                 return row;
         }
         return -1;

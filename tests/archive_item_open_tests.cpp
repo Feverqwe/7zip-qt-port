@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "filetable.h"
 #include "mainwindow.h"
 #include "window_state_support.h"
 
@@ -77,7 +78,7 @@ class ArchiveItemOpenTests final : public QObject {
             });
             window.show();
             auto *address = window.findChild<QLineEdit *>("archivePath");
-            auto *table = window.findChild<QTableWidget *>("archiveTable");
+            auto *table = window.findChild<FileTable *>("archiveTable");
             auto *open = window.findChild<QAction *>("openItemAction");
             QVERIFY(address && table && open);
             address->setText(dir.path());
@@ -92,8 +93,9 @@ class ArchiveItemOpenTests final : public QObject {
             QVERIFY(backend.prepareArchiveFixture(dir.filePath("test.7z")));
             window.openArchive(dir.filePath("test.7z"));
             QTRY_COMPARE(table->rowCount(), 1);
-            emit table->cellDoubleClicked(0, 0);
-            QTRY_COMPARE(table->item(0, 0)->text(), QStringLiteral("имя с пробелом.txt"));
+            emit table->doubleClicked(table->model()->index(0, 0));
+            QTRY_COMPARE(table->model()->index(0, 0).data().toString(),
+                         QStringLiteral("имя с пробелом.txt"));
             table->selectRow(0);
             QTRY_VERIFY(open->isEnabled());
             open->trigger();
@@ -120,12 +122,13 @@ class ArchiveItemOpenTests final : public QObject {
         });
         QVERIFY(backend.prepareArchiveFixture(dir.filePath("test.7z")));
         window.openArchive(dir.filePath("test.7z"));
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *open = window.findChild<QAction *>("openItemAction");
         QVERIFY(table && open);
         QTRY_COMPARE(table->rowCount(), 1);
-        emit table->cellDoubleClicked(0, 0);
-        QTRY_COMPARE(table->item(0, 0)->text(), QStringLiteral("имя с пробелом.txt"));
+        emit table->doubleClicked(table->model()->index(0, 0));
+        QTRY_COMPARE(table->model()->index(0, 0).data().toString(),
+                     QStringLiteral("имя с пробелом.txt"));
         table->selectRow(0);
         QTRY_VERIFY(open->isEnabled());
         open->trigger();
@@ -161,12 +164,13 @@ class ArchiveItemOpenTests final : public QObject {
         const QString archive = dir.filePath("failure.7z");
         QVERIFY(backend.prepareArchiveFixture(archive));
         window.openArchive(archive);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *open = window.findChild<QAction *>("openItemAction");
         QVERIFY(table && open);
         QTRY_COMPARE(table->rowCount(), 1);
-        emit table->cellDoubleClicked(0, 0);
-        QTRY_COMPARE(table->item(0, 0)->text(), QStringLiteral("имя с пробелом.txt"));
+        emit table->doubleClicked(table->model()->index(0, 0));
+        QTRY_COMPARE(table->model()->index(0, 0).data().toString(),
+                     QStringLiteral("имя с пробелом.txt"));
         table->selectRow(0);
         QTRY_VERIFY(open->isEnabled());
         open->trigger();

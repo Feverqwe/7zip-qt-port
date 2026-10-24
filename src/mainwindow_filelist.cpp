@@ -58,7 +58,7 @@ HRESULT MainWindow::showDirectory(const QString &path, bool remember, bool sourc
     renameEdit_.reset();
     table_->clearSelection();
     table_->setSortingEnabled(false);
-    table_->setRowCount(0);
+    table_->clearRows();
     if (updateAddress)
         path_->setText(directory_);
     static_cast<FileTable *>(table_)->filesystem = true;
@@ -121,7 +121,7 @@ HRESULT MainWindow::startFilesystemListing(bool sourceAlreadyBound, bool updateA
                                   .filePath(QtFilesystemPath(spec->GetRelPath(spec->Files[i])))),
                     i);
                 if (result != S_OK) {
-                    table_->setRowCount(0);
+                    table_->clearRows();
                     break;
                 }
             }
@@ -148,8 +148,7 @@ HRESULT MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceI
         autoRefreshSnapshot_.insert(file.absoluteFilePath(),
                                     filesystemSignature(file.absoluteFilePath()));
     IFolderFolder *folder = app_.GetFocusedPanel().GetFolder();
-    NWindows::NCOM::CPropVariant size, name, prefix;
-    folder->GetProperty(sourceIndex, kpidSize, &size);
+    NWindows::NCOM::CPropVariant name, prefix;
     folder->GetProperty(sourceIndex, kpidName, &name);
     folder->GetProperty(sourceIndex, kpidPrefix, &prefix);
     const bool directory = app_.GetFocusedPanel().IsItem_Folder(sourceIndex);
@@ -158,46 +157,22 @@ HRESULT MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceI
     const QString nativePrefix =
         prefix.vt == VT_BSTR ? QDir::fromNativeSeparators(QString::fromWCharArray(prefix.bstrVal))
                              : QString();
-    const QVariant sizeValue =
-        size.vt == VT_UI8 ? QVariant::fromValue(quint64(size.uhVal.QuadPart)) : QVariant();
-    const int row = table_->rowCount();
-    table_->insertRow(row);
-    const QString displayName = ((flatDisk_ ? nativePrefix : QString()) + nativeName)
-                                    .normalized(QString::NormalizationForm_C);
-    QStringList values = {displayName,
-                          file.absoluteFilePath(),
-                          directory ? QString() : sizeValue.toString(),
-                          QString(),
-                          QString(),
-                          GetExtensionPtr(QStringView(nativeName)).toString(),
-                          QString::number(sourceIndex)};
-    for (int col = 7; col < table_->columnCount(); ++col)
-        values << QString();
-    for (int col = 0; col < values.size(); ++col) {
-        auto *item = new ArchiveTableItem(values[col]);
-        item->setData(Qt::UserRole + 1, directory);
-        item->setData(Qt::UserRole + 3, nativeName);
-        item->setData(Qt::UserRole + 5, nativePrefix);
-        item->setData(Qt::UserRole + 6, sourceIndex);
-        if (col == 0) {
-            item->setToolTip(file.absoluteFilePath());
-            item->setIcon(icon);
-        }
-        if (col == 2 && !directory)
-            item->setData(Qt::UserRole + 2, sizeValue);
-        if (col == 6)
-            item->setData(Qt::UserRole + 2, sourceIndex);
-        if (col != 1 && col != 5 && col != 6)
-            item->setTextAlignment(sourceColumnAlignment(col));
-        table_->setItem(row, col, item);
-    }
+    FilePanelModel::Row row;
+    row.sourceIndex = sourceIndex;
+    row.name = nativeName;
+    row.prefix = flatDisk_ ? nativePrefix : QString();
+    row.path = file.absoluteFilePath();
+    row.toolTip = row.path;
+    row.directory = directory;
+    row.icon = icon;
+    table_->panelModel()->append(std::move(row));
     return S_OK;
 }
 
 QStringList MainWindow::selectedPaths() const {
     QStringList paths;
     for (const QModelIndex &index : table_->selectionModel()->selectedRows())
-        paths << table_->item(index.row(), 1)->text();
+        paths << table_->model()->index(index.row(), 1).data().toString();
     return paths;
 }
 
@@ -210,8 +185,8 @@ void MainWindow::selectPaths(const QStringList &paths) {
     const auto &panel = app_.GetFocusedPanel();
     const bool streams = panel.GetFolder() && panel.IsAltStreamsFolder();
     for (int row = 0; row < table_->rowCount(); ++row) {
-        const QString path = streams ? table_->item(row, 0)->data(Qt::UserRole).toString()
-                                     : table_->item(row, 1)->text();
+        const QString path = streams ? table_->model()->index(row, 0).data(Qt::UserRole).toString()
+                                     : table_->model()->index(row, 1).data().toString();
         if (paths.contains(path))
             table_->selectionModel()->select(table_->model()->index(row, 0),
                                              QItemSelectionModel::Select |

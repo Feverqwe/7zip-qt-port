@@ -21,8 +21,8 @@ class ArchiveMetadataUiTests final : public QObject, protected MainWindowTestSup
     Q_OBJECT
     static int rowForName(MainWindow &window, const QString &name) {
         for (int row = 0; row < table(window)->rowCount(); ++row)
-            if (table(window)->item(row, 0)->text().normalized(QString::NormalizationForm_C) ==
-                name)
+            if (table(window)->model()->index(row, 0).data().toString().normalized(
+                    QString::NormalizationForm_C) == name)
                 return row;
         return -1;
     }

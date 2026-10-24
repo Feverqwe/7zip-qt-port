@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/FileFolderPluginOpen.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "filetable.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "native_property_failure_runtime.h"
@@ -26,7 +27,7 @@ class NativeNestedPublicationTests final : public QObject, protected MainWindowT
             QApplication::processEvents();
             for (unsigned index : {0u, 1u}) {
                 auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(index));
-                auto *table = owner->findChild<QTableWidget *>("archiveTable");
+                auto *table = owner->findChild<FileTable *>("archiveTable");
                 auto *icons = owner->findChild<QListView *>("iconList");
                 QWidget *view = table->isVisible() ? static_cast<QWidget *>(table) : icons;
                 auto *address = owner->findChild<QLineEdit *>("archivePath");
@@ -214,7 +215,7 @@ class NativeNestedPublicationTests final : public QObject, protected MainWindowT
         MainWindow window(&backend, {}, nullptr, &startup);
         window.show();
         auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *list = static_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"));
+        auto *list = static_cast<FileTable *>(owner->findChild<FileTable *>("archiveTable"));
         auto &panel = *list->sourcePanel;
         panel.Set_AutoRefresh_Mode(false);
         QTRY_COMPARE(list->rowCount(), 1);
@@ -383,9 +384,9 @@ class NativeNestedPublicationTests final : public QObject, protected MainWindowT
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *list = static_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"));
+        auto *list = static_cast<FileTable *>(owner->findChild<FileTable *>("archiveTable"));
         auto *peer = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *peerList = static_cast<FileTable *>(peer->findChild<QTableWidget *>("archiveTable"));
+        auto *peerList = static_cast<FileTable *>(peer->findChild<FileTable *>("archiveTable"));
         auto &panel = *list->sourcePanel;
         panel.Set_AutoRefresh_Mode(false);
         peerList->sourcePanel->Set_AutoRefresh_Mode(false);

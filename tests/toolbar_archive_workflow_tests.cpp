@@ -1,4 +1,5 @@
 #include "Common/MyTypes.h"
+#include "filetable.h"
 
 #include "7zip/UI/Explorer/ContextMenuFlags.h"
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
@@ -150,7 +151,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        return static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        return static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
     }
     static void inspectDialog(QDialog &dialog, const QString &tag) {
         for (const QSize size : {QSize(700, 390), QSize(600, 340)}) {
@@ -381,7 +382,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         QTRY_COMPARE(source->rowCount(), 2);
         int selected = -1;
         for (int row = 0; row < source->rowCount(); ++row)
-            if (source->item(row, 0)->text() == "input.zip")
+            if (source->model()->index(row, 0).data().toString() == "input.zip")
                 selected = row;
         QVERIFY(selected >= 0);
         source->selectRow(selected);
@@ -453,7 +454,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         source->setFocus();
         int selected = -1;
         for (int row = 0; row < source->rowCount(); ++row)
-            if (source->item(row, 0)->text() == "input.zip")
+            if (source->model()->index(row, 0).data().toString() == "input.zip")
                 selected = row;
         QVERIFY(selected >= 0);
         source->selectRow(selected);
@@ -470,7 +471,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
             QCOMPARE(backend.Results.last().Status, QtOperationResult::Outcome::Success);
             QCOMPARE(peer->sourcePanel->GetFolder(), provider.Interface());
             QCOMPARE(peer->rowCount(), 1);
-            QCOMPARE(peer->item(0, 0)->text(), QString("selected.txt"));
+            QCOMPARE(peer->model()->index(0, 0).data().toString(), QString("selected.txt"));
             QCOMPARE(peer->selectionModel()->selectedRows().size(), 1);
             QTRY_VERIFY(peer->hasFocus());
         } else {
@@ -541,8 +542,8 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         source->sourcePanel->Set_AutoRefresh_Mode(false);
         int firstRow = -1;
         for (int i = 0; i < source->rowCount(); ++i)
-            if (source->item(i, 0)->text().normalized(QString::NormalizationForm_C) ==
-                QFileInfo(first).fileName())
+            if (source->model()->index(i, 0).data().toString().normalized(
+                    QString::NormalizationForm_C) == QFileInfo(first).fileName())
                 firstRow = i;
         QVERIFY(firstRow >= 0);
         source->selectRow(firstRow);

@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QBrush>
@@ -14,7 +15,7 @@ class PanelRefreshCompletionTests final : public QObject, protected MainWindowTe
         auto *widget = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         widget->findChild<QLineEdit *>("archivePath")->setFocus();
         openListedArchive(window, backend, path, entries);
-        return static_cast<FileTable *>(widget->findChild<QTableWidget *>("archiveTable"));
+        return static_cast<FileTable *>(widget->findChild<FileTable *>("archiveTable"));
     }
     static void language(bool russian) {
         QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -69,14 +70,14 @@ class PanelRefreshCompletionTests final : public QObject, protected MainWindowTe
         action(window, "twoPanelsAction")->trigger();
         auto *widget = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         auto *peer = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *peerTable = static_cast<FileTable *>(peer->findChild<QTableWidget *>("archiveTable"));
+        auto *peerTable = static_cast<FileTable *>(peer->findChild<FileTable *>("archiveTable"));
         CMyComPtr<IFolderFolder> peerProvider = peerTable->sourcePanel->GetFolder();
         const UString peerPrefix = peerTable->sourcePanel->GetCurrentFolderPrefix();
         auto *address = widget->findChild<QLineEdit *>("archivePath");
         address->setFocus();
         address->setText(root.path());
         QTest::keyClick(address, Qt::Key_Return);
-        auto *table = static_cast<FileTable *>(widget->findChild<QTableWidget *>("archiveTable"));
+        auto *table = static_cast<FileTable *>(widget->findChild<FileTable *>("archiveTable"));
         QTRY_COMPARE(table->rowCount(), showDots ? 8 : 7);
         action(window, icons ? "viewMode0Action" : "viewMode3Action")->trigger();
         QAbstractItemView *view =
@@ -93,7 +94,7 @@ class PanelRefreshCompletionTests final : public QObject, protected MainWindowTe
         click(3, Qt::ControlModifier);
         QCOMPARE(table->currentRow(), 3);
         auto &panel = *table->sourcePanel;
-        QVERIFY(panel.IsItemMarked(table->item(3, 0)->data(Qt::UserRole + 6).toUInt()));
+        QVERIFY(panel.IsItemMarked(table->model()->index(3, 0).data(Qt::UserRole + 6).toUInt()));
         if (caller == "restore") {
             CSelectedState state;
             panel.SaveSelectedState(state);
@@ -110,10 +111,10 @@ class PanelRefreshCompletionTests final : public QObject, protected MainWindowTe
         panel.Get_ItemIndices_Selected(indices);
         QCOMPARE(indices.Size(), showDots ? 4u : 5u);
         for (unsigned i = 0; i < unsigned(table->rowCount()); ++i) {
-            const UInt32 source = table->item(int(i), 0)->data(Qt::UserRole + 6).toUInt();
+            const UInt32 source = table->model()->index(int(i), 0).data(Qt::UserRole + 6).toUInt();
             const bool marked = i <= 4 && source != UInt32(-1);
             QVERIFY(panel.IsItemMarked(source) == marked);
-            QCOMPARE(table->item(int(i), 0)->data(Qt::BackgroundRole).isValid(), marked);
+            QCOMPARE(table->model()->index(int(i), 0).data(Qt::BackgroundRole).isValid(), marked);
         }
         QCOMPARE(table->currentRow(), 4);
         QCOMPARE(table->selectionModel()->selectedRows().size(), 1);
@@ -185,17 +186,7 @@ class PanelRefreshCompletionTests final : public QObject, protected MainWindowTe
             action(window, "sort3Action")->trigger();
         // Reproduce the unsorted, complete publication that precedes restoration.
         view->setSortingEnabled(false);
-        QList<QList<QTableWidgetItem *>> rows(3);
-        for (int row = 0; row < view->rowCount(); ++row) {
-            const int source = view->item(row, 0)->data(Qt::UserRole + 6).toInt();
-            for (int col = 0; col < view->columnCount(); ++col)
-                rows[source].append(view->takeItem(row, col));
-        }
-        view->setRowCount(0);
-        view->setRowCount(3);
-        for (int row = 0; row < 3; ++row)
-            for (int col = 0; col < rows[row].size(); ++col)
-                view->setItem(row, col, rows[row][col]);
+        view->panelModel()->sort(6, Qt::AscendingOrder);
         CSelectedState state;
         state.FocusedName_Defined = true;
         state.FocusedName = ToUString(matched ? entries[1].path : QStringLiteral("missing δ.txt"));
@@ -205,9 +196,9 @@ class PanelRefreshCompletionTests final : public QObject, protected MainWindowTe
         QCOMPARE(view->sourcePanel->RefreshListCtrl(state), S_OK);
         const QList<int> expected = ascending ? QList<int>{1, 2, 0} : QList<int>{0, 2, 1};
         for (int row = 0; row < 3; ++row)
-            QCOMPARE(view->item(row, 0)->data(Qt::UserRole + 6).toInt(), expected[row]);
+            QCOMPARE(view->model()->index(row, 0).data(Qt::UserRole + 6).toInt(), expected[row]);
         QCOMPARE(view->currentRow(), matched ? (ascending ? 0 : 2) : 1);
-        QCOMPARE(view->item(view->currentRow(), 0)->data(Qt::UserRole + 3).toString(),
+        QCOMPARE(view->model()->index(view->currentRow(), 0).data(Qt::UserRole + 3).toString(),
                  entries[matched ? 1 : 2].path);
         CRecordVector<UInt32> selected;
         view->sourcePanel->Get_ItemIndices_Selected(selected);
@@ -215,12 +206,13 @@ class PanelRefreshCompletionTests final : public QObject, protected MainWindowTe
         QCOMPARE(selected[0], 1u);
         QVERIFY(view->sourcePanel->ShouldProcessNotifications());
         const QString focused =
-            view->item(view->currentRow(), 0)->data(Qt::UserRole + 3).toString();
+            view->model()->index(view->currentRow(), 0).data(Qt::UserRole + 3).toString();
         backend.queueList(entries);
         action(window, "refreshAction")->trigger();
         for (int row = 0; row < 3; ++row)
-            QCOMPARE(view->item(row, 0)->data(Qt::UserRole + 6).toInt(), expected[row]);
-        QCOMPARE(view->item(view->currentRow(), 0)->data(Qt::UserRole + 3).toString(), focused);
+            QCOMPARE(view->model()->index(row, 0).data(Qt::UserRole + 6).toInt(), expected[row]);
+        QCOMPARE(view->model()->index(view->currentRow(), 0).data(Qt::UserRole + 3).toString(),
+                 focused);
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);
             QApplication::processEvents();

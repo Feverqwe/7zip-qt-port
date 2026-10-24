@@ -106,7 +106,7 @@ sevenzip_share_port_objects(sevenzip_main_window src/mainwindow.h
     src/mainwindow_twopanel.cpp
     src/mainwindow_volumes.cpp
     src/CPP/7zip/UI/FileManager/PanelKey.cpp
-    src/filetable.cpp
+    src/filepanelmodel.cpp src/filepanelmodel.h src/filetable.cpp src/filetable.h
     src/qtapppresentation.cpp
     src/qtfilemanagercommands.cpp
     src/qtfilemanagercommandworkflows.cpp

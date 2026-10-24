@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 
@@ -30,7 +31,7 @@ class PanelColumnSortTests final : public QObject, protected MainWindowTestSuppo
         QCOMPARE(view.propertyId(view.horizontalHeader()->sortIndicatorSection()), property);
         QCOMPARE(view.horizontalHeader()->sortIndicatorOrder(),
                  ascending ? Qt::AscendingOrder : Qt::DescendingOrder);
-        QCOMPARE(view.item(0, 0)->data(Qt::UserRole + 6).toUInt(),
+        QCOMPARE(view.model()->index(0, 0).data(Qt::UserRole + 6).toUInt(),
                  ascending ? UInt32(1) : UInt32(0));
         QCOMPARE(view.selectionModel()->selectedRows().size(), 2);
     }
@@ -105,7 +106,7 @@ class PanelColumnSortTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         ui->findChild<QLineEdit *>("archivePath")->setFocus();
         openListedArchive(window, backend, fixture.filePath(QStringLiteral("sort 文件.zip")),
                           entries);
@@ -116,7 +117,7 @@ class PanelColumnSortTests final : public QObject, protected MainWindowTestSuppo
         panel.Set_AutoRefresh_Mode(false);
         CMyComPtr<IFolderFolder> provider = panel.GetFolder();
         auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *peer = static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        auto *peer = static_cast<FileTable *>(peerUi->findChild<FileTable *>("archiveTable"));
         peer->sourcePanel->Set_AutoRefresh_Mode(false);
         CMyComPtr<IFolderFolder> peerProvider = peer->sourcePanel->GetFolder();
         const int peerRows = peer->rowCount();

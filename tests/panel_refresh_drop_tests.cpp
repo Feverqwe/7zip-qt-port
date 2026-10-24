@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "fixtures/drag_event_position.h"
 #include "layout_inspection.h"
 #include "qtpaneldragmodel.h"
@@ -7,6 +8,7 @@
 #include <QDragEnterEvent>
 #include <QDragLeaveEvent>
 #include <QMimeData>
+#include <QTableWidget>
 #include <new>
 
 namespace {
@@ -27,10 +29,11 @@ class DropPresentation final : public IQtDropTargetPresentation {
 
 class PanelRefreshDropTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
-    static int row(QTableWidget &view, const QString &name) {
+    static int row(FileTable &view, const QString &name) {
         for (int i = 0; i < view.rowCount(); ++i)
-            if (view.item(i, 0)
-                    ->data(Qt::UserRole + 3)
+            if (view.model()
+                    ->index(i, 0)
+                    .data(Qt::UserRole + 3)
                     .toString()
                     .normalized(QString::NormalizationForm_C) ==
                 name.normalized(QString::NormalizationForm_C))
@@ -89,8 +92,8 @@ class PanelRefreshDropTests final : public QObject, protected MainWindowTestSupp
             address->setText(widget == owner ? root.path() : peerPath);
             QTest::keyClick(address, Qt::Key_Return);
         }
-        auto *table = static_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"));
-        auto *peerTable = static_cast<FileTable *>(peer->findChild<QTableWidget *>("archiveTable"));
+        auto *table = static_cast<FileTable *>(owner->findChild<FileTable *>("archiveTable"));
+        auto *peerTable = static_cast<FileTable *>(peer->findChild<FileTable *>("archiveTable"));
         CMyComPtr<IFolderFolder> peerProvider = peerTable->sourcePanel->GetFolder();
         const UString peerPrefix = peerTable->sourcePanel->GetCurrentFolderPrefix();
         QTRY_VERIFY(table->isEnabled() && row(*table, control) >= 0);
@@ -113,7 +116,8 @@ class PanelRefreshDropTests final : public QObject, protected MainWindowTestSupp
             return event.isAccepted();
         };
         QVERIFY(enter());
-        QVERIFY(table->item(row(*table, destination), 0)->data(Qt::UserRole + 19).toBool());
+        QVERIFY(
+            table->model()->index(row(*table, destination), 0).data(Qt::UserRole + 19).toBool());
         if (restoreOnly) {
             CSelectedState state;
             table->sourcePanel->SaveSelectedState(state);
@@ -121,10 +125,12 @@ class PanelRefreshDropTests final : public QObject, protected MainWindowTestSupp
         } else
             action(window, "refreshAction")->trigger();
         QTRY_VERIFY(table->isEnabled() && row(*table, destination) >= 0);
-        QVERIFY(!table->item(row(*table, destination), 0)->data(Qt::UserRole + 19).toBool());
+        QVERIFY(
+            !table->model()->index(row(*table, destination), 0).data(Qt::UserRole + 19).toBool());
         QVERIFY(table->updatesEnabled() && view->updatesEnabled());
-        QCOMPARE(table->item(table->currentRow(), 0)
-                     ->data(Qt::UserRole + 3)
+        QCOMPARE(table->model()
+                     ->index(table->currentRow(), 0)
+                     .data(Qt::UserRole + 3)
                      .toString()
                      .normalized(QString::NormalizationForm_C),
                  control.normalized(QString::NormalizationForm_C));
@@ -133,9 +139,11 @@ class PanelRefreshDropTests final : public QObject, protected MainWindowTestSupp
         QDragLeaveEvent leave;
         QCoreApplication::sendEvent(view->viewport(), &leave);
         QVERIFY(enter());
-        QVERIFY(table->item(row(*table, destination), 0)->data(Qt::UserRole + 19).toBool());
+        QVERIFY(
+            table->model()->index(row(*table, destination), 0).data(Qt::UserRole + 19).toBool());
         QCoreApplication::sendEvent(view->viewport(), &leave);
-        QVERIFY(!table->item(row(*table, destination), 0)->data(Qt::UserRole + 19).toBool());
+        QVERIFY(
+            !table->model()->index(row(*table, destination), 0).data(Qt::UserRole + 19).toBool());
         QVERIFY(bytes.open(QIODevice::ReadOnly));
         QCOMPARE(bytes.readAll(), QByteArray("unchanged"));
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {

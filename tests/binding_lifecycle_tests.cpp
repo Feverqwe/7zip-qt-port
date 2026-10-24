@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/ListViewDialog.h"
+#include "panel_model_support.h"
 #include "window_state_support.h"
 #include <QElapsedTimer>
 #include <QScopeGuard>
@@ -31,9 +32,10 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
         auto *view = table(window);
         QCOMPARE(view->rowCount(), 1);
         view->selectRow(0);
-        view->item(0, 0)->setData(Qt::UserRole, QString("forged/previous-owner.txt"));
-        view->item(0, 0)->setData(Qt::UserRole + 1, true);
-        view->item(0, 1)->setText("forged/previous-owner.txt");
+        SetPanelData(view->model()->index(0, 0), QString("forged/previous-owner.txt"),
+                     Qt::UserRole);
+        SetPanelData(view->model()->index(0, 0), true, Qt::UserRole + 1);
+        SetPanelData(view->model()->index(0, 1), "forged/previous-owner.txt", Qt::EditRole);
     }
     static void verifyLoadingCommands(MainWindow &window) {
         QCOMPARE(table(window)->rowCount(), 0);
@@ -170,7 +172,7 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
             verifyLoadingCommands(window);
         });
         window.openArchive("second-owner.zip");
-        QCOMPARE(table(window)->item(0, 2)->text(), QString("19"));
+        QCOMPARE(table(window)->model()->index(0, 2).data().toString(), QString("19"));
         selectAndForge(window);
         window.extractTo(destination.path(), true);
         QCOMPARE(backend.lastSelected, QStringList{newPath});

@@ -1,4 +1,5 @@
 #include "Common/MyTypes.h"
+#include "filetable.h"
 
 #include "7zip/UI/Explorer/ContextMenuFlags.h"
 #include "CPP/7zip/UI/Common/ZipRegistry.h"
@@ -62,7 +63,7 @@ class ToolbarCreationWorkflowTests final : public QObject, protected MainWindowT
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        return static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        return static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
     }
 
   private slots:
@@ -128,7 +129,8 @@ class ToolbarCreationWorkflowTests final : public QObject, protected MainWindowT
         } else {
             QTRY_COMPARE(selected->rowCount(), 0);
             QTRY_COMPARE(peer->rowCount(), 1);
-            QCOMPARE(peer->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+            QCOMPARE(peer->model()->index(0, 0).data().toString().normalized(
+                         QString::NormalizationForm_C),
                      QString("chosen archive 空.zip"));
             QVERIFY(QFileInfo::exists(backend.Target));
         }
@@ -181,7 +183,8 @@ class ToolbarCreationWorkflowTests final : public QObject, protected MainWindowT
         QTRY_COMPARE(peer->rowCount(), 2);
         QStringList names;
         for (int row = 0; row < peer->rowCount(); ++row)
-            names.append(peer->item(row, 0)->text().normalized(QString::NormalizationForm_C));
+            names.append(peer->model()->index(row, 0).data().toString().normalized(
+                QString::NormalizationForm_C));
         QVERIFY(names.contains("new member 空.txt"));
         QVERIFY(names.contains("inside"));
         QCOMPARE(peerAddress->text(), peerPath);

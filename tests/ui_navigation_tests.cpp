@@ -98,7 +98,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(QDir::fromNativeSeparators(backend.lastArchive), archivePath);
         QCOMPARE(address->text(), location);
         QCOMPARE(table(window)->rowCount(), 1);
-        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("file.txt"));
+        QCOMPARE(table(window)->model()->index(0, 0).data().toString(), QStringLiteral("file.txt"));
 
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
@@ -110,7 +110,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         address->setText(archivePath + " / папка");
         QTest::keyClick(address, Qt::Key_Return);
         QCOMPARE(backend.listCalls, 2);
-        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("внутри"));
+        QCOMPARE(table(window)->model()->index(0, 0).data().toString(), QStringLiteral("внутри"));
         address->setText(location);
         QTest::keyClick(address, Qt::Key_Return);
         QCOMPARE(address->text(), location);
@@ -126,7 +126,8 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         backend.queueList({ArchiveEntry{QStringLiteral("папка/other.txt"), 2, 2}});
         QTest::keyClick(address, Qt::Key_Return);
         QCOMPARE(address->text(), archivePath + " / папка");
-        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("other.txt"));
+        QCOMPARE(table(window)->model()->index(0, 0).data().toString(),
+                 QStringLiteral("other.txt"));
         QVERIFY(QFile::remove(archivePath));
         address->setText(location);
         QTest::keyClick(address, Qt::Key_Return);
@@ -167,7 +168,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         view->clearSelection();
 
         for (int row = 0; row < view->rowCount(); ++row) {
-            if (view->item(row, 0)->text() == "plain.txt")
+            if (view->model()->index(row, 0).data().toString() == "plain.txt")
                 view->setCurrentCell(row, 0);
         }
         QVERIFY(action(window, "openItemAction")->isEnabled());
@@ -176,7 +177,8 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
                  QFileInfo(plain.fileName()).canonicalFilePath());
         QCOMPARE(address->text(), QFileInfo(temp.path()).canonicalFilePath());
         for (int row = 0; row < view->rowCount(); ++row) {
-            if (view->item(row, 0)->text() == QStringLiteral("папка с пробелом"))
+            if (view->model()->index(row, 0).data().toString() ==
+                QStringLiteral("папка с пробелом"))
                 view->setCurrentCell(row, 0);
         }
         QVERIFY(action(window, "openItemAction")->isEnabled());
@@ -187,7 +189,8 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(address->text(), QFileInfo(temp.path()).canonicalFilePath());
 
         for (int row = 0; row < view->rowCount(); ++row) {
-            if (view->item(row, 0)->text() == QStringLiteral("архив с пробелом.zip"))
+            if (view->model()->index(row, 0).data().toString() ==
+                QStringLiteral("архив с пробелом.zip"))
                 view->setCurrentCell(row, 0);
         }
         backend.queueListAction([&] {
@@ -255,7 +258,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         backend.cancel();
         const int folder = rowWithPath(window, QStringLiteral("папка с пробелом"));
         QVERIFY(folder >= 0);
-        QVERIFY(table(window)->item(folder, 0)->data(Qt::UserRole + 1).toBool());
+        QVERIFY(table(window)->model()->index(folder, 0).data(Qt::UserRole + 1).toBool());
         openRow(window, folder);
         QCOMPARE(table(window)->rowCount(), 2);
         QVERIFY(action(window, "upAction")->isEnabled());
@@ -289,8 +292,8 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         openRow(window, rowWithPath(window, QStringLiteral("папка с пробелом/глубже")));
         QCOMPARE(table(window)->rowCount(), 2);
         table(window)->sortItems(2, Qt::DescendingOrder);
-        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("10.txt"));
-        QCOMPARE(table(window)->item(1, 0)->text(), QStringLiteral("2.txt"));
+        QCOMPARE(table(window)->model()->index(0, 0).data().toString(), QStringLiteral("10.txt"));
+        QCOMPARE(table(window)->model()->index(1, 0).data().toString(), QStringLiteral("2.txt"));
         table(window)->selectRow(1);
         QVERIFY(action(window, "copyAction")->isEnabled());
         window.extractTo("/temporary/destination", true);

@@ -3,6 +3,7 @@
 #include "fixtures/drag_event_position.h"
 #include "layout_inspection.h"
 #include "native_archive_fixture.h"
+#include "panel_model_support.h"
 #include "qtownedtempregistry.h"
 #include "qtpaneldragtransport.h"
 #include "window_state_support.h"
@@ -14,10 +15,10 @@
 #include <QThread>
 
 namespace {
-int Row(QTableWidget &table, const QString &name) {
+int Row(FileTable &table, const QString &name) {
     for (int row = 0; row < table.rowCount(); ++row)
-        if (table.item(row, 0)->text().normalized(QString::NormalizationForm_C) ==
-            name.normalized(QString::NormalizationForm_C))
+        if (table.model()->index(row, 0).data().toString().normalized(
+                QString::NormalizationForm_C) == name.normalized(QString::NormalizationForm_C))
             return row;
     return -1;
 }
@@ -45,7 +46,7 @@ class DragDropUiTests final : public QObject {
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         QVERIFY(table);
         auto *panel = window.findChild<QWidget *>("filePanel0");
         QVERIFY(panel);
@@ -111,7 +112,7 @@ class DragDropUiTests final : public QObject {
         MainWindow window(&backend);
         window.show();
         window.openArchive(archive);
-        auto *table = dynamic_cast<FileTable *>(window.findChild<QTableWidget *>("archiveTable"));
+        auto *table = dynamic_cast<FileTable *>(window.findChild<FileTable *>("archiveTable"));
         QVERIFY(table && table->dragStarter);
         QTRY_VERIFY(table->isEnabled() && Row(*table, name) >= 0);
         if (icons)
@@ -181,7 +182,8 @@ class DragDropUiTests final : public QObject {
         QVERIFY(window.isVisible());
         QVERIFY(!backend.busy());
         QCOMPARE(table->sourcePanel->GetFolder(), provider.Interface());
-        QTRY_VERIFY(Row(*table, name) >= 0 && table->item(Row(*table, name), 0)->isSelected());
+        QTRY_VERIFY(Row(*table, name) >= 0 &&
+                    PanelIndexSelected(table->model()->index(Row(*table, name), 0)));
         for (const QString &path : dragRoots) {
 #ifdef Q_OS_MACOS
             // Default Cocoa IgnoreAction does not confirm that Finder stopped
@@ -224,7 +226,7 @@ class DragDropUiTests final : public QObject {
         MainWindow window(&backend);
         window.show();
         Navigate(*window.findChild<QWidget *>("filePanel0"), root.path());
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         QTRY_VERIFY(table->isEnabled() && Row(*table, folder) >= 0 &&
                     Row(*table, "selected.txt") >= 0);
         const int selected = Row(*table, "selected.txt");
@@ -282,7 +284,7 @@ class DragDropUiTests final : public QObject {
         MainWindow window(&backend);
         window.show();
         window.openArchive(archive);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         QTRY_VERIFY(table->isEnabled() && Row(*table, "original.txt") >= 0);
         QVERIFY(table->dragEnabled());
         if (icons) {
@@ -393,8 +395,8 @@ class DragDropUiTests final : public QObject {
             window.findChild<QWidget *>(QString("filePanel%1").arg(1 - sourceIndex));
         QVERIFY(sourcePanel && targetPanel && targetPanel->isVisible());
         auto *sourceTable =
-            dynamic_cast<FileTable *>(sourcePanel->findChild<QTableWidget *>("archiveTable"));
-        auto *targetTable = targetPanel->findChild<QTableWidget *>("archiveTable");
+            dynamic_cast<FileTable *>(sourcePanel->findChild<FileTable *>("archiveTable"));
+        auto *targetTable = targetPanel->findChild<FileTable *>("archiveTable");
         QVERIFY(sourceTable && sourceTable->dragStarter && targetTable);
         Navigate(*targetPanel, target);
         QTRY_VERIFY(targetTable->isEnabled() && Row(*targetTable, subfolder) >= 0);
@@ -472,7 +474,7 @@ class DragDropUiTests final : public QObject {
         QVERIFY(!folder.data(Qt::UserRole + 19).toBool());
         QCOMPARE(targetTable->selectionModel()->selectedRows(), selection);
         if (cancel) {
-            QVERIFY(sourceTable->item(sourceRow, 0)->isSelected());
+            QVERIFY(PanelIndexSelected(sourceTable->model()->index(sourceRow, 0)));
             QVERIFY(QFileInfo::exists(input.fileName()));
             QVERIFY(!QFileInfo::exists(QDir(QDir(target).filePath(subfolder)).filePath(name)));
             return;

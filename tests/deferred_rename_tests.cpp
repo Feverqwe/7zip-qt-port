@@ -44,7 +44,7 @@ class DeferredRenameTests final : public QObject, protected MainWindowTestSuppor
         std::array<FileTable *, 2> views;
         for (unsigned index : {0u, 1u}) {
             auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(index));
-            views[index] = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+            views[index] = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
             auto *address = ui->findChild<QLineEdit *>("archivePath");
             address->setFocus();
             address->setText(archives[index]);
@@ -66,8 +66,8 @@ class DeferredRenameTests final : public QObject, protected MainWindowTestSuppor
         views[0]->itemDelegate()->commitData(editor);
         views[0]->itemDelegate()->closeEditor(editor);
         views[1]->setFocus();
-        QTRY_COMPARE(views[0]->item(0, 0)->data(Qt::UserRole + 3).toString(), renamed);
-        QCOMPARE(views[1]->item(0, 0)->data(Qt::UserRole + 3).toString(), name);
+        QTRY_COMPARE(views[0]->model()->index(0, 0).data(Qt::UserRole + 3).toString(), renamed);
+        QCOMPARE(views[1]->model()->index(0, 0).data(Qt::UserRole + 3).toString(), name);
         QCOMPARE(views[1]->sourcePanel->GetFolder(), peerFolder.Interface());
         QCOMPARE(ExternalEditorFixture::contents(archives[0], renamed), QByteArray("source bytes"));
         QCOMPARE(ExternalEditorFixture::contents(archives[1], name), QByteArray("peer bytes"));
@@ -107,7 +107,7 @@ class DeferredRenameTests final : public QObject, protected MainWindowTestSuppor
         std::array<FileTable *, 2> views;
         for (unsigned index : {0u, 1u}) {
             auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(index));
-            views[index] = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+            views[index] = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
             auto *address = ui->findChild<QLineEdit *>("archivePath");
             address->setFocus();
             address->setText(index == pane ? source.path() : peer.path());

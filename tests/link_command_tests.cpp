@@ -1,4 +1,5 @@
 #include "7zip/UI/FileManager/LinkDialogRes.h"
+#include "panel_model_support.h"
 #include "window_state_support.h"
 #include <QRadioButton>
 
@@ -72,7 +73,7 @@ class LinkCommandTests final : public QObject, protected MainWindowTestSupport {
         QCOMPARE(QFileInfo::exists(output), !cancel);
         QTRY_VERIFY(link->isEnabled());
         QTRY_VERIFY(filesystemRow(window, name) >= 0);
-        QVERIFY(table(window)->item(filesystemRow(window, name), 0)->isSelected());
+        QVERIFY(PanelIndexSelected(table(window)->model()->index(filesystemRow(window, name), 0)));
         if (!cancel) {
             QFile appended(output);
             QVERIFY(appended.open(QIODevice::Append));

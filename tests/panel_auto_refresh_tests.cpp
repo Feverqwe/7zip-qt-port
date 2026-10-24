@@ -47,26 +47,28 @@ class PanelAutoRefreshTests final : public QObject, protected MainWindowTestSupp
         files->setCurrentCell(selectedRow, 0);
         files->selectRow(selectedRow);
         const int topRow = filesystemRow(window, QStringLiteral("file-035.txt"));
-        files->scrollToItem(files->item(topRow, 0), QAbstractItemView::PositionAtTop);
-        const QString topPath = files->item(files->rowAt(0), 1)->text();
+        files->scrollTo(files->model()->index(topRow, 0), QAbstractItemView::PositionAtTop);
+        const QString topPath = files->model()->index(files->rowAt(0), 1).data().toString();
         QVERIFY(files->verticalScrollBar()->value() > 0);
 
         QVERIFY(writeFile(temp.filePath(QStringLiteral("новый файл.txt"))));
         QTRY_COMPARE_WITH_TIMEOUT(files->rowCount(), 81, 3500);
-        QVERIFY(files->item(files->currentRow(), 0));
-        QCOMPARE(files->item(files->currentRow(), 0)->text(), QStringLiteral("file-050.txt"));
+        QVERIFY(files->model()->index(files->currentRow(), 0).isValid());
+        QCOMPARE(files->model()->index(files->currentRow(), 0).data().toString(),
+                 QStringLiteral("file-050.txt"));
         QVERIFY(files->selectionModel()->isRowSelected(files->currentRow(), QModelIndex()));
-        QVERIFY(files->item(files->rowAt(0), 1));
-        QCOMPARE(files->item(files->rowAt(0), 1)->text(), topPath);
+        QVERIFY(files->model()->index(files->rowAt(0), 1).isValid());
+        QCOMPARE(files->model()->index(files->rowAt(0), 1).data().toString(), topPath);
 
         // Changing an existing file leaves the directory entry set unchanged.
         // Windows must observe this through the original native folder watcher.
         const QByteArray changed("changed contents");
         QVERIFY(writeFile(temp.filePath(QStringLiteral("file-050.txt")), changed));
         QTRY_COMPARE_WITH_TIMEOUT(
-            files->item(files->currentRow(), 2)->data(Qt::UserRole + 2).toLongLong(),
+            files->model()->index(files->currentRow(), 2).data(Qt::UserRole + 2).toLongLong(),
             qint64(changed.size()), 3500);
-        QCOMPARE(files->item(files->currentRow(), 0)->text(), QStringLiteral("file-050.txt"));
+        QCOMPARE(files->model()->index(files->currentRow(), 0).data().toString(),
+                 QStringLiteral("file-050.txt"));
         QVERIFY(files->selectionModel()->isRowSelected(files->currentRow(), QModelIndex()));
 
         QVERIFY(QFile::remove(temp.filePath(QStringLiteral("новый файл.txt"))));
@@ -119,7 +121,7 @@ class PanelAutoRefreshTests final : public QObject, protected MainWindowTestSupp
         QVERIFY(QDir().mkpath(folder));
         QVERIFY(writeFile(folder + QStringLiteral("/new.txt")));
         QTRY_COMPARE_WITH_TIMEOUT(table(window)->rowCount(), 1, 3500);
-        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("new.txt"));
+        QCOMPARE(table(window)->model()->index(0, 0).data().toString(), QStringLiteral("new.txt"));
     }
 };
 

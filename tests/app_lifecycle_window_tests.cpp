@@ -184,8 +184,9 @@ class AppLifecycleWindowTests : public QObject, protected MainWindowTestSupport 
             QCOMPARE(table(window)->rowCount(), 2);
             bool childVisible = false;
             for (int row = 0; row < table(window)->rowCount(); ++row)
-                childVisible |= table(window)->item(row, 0)->data(Qt::UserRole).toString() ==
-                                QStringLiteral("folder/item.txt");
+                childVisible |=
+                    table(window)->model()->index(row, 0).data(Qt::UserRole).toString() ==
+                    QStringLiteral("folder/item.txt");
             QVERIFY(childVisible);
         }
         QSettings key(settings, QSettings::IniFormat);

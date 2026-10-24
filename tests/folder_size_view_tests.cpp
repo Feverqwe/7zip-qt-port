@@ -1,4 +1,5 @@
 #include "Windows/PropVariant.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 
@@ -41,15 +42,16 @@ class FolderSizeViewTests final : public QObject, protected MainWindowTestSuppor
             NWindows::NCOM::CPropVariant value;
             const int row = filesystemRow(window, name);
             if (row >= 0)
-                provider->GetProperty(view->item(row, 0)->data(Qt::UserRole + 6).toUInt(), id,
-                                      &value);
+                provider->GetProperty(view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt(),
+                                      id, &value);
             return value;
         };
         QCOMPARE(property(folder, kpidSize).vt, VARTYPE(VT_EMPTY));
         const int filesColumn = view->columnForProperty(kpidNumSubFiles);
         QVERIFY(filesColumn >= 0);
         view->setColumnHidden(filesColumn, true);
-        QCOMPARE(view->item(filesystemRow(window, folder), filesColumn)->text(), QString());
+        QCOMPARE(view->model()->index(filesystemRow(window, folder), filesColumn).data().toString(),
+                 QString());
         view->selectRow(filesystemRow(window, folder));
         QVERIFY(action(window, "viewFileAction")->isEnabled());
         QVERIFY(!action(window, "editFileAction")->isEnabled());
@@ -66,15 +68,19 @@ class FolderSizeViewTests final : public QObject, protected MainWindowTestSuppor
         QCOMPARE(property(folder, kpidSize).vt, VARTYPE(VT_UI8));
         QCOMPARE(property(folder, kpidSize).uhVal.QuadPart, UInt64(8));
         QCOMPARE(property(folder, kpidNumSubFiles).uhVal.QuadPart, UInt64(2));
-        QCOMPARE(view->item(filesystemRow(window, folder), filesColumn)->text(), QString("2"));
+        QCOMPARE(view->model()->index(filesystemRow(window, folder), filesColumn).data().toString(),
+                 QString("2"));
         QCOMPARE(property(folder, kpidNumSubDirs).uhVal.QuadPart, UInt64(1));
         QCOMPARE(property("empty", kpidSize).vt, VARTYPE(VT_UI8));
         QCOMPARE(property("empty", kpidSize).uhVal.QuadPart, UInt64(0));
         const int sizeColumn = view->columnForProperty(kpidSize);
         QVERIFY(sizeColumn >= 0);
-        QCOMPARE(view->item(filesystemRow(window, folder), sizeColumn)->text(), QString("8"));
-        QCOMPARE(view->item(filesystemRow(window, "empty"), sizeColumn)->text(), QString("0"));
-        QCOMPARE(view->item(view->currentRow(), 0)->text(), QString("focused.txt"));
+        QCOMPARE(view->model()->index(filesystemRow(window, folder), sizeColumn).data().toString(),
+                 QString("8"));
+        QCOMPARE(view->model()->index(filesystemRow(window, "empty"), sizeColumn).data().toString(),
+                 QString("0"));
+        QCOMPARE(view->model()->index(view->currentRow(), 0).data().toString(),
+                 QString("focused.txt"));
         QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
         QVERIFY(UiInspection::fullyVisible(*view, window));
         QVERIFY(

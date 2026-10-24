@@ -1,6 +1,7 @@
 #include "7zip/PropID.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "Windows/TimeUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
@@ -9,7 +10,8 @@ class ViewMenuTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
     static int row(FileTable &view, const QString &name) {
         for (int i = 0; i < view.rowCount(); ++i)
-            if (view.item(i, 0)->text().normalized(QString::NormalizationForm_C) == name)
+            if (view.model()->index(i, 0).data().toString().normalized(
+                    QString::NormalizationForm_C) == name)
                 return i;
         return -1;
     }
@@ -19,7 +21,7 @@ class ViewMenuTests final : public QObject, protected MainWindowTestSupport {
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        return static_cast<FileTable *>(panel->findChild<QTableWidget *>("archiveTable"));
+        return static_cast<FileTable *>(panel->findChild<FileTable *>("archiveTable"));
     }
     static void openView(MainWindow &window) {
         auto *view = window.findChild<QMenu *>("viewMenu");

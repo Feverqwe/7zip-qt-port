@@ -209,7 +209,7 @@ void MainWindow::failFilesystemListing(HRESULT result) {
     autoRefreshTopPath_.clear();
     autoRefreshScrollValue_ = -1;
     table_->clearSelection();
-    table_->setRowCount(0);
+    table_->clearRows();
     table_->setSortingEnabled(true);
     // OnCopy ignores RefreshListCtrl errors, including a retained worker load.
     // Navigation and explicit reload keep their existing diagnostic policy.

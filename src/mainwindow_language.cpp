@@ -27,50 +27,26 @@ void MainWindow::reloadLangItems() {
     refreshBookmarks();
     QtReloadLangTexts(*this);
     refreshToolbarTexts();
-    for (QTableWidget *table : findChildren<QTableWidget *>()) {
-        auto *files = dynamic_cast<FileTable *>(table);
-        if (!files)
-            continue;
-        for (int i = 0; i < files->columnCount(); i++) {
-            if (files->propertyId(i) == kpidNoProperty) {
-                if (auto *header = files->horizontalHeaderItem(i))
-                    header->setText(QCoreApplication::translate("mainwindow_language", "Order"));
-                continue;
-            }
+    for (FileTable *files : findChildren<FileTable *>()) {
+        for (int i = 0; i < files->columnCount(); ++i) {
             if (files->isRawProperty(i))
                 continue;
-            if (auto *header = files->horizontalHeaderItem(i)) {
-                const CPropColumn *column = files->sourceColumn(i);
-                header->setText(QString::fromWCharArray(GetNameOfProperty(
-                    files->propertyId(i), column ? column->Name.Ptr() : nullptr)));
-            }
+            const CPropColumn *column = files->sourceColumn(i);
+            const QString label =
+                files->propertyId(i) == kpidNoProperty
+                    ? QCoreApplication::translate("mainwindow_language", "Order")
+                    : QString::fromWCharArray(GetNameOfProperty(
+                          files->propertyId(i), column ? column->Name.Ptr() : nullptr));
+            files->model()->setHeaderData(i, Qt::Horizontal, label);
+        }
+        for (int row = 0; row < files->rowCount(); ++row) {
+            const QModelIndex index = files->model()->index(row, 0);
+            if (index.data(Qt::UserRole + 6).toUInt() == UInt32(-1))
+                files->model()->setData(
+                    index, QCoreApplication::translate("mainwindow_language", "Parent folder"),
+                    Qt::ToolTipRole);
         }
         files->invalidateLanguageText();
-        for (int row = 0; row < files->rowCount(); ++row)
-            if (auto *item = files->item(row, 0);
-                item && item->data(Qt::UserRole + 6).toUInt() == UInt32(-1))
-                item->setToolTip(
-                    QCoreApplication::translate("mainwindow_language", "Parent folder"));
-        if (files->sourcePanel && files->sourcePanel->GetFolder() &&
-            files->sourcePanel->IsFSDrivesFolder()) {
-            const bool sorting = files->isSortingEnabled();
-            files->setSortingEnabled(false);
-            for (int column = 0; column < files->columnCount(); ++column) {
-                if (files->propertyId(column) != kpidType)
-                    continue;
-                for (int row = 0; row < files->rowCount(); ++row) {
-                    auto *item = files->item(row, column);
-                    if (!item)
-                        continue;
-                    NWindows::NCOM::CPropVariant type;
-                    if (files->sourcePanel->GetFolder()->GetProperty(
-                            item->data(Qt::UserRole + 6).toUInt(), kpidType, &type) == S_OK &&
-                        type.vt == VT_BSTR)
-                        item->setText(QString::fromWCharArray(type.bstrVal));
-                }
-            }
-            files->setSortingEnabled(sorting);
-        }
     }
     for (unsigned i = 0; i < kNumPanelsMax; i++) {
         if (auto *root = dynamic_cast<CRootFolder *>(app_.Panels[i].GetFolder())) {
@@ -79,16 +55,14 @@ void MainWindow::reloadLangItems() {
                 const bool sorting = table->isSortingEnabled();
                 table->setSortingEnabled(false);
                 for (int row = 0; row < table->rowCount(); ++row) {
-                    auto *item = table->item(row, 0);
-                    if (!item)
-                        continue;
+                    const QModelIndex item = table->model()->index(row, 0);
                     NWindows::NCOM::CPropVariant name;
                     if (static_cast<IFolderFolder *>(root)->GetProperty(
-                            item->data(Qt::UserRole + 6).toUInt(), kpidName, &name) == S_OK &&
+                            item.data(Qt::UserRole + 6).toUInt(), kpidName, &name) == S_OK &&
                         name.vt == VT_BSTR) {
                         const QString nativeName = QString::fromWCharArray(name.bstrVal);
-                        item->setText(nativeName.normalized(QString::NormalizationForm_C));
-                        item->setData(Qt::UserRole + 3, nativeName);
+                        table->model()->setData(item, QVariant(), Qt::DisplayRole);
+                        table->model()->setData(item, nativeName, Qt::UserRole + 3);
                     }
                 }
                 table->setSortingEnabled(sorting);

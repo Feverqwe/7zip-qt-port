@@ -1,3 +1,4 @@
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QElapsedTimer>
@@ -128,7 +129,7 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
         const QString selectedName = QStringLiteral("имя с пробелом 04095.txt");
         int selectedRow = -1;
         for (int row = 0; row < list->rowCount(); ++row)
-            if (list->item(row, 0)->text() == selectedName)
+            if (list->model()->index(row, 0).data().toString() == selectedName)
                 selectedRow = row;
         QVERIFY(selectedRow >= 0);
         list->setCurrentCell(selectedRow, 0);
@@ -140,8 +141,11 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
         QTRY_VERIFY(!publication.isEmpty());
         QTRY_VERIFY_WITH_TIMEOUT(list->isEnabled() && list->rowCount() >= count, 15000);
         QCOMPARE(list->selectionModel()->selectedRows().size(), 1);
-        QCOMPARE(list->currentItem()->text(), selectedName);
-        QCOMPARE(list->item(list->selectionModel()->selectedRows().first().row(), 0)->text(),
+        QCOMPARE(list->currentIndex().data().toString(), selectedName);
+        QCOMPARE(list->model()
+                     ->index(list->selectionModel()->selectedRows().first().row(), 0)
+                     .data()
+                     .toString(),
                  selectedName);
     }
     void enteringLargeArchiveFolderRestoresCommands() {
@@ -159,7 +163,7 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
         auto *list = table(window);
         int folderRow = -1;
         for (int row = 0; row < list->rowCount(); ++row)
-            if (list->item(row, 0)->text() == "folder")
+            if (list->model()->index(row, 0).data().toString() == "folder")
                 folderRow = row;
         QVERIFY(folderRow >= 0);
         list->setCurrentCell(folderRow, 0);
@@ -226,7 +230,11 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(QFileInfo::exists(fixture.filePath(name)));
         QTRY_VERIFY(list->isEnabled() && list->rowCount() >= 513);
         QCOMPARE(list->selectionModel()->selectedRows().size(), 1);
-        QCOMPARE(list->item(list->selectionModel()->selectedRows().first().row(), 0)->text(), name);
+        QCOMPARE(list->model()
+                     ->index(list->selectionModel()->selectedRows().first().row(), 0)
+                     .data()
+                     .toString(),
+                 name);
     }
     void switchPanelDuringRefreshKeepsOriginalSelectedState() {
         QTemporaryDir fixture;
@@ -247,7 +255,7 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
         auto *right = window.findChild<QWidget *>("filePanel1");
         QVERIFY(left && right);
         auto *address = left->findChild<QLineEdit *>("archivePath");
-        auto *list = left->findChild<QTableWidget *>("archiveTable");
+        auto *list = left->findChild<FileTable *>("archiveTable");
         address->setFocus();
         address->setText(fixture.path());
         QTest::keyClick(address, Qt::Key_Return);
@@ -255,7 +263,7 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
         const QString name = "old-511.txt";
         int row = -1;
         for (int i = 0; i < list->rowCount(); ++i)
-            if (list->item(i, 0)->text() == name)
+            if (list->model()->index(i, 0).data().toString() == name)
                 row = i;
         QVERIFY(row >= 0);
         list->setCurrentCell(row, 0);
@@ -277,8 +285,12 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
         address->setFocus();
         QTRY_VERIFY(list->isEnabled() && list->rowCount() >= 512);
         QCOMPARE(list->selectionModel()->selectedRows().size(), 1);
-        QCOMPARE(list->currentItem()->text(), name);
-        QCOMPARE(list->item(list->selectionModel()->selectedRows().first().row(), 0)->text(), name);
+        QCOMPARE(list->currentIndex().data().toString(), name);
+        QCOMPARE(list->model()
+                     ->index(list->selectionModel()->selectedRows().first().row(), 0)
+                     .data()
+                     .toString(),
+                 name);
     }
     void navigationAndCloseDuringProjection_data() {
         QTest::addColumn<bool>("archive");
@@ -319,8 +331,8 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
         connect(&timer, &QTimer::timeout, &window, [&] {
             if (list->isEnabled() || !list->rowCount())
                 return;
-            const auto *last = list->item(list->rowCount() - 1, 0);
-            if (!last || !last->data(Qt::UserRole + 3).toString().startsWith("old-"))
+            const QPersistentModelIndex last = list->model()->index(list->rowCount() - 1, 0);
+            if (!last.isValid() || !last.data(Qt::UserRole + 3).toString().startsWith("old-"))
                 return;
             QVERIFY(list->rowCount() < 512);
             timer.stop();

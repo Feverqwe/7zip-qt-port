@@ -4,11 +4,13 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivecodeccatalog.h"
+#include "filetable.h"
 #include "fixtures/drag_event_position.h"
 #include "fixtures/panel_keys.h"
 #include "fixtures/progress_dialog.h"
 #include "fixtures/window_activation.h"
 #include "native_archive_fixture.h"
+#include "panel_model_support.h"
 #include "qttrashservice.h"
 #include "window_state_support.h"
 #include <QProcess>
@@ -80,8 +82,10 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(QFileInfo::exists(temp.filePath(QStringLiteral("исходный.txt"))));
         QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
         QCOMPARE(table(window)
-                     ->item(table(window)->selectionModel()->selectedRows().first().row(), 0)
-                     ->text(),
+                     ->model()
+                     ->index(table(window)->selectionModel()->selectedRows().first().row(), 0)
+                     .data()
+                     .toString(),
                  QStringLiteral("исходный.txt"));
     }
 
@@ -280,7 +284,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTest::keyClick(leftPath, Qt::Key_Return);
         window.show();
         QVERIFY(WindowActivation::waitForActive(window));
-        auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
+        auto *leftTable = left->findChild<FileTable *>("archiveTable");
         QTRY_VERIFY(leftTable->rowCount() > 0);
 
         action(window, "twoPanelsAction")->trigger();
@@ -290,7 +294,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         });
         auto *right = window.findChild<QWidget *>("filePanel1");
         QVERIFY(right);
-        auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
+        auto *rightTable = right->findChild<FileTable *>("archiveTable");
         QVERIFY(rightTable);
         rightTable->setFocus();
         QTRY_VERIFY(rightTable->hasFocus());
@@ -324,7 +328,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(result.open(QIODevice::ReadOnly));
         QCOMPARE(result.readAll(), QByteArray("source bytes"));
         QTRY_COMPARE(rightTable->rowCount(), 1);
-        QCOMPARE(rightTable->item(0, 0)->text(), QStringLiteral("файл с пробелом.txt"));
+        QCOMPARE(rightTable->model()->index(0, 0).data().toString(),
+                 QStringLiteral("файл с пробелом.txt"));
         QCOMPARE(leftTable->rowCount(), 1);
         QVERIFY(QFileInfo::exists(original.fileName()));
     }
@@ -354,7 +359,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         window.show();
         auto *left = window.findChild<QWidget *>("filePanel0");
         QVERIFY(left);
-        auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
+        auto *leftTable = left->findChild<FileTable *>("archiveTable");
         QTRY_COMPARE(leftTable->rowCount(), 2);
         action(window, "twoPanelsAction")->trigger();
         const auto restorePanels = qScopeGuard([&] {
@@ -363,7 +368,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         });
         auto *right = window.findChild<QWidget *>("filePanel1");
         QVERIFY(right);
-        auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
+        auto *rightTable = right->findChild<FileTable *>("archiveTable");
         QVERIFY(WindowActivation::waitForActive(window));
         rightTable->setFocus();
         QTRY_VERIFY(rightTable->hasFocus());
@@ -374,7 +379,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
 
         const auto leftRow = [leftTable](const QString &name) {
             for (int row = 0; row < leftTable->rowCount(); ++row)
-                if (leftTable->item(row, 0)->text().normalized(QString::NormalizationForm_C) ==
+                if (leftTable->model()->index(row, 0).data().toString().normalized(
+                        QString::NormalizationForm_C) ==
                     name.normalized(QString::NormalizationForm_C))
                     return row;
             return -1;
@@ -382,7 +388,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         const int copyRow = leftRow(QFileInfo(source).fileName());
         QStringList leftNames;
         for (int row = 0; row < leftTable->rowCount(); ++row)
-            leftNames << leftTable->item(row, 0)->text();
+            leftNames << leftTable->model()->index(row, 0).data().toString();
         QVERIFY2(copyRow >= 0, qPrintable(leftNames.join(QStringLiteral(", "))));
         leftTable->selectRow(copyRow);
         leftTable->setFocus();
@@ -401,7 +407,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(result.open(QIODevice::ReadOnly));
         QCOMPARE(result.readAll(), QByteArray("archive bytes"));
         QTRY_COMPARE(rightTable->rowCount(), 1);
-        QCOMPARE(rightTable->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+        QCOMPARE(rightTable->model()->index(0, 0).data().toString().normalized(
+                     QString::NormalizationForm_C),
                  QFileInfo(source).fileName().normalized(QString::NormalizationForm_C));
         QCOMPARE(leftTable->rowCount(), 2);
 
@@ -419,7 +426,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(moved.open(QIODevice::ReadOnly));
         QCOMPARE(moved.readAll(), QByteArray("move bytes"));
         QTRY_COMPARE(leftTable->rowCount(), 1);
-        QCOMPARE(leftTable->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+        QCOMPARE(leftTable->model()->index(0, 0).data().toString().normalized(
+                     QString::NormalizationForm_C),
                  QFileInfo(source).fileName().normalized(QString::NormalizationForm_C));
     }
 
@@ -451,7 +459,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(QFileInfo(outbound->urls().first().toLocalFile()).canonicalFilePath(),
                  QFileInfo(source).canonicalFilePath());
 
-        table(window)->item(row, 1)->setText(temp.filePath("forged-selection.txt"));
+        SetPanelData(table(window)->model()->index(row, 1), temp.filePath("forged-selection.txt"),
+                     Qt::EditRole);
 
         QTimer::singleShot(0, &window, [] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
@@ -583,7 +592,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(WindowActivation::waitForActive(window));
         table(window)->setFocus();
         QTRY_VERIFY(table(window)->hasFocus());
-        table(window)->item(copiedRow, 1)->setText(temp.filePath("forged-rename.txt"));
+        SetPanelData(table(window)->model()->index(copiedRow, 1),
+                     temp.filePath("forged-rename.txt"), Qt::EditRole);
         action(window, "renameAction")->trigger();
         auto *editor = qobject_cast<QLineEdit *>(QApplication::focusWidget());
         QVERIFY(editor);
@@ -596,9 +606,9 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTRY_VERIFY(filesystemRow(window, QStringLiteral("новое имя.txt")) >= 0);
         table(window)->selectRow(filesystemRow(window, QStringLiteral("новое имя.txt")));
         QTRY_VERIFY(!table(window)->selectionModel()->selectedRows().isEmpty());
-        table(window)
-            ->item(table(window)->selectionModel()->selectedRows().first().row(), 1)
-            ->setText(temp.filePath("forged-delete.txt"));
+        QVERIFY(!SetPanelData(table(window)->model()->index(
+                                  table(window)->selectionModel()->selectedRows().first().row(), 1),
+                              temp.filePath("forged-delete.txt"), Qt::EditRole));
         QTimer::singleShot(0, &window, [] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
@@ -638,9 +648,9 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTRY_VERIFY(filesystemRow(window, "move me.txt") >= 0);
         table(window)->selectRow(filesystemRow(window, "move me.txt"));
         QTRY_VERIFY(!table(window)->selectionModel()->selectedRows().isEmpty());
-        table(window)
-            ->item(table(window)->selectionModel()->selectedRows().first().row(), 1)
-            ->setText(temp.filePath("forged-move.txt"));
+        QVERIFY(!SetPanelData(table(window)->model()->index(
+                                  table(window)->selectionModel()->selectedRows().first().row(), 1),
+                              temp.filePath("forged-move.txt"), Qt::EditRole));
         QTimer::singleShot(0, &window, [destination] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 if (auto *dialog = qobject_cast<CopyDialog *>(widget);
@@ -762,13 +772,13 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         window.show();
         auto *left = window.findChild<QWidget *>("filePanel0");
         auto *leftAddress = left->findChild<QLineEdit *>("archivePath");
-        auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
+        auto *leftTable = left->findChild<FileTable *>("archiveTable");
         leftAddress->setText(disk);
         QTest::keyClick(leftAddress, Qt::Key_Return);
         int sourceRow = -1;
         QTRY_VERIFY_WITH_TIMEOUT(([&] {
                                      for (int row = 0; row < leftTable->rowCount(); ++row)
-                                         if (leftTable->item(row, 0)->text() ==
+                                         if (leftTable->model()->index(row, 0).data().toString() ==
                                              QStringLiteral("новый файл.txt")) {
                                              sourceRow = row;
                                              return true;
@@ -780,14 +790,15 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(action(window, "twoPanelsAction")->isChecked());
         auto *right = window.findChild<QWidget *>("filePanel1");
         QVERIFY(right);
-        auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
+        auto *rightTable = right->findChild<FileTable *>("archiveTable");
         QVERIFY(WindowActivation::waitForActive(window));
         rightTable->setFocus();
         QTRY_VERIFY(rightTable->hasFocus());
         window.openArchive(archive);
         QTRY_VERIFY_WITH_TIMEOUT(([&] {
                                      for (int row = 0; row < rightTable->rowCount(); ++row)
-                                         if (rightTable->item(row, 0)->text() == "keep.txt")
+                                         if (rightTable->model()->index(row, 0).data().toString() ==
+                                             "keep.txt")
                                              return true;
                                      return false;
                                  })(),
@@ -827,7 +838,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         int moveRow = -1;
         QTRY_VERIFY_WITH_TIMEOUT(([&] {
                                      for (int row = 0; row < leftTable->rowCount(); ++row)
-                                         if (leftTable->item(row, 0)->text() == "move me.txt") {
+                                         if (leftTable->model()->index(row, 0).data().toString() ==
+                                             "move me.txt") {
                                              moveRow = row;
                                              return true;
                                          }
@@ -911,7 +923,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         MainWindow window(&backend);
         window.show();
         auto *left = window.findChild<QWidget *>("filePanel0");
-        auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
+        auto *leftTable = left->findChild<FileTable *>("archiveTable");
         action(window, "twoPanelsAction")->trigger();
         QVERIFY(action(window, "twoPanelsAction")->isChecked());
         QVERIFY(WindowActivation::waitForActive(window));
@@ -920,19 +932,21 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         window.openArchive(sourceArchive);
         auto *right = window.findChild<QWidget *>("filePanel1");
         QVERIFY(right);
-        auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
+        auto *rightTable = right->findChild<FileTable *>("archiveTable");
         QVERIFY(WindowActivation::waitForActive(window));
         rightTable->setFocus();
         QTRY_VERIFY(rightTable->hasFocus());
         window.openArchive(targetArchive);
-        QTRY_VERIFY_WITH_TIMEOUT(
-            rightTable->rowCount() == 1 && rightTable->item(0, 0)->text() == "keep.txt", 10000);
+        QTRY_VERIFY_WITH_TIMEOUT(rightTable->rowCount() == 1 &&
+                                     rightTable->model()->index(0, 0).data().toString() ==
+                                         "keep.txt",
+                                 10000);
         QVERIFY(WindowActivation::waitForActive(window));
         leftTable->setFocus();
         QTRY_VERIFY(leftTable->hasFocus());
         const auto rowFor = [leftTable](const QString &name) {
             for (int row = 0; row < leftTable->rowCount(); ++row)
-                if (leftTable->item(row, 0)->text() == name)
+                if (leftTable->model()->index(row, 0).data().toString() == name)
                     return row;
             return -1;
         };
@@ -1079,19 +1093,21 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         action(window, "twoPanelsAction")->trigger();
         QVERIFY(action(window, "twoPanelsAction")->isChecked());
         auto *left = window.findChild<QWidget *>("filePanel0");
-        auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
+        auto *leftTable = left->findChild<FileTable *>("archiveTable");
         QVERIFY(WindowActivation::waitForActive(window));
         leftTable->setFocus();
         QTRY_VERIFY(leftTable->hasFocus());
         window.openArchive(sourceArchive);
         auto *right = window.findChild<QWidget *>("filePanel1");
-        auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
+        auto *rightTable = right->findChild<FileTable *>("archiveTable");
         QVERIFY(WindowActivation::waitForActive(window));
         rightTable->setFocus();
         QTRY_VERIFY(rightTable->hasFocus());
         window.openArchive(targetArchive);
-        QTRY_VERIFY_WITH_TIMEOUT(
-            rightTable->rowCount() == 1 && rightTable->item(0, 0)->text() == "keep.txt", 10000);
+        QTRY_VERIFY_WITH_TIMEOUT(rightTable->rowCount() == 1 &&
+                                     rightTable->model()->index(0, 0).data().toString() ==
+                                         "keep.txt",
+                                 10000);
         QVERIFY(WindowActivation::waitForActive(window));
         leftTable->setFocus();
         QTRY_VERIFY(leftTable->hasFocus());
@@ -1171,24 +1187,27 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         action(window, "twoPanelsAction")->trigger();
         QVERIFY(action(window, "twoPanelsAction")->isChecked());
         auto *left = window.findChild<QWidget *>("filePanel0");
-        auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
+        auto *leftTable = left->findChild<FileTable *>("archiveTable");
         leftTable->setFocus();
         QTRY_VERIFY(leftTable->hasFocus());
         window.openArchive(outerArchive);
-        QTRY_VERIFY(leftTable->rowCount() == 1 && leftTable->item(0, 0)->text() == "inner.zip");
+        QTRY_VERIFY(leftTable->rowCount() == 1 &&
+                    leftTable->model()->index(0, 0).data().toString() == "inner.zip");
         auto *right = window.findChild<QWidget *>("filePanel1");
-        auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
+        auto *rightTable = right->findChild<FileTable *>("archiveTable");
         QVERIFY(WindowActivation::waitForActive(window));
         rightTable->setFocus();
         QTRY_VERIFY(rightTable->hasFocus());
         window.openArchive(targetArchive);
-        QTRY_VERIFY(rightTable->rowCount() == 1 && rightTable->item(0, 0)->text() == "keep.txt");
+        QTRY_VERIFY(rightTable->rowCount() == 1 &&
+                    rightTable->model()->index(0, 0).data().toString() == "keep.txt");
         QVERIFY(WindowActivation::waitForActive(window));
         leftTable->setFocus();
         QTRY_VERIFY(leftTable->hasFocus());
         leftTable->selectRow(0);
         action(window, "openInsideAction")->trigger();
-        QTRY_VERIFY(leftTable->rowCount() == 1 && leftTable->item(0, 0)->text() == "payload.txt");
+        QTRY_VERIFY(leftTable->rowCount() == 1 &&
+                    leftTable->model()->index(0, 0).data().toString() == "payload.txt");
         leftTable->selectRow(0);
         QString warning;
         QTimer answerWarning;
@@ -1424,12 +1443,12 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTRY_VERIFY(table(window)->rowCount() >= 1);
         int folderRow = -1;
         for (int row = 0; row < table(window)->rowCount(); ++row)
-            if (table(window)->item(row, 0)->text() == folderName)
+            if (table(window)->model()->index(row, 0).data().toString() == folderName)
                 folderRow = row;
         QVERIFY(folderRow >= 0);
         table(window)->selectRow(folderRow);
         action(window, "openItemAction")->trigger();
-        QTRY_VERIFY(!table(window)->findItems(fileName, Qt::MatchExactly).isEmpty());
+        QTRY_VERIFY(!PanelMatches(*table(window), fileName).isEmpty());
         QFile occupied(target);
         QVERIFY(occupied.open(QIODevice::WriteOnly));
         QCOMPARE(occupied.write("old bytes"), qint64(9));
@@ -1497,7 +1516,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(moveConflict.open(QIODevice::ReadOnly));
         QCOMPARE(moveConflict.readAll(), QByteArray("keep bytes"));
         moveConflict.close();
-        QVERIFY(!table(window)->findItems(fileName, Qt::MatchExactly).isEmpty());
+        QVERIFY(!PanelMatches(*table(window), fileName).isEmpty());
         QVERIFY(QFile::remove(moveConflict.fileName()));
         QTimer::singleShot(0, &window, [&] {
             auto *dialog = window.findChild<CopyDialog *>("copyDialog");
@@ -1510,7 +1529,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(moved.open(QIODevice::ReadOnly));
         QCOMPARE(moved.readAll(), QByteArray("new bytes"));
         QVERIFY(!QFileInfo::exists(QDir(moveOutput).filePath(folderName + '/' + fileName)));
-        QTRY_VERIFY(table(window)->findItems(fileName, Qt::MatchExactly).isEmpty());
+        QTRY_VERIFY(PanelMatches(*table(window), fileName).isEmpty());
     }
 
     void encryptedAskUsesSourceCallback() {
@@ -1697,7 +1716,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         action(window, "createFolderAction")->trigger();
         const auto archiveRow = [&window](const QString &name) {
             for (int row = 0; row < table(window)->rowCount(); ++row)
-                if (table(window)->item(row, 0)->text().normalized(QString::NormalizationForm_C) ==
+                if (table(window)->model()->index(row, 0).data().toString().normalized(
+                        QString::NormalizationForm_C) ==
                     name.normalized(QString::NormalizationForm_C))
                     return row;
             return -1;
@@ -1768,7 +1788,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         action(window, "createFolderAction")->trigger();
         const auto archiveRow = [&window](const QString &name) {
             for (int row = 0; row < table(window)->rowCount(); ++row)
-                if (table(window)->item(row, 0)->text().normalized(QString::NormalizationForm_C) ==
+                if (table(window)->model()->index(row, 0).data().toString().normalized(
+                        QString::NormalizationForm_C) ==
                     name.normalized(QString::NormalizationForm_C))
                     return row;
             return -1;
@@ -1867,7 +1888,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTest::keyClick(address, Qt::Key_Return);
         QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         for (int row = 0; row < table(window)->rowCount(); ++row) {
-            if (table(window)->item(row, 1)->text() == canonicalFile)
+            if (table(window)->model()->index(row, 1).data().toString() == canonicalFile)
                 table(window)->selectRow(row);
         }
 
@@ -1879,7 +1900,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         auto chooseSources = [&] {
             table(window)->clearSelection();
             for (int row = 0; row < table(window)->rowCount(); ++row) {
-                const QString path = table(window)->item(row, 1)->text();
+                const QString path = table(window)->model()->index(row, 1).data().toString();
                 if (path == canonicalFile || path == canonicalFolder)
                     table(window)->selectionModel()->select(table(window)->model()->index(row, 0),
                                                             QItemSelectionModel::Select |

@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 
@@ -66,16 +67,17 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
         QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *leftPanel = window.findChild<QWidget *>("filePanel0");
         QVERIFY(leftPanel);
-        auto *leftTable = leftPanel->findChild<QTableWidget *>("archiveTable");
+        auto *leftTable = leftPanel->findChild<FileTable *>("archiveTable");
         QTRY_COMPARE(status(leftPanel, "selectedItemsStatus")->text(),
                      QStringLiteral("Selected: 0 / 1"));
         QCOMPARE(leftTable->rowCount(), 1);
-        QVERIFY(!leftTable->item(0, 0)->icon().isNull());
+        QVERIFY(!leftTable->model()->index(0, 0).data(Qt::DecorationRole).value<QIcon>().isNull());
         QIcon sourceIcon;
         QCOMPARE(static_cast<FileTable *>(leftTable)->sourcePanel->GetItemIcon(
-                     leftTable->item(0, 0)->data(Qt::UserRole + 6).toUInt(), sourceIcon),
+                     leftTable->model()->index(0, 0).data(Qt::UserRole + 6).toUInt(), sourceIcon),
                  S_OK);
-        QCOMPARE(leftTable->item(0, 0)->icon().cacheKey(), sourceIcon.cacheKey());
+        QCOMPARE(leftTable->model()->index(0, 0).data(Qt::DecorationRole).value<QIcon>().cacheKey(),
+                 sourceIcon.cacheKey());
         leftTable->selectRow(0);
         leftTable->setCurrentCell(0, 0);
         QTRY_COMPARE(status(leftPanel, "selectedItemsStatus")->text(),
@@ -84,8 +86,7 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
         QCOMPARE(status(leftPanel, "focusedSizeStatus")->text(), QStringLiteral("7"));
         QVERIFY(!status(leftPanel, "focusedDateStatus")->text().isEmpty());
 
-        auto inspectContextMenu = [&](QTableWidget *view, const QPoint &point,
-                                      const auto &inspect) {
+        auto inspectContextMenu = [&](FileTable *view, const QPoint &point, const auto &inspect) {
             window.activateWindow();
             QVERIFY(QTest::qWaitForWindowActive(&window));
             view->setFocus();
@@ -109,7 +110,8 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
             QVERIFY(observed);
         };
         inspectContextMenu(
-            leftTable, leftTable->visualItemRect(leftTable->item(0, 0)).center(), [&](QMenu *menu) {
+            leftTable, leftTable->visualRect(leftTable->model()->index(0, 0)).center(),
+            [&](QMenu *menu) {
                 auto *system = menuAction(*menu, "systemContextGroup");
                 QVERIFY(system);
 #ifdef Q_OS_WIN
@@ -117,7 +119,7 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
                 QVERIFY(system->menu());
                 QVERIFY(!system->menu()->actions().isEmpty());
 #else
-            QVERIFY(!system->isEnabled());
+                QVERIFY(!system->isEnabled());
 #endif
                 auto *sevenZip = menuAction(*menu, "sevenZipContextGroup");
                 QVERIFY(sevenZip && !sevenZip->isEnabled());
@@ -137,7 +139,7 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
         window.findChild<QAction *>("twoPanelsAction")->trigger();
         auto *rightPanel = window.findChild<QWidget *>("filePanel1");
         QVERIFY(rightPanel && rightPanel->isVisible());
-        auto *rightTable = rightPanel->findChild<QTableWidget *>("archiveTable");
+        auto *rightTable = rightPanel->findChild<FileTable *>("archiveTable");
         QTRY_COMPARE(status(rightPanel, "selectedItemsStatus")->text(),
                      QStringLiteral("Selected: 0 / 1"));
         rightTable->selectRow(0);
@@ -162,7 +164,7 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
                 window, QStringLiteral("panel-shell-%1x%2").arg(size.width()).arg(size.height())));
         }
         inspectContextMenu(
-            rightTable, rightTable->visualItemRect(rightTable->item(0, 0)).center(),
+            rightTable, rightTable->visualRect(rightTable->model()->index(0, 0)).center(),
             [&](QMenu *menu) {
                 QVERIFY(UiInspection::writeReport(*menu, QStringLiteral("panel-context-disk-640")));
             });
@@ -196,19 +198,21 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
         window.show();
         openListedArchive(window, backend, fixture.filePath("with space.zip"),
                           {ArchiveEntry{QStringLiteral("имя.txt"), 7, 5}});
-        auto *files = window.findChild<QTableWidget *>("archiveTable");
+        auto *files = window.findChild<FileTable *>("archiveTable");
         QTRY_VERIFY(files->rowCount() > 0);
         int fileRow = -1;
         for (int row = 0; row < files->rowCount(); ++row)
-            if (files->item(row, 0)->text() == QStringLiteral("имя.txt"))
+            if (files->model()->index(row, 0).data().toString() == QStringLiteral("имя.txt"))
                 fileRow = row;
         QVERIFY(fileRow >= 0);
         QIcon sourceIcon;
         QCOMPARE(static_cast<FileTable *>(files)->sourcePanel->GetItemIcon(
-                     files->item(fileRow, 0)->data(Qt::UserRole + 6).toUInt(), sourceIcon),
+                     files->model()->index(fileRow, 0).data(Qt::UserRole + 6).toUInt(), sourceIcon),
                  S_OK);
         QVERIFY(!sourceIcon.isNull());
-        QCOMPARE(files->item(fileRow, 0)->icon().cacheKey(), sourceIcon.cacheKey());
+        QCOMPARE(
+            files->model()->index(fileRow, 0).data(Qt::DecorationRole).value<QIcon>().cacheKey(),
+            sourceIcon.cacheKey());
         files->selectRow(fileRow);
         files->setCurrentCell(fileRow, 0);
         QTimer::singleShot(0, [&] {
@@ -224,7 +228,7 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
         });
         QVERIFY(QMetaObject::invokeMethod(
             files, "customContextMenuRequested", Qt::DirectConnection,
-            Q_ARG(QPoint, files->visualItemRect(files->item(fileRow, 0)).center())));
+            Q_ARG(QPoint, files->visualRect(files->model()->index(fileRow, 0)).center())));
         window.resize(640, 400);
         QApplication::processEvents();
         auto *bar = window.findChild<QStatusBar *>("panelStatusBar");
@@ -239,7 +243,7 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
         });
         QVERIFY(QMetaObject::invokeMethod(
             files, "customContextMenuRequested", Qt::DirectConnection,
-            Q_ARG(QPoint, files->visualItemRect(files->item(fileRow, 0)).center())));
+            Q_ARG(QPoint, files->visualRect(files->model()->index(fileRow, 0)).center())));
     }
 };
 

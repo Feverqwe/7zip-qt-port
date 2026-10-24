@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "archivecodeccatalog.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
@@ -86,7 +87,7 @@ class ArchiveReloadCommandTests final : public QObject, protected MainWindowTest
         auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         owner->findChild<QLineEdit *>("archivePath")->setFocus();
         window.openArchive(archive);
-        auto *list = static_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"));
+        auto *list = static_cast<FileTable *>(owner->findChild<FileTable *>("archiveTable"));
         QTRY_COMPARE(list->rowCount(), 2);
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
@@ -108,7 +109,7 @@ class ArchiveReloadCommandTests final : public QObject, protected MainWindowTest
         QCOMPARE(selection.SelectedNames.Size(), 1u);
         QCOMPARE(ToQString(selection.SelectedNames[0]), marked);
         auto *peer = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *peerList = static_cast<FileTable *>(peer->findChild<QTableWidget *>("archiveTable"));
+        auto *peerList = static_cast<FileTable *>(peer->findChild<FileTable *>("archiveTable"));
         peerList->sourcePanel->Set_AutoRefresh_Mode(false);
         CMyComPtr<IFolderFolder> peerProvider = peerList->sourcePanel->GetFolder();
         const int peerRows = peerList->rowCount();

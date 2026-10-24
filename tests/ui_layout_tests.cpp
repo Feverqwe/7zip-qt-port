@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
 #include "qtfilemanagerstartup.h"
@@ -75,14 +76,14 @@ class MainWindowLayoutTests : public QObject {
         const QString previous = QDir::currentPath();
         QVERIFY(QDir::setCurrent(temp.path()));
         MainWindow window;
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *split = window.findChild<QAction *>("splitFileAction");
         auto *combine = window.findChild<QAction *>("combineFilesAction");
         QVERIFY(table && split && combine);
         QVERIFY(!split->isEnabled());
         QVERIFY(!combine->isEnabled());
         for (int row = 0; row < table->rowCount(); ++row) {
-            if (table->item(row, 0)->text() == "file.bin.001") {
+            if (table->model()->index(row, 0).data().toString() == "file.bin.001") {
                 table->selectRow(row);
                 break;
             }
@@ -91,7 +92,7 @@ class MainWindowLayoutTests : public QObject {
         QVERIFY(combine->isEnabled());
         table->clearSelection();
         for (int row = 0; row < table->rowCount(); ++row) {
-            if (table->item(row, 0)->text() == "file.bin") {
+            if (table->model()->index(row, 0).data().toString() == "file.bin") {
                 table->selectRow(row);
                 break;
             }
@@ -153,7 +154,7 @@ class MainWindowLayoutTests : public QObject {
         MainWindow window;
         auto *path = window.findChild<QLineEdit *>("archivePath");
         auto *pathCombo = window.findChild<QComboBox *>("pathCombo");
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *toolbar = window.findChild<QToolBar *>("archiveToolbar");
         QVERIFY(path);
         QVERIFY(pathCombo);
@@ -162,12 +163,8 @@ class MainWindowLayoutTests : public QObject {
         QVERIFY(table);
         QVERIFY(toolbar);
         QVERIFY(!toolbar->actions().first()->icon().isNull());
-        int navigationButtons = 0;
-        for (QToolButton *button : window.centralWidget()->findChildren<QToolButton *>())
-            if (button->defaultAction() == window.findChild<QAction *>("backAction") ||
-                button->defaultAction() == window.findChild<QAction *>("upAction"))
-                ++navigationButtons;
-        QCOMPARE(navigationButtons, 1);
+        auto *parent = window.findChild<QPushButton *>("panelParentButton0");
+        QVERIFY(parent);
 
         path->setText(QString(180, QLatin1Char('a')) +
                       QStringLiteral("/имя с пробелом/archive.7z"));
@@ -179,6 +176,7 @@ class MainWindowLayoutTests : public QObject {
         QVERIFY(path->isVisible());
         QVERIFY(table->isVisible());
         QVERIFY(toolbar->isVisible());
+        QVERIFY(UiInspection::fullyVisible(*parent, window));
         QCOMPARE(window.statusBar()->isVisible(), !window.statusBar()->currentMessage().isEmpty());
         QVERIFY(
             UiInspection::fullyVisible(*window.findChild<QStatusBar *>("panelStatusBar"), window));
@@ -208,16 +206,21 @@ class MainWindowLayoutTests : public QObject {
         auto *text = window.findChild<QAction *>("buttonTextOption");
         QVERIFY(toolbar && archive && standard && large && text);
         window.show();
+        large->setChecked(false);
+        const QSize smallIcon = toolbar->iconSize();
         archive->setChecked(false);
         QVERIFY(!toolbar->widgetForAction(toolbar->actions().first())->isVisible());
         QVERIFY(toolbar->widgetForAction(window.findChild<QAction *>("copyAction"))->isVisible());
         large->setChecked(true);
         text->setChecked(false);
-        QCOMPARE(toolbar->iconSize(), QSize(48, 36));
+        const QSize largeIcon = toolbar->iconSize();
+        QVERIFY(largeIcon.width() > smallIcon.width());
+        QVERIFY(largeIcon.height() > smallIcon.height());
         standard->setChecked(false);
         QVERIFY(!toolbar->isVisible());
 
         MainWindow reopened;
+        QCOMPARE(reopened.findChild<QToolBar *>("archiveToolbar")->iconSize(), largeIcon);
         QVERIFY(!reopened.findChild<QAction *>("archiveToolbarOption")->isChecked());
         QVERIFY(!reopened.findChild<QAction *>("standardToolbarOption")->isChecked());
         QVERIFY(reopened.findChild<QAction *>("largeButtonsOption")->isChecked());
@@ -228,7 +231,7 @@ class MainWindowLayoutTests : public QObject {
     void columnCustomizationPersists() {
         MainWindow window;
         window.show();
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *header = table->horizontalHeader();
         QVERIFY(!table->isColumnHidden(2));
         QTimer::singleShot(0, [&] {
@@ -246,7 +249,7 @@ class MainWindowLayoutTests : public QObject {
                                           Qt::DirectConnection, Q_ARG(QPoint, QPoint(30, 5))));
         QVERIFY(table->isColumnHidden(2));
         MainWindow reopened;
-        QVERIFY(reopened.findChild<QTableWidget *>("archiveTable")->isColumnHidden(2));
+        QVERIFY(reopened.findChild<FileTable *>("archiveTable")->isColumnHidden(2));
         QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
     }
 
@@ -261,7 +264,7 @@ class MainWindowLayoutTests : public QObject {
 
         MainWindow window;
         window.show();
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *list = window.findChild<QListView *>("iconList");
         auto *stack = window.findChild<QStackedWidget *>("fileViewStack");
         QVERIFY(table && list && stack);

@@ -1,7 +1,9 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "panel_load_folder.h"
 #include "window_state_support.h"
+#include <QTableWidget>
 
 class PanelItemChangedTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
@@ -10,9 +12,9 @@ class PanelItemChangedTests final : public QObject, protected MainWindowTestSupp
         panel.Get_ItemIndices_Selected(indices);
         QCOMPARE(indices.Size(), count);
     }
-    static QTableWidget *view(MainWindow &window, unsigned pane) {
+    static FileTable *view(MainWindow &window, unsigned pane) {
         return window.findChild<QWidget *>(QString("filePanel%1").arg(pane))
-            ->findChild<QTableWidget *>("archiveTable");
+            ->findChild<FileTable *>("archiveTable");
     }
     static QLineEdit *path(MainWindow &window, unsigned pane) {
         return window.findChild<QWidget *>(QString("filePanel%1").arg(pane))

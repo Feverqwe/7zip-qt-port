@@ -4,21 +4,35 @@
 #include "7zip/UI/FileManager/IFolder.h"
 #include "Common/MyCom.h"
 #include "Common/MyWindows.h"
+#include "filepanelmodel.h"
 #include <QListView>
-#include <QTableWidget>
+#include <QTableView>
 #include <QVector>
 #include <functional>
 class CPanel;
 struct CPropColumn;
 QAbstractItemDelegate *CreateFileRowDelegate(QWidget *parent);
 
-class FileTable : public QTableWidget {
+class FileTable : public QTableView {
+    Q_OBJECT
   public:
-    explicit FileTable(int rows, int columns, QWidget *parent = nullptr);
+    explicit FileTable(int columns, QWidget *parent = nullptr);
     void setFullRowHighlight(bool enabled);
     void handleDefaultKeyPress(QKeyEvent *event);
     void invalidateLanguageText();
     bool fullRowHighlight() const { return fullRowHighlight_; }
+    FilePanelModel *panelModel() const { return model_; }
+    int rowCount() const { return model_->rowCount(); }
+    int columnCount() const { return model_->columnCount(); }
+    void clearRows() { model_->removeRows(0, rowCount()); }
+    int currentRow() const { return currentIndex().row(); }
+    void setCurrentCell(int row, int column) { setCurrentIndex(model_->index(row, column)); }
+    void setCurrentCell(int row, int column, QItemSelectionModel::SelectionFlags flags) {
+        selectionModel()->setCurrentIndex(model_->index(row, column), flags);
+    }
+    void sortItems(int column, Qt::SortOrder order = Qt::AscendingOrder) {
+        sortByColumn(column, order);
+    }
     bool filesystem = true;
     CPanel *sourcePanel = nullptr;
     // Published callback identity only. CPanel owns the provider and must be
@@ -52,10 +66,10 @@ class FileTable : public QTableWidget {
 
   protected:
     void startDrag(Qt::DropActions actions) override;
-    QMimeData *mimeData(const QList<QTableWidgetItem *> &items) const override;
 
   private:
     bool fullRowHighlight_ = false;
+    FilePanelModel *model_;
 };
 
 class FileIconList final : public QListView {
@@ -71,19 +85,4 @@ class FileIconList final : public QListView {
 
   private:
     int mode_ = -1;
-};
-
-class ArchiveTableItem : public QTableWidgetItem {
-    friend class FileTable;
-
-  public:
-    using QTableWidgetItem::QTableWidgetItem;
-    QVariant data(int role) const override;
-    void setData(int role, const QVariant &value) override;
-    bool operator<(const QTableWidgetItem &other) const override;
-
-  private:
-    mutable QVariant sourceText_;
-    mutable bool sourceTextDefined_ = false;
-    mutable bool sourceTextStale_ = false;
 };

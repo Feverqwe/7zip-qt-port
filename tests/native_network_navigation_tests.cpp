@@ -100,7 +100,8 @@ class NativeNetworkNavigationTests final : public QObject, protected MainWindowT
         QCOMPARE(QDir::toNativeSeparators(address->text())
                      .compare(fixture.server(), Qt::CaseInsensitive),
                  0);
-        QCOMPARE(table(window)->item(table(window)->currentRow(), 0)->text(), fixture.name());
+        QCOMPARE(table(window)->model()->index(table(window)->currentRow(), 0).data().toString(),
+                 fixture.name());
         QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
         QCOMPARE(fixture.remove(), 0ul);
         openRow(window, filesystemRow(window, fixture.name()));

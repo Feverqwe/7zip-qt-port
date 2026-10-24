@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "external_editor_fixture.h"
+#include "filetable.h"
 #include "window_state_support.h"
 
 class AddressNavigationTests final : public QObject, protected MainWindowTestSupport {
@@ -48,7 +49,7 @@ class AddressNavigationTests final : public QObject, protected MainWindowTestSup
         action(window, "twoPanelsAction")->trigger();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(sourceIndex));
         auto *address = ui->findChild<QLineEdit *>("archivePath");
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         address->setFocus();
         if (archive) {
             address->setText(zip);
@@ -130,15 +131,14 @@ class AddressNavigationTests final : public QObject, protected MainWindowTestSup
         peerAddress->setFocus();
         peerAddress->setText(peer);
         QTest::keyClick(peerAddress, Qt::Key_Return);
-        auto *peerView =
-            static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        auto *peerView = static_cast<FileTable *>(peerUi->findChild<FileTable *>("archiveTable"));
         QTRY_COMPARE(peerView->rowCount(), 1);
         peerView->selectRow(0);
         CMyComPtr<IFolderFolder> peerFolder = peerView->sourcePanel->GetFolder();
         peerView->sourcePanel->Set_AutoRefresh_Mode(false);
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(sourceIndex));
         auto *address = ui->findChild<QLineEdit *>("archivePath");
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         address->setFocus();
         address->setText(folder);
         QTest::keyClick(address, Qt::Key_Return);
@@ -251,14 +251,13 @@ class AddressNavigationTests final : public QObject, protected MainWindowTestSup
         peerAddress->setFocus();
         peerAddress->setText(peer);
         QTest::keyClick(peerAddress, Qt::Key_Return);
-        auto *peerView =
-            static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        auto *peerView = static_cast<FileTable *>(peerUi->findChild<FileTable *>("archiveTable"));
         QTRY_COMPARE(peerView->rowCount(), 1);
         peerView->selectRow(0);
         CMyComPtr<IFolderFolder> peerFolder = peerView->sourcePanel->GetFolder();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(sourceIndex));
         auto *address = ui->findChild<QLineEdit *>("archivePath");
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         address->setFocus();
         address->setText(child);
         QTest::keyClick(address, Qt::Key_Return);

@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 
@@ -41,7 +42,7 @@ class PanelAddressKeysTests final : public QObject, protected MainWindowTestSupp
             address->setFocus();
             address->setText(fixture.path());
             QTest::keyClick(address, Qt::Key_Return);
-            QTRY_VERIFY(panel->findChild<QTableWidget *>("archiveTable")->rowCount() > 0);
+            QTRY_VERIFY(panel->findChild<FileTable *>("archiveTable")->rowCount() > 0);
         }
         action(window, qPrintable(QString("viewMode%1Action").arg(mode)))->trigger();
         auto *panel = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));

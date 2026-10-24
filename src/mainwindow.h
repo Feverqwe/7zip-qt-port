@@ -65,7 +65,6 @@ struct QtOperationResult;
 #include <QStatusBar>
 #include <QStringView>
 #include <QStyle>
-#include <QTableWidget>
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
@@ -154,8 +153,6 @@ class MainWindow : public QMainWindow {
     void showColumnsMenu(const QPoint &pos);
     void redrawTimestampColumns();
     void redrawSourceProperties();
-    QString sourceColumnText(UInt32 itemIndex, int column);
-    Qt::Alignment sourceColumnAlignment(int column) const;
     void createPanelActions(QMenu *editMenu);
     void createIconList(QWidget *central);
     void connectFilesystemScanner();
@@ -341,7 +338,7 @@ class MainWindow : public QMainWindow {
         QWidget *container = nullptr;
         QLineEdit *path = nullptr;
         QComboBox *pathCombo = nullptr;
-        QTableWidget *table = nullptr;
+        FileTable *table = nullptr;
         QListView *iconList = nullptr;
         QStackedWidget *viewStack = nullptr;
         std::array<QLabel *, 4> statusLabels{};
@@ -399,7 +396,7 @@ class MainWindow : public QMainWindow {
     QString directory_;
     QString returnDirectory_;
     QStringList history_;
-    QTableWidget *table_ = nullptr;
+    FileTable *table_ = nullptr;
     QListView *iconList_ = nullptr;
     Qt::KeyboardModifiers selectionClickModifiers_ = Qt::NoModifier;
     bool selectionClickLeft_ = false;

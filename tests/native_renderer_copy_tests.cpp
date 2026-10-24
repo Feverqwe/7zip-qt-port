@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "native_property_failure_runtime.h"
 #include "qtfilemanagerstartup.h"
@@ -17,7 +18,7 @@ class NativeRendererCopyTests final : public QObject, protected MainWindowTestSu
             QApplication::processEvents();
             for (unsigned index : {0u, 1u}) {
                 auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(index));
-                auto *table = owner->findChild<QTableWidget *>("archiveTable");
+                auto *table = owner->findChild<FileTable *>("archiveTable");
                 auto *icons = owner->findChild<QListView *>("iconList");
                 QWidget *view = table->isVisible() ? static_cast<QWidget *>(table) : icons;
                 auto *address = owner->findChild<QLineEdit *>("archivePath");
@@ -123,10 +124,9 @@ class NativeRendererCopyTests final : public QObject, protected MainWindowTestSu
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *peer = static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        auto *peer = static_cast<FileTable *>(peerUi->findChild<FileTable *>("archiveTable"));
         auto *sourceUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
-        auto *source =
-            static_cast<FileTable *>(sourceUi->findChild<QTableWidget *>("archiveTable"));
+        auto *source = static_cast<FileTable *>(sourceUi->findChild<FileTable *>("archiveTable"));
         QTRY_COMPARE(peer->rowCount(), 301);
         QTRY_VERIFY(peer->isEnabled() && peer->updatesEnabled());
         QCOMPARE(source->rowCount(), 1);

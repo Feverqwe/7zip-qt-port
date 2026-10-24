@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivebackend.h"
 #include "exfat_fixture.h"
+#include "filetable.h"
 #include "fixtures/progress_dialog.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
@@ -24,9 +25,10 @@
 #include <QtTest>
 
 namespace {
-int Row(QTableWidget &table, const QString &name) {
+int Row(FileTable &table, const QString &name) {
     for (int i = 0; i < table.rowCount(); ++i)
-        if (table.item(i, 0) && table.item(i, 0)->text() == name)
+        if (table.model()->index(i, 0).isValid() &&
+            table.model()->index(i, 0).data().toString() == name)
             return i;
     return -1;
 }
@@ -228,7 +230,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         QVERIFY(!consent);
         QVERIFY(geometry);
         QVERIFY(!window.findChild<QLabel *>("deviceReadOnlyLabel")->isVisible());
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         QVERIFY(table);
         QTRY_VERIFY(Row(*table, "образ NTFS 空.ntfs") >= 0);
         QVERIFY(source.open(QIODevice::ReadOnly));
@@ -767,23 +769,24 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                                                   QString::number(size.width())));
                 }
             }
-            auto *table = window.findChild<QTableWidget *>("archiveTable");
+            auto *table = window.findChild<FileTable *>("archiveTable");
             QVERIFY(table);
             // HFS starts at its volume root; descend through the public UI.
             if (fatDirectory) {
                 QTRY_VERIFY(Row(*table, fatFolder) >= 0);
                 table->selectRow(Row(*table, fatFolder));
-                QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
-                                                  Q_ARG(int, Row(*table, fatFolder)),
-                                                  Q_ARG(int, 0)));
+                QVERIFY(QMetaObject::invokeMethod(
+                    table, "doubleClicked", Qt::DirectConnection,
+                    Q_ARG(QModelIndex, table->model()->index(Row(*table, fatFolder), 0))));
                 filename = fatFolder == "BROKEN" ? "PREFIX.TXT" : "GOOD.TXT";
             }
             if (!exfat && !ntfs && !ext && !fat && !squashfs && !cramfs) {
                 QTRY_VERIFY(Row(*table, "HfsFixture") >= 0);
                 const int row = Row(*table, "HfsFixture");
                 table->selectRow(row);
-                QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
-                                                  Q_ARG(int, row), Q_ARG(int, 0)));
+                QVERIFY(
+                    QMetaObject::invokeMethod(table, "doubleClicked", Qt::DirectConnection,
+                                              Q_ARG(QModelIndex, table->model()->index(row, 0))));
                 filename = "alpha";
             }
             QTRY_VERIFY(Row(*table, filename) >= 0);
@@ -838,9 +841,9 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 QVERIFY(healthy.open(QIODevice::ReadOnly));
                 QCOMPARE(healthy.readAll(), payload);
                 table->selectRow(Row(*table, fatFolder));
-                QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
-                                                  Q_ARG(int, Row(*table, fatFolder)),
-                                                  Q_ARG(int, 0)));
+                QVERIFY(QMetaObject::invokeMethod(
+                    table, "doubleClicked", Qt::DirectConnection,
+                    Q_ARG(QModelIndex, table->model()->index(Row(*table, fatFolder), 0))));
             }
             if (fatFile) {
                 QTRY_VERIFY(Row(*table, "SECOND.BIN") >= 0);

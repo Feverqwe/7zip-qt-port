@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "layout_inspection.h"
+#include "panel_model_support.h"
 #include "window_state_support.h"
 #include <QHeaderView>
 #include <QMap>
@@ -28,7 +29,7 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
     static int diskRow(MainWindow &window, const QString &path) {
         auto *view = table(window);
         for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 1)->text() == path)
+            if (view->model()->index(row, 1).data().toString() == path)
                 return row;
         return -1;
     }
@@ -169,8 +170,8 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
         selectOnly(window, rowWithPath(window, name));
         // Sorting/display text cannot change source metadata or operated indices.
         const int row = rowWithPath(window, name);
-        table(window)->item(row, 2)->setText("999");
-        table(window)->item(row, 3)->setText("888");
+        SetPanelData(table(window)->model()->index(row, 2), "999", Qt::EditRole);
+        SetPanelData(table(window)->model()->index(row, 3), "888", Qt::EditRole);
         properties =
             inspect(window, QString("properties-runtime-flat%1-mode%2").arg(flat).arg(mode));
         QVERIFY(properties.shown && properties.geometry);

@@ -111,7 +111,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         int folderRow = -1;
         int archiveRow = -1;
         for (int row = 0; row < table(window)->rowCount(); ++row) {
-            const QString name = table(window)->item(row, 0)->text();
+            const QString name = table(window)->model()->index(row, 0).data().toString();
             if (name == QStringLiteral("папка с пробелом"))
                 folderRow = row;
             if (name == QStringLiteral("тест архив.zip"))
@@ -119,8 +119,9 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         }
         QVERIFY(folderRow >= 0);
         QVERIFY(archiveRow >= 0);
-        QVERIFY(QMetaObject::invokeMethod(table(window), "cellDoubleClicked", Qt::DirectConnection,
-                                          Q_ARG(int, folderRow), Q_ARG(int, 0)));
+        QVERIFY(QMetaObject::invokeMethod(
+            table(window), "doubleClicked", Qt::DirectConnection,
+            Q_ARG(QModelIndex, table(window)->model()->index(folderRow, 0))));
         QCOMPARE(address->text(),
                  QFileInfo(temp.filePath(QStringLiteral("папка с пробелом"))).canonicalFilePath());
         QCOMPARE(table(window)->rowCount(), 0);
@@ -130,8 +131,9 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
             const auto finish = qScopeGuard([&] { backend.completeList({}); });
             QVERIFY(!action(window, "backAction")->isEnabled());
         });
-        QVERIFY(QMetaObject::invokeMethod(table(window), "cellDoubleClicked", Qt::DirectConnection,
-                                          Q_ARG(int, archiveRow), Q_ARG(int, 0)));
+        QVERIFY(QMetaObject::invokeMethod(
+            table(window), "doubleClicked", Qt::DirectConnection,
+            Q_ARG(QModelIndex, table(window)->model()->index(archiveRow, 0))));
         QCOMPARE(backend.listCalls, 1);
         QCOMPARE(QDir::fromNativeSeparators(backend.lastArchive),
                  QFileInfo(archive.fileName()).canonicalFilePath());

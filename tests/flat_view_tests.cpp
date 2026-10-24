@@ -2,6 +2,7 @@
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "filetable.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
@@ -31,29 +32,30 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
         Q_ASSERT(result);
         return result;
     }
-    static QTableWidget *table(MainWindow &window) {
-        auto *result = window.findChild<QTableWidget *>("archiveTable");
+    static FileTable *table(MainWindow &window) {
+        auto *result = window.findChild<FileTable *>("archiveTable");
         Q_ASSERT(result);
         return result;
     }
     static int rowWithPath(MainWindow &window, const QString &path) {
         for (int row = 0; row < table(window)->rowCount(); ++row) {
-            if (table(window)->item(row, 0)->data(Qt::UserRole).toString() == path)
+            if (table(window)->model()->index(row, 0).data(Qt::UserRole).toString() == path)
                 return row;
         }
         return -1;
     }
     static int filesystemRow(MainWindow &window, const QString &name) {
         for (int row = 0; row < table(window)->rowCount(); ++row) {
-            if (table(window)->item(row, 0)->text() == name)
+            if (table(window)->model()->index(row, 0).data().toString() == name)
                 return row;
         }
         return -1;
     }
     static void openRow(MainWindow &window, int row) {
         QVERIFY(row >= 0);
-        QVERIFY(QMetaObject::invokeMethod(table(window), "cellDoubleClicked", Qt::DirectConnection,
-                                          Q_ARG(int, row), Q_ARG(int, 0)));
+        QVERIFY(
+            QMetaObject::invokeMethod(table(window), "doubleClicked", Qt::DirectConnection,
+                                      Q_ARG(QModelIndex, table(window)->model()->index(row, 0))));
     }
 
   private slots:
@@ -84,7 +86,7 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
             action(window, "twoPanelsAction")->trigger();
         auto *panel = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         auto *address = panel->findChild<QLineEdit *>("archivePath");
-        auto *list = static_cast<FileTable *>(panel->findChild<QTableWidget *>("archiveTable"));
+        auto *list = static_cast<FileTable *>(panel->findChild<FileTable *>("archiveTable"));
         address->setFocus();
         address->setText(fixture.path());
         QTest::keyClick(address, Qt::Key_Return);
@@ -116,7 +118,7 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
         QTest::keyClick(address, Qt::Key_Return);
         QTRY_VERIFY([&] {
             for (int row = 0; row < list->rowCount(); ++row)
-                if (list->item(row, 0)->text().contains("protected"))
+                if (list->model()->index(row, 0).data().toString().contains("protected"))
                     return true;
             return false;
         }());
@@ -185,8 +187,10 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
         const int first = rowWithPath(window, QStringLiteral("раздел один/common.txt"));
         const int second = rowWithPath(window, QStringLiteral("раздел два/common.txt"));
         QVERIFY(first >= 0 && second >= 0);
-        QCOMPARE(table(window)->item(first, 0)->text(), QStringLiteral("раздел один/common.txt"));
-        QCOMPARE(table(window)->item(second, 0)->text(), QStringLiteral("раздел два/common.txt"));
+        QCOMPARE(table(window)->model()->index(first, 0).data().toString(),
+                 QStringLiteral("раздел один/common.txt"));
+        QCOMPARE(table(window)->model()->index(second, 0).data().toString(),
+                 QStringLiteral("раздел два/common.txt"));
         QVERIFY(rowWithPath(window, QStringLiteral("раздел один/deep")) >= 0);
         table(window)->clearSelection();
         table(window)->selectRow(first);
@@ -224,7 +228,8 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
         QTRY_VERIFY(table(window)->isEnabled());
         const int nestedRow = filesystemRow(window, QStringLiteral("папка с пробелом/файл.txt"));
         QVERIFY(nestedRow >= 0);
-        QCOMPARE(table(window)->item(nestedRow, 1)->text(), QFileInfo(nested).canonicalFilePath());
+        QCOMPARE(table(window)->model()->index(nestedRow, 1).data().toString(),
+                 QFileInfo(nested).canonicalFilePath());
         window.show();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         table(window)->setFocus();
@@ -349,7 +354,8 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
         navigationTimer.start();
         QTRY_VERIFY(navigated);
         QTRY_COMPARE(table(window)->rowCount(), 1);
-        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("destination.txt"));
+        QCOMPARE(table(window)->model()->index(0, 0).data().toString(),
+                 QStringLiteral("destination.txt"));
         QTRY_VERIFY(table(window)->isEnabled());
         QCoreApplication::processEvents();
         QCOMPARE(table(window)->rowCount(), 1);
@@ -368,9 +374,12 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
         openRow(window, rowWithPath(window, QStringLiteral("outer")));
         QCOMPARE(table(window)->rowCount(), 3);
         QVERIFY(rowWithPath(window, QStringLiteral("outer/inner/file.txt")) >= 0);
-        QCOMPARE(
-            table(window)->item(rowWithPath(window, QStringLiteral("outer/top.txt")), 0)->text(),
-            QStringLiteral("top.txt"));
+        QCOMPARE(table(window)
+                     ->model()
+                     ->index(rowWithPath(window, QStringLiteral("outer/top.txt")), 0)
+                     .data()
+                     .toString(),
+                 QStringLiteral("top.txt"));
         backend.queueListAction([&] {
             const auto finish = qScopeGuard([&] { backend.completeList(entries); });
             QVERIFY(!flat->isEnabled());

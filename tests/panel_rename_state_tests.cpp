@@ -70,7 +70,7 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         auto *address = ui->findChild<QLineEdit *>("archivePath");
         address->setFocus();
         address->setText(fixture.path());
@@ -79,7 +79,7 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
         view->sourcePanel->Set_AutoRefresh_Mode(false);
         int focusedRow = -1;
         for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 0)->data(Qt::UserRole + 3).toString() == original)
+            if (view->model()->index(row, 0).data(Qt::UserRole + 3).toString() == original)
                 focusedRow = row;
         QVERIFY(focusedRow >= 0);
         view->sourcePanel->SelectSpec(alternative ? ToUString(peer) : UString(L"*"), true);
@@ -117,7 +117,7 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
                                             .arg(frame->parentWidget()->width())
                                             .arg(frame->parentWidget()->height())));
                     if (!icons) {
-                        const QRect row = view->visualItemRect(view->item(focusedRow, 0));
+                        const QRect row = view->visualRect(view->model()->index(focusedRow, 0));
                         QVERIFY(ring.top() >= row.top());
                         QVERIFY(ring.bottom() <= row.bottom());
                     }
@@ -200,17 +200,17 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(sourceIndex));
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         auto *address = ui->findChild<QLineEdit *>("archivePath");
         address->setFocus();
         address->setText(fixture.path());
         QTest::keyClick(address, Qt::Key_Return);
         QTRY_COMPARE(view->rowCount(), 2);
-        for (const auto &table : window.findChildren<QTableWidget *>("archiveTable"))
+        for (const auto &table : window.findChildren<FileTable *>("archiveTable"))
             static_cast<FileTable *>(table)->sourcePanel->Set_AutoRefresh_Mode(false);
         const auto findRow = [&](const QString &name) {
             for (int row = 0; row < view->rowCount(); ++row)
-                if (view->item(row, 0)->data(Qt::UserRole + 3).toString() == name)
+                if (view->model()->index(row, 0).data(Qt::UserRole + 3).toString() == name)
                     return row;
             return -1;
         };
@@ -218,8 +218,7 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
         const int peerRow = findRow(peer);
         QVERIFY(sourceRow >= 0 && peerRow >= 0);
         auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - sourceIndex));
-        auto *peerView =
-            static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        auto *peerView = static_cast<FileTable *>(peerUi->findChild<FileTable *>("archiveTable"));
         CMyComPtr<IFolderFolder> peerFolder = peerView->sourcePanel->GetFolder();
         const UString peerPrefix = peerView->sourcePanel->GetCurrentFolderPrefix();
         const int peerRows = peerView->rowCount();
@@ -289,7 +288,7 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
             QCOMPARE(errorText, ToQString(HResultToMessage(E_INVALIDARG)));
             QVERIFY(errorGeometry);
         }
-        QTRY_COMPARE(view->item(view->currentRow(), 0)->data(Qt::UserRole + 3).toString(),
+        QTRY_COMPARE(view->model()->index(view->currentRow(), 0).data(Qt::UserRole + 3).toString(),
                      collision || invalid ? original : renamed);
         QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
         closeError.stop();
@@ -345,7 +344,7 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
         auto *filesystem = new NFsFolder::CFSFolder(fixture.path());
         CMyComPtr<IFolderFolder> folder = filesystem;
         CPanel panel(folder);
-        FileTable view(0, 2);
+        FileTable view(2);
         view.sourcePanel = &panel;
         view.textFolder = folder;
         view.propertyIds = {kpidName, kpidSize};
@@ -356,13 +355,13 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
         const auto publish = [&] {
             UInt32 count = 0;
             folder->GetNumberOfItems(&count);
-            view.setRowCount(int(count));
-            for (UInt32 i = 0; i < count; ++i)
-                for (int col = 0; col < 2; ++col) {
-                    auto *item = new ArchiveTableItem(ToQString(panel.GetItemName(i)));
-                    item->setData(Qt::UserRole + 6, i);
-                    view.setItem(int(i), col, item);
-                }
+            view.clearRows();
+            for (UInt32 i = 0; i < count; ++i) {
+                FilePanelModel::Row item;
+                item.sourceIndex = i;
+                item.name = ToQString(panel.GetItemName(i));
+                view.panelModel()->append(std::move(item));
+            }
         };
         publish();
         QCOMPARE(panel.RefreshListCtrl(), S_OK);
@@ -373,7 +372,7 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
         QVERIFY(row >= 0);
         view.setCurrentCell(row, 0);
         panel.SelectAll(true);
-        const QString cachedName = view.item(row, 0)->text();
+        const QString cachedName = view.model()->index(row, 0).data().toString();
         QCOMPARE(cachedName, original);
         QTimer closeError;
         connect(&closeError, &QTimer::timeout, &view, [] {
@@ -385,12 +384,12 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
         const HRESULT result = panel.OnEndLabelEdit(UInt32(row), ToUString(renamed));
         closeError.stop();
         QCOMPARE(result == S_OK, !collision);
-        const bool blank = view.item(row, 0)->text().isEmpty();
+        const bool blank = view.model()->index(row, 0).data().toString().isEmpty();
         const auto state = panel.TakeRefreshSelection();
         QVERIFY2(blank && state.has_value(),
                  qPrintable(QString("blank=%1 pending=%2").arg(blank).arg(state.has_value())));
-        QCOMPARE(view.item(row, 0)->data(Qt::EditRole).toString(), original);
-        QCOMPARE(view.item(row, 0)->data(Qt::UserRole + 6).toUInt(), UInt32(row));
+        QCOMPARE(view.model()->index(row, 0).data(Qt::EditRole).toString(), original);
+        QCOMPARE(view.model()->index(row, 0).data(Qt::UserRole + 6).toUInt(), UInt32(row));
         QVERIFY(state->FocusedName_Defined);
         QVERIFY(state->SelectFocused);
         QCOMPARE(state->FocusedName, ToUString(collision ? original : renamed));
@@ -409,7 +408,7 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
         publish();
         QCOMPARE(panel.RefreshListCtrl(*state), S_OK);
         const QString focused = collision ? original : renamed;
-        QCOMPARE(view.item(view.currentRow(), 0)->text(), focused);
+        QCOMPARE(view.model()->index(view.currentRow(), 0).data().toString(), focused);
         QCOMPARE(view.selectionModel()->selectedRows().size(), alternative ? 1 : 2);
         CRecordVector<UInt32> selected;
         panel.Get_ItemIndices_Selected(selected);

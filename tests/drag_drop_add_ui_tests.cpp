@@ -99,7 +99,7 @@ class DragDropAddUiTests final : public QObject {
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(root.path());
         QTest::keyClick(address, Qt::Key_Return);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         QTRY_VERIFY(table->isEnabled());
         QLineEdit *otherAddress = nullptr;
         if (peer) {
@@ -110,7 +110,7 @@ class DragDropAddUiTests final : public QObject {
             QVERIFY(right && right->isVisible());
             otherAddress = address;
             address = right->findChild<QLineEdit *>("archivePath");
-            table = right->findChild<QTableWidget *>("archiveTable");
+            table = right->findChild<FileTable *>("archiveTable");
             address->setFocus();
             address->setText(root.path());
             QTest::keyClick(address, Qt::Key_Return);
@@ -152,8 +152,9 @@ class DragDropAddUiTests final : public QObject {
             QVERIFY(address->text().contains(QFileInfo(archive).fileName()));
             bool found = false;
             for (int row = 0; row < table->rowCount(); ++row)
-                found |= table->item(row, 0) &&
-                         table->item(row, 0)->text() == QFileInfo(input.fileName()).fileName();
+                found |= table->model()->index(row, 0).isValid() &&
+                         table->model()->index(row, 0).data().toString() ==
+                             QFileInfo(input.fileName()).fileName();
             QVERIFY(found);
             if (otherAddress)
                 QCOMPARE(QDir::cleanPath(otherAddress->text()), QDir::cleanPath(root.path()));
@@ -187,7 +188,7 @@ class DragDropAddUiTests final : public QObject {
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(root.filePath("output"));
         QTest::keyClick(address, Qt::Key_Return);
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         QTRY_VERIFY(table->isEnabled());
         QMimeData mime;
         mime.setUrls({QUrl::fromLocalFile(input.fileName())});
@@ -264,7 +265,7 @@ class DragDropAddUiTests final : public QObject {
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(output.path());
         QTest::keyClick(address, Qt::Key_Return);
-        auto *table = dynamic_cast<FileTable *>(window.findChild<QTableWidget *>("archiveTable"));
+        auto *table = dynamic_cast<FileTable *>(window.findChild<FileTable *>("archiveTable"));
         QVERIFY(table);
         QTRY_VERIFY(table->isEnabled());
         unsigned errors = 0;
@@ -351,7 +352,7 @@ class DragDropAddUiTests final : public QObject {
         backend.Program = root.filePath("missing-7zG");
         MainWindow window(&backend);
         window.show();
-        auto *table = dynamic_cast<FileTable *>(window.findChild<QTableWidget *>("archiveTable"));
+        auto *table = dynamic_cast<FileTable *>(window.findChild<FileTable *>("archiveTable"));
         QVERIFY(table);
         QTRY_VERIFY(table->isEnabled());
         unsigned errors = 0;

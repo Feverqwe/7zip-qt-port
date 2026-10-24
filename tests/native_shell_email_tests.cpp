@@ -1,4 +1,5 @@
 #include "Common/MyTypes.h"
+#include "filetable.h"
 
 #include "7zip/UI/Explorer/ContextMenuFlags.h"
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
@@ -27,9 +28,9 @@ QAction *findVerb(QMenu &menu, const QString &verb) {
     return nullptr;
 }
 int rowNamed(MainWindow &window, const QString &name) {
-    auto *view = window.findChild<QTableWidget *>("archiveTable");
+    auto *view = window.findChild<FileTable *>("archiveTable");
     for (int row = 0; row < view->rowCount(); ++row)
-        if (view->item(row, 0)->text() == name)
+        if (view->model()->index(row, 0).data().toString() == name)
             return row;
     return -1;
 }

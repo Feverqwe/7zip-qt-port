@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "archivecodeccatalog.h"
+#include "filetable.h"
 #include "mainwindow.h"
 #include "qtfilemanagerstartup.h"
 #include "source_extract_fixture.h"
@@ -139,12 +140,12 @@ class FileManagerStartupTests final : public QObject {
         try {
             MainWindow window(&backend, {}, nullptr, &startup);
             window.show();
-            auto *table = window.findChild<QTableWidget *>("archiveTable");
+            auto *table = window.findChild<FileTable *>("archiveTable");
             QVERIFY(table);
             QTRY_VERIFY(table->rowCount() > 0);
             bool found = false;
             for (int row = 0; row < table->rowCount(); ++row)
-                found |= table->item(row, 0)->text() == name;
+                found |= table->model()->index(row, 0).data().toString() == name;
             QVERIFY(found);
         } catch (const QtFileManagerStartupFailure &failure) {
             rejected = true;

@@ -1,3 +1,4 @@
+#include "filetable.h"
 #include "mainwindow.h"
 #include <QApplication>
 #include <QFile>
@@ -16,9 +17,9 @@ bool WriteStartupReport(bool timedOut) {
         if (!window || !window->isVisible())
             continue;
         ++windows;
-        auto *table = window->findChild<QTableWidget *>("archiveTable");
+        auto *table = window->findChild<FileTable *>("archiveTable");
         if (!expected.isEmpty() && table && table->rowCount() == 1 &&
-            table->item(0, 0)->text() == expected)
+            table->model()->index(0, 0).data().toString() == expected)
             ++archives;
     }
     if (!timedOut && (windows == 0 || (!expected.isEmpty() && archives == 0)))

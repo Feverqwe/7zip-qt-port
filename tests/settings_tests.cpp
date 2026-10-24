@@ -1,3 +1,4 @@
+#include "filetable.h"
 #include "window_state_support.h"
 
 #include <QCheckBox>
@@ -62,7 +63,7 @@ class SettingsTests : public QObject, protected MainWindowTestSupport {
         window.show();
         window.activateWindow();
         QApplication::processEvents();
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *icons = window.findChild<QListView *>("iconList");
         QAbstractItemView *view = mode == 3 ? static_cast<QAbstractItemView *>(table)
                                             : static_cast<QAbstractItemView *>(icons);
@@ -119,7 +120,7 @@ class SettingsTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(QDir().mkdir(QStringLiteral("папка с пробелом")));
         MainWindow window;
         window.show();
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *action = window.findChild<QAction *>("settingsAction");
         QVERIFY(table && action);
         QVERIFY(!table->showGrid());
@@ -146,17 +147,18 @@ class SettingsTests : public QObject, protected MainWindowTestSupport {
 
         int folderRow = -1;
         for (int row = 0; row < table->rowCount(); ++row)
-            if (table->item(row, 0)->text() == QStringLiteral("папка с пробелом"))
+            if (table->model()->index(row, 0).data().toString() ==
+                QStringLiteral("папка с пробелом"))
                 folderRow = row;
         QVERIFY(folderRow >= 0);
-        QVERIFY(QMetaObject::invokeMethod(table, "cellClicked", Qt::DirectConnection,
-                                          Q_ARG(int, folderRow), Q_ARG(int, 0)));
+        QVERIFY(QMetaObject::invokeMethod(table, "clicked", Qt::DirectConnection,
+                                          Q_ARG(QModelIndex, table->model()->index(folderRow, 0))));
         QCOMPARE(
             window.findChild<QLineEdit *>("archivePath")->text(),
             QFileInfo(temporary.filePath(QStringLiteral("папка с пробелом"))).canonicalFilePath());
 
         MainWindow reopened;
-        QVERIFY(reopened.findChild<QTableWidget *>("archiveTable")->showGrid());
+        QVERIFY(reopened.findChild<FileTable *>("archiveTable")->showGrid());
         QVERIFY(QDir::setCurrent(original));
     }
 };

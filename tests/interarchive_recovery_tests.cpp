@@ -4,6 +4,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
 #include "copydialog.h"
+#include "filetable.h"
 #include "fixtures/signal_wait_support.h"
 #include "layout_inspection.h"
 #include "native_property_failure_runtime.h"
@@ -146,7 +147,7 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
         auto *sourceUi = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         auto *targetUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
         for (QWidget *ui : {targetUi, sourceUi}) {
-            auto *table = ui->findChild<QTableWidget *>("archiveTable");
+            auto *table = ui->findChild<FileTable *>("archiveTable");
             const int initialCount = ui == targetUi ? fallbackCount : 2;
             QVERIFY(SignalWaitSupport::waitForCount(*table->model(), initialCount));
             QCOMPARE(table->rowCount(), initialCount);
@@ -168,7 +169,7 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
             QVERIFY(QTest::qWaitForWindowActive(&window));
             address->setFocus();
             QVERIFY(ui->isAncestorOf(window.focusWidget()));
-            auto *table = ui->findChild<QTableWidget *>("archiveTable");
+            auto *table = ui->findChild<FileTable *>("archiveTable");
             window.openArchive(targetArchive);
             QVERIFY2(SignalWaitSupport::waitForCount(*table->model(), 2),
                      qPrintable(QString("owner=%1 rows=%2 source=%3 target=%4 status=%5")
@@ -185,10 +186,8 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
             if (icons)
                 action(window, "viewMode0Action")->trigger();
         }
-        auto *source =
-            static_cast<FileTable *>(sourceUi->findChild<QTableWidget *>("archiveTable"));
-        auto *target =
-            static_cast<FileTable *>(targetUi->findChild<QTableWidget *>("archiveTable"));
+        auto *source = static_cast<FileTable *>(sourceUi->findChild<FileTable *>("archiveTable"));
+        auto *target = static_cast<FileTable *>(targetUi->findChild<FileTable *>("archiveTable"));
         CPanel &sourcePanel = *source->sourcePanel;
         CPanel &destination = *target->sourcePanel;
         for (CPanel *panel : {&sourcePanel, &destination})
@@ -198,7 +197,7 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
         QVERIFY(dynamic_cast<CAgentFolder *>(sourceProvider.Interface()));
         auto view = [icons](QWidget *ui) -> QAbstractItemView * {
             return icons ? static_cast<QAbstractItemView *>(ui->findChild<QListView *>("iconList"))
-                         : ui->findChild<QTableWidget *>("archiveTable");
+                         : ui->findChild<FileTable *>("archiveTable");
         };
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));

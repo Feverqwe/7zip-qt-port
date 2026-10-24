@@ -4,6 +4,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "Windows/PropVariant.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "panel_load_folder.h"
 #include "window_state_support.h"
@@ -83,7 +84,7 @@ class PanelListLoadTests final : public QObject, protected MainWindowTestSupport
         address->setFocus();
         address->setText(fixture.path());
         QTest::keyClick(address, Qt::Key_Return);
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         QTRY_COMPARE(view->rowCount(), 1);
         auto &panel = *view->sourcePanel;
         CMyComPtr<IFolderFolder> folder = panel.GetFolder();
@@ -182,14 +183,15 @@ class PanelListLoadTests final : public QObject, protected MainWindowTestSupport
         spec->reverseNames = true;
         action(window, "refreshAction")->trigger();
         QCOMPARE(view->rowCount(), 2);
-        QCOMPARE(view->item(0, 0)->text(), QStringLiteral("a 文件"));
+        QCOMPARE(view->model()->index(0, 0).data().toString(), QStringLiteral("a 文件"));
         for (int row = 0; row < view->rowCount(); ++row) {
-            const auto sourceIndex = view->item(row, 0)->data(Qt::UserRole + 6).toUInt();
-            QCOMPARE(view->item(row, 0)->text(),
+            const auto sourceIndex = view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt();
+            QCOMPARE(view->model()->index(row, 0).data().toString(),
                      ToQString(view->sourcePanel->GetItemName(sourceIndex)));
             for (int column = 1; column < view->columnCount(); ++column) {
-                QVERIFY(view->item(row, column));
-                QCOMPARE(view->item(row, column)->data(Qt::UserRole + 6).toUInt(), sourceIndex);
+                QVERIFY(view->model()->index(row, column).isValid());
+                QCOMPARE(view->model()->index(row, column).data(Qt::UserRole + 6).toUInt(),
+                         sourceIndex);
             }
         }
     }
@@ -206,8 +208,8 @@ class PanelListLoadTests final : public QObject, protected MainWindowTestSupport
         view->sourcePanel->SetNewFolder(folder);
         action(window, "refreshAction")->trigger();
         QCOMPARE(view->rowCount(), 2);
-        QCOMPARE(view->item(0, 0)->text(), QStringLiteral("first δ"));
-        QVERIFY(view->item(0, 0)->data(Qt::UserRole + 1).toBool());
+        QCOMPARE(view->model()->index(0, 0).data().toString(), QStringLiteral("first δ"));
+        QVERIFY(view->model()->index(0, 0).data(Qt::UserRole + 1).toBool());
         spec->directoryResult = loadFailure ? S_OK : HRESULT(result);
         spec->directoryType = VARTYPE(type);
         spec->loadResult = loadFailure ? HRESULT(result) : S_OK;
@@ -232,7 +234,7 @@ class PanelListLoadTests final : public QObject, protected MainWindowTestSupport
         spec->loadResult = S_OK;
         action(window, "refreshAction")->trigger();
         QCOMPARE(view->rowCount(), 2);
-        QVERIFY(!view->item(0, 0)->data(Qt::UserRole + 1).toBool());
+        QVERIFY(!view->model()->index(0, 0).data(Qt::UserRole + 1).toBool());
     }
     void namespaceReloadReturnsOriginalHRESULT_data() {
         QTest::addColumn<QString>("phase");

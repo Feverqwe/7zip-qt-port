@@ -57,12 +57,12 @@ bool CreateArchive(const QString &directory, const QString &archive, const QStri
 
 FileTable *PanelList(MainWindow &window, unsigned pane) {
     auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
-    return owner ? dynamic_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"))
+    return owner ? dynamic_cast<FileTable *>(owner->findChild<FileTable *>("archiveTable"))
                  : nullptr;
 }
 int FindRow(const FileTable &list, const QString &name) {
     for (int row = 0; row < list.rowCount(); ++row)
-        if (list.item(row, 0)->text() == name)
+        if (list.model()->index(row, 0).data().toString() == name)
             return row;
     return -1;
 }

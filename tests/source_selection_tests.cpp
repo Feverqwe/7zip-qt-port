@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/ComboDialog.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
@@ -14,7 +15,7 @@ class SourceSelectionTests final : public QObject, protected MainWindowTestSuppo
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        return static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        return static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
     }
     static QStringList selected(CPanel &panel) {
         CRecordVector<UInt32> indices;
@@ -27,7 +28,7 @@ class SourceSelectionTests final : public QObject, protected MainWindowTestSuppo
     }
     static int row(FileTable &view, const QString &name) {
         for (int i = 0; i < view.rowCount(); ++i)
-            if (view.item(i, 0)->data(Qt::UserRole + 3).toString() == name)
+            if (view.model()->index(i, 0).data(Qt::UserRole + 3).toString() == name)
                 return i;
         return -1;
     }

@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "panel_load_folder.h"
 #include "window_state_support.h"
@@ -38,8 +39,7 @@ class NavigationReloadTests final : public QObject, protected MainWindowTestSupp
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - sourceIndex));
-        auto *peerView =
-            static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        auto *peerView = static_cast<FileTable *>(peerUi->findChild<FileTable *>("archiveTable"));
         auto *peerAddress = peerUi->findChild<QLineEdit *>("archivePath");
         peerAddress->setFocus();
         peerAddress->setText(fixture.path());
@@ -48,7 +48,7 @@ class NavigationReloadTests final : public QObject, protected MainWindowTestSupp
         CMyComPtr<IFolderFolder> peerFolder = peerView->sourcePanel->GetFolder();
         peerView->sourcePanel->Set_AutoRefresh_Mode(false);
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(sourceIndex));
-        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
         auto *address = ui->findChild<QLineEdit *>("archivePath");
         address->setFocus();
         action(window, "openRootAction")->trigger();

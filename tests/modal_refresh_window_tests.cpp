@@ -1,3 +1,4 @@
+#include "filetable.h"
 #include "window_state_support.h"
 #include <QElapsedTimer>
 
@@ -22,9 +23,9 @@ class ModalRefreshWindowTests final : public QObject, protected MainWindowTestSu
         auto *left = window.findChild<QWidget *>("filePanel0");
         auto *right = window.findChild<QWidget *>("filePanel1");
         QVERIFY(left && right);
-        auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
-        auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
-        const auto navigate = [&](QWidget *panel, QTableWidget *view, const QString &path) {
+        auto *leftTable = left->findChild<FileTable *>("archiveTable");
+        auto *rightTable = right->findChild<FileTable *>("archiveTable");
+        const auto navigate = [&](QWidget *panel, FileTable *view, const QString &path) {
             window.activateWindow();
             view->setFocus();
             QCoreApplication::processEvents();

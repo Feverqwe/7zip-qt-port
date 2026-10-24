@@ -1,12 +1,14 @@
+#include "filetable.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
+#include <QTableWidget>
 
 class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
 
-    static int fileRow(QTableWidget *view, const QString &path) {
+    static int fileRow(FileTable *view, const QString &path) {
         for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 1)->text() == path)
+            if (view->model()->index(row, 1).data().toString() == path)
                 return row;
         return -1;
     }
@@ -15,7 +17,7 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         QVERIFY(file.open(QIODevice::WriteOnly));
         QCOMPARE(file.write("fixture"), 7);
     }
-    static void selectRow(QTableWidget *view, int row) {
+    static void selectRow(QAbstractItemView *view, int row) {
         QVERIFY(row >= 0);
         view->selectionModel()->select(view->model()->index(row, 0),
                                        QItemSelectionModel::Select | QItemSelectionModel::Rows);
@@ -54,16 +56,16 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         for (const QString &path : {link, cycle}) {
             const int row = fileRow(view, path);
             QVERIFY(row >= 0);
-            QVERIFY(!view->item(row, 0)->data(Qt::UserRole + 1).toBool());
+            QVERIFY(!view->model()->index(row, 0).data(Qt::UserRole + 1).toBool());
             const QString linkTarget = path == link ? target : root.path();
             const quint64 linkSize = QFile::encodeName(linkTarget).size();
-            QCOMPARE(view->item(row, 2)->text(), QString::number(linkSize));
-            QCOMPARE(view->item(row, 2)->data(Qt::UserRole + 2).toULongLong(), linkSize);
+            QCOMPARE(view->model()->index(row, 2).data().toString(), QString::number(linkSize));
+            QCOMPARE(view->model()->index(row, 2).data(Qt::UserRole + 2).toULongLong(), linkSize);
         }
         const int directoryRow = fileRow(view, root.filePath("nested"));
         QVERIFY(directoryRow >= 0);
-        QVERIFY(view->item(directoryRow, 2)->text().isEmpty());
-        QVERIFY(!view->item(directoryRow, 2)->data(Qt::UserRole + 2).isValid());
+        QVERIFY(view->model()->index(directoryRow, 2).data().toString().isEmpty());
+        QVERIFY(!view->model()->index(directoryRow, 2).data(Qt::UserRole + 2).isValid());
         for (const QSize &size : {QSize(980, 620), QSize(640, 480)}) {
             window.resize(size);
             QCoreApplication::processEvents();
@@ -101,10 +103,10 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         const int zeroRow = rowWithPath(window, zero);
         QVERIFY(unknownRow >= 0 && zeroRow >= 0);
         for (int column : {2, 3}) {
-            QVERIFY(view->item(unknownRow, column)->text().isEmpty());
-            QVERIFY(!view->item(unknownRow, column)->data(Qt::UserRole + 2).isValid());
-            QCOMPARE(view->item(zeroRow, column)->text(), QStringLiteral("0"));
-            QVERIFY(view->item(zeroRow, column)->data(Qt::UserRole + 2).isValid());
+            QVERIFY(view->model()->index(unknownRow, column).data().toString().isEmpty());
+            QVERIFY(!view->model()->index(unknownRow, column).data(Qt::UserRole + 2).isValid());
+            QCOMPARE(view->model()->index(zeroRow, column).data().toString(), QStringLiteral("0"));
+            QVERIFY(view->model()->index(zeroRow, column).data(Qt::UserRole + 2).isValid());
         }
         for (const QSize &size : {QSize(980, 620), QSize(640, 480)}) {
             window.resize(size);
@@ -291,9 +293,13 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         action(window, "refreshAction")->trigger();
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
         QTRY_VERIFY(view->currentRow() >= 0);
-        QCOMPARE(view->item(view->currentRow(), 1)->text(), focused);
+        QCOMPARE(view->model()->index(view->currentRow(), 1).data().toString(), focused);
         QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
-        QCOMPARE(view->item(view->selectionModel()->selectedRows()[0].row(), 1)->text(), selected);
+        QCOMPARE(view->model()
+                     ->index(view->selectionModel()->selectedRows()[0].row(), 1)
+                     .data()
+                     .toString(),
+                 selected);
         QVERIFY(!view->selectionModel()->isRowSelected(view->currentRow(), QModelIndex()));
         QVERIFY(action(window, "copyAction")->isEnabled());
         QVERIFY(action(window, "selectedPropertiesAction")->isEnabled());
@@ -301,9 +307,9 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         if (!flat) {
             action(window, "flatViewAction")->setChecked(true);
             QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
-            QCOMPARE(view->item(view->currentRow(), 1)->text(), focused);
+            QCOMPARE(view->model()->index(view->currentRow(), 1).data().toString(), focused);
             action(window, "flatViewAction")->setChecked(false);
-            QCOMPARE(view->item(view->currentRow(), 1)->text(), focused);
+            QCOMPARE(view->model()->index(view->currentRow(), 1).data().toString(), focused);
             QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
             QVERIFY(action(window, "copyAction")->isEnabled());
             QVERIFY(action(window, "selectedPropertiesAction")->isEnabled());
@@ -316,7 +322,11 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         QTRY_COMPARE(fileRow(view, focused), -1);
         QCOMPARE(view->currentRow(), qMin(oldFocusedRow, view->rowCount() - 1));
         QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
-        QCOMPARE(view->item(view->selectionModel()->selectedRows()[0].row(), 1)->text(), selected);
+        QCOMPARE(view->model()
+                     ->index(view->selectionModel()->selectedRows()[0].row(), 1)
+                     .data()
+                     .toString(),
+                 selected);
         action(window, "flatViewAction")->setChecked(false);
     }
 };

@@ -10,8 +10,9 @@ class AltStreamsArchiveUiTests final : public QObject, protected MainWindowTestS
     static int nativeRow(MainWindow &window, const QString &name) {
         auto *view = table(window);
         for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 0)
-                    ->data(Qt::UserRole + 3)
+            if (view->model()
+                    ->index(row, 0)
+                    .data(Qt::UserRole + 3)
                     .toString()
                     .normalized(QString::NormalizationForm_C) == name)
                 return row;
@@ -67,8 +68,11 @@ class AltStreamsArchiveUiTests final : public QObject, protected MainWindowTestS
         QTest::keyClick(editor, Qt::Key_Return);
         QTRY_VERIFY(nativeRow(window, renamed) >= 0);
         QVERIFY(nativeRow(window, name) < 0);
-        const QString entry =
-            table(window)->item(nativeRow(window, renamed), 0)->data(Qt::UserRole).toString();
+        const QString entry = table(window)
+                                  ->model()
+                                  ->index(nativeRow(window, renamed), 0)
+                                  .data(Qt::UserRole)
+                                  .toString();
         engine.start(engine_, {"x", "-so", "-spd", "-ssc", "--", archive, entry});
         QVERIFY(engine.waitForFinished(10000));
         QCOMPARE(engine.exitCode(), 0);
@@ -137,7 +141,8 @@ class AltStreamsArchiveUiTests final : public QObject, protected MainWindowTestS
                                                           .arg(size.height())));
         }
         QTRY_VERIFY(nativeRow(window, streamName) >= 0);
-        QCOMPARE(table(window)->item(nativeRow(window, streamName), 0)->text(), streamName);
+        QCOMPARE(table(window)->model()->index(nativeRow(window, streamName), 0).data().toString(),
+                 streamName);
         QVERIFY(window.findChild<QLineEdit *>("archivePath")->text().contains(archive));
         table(window)->selectRow(nativeRow(window, streamName));
         const QString output = temp.filePath("copied streams");
@@ -226,7 +231,7 @@ class AltStreamsArchiveUiTests final : public QObject, protected MainWindowTestS
         QCOMPARE(creator.exitCode(), 0);
         QTRY_VERIFY(nativeRow(window, name) >= 0);
         const QString mainEntry =
-            table(window)->item(nativeRow(window, name), 0)->data(Qt::UserRole).toString();
+            table(window)->model()->index(nativeRow(window, name), 0).data(Qt::UserRole).toString();
         QVERIFY(selection.open(QIODevice::WriteOnly | QIODevice::Truncate));
         const QByteArray mainName = (mainEntry + '\n').toUtf8();
         QCOMPARE(selection.write(mainName), qint64(mainName.size()));

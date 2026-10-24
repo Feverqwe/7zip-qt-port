@@ -8,10 +8,11 @@
 
 namespace {
 // Qt equivalent of rejecting the native LV_DISPINFO edit without a reload.
-void rejectLabelEdit(CPanel &panel, QTableWidget &view, UInt32 sourceIndex) {
-    for (int row = 0; row < view.rowCount(); ++row)
-        if (view.item(row, 0)->data(Qt::UserRole + 6).toUInt() == sourceIndex) {
-            view.item(row, 0)->setData(Qt::EditRole, ToQString(panel.GetItemName(sourceIndex)));
+void rejectLabelEdit(CPanel &panel, QTableView &view, UInt32 sourceIndex) {
+    for (int row = 0; row < view.model()->rowCount(); ++row)
+        if (view.model()->index(row, 0).data(Qt::UserRole + 6).toUInt() == sourceIndex) {
+            view.model()->setData(view.model()->index(row, 0),
+                                  ToQString(panel.GetItemName(sourceIndex)), Qt::EditRole);
             break;
         }
     CSelectedState state;
@@ -23,7 +24,7 @@ void rejectLabelEdit(CPanel &panel, QTableWidget &view, UInt32 sourceIndex) {
 
 void MainWindow::connectRenameEditor(QAbstractItemView &view) {
     const unsigned owner = projectedPanel_;
-    if (auto *table = qobject_cast<QTableWidget *>(&view))
+    if (auto *table = qobject_cast<QTableView *>(&view))
         connect(
             table->model(), &QAbstractItemModel::dataChanged, this,
             [this, owner](const QModelIndex &first, const QModelIndex &last,
@@ -67,14 +68,13 @@ void MainWindow::beginRename(int row) {
         return;
     if (row < 0 || row >= table_->rowCount() || panel.OnBeginLabelEdit(row))
         return;
-    auto *item = table_->item(row, 0);
-    if (!item || item->data(Qt::UserRole + 6).isNull())
+    const QModelIndex item = table_->model()->index(row, 0);
+    if (!item.isValid() || item.data(Qt::UserRole + 6).isNull())
         return;
-    const quint32 sourceIndex = item->data(Qt::UserRole + 6).toUInt();
-    renameEdit_ =
-        RenameEdit{projectedPanel_, panel.GetFolder(), table_->indexFromItem(item), sourceIndex,
-                   ToQString(archive ? panel.GetItemRelPath2(sourceIndex)
-                                     : panel.GetItemFullPath(sourceIndex))};
+    const quint32 sourceIndex = item.data(Qt::UserRole + 6).toUInt();
+    renameEdit_ = RenameEdit{projectedPanel_, panel.GetFolder(), item, sourceIndex,
+                             ToQString(archive ? panel.GetItemRelPath2(sourceIndex)
+                                               : panel.GetItemFullPath(sourceIndex))};
     renameActivationPending_ = true;
     const QString nameHint =
         archive || streams ? ToQString(panel.GetItemName(sourceIndex)) : QString();
@@ -88,8 +88,8 @@ void MainWindow::beginRename(int row) {
                 editor->selectAll();
             }
     } else {
-        table_->scrollToItem(item);
-        table_->editItem(item);
+        table_->scrollTo(item);
+        table_->edit(item);
         if (archive || streams)
             if (auto *editor = table_->findChild<QLineEdit *>()) {
                 editor->setText(nameHint);

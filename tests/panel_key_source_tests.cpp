@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "filetable.h"
 #include "fixtures/widget_dialogs.h"
 #include "fixtures/window_activation.h"
 #include "layout_inspection.h"
@@ -217,7 +218,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         auto *peer = window.findChild<QWidget *>(pane ? "filePanel0" : "filePanel1");
         QVERIFY(owner);
         QVERIFY(peer);
-        auto *list = owner->findChild<QTableWidget *>("archiveTable");
+        auto *list = owner->findChild<FileTable *>("archiveTable");
         auto *address = owner->findChild<QLineEdit *>("archivePath");
         address->setFocus();
         address->setText(fixture.path());
@@ -228,14 +229,14 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         QTRY_COMPARE(list->rowCount(), 2);
         QMap<quint32, QString> sourceNames;
         for (int row = 0; row < list->rowCount(); ++row) {
-            auto *cell = list->item(row, 0);
-            sourceNames.insert(cell->data(Qt::UserRole + 6).toUInt(),
-                               cell->data(Qt::EditRole).toString());
+            const QPersistentModelIndex cell = list->model()->index(row, 0);
+            sourceNames.insert(cell.data(Qt::UserRole + 6).toUInt(),
+                               cell.data(Qt::EditRole).toString());
         }
         QCOMPARE(sourceNames.size(), 2);
         const QString copiedNames = sourceNames.values().join("\r\n");
         const QString peerPath = peer->findChild<QLineEdit *>("archivePath")->text();
-        const int peerRows = peer->findChild<QTableWidget *>("archiveTable")->rowCount();
+        const int peerRows = peer->findChild<FileTable *>("archiveTable")->rowCount();
         action(window, qPrintable(QStringLiteral("viewMode%1Action").arg(mode)))->trigger();
         auto *view = mode == 3 ? static_cast<QWidget *>(list)
                                : static_cast<QWidget *>(owner->findChild<QListView *>("iconList"));
@@ -268,7 +269,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         QTest::keyClick(address, Qt::Key_C, Qt::ControlModifier);
         QCOMPARE(QApplication::clipboard()->text(), address->text());
         QCOMPARE(peer->findChild<QLineEdit *>("archivePath")->text(), peerPath);
-        QCOMPARE(peer->findChild<QTableWidget *>("archiveTable")->rowCount(), peerRows);
+        QCOMPARE(peer->findChild<FileTable *>("archiveTable")->rowCount(), peerRows);
         for (const auto &name : names) {
             QFile file(fixture.filePath(name));
             QVERIFY(file.open(QIODevice::ReadOnly));
@@ -462,7 +463,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         list->setFocus();
         QTest::keyClick(list, Qt::Key_F6,
                         Qt::ControlModifier | Qt::AltModifier | Qt::ShiftModifier);
-        QCOMPARE(list->item(0, 0)->text(), QString("beta.bin"));
+        QCOMPARE(list->model()->index(0, 0).data().toString(), QString("beta.bin"));
         QCOMPARE(backend.extractCalls, 0);
 
         const QString name = QStringLiteral("сохранить 空.txt");

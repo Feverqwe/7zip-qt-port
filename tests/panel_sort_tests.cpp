@@ -9,7 +9,7 @@ class PanelSortTests final : public QObject, protected MainWindowTestSupport {
     static QStringList names(MainWindow &window) {
         QStringList result;
         for (int row = 0; row < table(window)->rowCount(); ++row)
-            result << table(window)->item(row, 0)->text();
+            result << table(window)->model()->index(row, 0).data().toString();
         return result;
     }
 
@@ -96,8 +96,8 @@ class PanelSortTests final : public QObject, protected MainWindowTestSupport {
         auto fileNames = [&] {
             QStringList result;
             for (int row = 0; row < table(window)->rowCount(); ++row)
-                if (!table(window)->item(row, 0)->data(Qt::UserRole + 1).toBool())
-                    result << table(window)->item(row, 0)->text();
+                if (!table(window)->model()->index(row, 0).data(Qt::UserRole + 1).toBool())
+                    result << table(window)->model()->index(row, 0).data().toString();
             return result;
         };
         // The source Agent comparator uses natural ordering for flat prefixes.

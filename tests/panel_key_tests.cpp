@@ -1,4 +1,6 @@
+#include "filetable.h"
 #include "layout_inspection.h"
+#include "panel_model_support.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
 #include <QSplitterHandle>
@@ -36,7 +38,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
                           {ArchiveEntry{"a.txt", 1, 1}, ArchiveEntry{"b.txt", 2, 2},
                            ArchiveEntry{"c.txt", 3, 3}});
         window.show();
-        auto *view = window.findChild<QTableWidget *>("archiveTable");
+        auto *view = window.findChild<FileTable *>("archiveTable");
         QTRY_COMPARE(view->rowCount(), 3);
         auto *modeAction = action(window, qPrintable(QString("viewMode%1Action").arg(mode)));
         QTRY_VERIFY(modeAction->isEnabled());
@@ -57,8 +59,9 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QApplication::processEvents();
         CPanel *panel = static_cast<FileTable *>(view)->sourcePanel;
         for (int row = 0; row < 3; ++row)
-            QCOMPARE(panel->IsItemMarked(view->item(row, 0)->data(Qt::UserRole + 6).toUInt()),
-                     row < 2);
+            QCOMPARE(
+                panel->IsItemMarked(view->model()->index(row, 0).data(Qt::UserRole + 6).toUInt()),
+                row < 2);
     }
     void archiveOpenDisablesBothPanelAddresses() {
         QTemporaryDir fixture;
@@ -74,7 +77,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         auto *right = window.findChild<QWidget *>("filePanel1");
         auto *leftAddress = left->findChild<QComboBox *>("pathCombo");
         auto *rightAddress = right->findChild<QComboBox *>("pathCombo");
-        auto *rightList = right->findChild<QTableWidget *>("archiveTable");
+        auto *rightList = right->findChild<FileTable *>("archiveTable");
         rightList->setFocus();
         QTRY_VERIFY(rightList->hasFocus());
         const QString archive = fixture.filePath("focus archive.zip");
@@ -116,7 +119,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         auto *left = window.findChild<QWidget *>("filePanel0");
         auto *right = window.findChild<QWidget *>("filePanel1");
         auto *address = left->findChild<QLineEdit *>("archivePath");
-        auto *list = right->findChild<QTableWidget *>("archiveTable");
+        auto *list = right->findChild<FileTable *>("archiveTable");
         list->setFocus();
         QTRY_VERIFY(list->hasFocus());
         // A native QStackedWidget switch can synchronously focus another panel.
@@ -148,14 +151,14 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         auto *leftPanel = window.findChild<QWidget *>("filePanel0");
         QVERIFY(leftPanel);
         auto *leftAddress = leftPanel->findChild<QLineEdit *>("archivePath");
-        auto *leftTable = leftPanel->findChild<QTableWidget *>("archiveTable");
+        auto *leftTable = leftPanel->findChild<FileTable *>("archiveTable");
         leftAddress->setText(left);
         QTest::keyClick(leftAddress, Qt::Key_Return);
         QTRY_VERIFY(leftTable->rowCount() > 0);
         const int leftRows = leftTable->rowCount();
         int leftFileRow = -1;
         for (int row = 0; row < leftRows; ++row)
-            if (leftTable->item(row, 0)->text() == QStringLiteral("left.txt"))
+            if (leftTable->model()->index(row, 0).data().toString() == QStringLiteral("left.txt"))
                 leftFileRow = row;
         QVERIFY(leftFileRow >= 0);
         leftTable->selectRow(leftFileRow);
@@ -165,13 +168,13 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QVERIFY(rightPanel);
         QVERIFY(rightPanel->isVisible());
         auto *rightAddress = rightPanel->findChild<QLineEdit *>("archivePath");
-        auto *rightTable = rightPanel->findChild<QTableWidget *>("archiveTable");
+        auto *rightTable = rightPanel->findChild<FileTable *>("archiveTable");
         QCOMPARE(QFileInfo(rightAddress->text()).canonicalFilePath(),
                  QFileInfo(right).canonicalFilePath());
         QTRY_VERIFY(rightTable->rowCount() > 0);
         int rightFileRow = -1;
         for (int row = 0; row < rightTable->rowCount(); ++row)
-            if (rightTable->item(row, 0)->text() == QStringLiteral("right.txt"))
+            if (rightTable->model()->index(row, 0).data().toString() == QStringLiteral("right.txt"))
                 rightFileRow = row;
         QVERIFY(rightFileRow >= 0);
         rightTable->selectRow(rightFileRow);
@@ -311,7 +314,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         action(window, "twoPanelsAction")->trigger();
         auto *rightPanel = window.findChild<QWidget *>("filePanel1");
         QVERIFY(rightPanel);
-        auto *rightTable = rightPanel->findChild<QTableWidget *>("archiveTable");
+        auto *rightTable = rightPanel->findChild<FileTable *>("archiveTable");
         auto *rightAddress = rightPanel->findChild<QLineEdit *>("archivePath");
         rightAddress->setFocus();
         QTRY_VERIFY(rightAddress->hasFocus());
@@ -331,8 +334,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         rightAddress->setFocus();
         QTRY_VERIFY(rightAddress->hasFocus());
         QTRY_VERIFY_WITH_TIMEOUT(
-            !rightTable->findItems(QStringLiteral("nested/вложенный файл.txt"), Qt::MatchExactly)
-                 .isEmpty(),
+            !PanelMatches(*rightTable, QStringLiteral("nested/вложенный файл.txt")).isEmpty(),
             4000);
         QCOMPARE(QFileInfo(leftAddress->text()).canonicalFilePath(),
                  QFileInfo(left).canonicalFilePath());
@@ -354,7 +356,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QVERIFY(QTest::qWaitForWindowActive(&window));
         QWidget *leftPanel = window.findChild<QWidget *>("filePanel0");
         auto *leftAddress = leftPanel->findChild<QLineEdit *>("archivePath");
-        auto *leftTable = leftPanel->findChild<QTableWidget *>("archiveTable");
+        auto *leftTable = leftPanel->findChild<FileTable *>("archiveTable");
         leftAddress->setText(left);
         QTest::keyClick(leftAddress, Qt::Key_Return);
         QTRY_VERIFY(leftTable->rowCount() > 0);
@@ -362,10 +364,11 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QWidget *rightPanel = window.findChild<QWidget *>("filePanel1");
         QVERIFY(rightPanel);
         auto *rightAddress = rightPanel->findChild<QLineEdit *>("archivePath");
-        auto *rightTable = rightPanel->findChild<QTableWidget *>("archiveTable");
+        auto *rightTable = rightPanel->findChild<FileTable *>("archiveTable");
         auto *rightIcons = rightPanel->findChild<QListView *>("iconList");
         for (int row = 0; row < leftTable->rowCount(); ++row)
-            if (leftTable->item(row, 0)->text() == QStringLiteral("source file.txt")) {
+            if (leftTable->model()->index(row, 0).data().toString() ==
+                QStringLiteral("source file.txt")) {
                 leftTable->selectRow(row);
                 leftTable->setCurrentCell(row, 0);
             }
@@ -400,7 +403,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QVERIFY(rightAddress->text().contains("right archive.zip"));
         int rightEntry = -1;
         for (int row = 0; row < rightTable->rowCount(); ++row)
-            if (rightTable->item(row, 0)->data(Qt::UserRole).toString() ==
+            if (rightTable->model()->index(row, 0).data(Qt::UserRole).toString() ==
                 QStringLiteral("right entry.txt"))
                 rightEntry = row;
         QVERIFY(rightEntry >= 0);
@@ -463,7 +466,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QVERIFY(leftAddress->text().contains("left archive.zip"));
         int leftEntry = -1;
         for (int row = 0; row < leftTable->rowCount(); ++row)
-            if (leftTable->item(row, 0)->data(Qt::UserRole).toString() ==
+            if (leftTable->model()->index(row, 0).data(Qt::UserRole).toString() ==
                 QStringLiteral("left entry.txt"))
                 leftEntry = row;
         QVERIFY(leftEntry >= 0);
@@ -614,7 +617,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         ControlledBackend backend;
         MainWindow window(&backend);
         auto *address = window.findChild<QLineEdit *>("archivePath");
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         address->setText(dir.path());
         QTest::keyClick(address, Qt::Key_Return);
         if (archive) {
@@ -688,9 +691,9 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *combo = window.findChild<QComboBox *>("pathCombo");
-        QWidget *view =
-            mode == 3 ? static_cast<QWidget *>(window.findChild<QTableWidget *>("archiveTable"))
-                      : static_cast<QWidget *>(window.findChild<QListView *>("iconList"));
+        QWidget *view = mode == 3
+                            ? static_cast<QWidget *>(window.findChild<FileTable *>("archiveTable"))
+                            : static_cast<QWidget *>(window.findChild<QListView *>("iconList"));
         const QString currentPath = address->text();
         for (int key : {Qt::Key_F1, Qt::Key_F2}) {
             view->setFocus();
@@ -745,9 +748,9 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QTest::keyClick(address, Qt::Key_Return);
         action(window, qPrintable(QStringLiteral("viewMode%1Action").arg(mode)))->trigger();
         window.show();
-        QWidget *view =
-            mode == 3 ? static_cast<QWidget *>(window.findChild<QTableWidget *>("archiveTable"))
-                      : static_cast<QWidget *>(window.findChild<QListView *>("iconList"));
+        QWidget *view = mode == 3
+                            ? static_cast<QWidget *>(window.findChild<FileTable *>("archiveTable"))
+                            : static_cast<QWidget *>(window.findChild<QListView *>("iconList"));
         int dialogs = 0;
         const QString name = QStringLiteral("новый файл.txt");
         const auto pressCreate = [&](QWidget *target, bool accept) {
@@ -825,7 +828,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
             address->setText(temp.path());
             QTest::keyClick(address, Qt::Key_Return);
         }
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         action(window, qPrintable(QStringLiteral("viewMode%1Action").arg(mode)))->trigger();
         window.show();
         QWidget *view = mode == 3
@@ -834,7 +837,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QVERIFY(view);
         view->setFocus();
         for (int row = 0; row < table->rowCount(); ++row)
-            if (table->item(row, 0)->text() == names[0])
+            if (table->model()->index(row, 0).data().toString() == names[0])
                 table->setCurrentCell(row, 0);
         table->clearSelection();
         const auto keypad = Qt::KeypadModifier;
@@ -935,7 +938,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         }
         action(window, "flatViewAction")->setChecked(flat);
         window.show();
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *table = window.findChild<FileTable *>("archiveTable");
         auto *icons = window.findChild<QListView *>("iconList");
         QTRY_COMPARE(table->rowCount(), 3);
         QAction *viewMode =
@@ -953,9 +956,9 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
                               view->visualRect(index).center());
         };
         auto marked = [&](int row) {
-            return table->item(row, 0)->data(Qt::BackgroundRole).isValid();
+            return table->model()->index(row, 0).data(Qt::BackgroundRole).isValid();
         };
-        QSignalSpy tableClicks(table, &QTableWidget::cellClicked);
+        QSignalSpy tableClicks(table, &QTableView::clicked);
         QSignalSpy iconClicks(icons, &QListView::clicked);
         click(0, Qt::ControlModifier);
         QCOMPARE(mode == 3 ? tableClicks.count() : iconClicks.count(), 1);
@@ -965,10 +968,10 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
                          .arg(table->currentRow())
                          .arg(table->selectionModel()->selectedRows().size())
                          .arg(static_cast<FileTable *>(table)->sourcePanel->IsItemMarked(
-                             table->item(0, 0)->data(Qt::UserRole + 6).toUInt()))
-                         .arg(table->item(0, 0)->data(Qt::BackgroundRole).toString())
-                         .arg(table->item(0, 0)->text())
-                         .arg(table->item(0, 0)->data(Qt::UserRole + 6).toUInt())));
+                             table->model()->index(0, 0).data(Qt::UserRole + 6).toUInt()))
+                         .arg(table->model()->index(0, 0).data(Qt::BackgroundRole).toString())
+                         .arg(table->model()->index(0, 0).data().toString())
+                         .arg(table->model()->index(0, 0).data(Qt::UserRole + 6).toUInt())));
         click(2, Qt::ControlModifier);
         QVERIFY(marked(0) && marked(2));
         QCOMPARE(table->selectionModel()->selectedRows().size(), 1);
@@ -988,11 +991,12 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
                                             ->toPlainText()
                                             .normalized(QString::NormalizationForm_C);
                 for (int row : {1, 2})
-                    QVERIFY2(summary.contains(table->item(row, 0)->text().normalized(
-                                 QString::NormalizationForm_C)),
-                             qPrintable(summary));
-                QVERIFY2(!summary.contains(
-                             table->item(0, 0)->text().normalized(QString::NormalizationForm_C)),
+                    QVERIFY2(
+                        summary.contains(table->model()->index(row, 0).data().toString().normalized(
+                            QString::NormalizationForm_C)),
+                        qPrintable(summary));
+                QVERIFY2(!summary.contains(table->model()->index(0, 0).data().toString().normalized(
+                             QString::NormalizationForm_C)),
                          qPrintable(summary));
             });
             action(window, "copyAction")->trigger();
@@ -1105,10 +1109,10 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QCOMPARE(view->selectionMode(), QAbstractItemView::SingleSelection);
         action(window, "selectAllAction")->trigger();
         for (int row = 0; row < view->rowCount(); ++row)
-            QVERIFY(view->item(row, 0)->data(Qt::BackgroundRole).isValid());
+            QVERIFY(view->model()->index(row, 0).data(Qt::BackgroundRole).isValid());
         action(window, "invertSelectionAction")->trigger();
         for (int row = 0; row < view->rowCount(); ++row)
-            QVERIFY(!view->item(row, 0)->data(Qt::BackgroundRole).isValid());
+            QVERIFY(!view->model()->index(row, 0).data(Qt::BackgroundRole).isValid());
     }
 
     void alternativeMarksSurviveRemovalAndScroll() {
@@ -1140,9 +1144,9 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         auto *files = table(window);
         QTRY_COMPARE(files->rowCount(), 51);
         action(window, "selectAllAction")->trigger();
-        QCOMPARE(files->item(0, 0)->data(Qt::UserRole + 6).toUInt(), UInt32(-1));
-        QVERIFY(!files->item(0, 0)->data(Qt::BackgroundRole).isValid());
-        QVERIFY(files->item(50, 0)->data(Qt::BackgroundRole).isValid());
+        QCOMPARE(files->model()->index(0, 0).data(Qt::UserRole + 6).toUInt(), UInt32(-1));
+        QVERIFY(!files->model()->index(0, 0).data(Qt::BackgroundRole).isValid());
+        QVERIFY(files->model()->index(50, 0).data(Qt::BackgroundRole).isValid());
         QVERIFY(QFile::remove(temp.filePath(QStringLiteral("файл 25.txt"))));
         action(window, "refreshAction")->trigger();
         QTRY_COMPARE(files->rowCount(), 50);
@@ -1150,12 +1154,12 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         CRecordVector<UInt32> marks;
         static_cast<FileTable *>(files)->sourcePanel->Get_ItemIndices_Selected(marks);
         QCOMPARE(marks.Size(), unsigned(49));
-        QVERIFY(!files->item(0, 0)->data(Qt::BackgroundRole).isValid());
+        QVERIFY(!files->model()->index(0, 0).data(Qt::BackgroundRole).isValid());
         action(window, "viewMode0Action")->trigger();
         auto *icons = window.findChild<QListView *>("iconList");
         icons->scrollTo(icons->model()->index(49, 0));
         QApplication::processEvents();
-        QVERIFY(files->item(49, 0)->data(Qt::BackgroundRole).isValid());
+        QVERIFY(files->model()->index(49, 0).data(Qt::BackgroundRole).isValid());
         const QModelIndex hovered = icons->model()->index(49, 0);
         QTRY_VERIFY(icons->viewport()->rect().contains(icons->visualRect(hovered)));
         // QWidget's no-button overload only moves the system cursor. Deliver

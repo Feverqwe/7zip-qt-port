@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/ListViewDialog.h"
+#include "panel_model_support.h"
 #include "window_state_support.h"
 #include <QTreeWidget>
 
@@ -41,10 +42,10 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
                                                 QItemSelectionModel::NoUpdate);
     }
     static void corruptPresentationPath(MainWindow &window, int row) {
-        auto *item = table(window)->item(row, 0);
-        item->setData(Qt::UserRole, QString("unrelated/display-only.txt"));
-        item->setData(Qt::UserRole + 1, false);
-        item->setData(Qt::UserRole + 4, 9999u);
+        const QPersistentModelIndex item = table(window)->model()->index(row, 0);
+        QVERIFY(!SetPanelData(item, QString("unrelated/display-only.txt"), Qt::UserRole));
+        QVERIFY(!SetPanelData(item, false, Qt::UserRole + 1));
+        QVERIFY(!SetPanelData(item, 9999u, Qt::UserRole + 4));
         // The source item parameter (+6) and source folder remain untouched.
     }
     static void closeNextDialog(MainWindow &window, const QString &destination, bool accepted) {

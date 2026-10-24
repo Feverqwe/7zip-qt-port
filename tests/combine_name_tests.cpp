@@ -58,7 +58,7 @@ class CombineNameTests final : public QObject, protected MainWindowTestSupport {
         QTest::keyClick(address, Qt::Key_Return);
         int row = -1;
         for (int index = 0; index < table(window)->rowCount(); ++index)
-            if (table(window)->item(index, 0)->text() == first)
+            if (table(window)->model()->index(index, 0).data().toString() == first)
                 row = index;
         QVERIFY(row >= 0);
         table(window)->selectRow(row);

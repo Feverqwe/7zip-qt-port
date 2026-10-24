@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/PropertyName.h"
 #include "archivecodeccatalog.h"
+#include "filetable.h"
 #include "fixtures/window_activation.h"
 #include "layout_inspection.h"
 #include "property_projection_support.h"
@@ -22,7 +23,7 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
     static FileTable &view(MainWindow &window, unsigned pane) {
         return *static_cast<FileTable *>(
             window.findChild<QWidget *>(QString("filePanel%1").arg(pane))
-                ->findChild<QTableWidget *>("archiveTable"));
+                ->findChild<FileTable *>("archiveTable"));
     }
     static void focusPath(MainWindow &window, unsigned pane) {
         window.findChild<QWidget *>(QString("filePanel%1").arg(pane))
@@ -45,18 +46,23 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
             const int column = list.columnForCatalogProperty(i);
             QVERIFY(column >= 0);
             QCOMPARE(list.isColumnHidden(column), !columns[i].IsVisible);
-            QCOMPARE(list.horizontalHeaderItem(column)->text(), ToQString(columns[i].Name));
+            QCOMPARE(list.model()->headerData(column, Qt::Horizontal).toString(),
+                     ToQString(columns[i].Name));
             for (int row = 0; row < list.rowCount(); ++row) {
-                QCOMPARE(list.item(row, column)->textAlignment(),
+                QCOMPARE(list.model()
+                             ->index(row, column)
+                             .data(Qt::TextAlignmentRole)
+                             .value<Qt::Alignment>(),
                          GetColumnAlign(columns[i].ID, columns[i].Type));
                 QString expected = list.sourcePanel->GetItemText(
-                    list.item(row, 0)->data(Qt::UserRole + 6).toUInt(), columns[i]);
+                    list.model()->index(row, 0).data(Qt::UserRole + 6).toUInt(), columns[i]);
                 // The retained Qt logical-zero display boundary composes a
                 // flat prefix and NFC, while source item names stay raw.
                 if (column == 0)
-                    expected = (list.item(row, 0)->data(Qt::UserRole + 5).toString() + expected)
-                                   .normalized(QString::NormalizationForm_C);
-                QCOMPARE(list.item(row, column)->text(), expected);
+                    expected =
+                        (list.model()->index(row, 0).data(Qt::UserRole + 5).toString() + expected)
+                            .normalized(QString::NormalizationForm_C);
+                QCOMPARE(list.model()->index(row, column).data().toString(), expected);
             }
         }
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
@@ -227,12 +233,16 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
         QVERIFY(!panel.GetVisibleColumns().IsEqualTo(unchanged));
         QCOMPARE(panel.GetVisibleColumns()[1].Width, UInt32(173));
         QCOMPARE(panel.GetVisibleColumns()[1].Type, VARTYPE(VT_BSTR));
-        QCOMPARE(list.item(0, list.columnForCatalogProperty(1))->text(),
+        QCOMPARE(list.model()->index(0, list.columnForCatalogProperty(1)).data().toString(),
                  QStringLiteral("typed 文件"));
-        QCOMPARE(list.item(0, list.columnForCatalogProperty(1))->textAlignment(),
+        QCOMPARE(list.model()
+                     ->index(0, list.columnForCatalogProperty(1))
+                     .data(Qt::TextAlignmentRole)
+                     .value<Qt::Alignment>(),
                  Qt::AlignLeft | Qt::AlignVCenter);
-        QCOMPARE(list.horizontalHeaderItem(list.columnForCatalogProperty(2))->text(),
-                 QStringLiteral("column α"));
+        QCOMPARE(
+            list.model()->headerData(list.columnForCatalogProperty(2), Qt::Horizontal).toString(),
+            QStringLiteral("column α"));
         inspect(window, list, peer, "schema-type");
         const CPropColumns beforeName = panel.GetVisibleColumns();
         spec->properties[2].name = L"column 文件";
@@ -240,8 +250,9 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
         QVERIFY(!panel.GetVisibleColumns().IsEqualTo(beforeName));
         QCOMPARE(panel.GetVisibleColumns()[1].Width, UInt32(173));
         QCOMPARE(ToQString(panel.GetVisibleColumns()[2].Name), QStringLiteral("column 文件"));
-        QCOMPARE(list.horizontalHeaderItem(list.columnForCatalogProperty(2))->text(),
-                 QStringLiteral("column 文件"));
+        QCOMPARE(
+            list.model()->headerData(list.columnForCatalogProperty(2), Qt::Horizontal).toString(),
+            QStringLiteral("column 文件"));
         QCOMPARE(list.selectionModel()->selectedRows().size(), 2);
         QCOMPARE(window.focusWidget(), focused);
         inspect(window, list, peer, "schema-name");
@@ -340,15 +351,16 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
                  QList<QPair<QString, QString>>{{high, "7087B7C9"}, {low, "3610A686"}}) {
                 int row = -1;
                 for (int i = 0; i < list.rowCount(); ++i)
-                    if (list.item(i, 0)
-                            ->data(Qt::UserRole)
+                    if (list.model()
+                            ->index(i, 0)
+                            .data(Qt::UserRole)
                             .toString()
                             .normalized(QString::NormalizationForm_C) ==
                         expected.first.normalized(QString::NormalizationForm_C))
                         row = i;
                 QVERIFY(row >= 0);
-                const UInt32 index = list.item(row, 0)->data(Qt::UserRole + 6).toUInt();
-                QCOMPARE(list.item(row, column)->text(), expected.second);
+                const UInt32 index = list.model()->index(row, 0).data(Qt::UserRole + 6).toUInt();
+                QCOMPARE(list.model()->index(row, column).data().toString(), expected.second);
                 QCOMPARE(panel.GetItemText(index, panel.GetColumns()[crcIndex]), expected.second);
                 checkCrcProperties(panel, index, expected.second,
                                    QString("%1-%2").arg(flat).arg(expected.first));
@@ -359,8 +371,9 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
                 panel.SortItemsWithPropID(kpidCRC);
             panel.OnReload();
             QTRY_COMPARE(list.rowCount(), flat ? 5 : 2);
-            QCOMPARE(list.item(0, 0)
-                         ->data(Qt::UserRole)
+            QCOMPARE(list.model()
+                         ->index(0, 0)
+                         .data(Qt::UserRole)
                          .toString()
                          .normalized(QString::NormalizationForm_C),
                      low);

@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
+#include "filetable.h"
 #include "mainwindow.h"
 #include "qtfilemanagerstartup.h"
 #include <QApplication>
@@ -61,11 +62,11 @@ int main(int argc, char **argv) {
             auto *window = dynamic_cast<MainWindow *>(widget);
             if (!window || (!inspectState && !window->isVisible()))
                 continue;
-            auto *table = window->findChild<QTableWidget *>("archiveTable");
+            auto *table = window->findChild<FileTable *>("archiveTable");
             if (!table || !table->isEnabled())
                 continue;
             for (int row = 0; row < table->rowCount(); ++row) {
-                if (table->item(row, 0)->text() != expected)
+                if (table->model()->index(row, 0).data().toString() != expected)
                     continue;
                 bound = true;
 #ifdef Q_OS_WIN

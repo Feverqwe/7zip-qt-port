@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "Windows/PropVariant.h"
 #include "copydialog.h"
+#include "filetable.h"
 #include "fixtures/widget_dialogs.h"
 #include "fixtures/window_activation.h"
 #include "window_state_support.h"
@@ -78,7 +79,7 @@ class CopyPublicationOrderTests final : public QObject, protected MainWindowTest
         address->setFocus();
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
-        return static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        return static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
     }
     static void write(const QString &path, const QByteArray &bytes) {
         QFile file(path);
@@ -134,7 +135,8 @@ class CopyPublicationOrderTests final : public QObject, protected MainWindowTest
         peer->sourcePanel->Set_AutoRefresh_Mode(false);
         int payload = -1;
         for (int row = 0; row < source->rowCount(); ++row)
-            if (source->item(row, 0)->text().normalized(QString::NormalizationForm_C) == name)
+            if (source->model()->index(row, 0).data().toString().normalized(
+                    QString::NormalizationForm_C) == name)
                 payload = row;
         QVERIFY(payload >= 0);
         source->selectRow(payload);

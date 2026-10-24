@@ -1,0 +1,127 @@
+# Файловая панель: Qt Model/View — 2026-10-24
+
+Область: таблица, значковые виды и их прямые потребители в File Manager.
+Ветка `feature/file-panel-model-view`, база Desktop `df10e42b`.
+
+## Исходная реализация и граница адаптации
+
+Источник — <https://github.com/ip7z/7zip.git>, baseline
+`b88c6bc09339de32f7d18bbab900686b244f42ba` (26.05), записанный в
+[общем manifest](../upstream-baseline.json). Полные оригинальные units
+`CPP/7zip/UI/FileManager/{PanelItems.cpp,PanelListNotify.cpp,PanelSort.cpp,Panel.h,IFolder.h,FSFolder.cpp,FSFolder.h}`
+сверены с сохранённым runtime snapshot 26.05; они совпадают с read-only
+sibling checkout 26.04. До реализации рассмотрены RefreshListCtrl/InitColumns,
+LVIF_PARAM и callback text publication, notify/custom-draw/property branches,
+CompareItems/CompareItems2, исходные интерфейсы providers и локальные callers
+выбора, навигации, columns, rename, drag и refresh.
+
+Перечисление и загрузка остаются в исходных providers/Agent и CPanel.
+`PanelItems`, `PanelListNotify` и `PanelSort` сохраняют прежние authoritative
+адаптации: LoadListItems/RefreshListCtrl, GetItemText, CompareItemIndices,
+OnCustomDraw, source marks и восстановление выбора. Новых внешних imports
+или скопированных алгоритмов в этом изменении нет; исходный baseline,
+hashes, notices и LGPL-2.1-or-later license не меняются.
+Повторяемая проверка оригиналов и сравнение будущих ревизий выполняются
+[существующим baseline tooling](../upstream-update.md).
+
+`FilePanelModel` — локальная Qt-интеграция, а `FileTable` — QTableView.
+Они заменяют QTableWidget/ArchiveTableItem presentation storage, не исходные
+folder providers. На строку публикуются source index, необходимые пути/имя,
+иконка и состояния представления. Текст свойств запрашивается и кэшируется
+при отображении; числовые свойства читает тот же provider. Таблица и QListView
+используют одну модель и один QItemSelectionModel. Layout notifications и
+перенос persistent indexes сохраняют текущий элемент и выбор при сортировке.
+Parent sentinel, grouping, raw-property comparison и source sort defaults
+остаются прежними; их вычисления делегируются исходному panel owner.
+
+Notification guards запрещают новые обращения к provider; уже отображённый
+текст остаётся доступен. Смена языка помечает текст устаревшим до безопасного
+следующего запроса. Модель хранит только необладающий identity pointer provider,
+чтобы не продлевать жизнь archive streams после освобождения CPanel.
+Публикация больших папок сохраняет существующее ограничение GUI batches.
+
+Старые cell-based обращения тестов заменены чтением Qt model roles/indexes.
+Отдельные QTableWidget fixtures для общего QAbstractItemView-контракта CPanel
+сохранены. Проверка Qt model contract дополнена сохранением выбора/current и
+persistent indexes после sort/column insert/row removal; она обнаруживает
+перенос выбора на другой файл и невалидные model notifications.
+
+При проверках восстановлены стандартные semantics Qt view для установки
+current index: вызов без explicit selection flags учитывает SelectRows;
+вызов с NoUpdate сохраняет отдельный focus. Существующие source_create,
+panel_key и panel_shell обнаружили потерю полного row selection в первой
+версии адаптера. Дополнительно исправлен существующий Qt startup gap:
+общий read-only badge создаётся при первой панели, включая восстановленную
+правую, а не только при создании панели 0. Crash trace старого бинарника и
+нового scope указывали на один null QObject при refreshPanelStatus;
+полная существующая panel_creation_path matrix после исправления проходит.
+Этот общий badge — локальная UI-интеграция direct-device режима, без
+соответствующего upstream Win32 control; алгоритмы providers не затронуты.
+
+## Границы и проверка
+
+Win32 ListView presentation заменён Qt model/view; исходные archive algorithms,
+provider interfaces и операции не перенесены в модель. Новых пользовательских
+команд, изменения структуры панели или намеренного изменения layout нет.
+Это не полная виртуализация перечисления: provider по-прежнему загружает свои
+items, а GUI публикует строковые metadata. Уменьшение памяти и скорости не
+заявляется измеренным до отдельного замера.
+
+macOS, Qt 6.12.0, 2026-10-24:
+
+- Финальная сборка всех targets через `scripts/build.sh dev` — PASS.
+  Использованы собственные incremental build/runtime trees worktree,
+  установленный harness Qt kit и существующий compiler cache.
+- Выбраны 69 suites панели и прямых consumers. После локальных исправлений
+  подтверждены 66: первоначальная broad серия дала 62/68 PASS, затем
+  `panel_creation_path`, `panel_key`, `source_create` и `panel_shell`
+  перепроверены успешно. Follow-up batch из восьми suites — 8/8 PASS,
+  затем `panel_shell` — 1/1 PASS. Полный исходный batch повторно не запускался.
+- Три оставшиеся suites имеют воспроизведённые baseline failures:
+  source-only `panel_navigation` — те же восемь ошибок в существующем
+  основном бинарнике; `root_command::rootCommandClosesArchiveLinks` — оба
+  состояния; `panel_activation` — представитель plain-Enter и представитель
+  failed-folder recovery. Они не объявлены принятыми и не расширены в отдельный
+  functional rewrite в рамках смены presentation model.
+- Qt model contract/persistent selection, raw properties, timestamps,
+  directory sizes, deleted-item colors, source icons, table/icon views,
+  sort/column changes, rename, refresh, drag/drop, filesystem/archive copying
+  и их прямые оконные consumers покрыты focused проверками.
+- Проверены актуальные widget JSON/offscreen: 980×620 и 640×400,
+  normal/enlarged font, table и icon views. Адрес, Parent, viewport и status
+  полностью видимы без перекрытия. Это geometry evidence, а не rendered
+  Windows 7zFM pixel comparison или physical input acceptance.
+
+Локальные receipts: `build/model-final-build.log`,
+`build/model-tests-unsandboxed.log`, `build/model-followup-tests.log`,
+`build/model-status-tests.log` и отдельные baseline logs. Первые диагностические
+запуски без task runtime и внутри sandbox остановлены; они не являются
+приёмочными результатами. Последующая runtime preparation выполнилась штатно
+из pinned upstream bundle с повторным использованием compiler cache.
+
+Linux/Windows: selected 25-suite run `20261024T145533Z-d6889d6b`
+собрал targets на обоих configured runners. Полные UI matrices упираются
+в timeout; их acceptance не установлена. На Linux один из активных tests
+наблюдался в D state с `jbd2_log_wait_commit`; это не устанавливает причину
+всех timeout. Эта серия использует snapshot до финальной коррекции
+row-selection convenience call, startup badge и старых layout assertions.
+Остаток этой большой серии остановлен после повторных timeout; неизвестные
+результаты не засчитаны как PASS.
+
+Финальная адресная серия `20261024T154044Z-b63360d2` использует текущую модель,
+исправленные row-selection/startup и layout assertions. Linux — 6/6 PASS,
+Windows — 5/6 PASS: `panel_columns`, `panel_filesystem_sort`,
+`panel_archive_sort`, `panel_refresh_notifications`, `ui_layout`.
+Linux `panel_shell` также PASS; Windows native `panel_shell` достигает своего
+30-секундного timeout и не принят. Пять успешных Windows suites и Linux
+geometry/model checks используют Qt offscreen; это не native/pixel acceptance.
+Проверки выполнялись через существующие source staging, branch locks, transport,
+incremental build и CTest helpers. Состояние подключений сохранено в том же
+harness runner registry; приватные настройки не копировались в worktree.
+
+Slow suites, full/release gates, installed packages, rendered original Windows
+reference и physical/native input acceptance не выполнялись. Source transfer
+completeness для смены presentation storage подтверждена отдельно:
+providers/Agent/CPanel algorithms и прежние omissions не изменены, новых
+source-visible заглушек или не подключённых model consumers в выбранном
+scope не осталось.

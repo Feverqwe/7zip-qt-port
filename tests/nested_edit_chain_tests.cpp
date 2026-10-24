@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "external_editor_fixture.h"
+#include "filetable.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "native_property_failure_runtime.h"
@@ -150,14 +151,15 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         });
         window.openArchive(outer);
         QTRY_COMPARE(table(window)->rowCount(), 1);
-        QTRY_COMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+        QTRY_COMPARE(table(window)->model()->index(0, 0).data().toString().normalized(
+                         QString::NormalizationForm_C),
                      innerName);
         table(window)->selectRow(0);
         table(window)->setCurrentCell(0, 0);
         QTRY_VERIFY(action(window, "openInsideAction")->isEnabled());
         action(window, "openInsideAction")->trigger();
-        QTRY_VERIFY2(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C) ==
-                         name,
+        QTRY_VERIFY2(table(window)->model()->index(0, 0).data().toString().normalized(
+                         QString::NormalizationForm_C) == name,
                      qPrintable(openingMessage));
         table(window)->selectRow(0);
         const QString address = window.findChild<QLineEdit *>("archivePath")->text();
@@ -184,7 +186,8 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
                                           .Back()
                                           .FilePath));
         action(window, "upAction")->trigger();
-        QTRY_COMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+        QTRY_COMPARE(table(window)->model()->index(0, 0).data().toString().normalized(
+                         QString::NormalizationForm_C),
                      innerName);
         QCOMPARE(parentPrompt, !innerFailed);
         QVERIFY(promptGeometry);
@@ -254,13 +257,15 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         responder.start(1);
         window.openArchive(outer);
         QTRY_COMPARE(table(window)->rowCount(), 1);
-        QTRY_COMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+        QTRY_COMPARE(table(window)->model()->index(0, 0).data().toString().normalized(
+                         QString::NormalizationForm_C),
                      innerName);
         table(window)->selectRow(0);
         table(window)->setCurrentCell(0, 0);
         QTRY_VERIFY(action(window, "openInsideAction")->isEnabled());
         action(window, "openInsideAction")->trigger();
-        QTRY_COMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+        QTRY_COMPARE(table(window)->model()->index(0, 0).data().toString().normalized(
+                         QString::NormalizationForm_C),
                      name);
         table(window)->selectRow(0);
         for (const char *id : {"toolbarAddAction", "deleteAction", "renameAction",
@@ -324,14 +329,16 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         responder.start(1);
         window.openArchive(outer);
         QTRY_COMPARE(table(window)->rowCount(), 1);
-        QTRY_COMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+        QTRY_COMPARE(table(window)->model()->index(0, 0).data().toString().normalized(
+                         QString::NormalizationForm_C),
                      innerName);
         table(window)->selectRow(0);
         table(window)->setCurrentCell(0, 0);
         QTRY_VERIFY(action(window, "openInsideAction")->isEnabled());
         action(window, "openInsideAction")->trigger();
         QVERIFY(prompted);
-        QCOMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+        QCOMPARE(table(window)->model()->index(0, 0).data().toString().normalized(
+                     QString::NormalizationForm_C),
                  innerName);
         QVERIFY(window.findChild<QLineEdit *>("archivePath")->text().endsWith("outer.zip"));
         QCOMPARE(read(outer), original);
@@ -368,7 +375,8 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         responder.start(1);
         window.openArchive(outer);
         QTRY_COMPARE(table(window)->rowCount(), 1);
-        QTRY_COMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+        QTRY_COMPARE(table(window)->model()->index(0, 0).data().toString().normalized(
+                         QString::NormalizationForm_C),
                      innerName);
         table(window)->selectRow(0);
         table(window)->setCurrentCell(0, 0);

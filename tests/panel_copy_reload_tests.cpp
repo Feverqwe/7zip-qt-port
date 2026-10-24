@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "copydialog.h"
 #include "filesystemscanner.h"
+#include "filetable.h"
 #include "fixtures/widget_dialogs.h"
 #include "fixtures/window_activation.h"
 #include "layout_inspection.h"
@@ -57,8 +58,7 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(WindowActivation::waitForActive(window));
         action(window, "twoPanelsAction")->trigger();
         auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - sourceIndex));
-        auto *peerView =
-            static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        auto *peerView = static_cast<FileTable *>(peerUi->findChild<FileTable *>("archiveTable"));
         peerView->setFocus();
         QTRY_VERIFY(peerView->hasFocus());
         LoadFolder *spec = nullptr;
@@ -104,7 +104,7 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
         address->setText(input);
         QTest::keyClick(address, Qt::Key_Return);
         auto *sourceView =
-            static_cast<FileTable *>(sourceUi->findChild<QTableWidget *>("archiveTable"));
+            static_cast<FileTable *>(sourceUi->findChild<FileTable *>("archiveTable"));
         QTRY_COMPARE(sourceView->rowCount(), 1);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
         sourceView->selectRow(0);
