@@ -58,6 +58,13 @@
     "lib/compress/zstd_preSplit.h": "910facb2e3442e42a6952c514223c4502d95ed957bf7dc73982b3b03785b361b",
     "lib/compress/zstdmt_compress.c": "c83db699b4041bf4db89c5558db490dd295635f1eeefd60b643fbc862bbac7b5",
     "lib/compress/zstdmt_compress.h": "033fb25d96b4295c3d0158edf4d1bd4067f42aac39427706754e6c034b20f80f",
+    "lib/decompress/huf_decompress.c": "710a88d877d5dc5c83a4f839392996f337ec81cf38006c4a5be6042de5b54828",
+    "lib/decompress/zstd_ddict.c": "38bf812283d61f4cd1f6aea30f84b43317418257c4e6fc198b09b436bd484397",
+    "lib/decompress/zstd_ddict.h": "a97a250fd2f956e3ae419ddde68ae1f9fe4025bc0373254058d31bbd352fa71c",
+    "lib/decompress/zstd_decompress.c": "029580818b7e9cd38d9d07c63516b00ceaa943ffcfbd099fc5ccbe3628fa362f",
+    "lib/decompress/zstd_decompress_block.c": "9cb8bcb07aeb87e4717a9c8a86d20832dc525dde2c1b72efdaaab7c937f43b87",
+    "lib/decompress/zstd_decompress_block.h": "62ee0c6ae3f7353020538397f436b59743da8acb922068841b346f480f7078ac",
+    "lib/decompress/zstd_decompress_internal.h": "73217b49a644c0fcf567b70677cae31449ba9f50a235ef3b681001c3f36dc56d",
     "lib/zstd.h": "9b4bc8245565c98ccfc61c07749928b57e7c0f6fddb0530c4f6aa1971893d88b",
     "lib/zstd_errors.h": "66a8c3f71d12ea6e797e4f622f31f3f8f81c41b36f48cad4f5de7d8bfb6aac0a"
   },
@@ -122,5 +129,15 @@
     "lib/zstd_errors.h": "src/zstd/lib/zstd_errors.h"
   },
   "scope": "Unchanged official libzstd 1.5.7 common/compression sources, compiled as C; ZIP encoding only, no decoder, CLI, dictionary builder or nested worker threads.",
-  "kind": "unchanged-dependencies"
+  "kind": "unchanged-dependencies",
+  "reference_only": [
+    "lib/decompress/huf_decompress.c",
+    "lib/decompress/zstd_ddict.c",
+    "lib/decompress/zstd_ddict.h",
+    "lib/decompress/zstd_decompress.c",
+    "lib/decompress/zstd_decompress_block.c",
+    "lib/decompress/zstd_decompress_block.h",
+    "lib/decompress/zstd_decompress_internal.h"
+  ],
+  "reference_scope": "Decoder source comparison only; reference_only units are not copied into the product. Compiled public-API probes use ZSTD_DISABLE_ASM on macOS arm64."
 }

@@ -147,3 +147,124 @@ batch `20261024T090604Z-592f1365`. Official native module и независим�
 это установленная граница совместимости, а не ошибка созданного архива.
 Полный gate, slow suites и release/package acceptance не запускались:
 выбранные focused suites покрывают изменённые consumers и build boundary.
+
+## Сравнение decoder SDK и libzstd — 2026-10-24
+
+Проверено после rebase, Desktop `6e97d6d5`, официальный SDK 26.05
+`b88c6bc09339de32f7d18bbab900686b244f42ba` и libzstd 1.5.7
+`f8745da6ff1ad1e7bab384bd1f9d742439278e99`.
+Функциональный код приложения не изменён. Сопоставлены полные Code/Read/
+Prepare/GetFinishResult/ReadUnused bodies SDK, C state/result API, все прямые
+consumers, публичные libzstd buffer/stream APIs, reset, frame boundaries,
+header limits и errors. Прочитаны соответствующие decoder branches libzstd.
+Семь полных decoder C/header units закреплены как `reference_only` в
+[существующем manifest](../zstd-encoder-baseline.json), с SHA256 оригиналов;
+в product source/dependencies они не импортированы. Их verify/review используют
+те же команды reference tooling, что и encoder.
+
+### Результат сравнения
+
+**Прямая замена не сохраняет всё текущее поведение.** Для исправных inputs
+совместимость хорошая; для повреждённых входов уже измерены различия partial
+output. Для замены алгоритма нужны сохранённые adapters и отдельная приёмка.
+
+| Consumer | Текущий контракт | Что потребуется от libzstd adapter |
+| --- | --- | --- |
+| ZIP | Code, полный finish mode, точные sizes/consumed bytes, HRESULT и checksum result | Потоковый API, source/output/progress callbacks, finish и error mapping; сохранить recovery output |
+| Standalone .zst | Open/OpenSeq, concatenated/skippable frames, metadata, pull Read и ReadUnused, partial result | Сохранить форматный parser и агрегированную статистику; новый decoder не заменяет handler |
+| QCOW | Один frame, точный размер cluster, sector padding после frame, отдельное время жизни stream | Найти границу первого frame, декодировать только его, проверить полный размер; не подавать padding как следующий frame |
+| SquashFS SDK/GPL | Bounded blocks; варианты различаются остановкой на frame и допустимостью хвоста | Явные exact-input/single-frame режимы, сохранённые variant owners и output bounds |
+| EROFS | Полный decode либо prefix read; window не больше filesystem dictionary, bounded output | Prefix streaming mode и отдельная проверка frame window; single-pass в короткий output не заменяет partial mode |
+| Initramfs | Один frame и точное consumed для следующей записи, cancellation, ограничение окна | Остановиться на frame boundary, вернуть остаток входа, сохранить progress/I/O/limit checks |
+
+SDK `CZstdDecInfo` также даёт количество блоков/data/skippable frames, суммарные
+размеры, checksum и максимальные declared/allocated windows. libzstd header API
+даёт сведения отдельного frame; готового эквивалента всей aggregate statistics
+и `CZstdDecResInfo` нет. Существующий upstream parser можно сохранить; не нужно
+переписывать ZIP или вводить собственные алгоритмы декодирования.
+
+В `.zst` различаются CRCError, UnexpectedEnd, IsNotArc, DataAfterEnd и
+UnsupportedMethod. Коды libzstd позволяют построить mapping, но не являются
+готовыми HRESULT или `NOperationResult`. Пустой input дополнительно должен
+отличаться от корректного пустого frame. После ошибки libzstd требует reset
+decoder state; callbacks и отмена принадлежат адаптеру. Эти механизмы не
+исчезнут при замене алгоритма библиотекой.
+
+### Окна и память
+
+Активный предел SDK — 2 GiB, в том числе на 64-bit. Ветка с `MAX_WINDOW_SIZE_LOG=41`
+отключена условием `&& 0 == 1`; из неё нельзя выводить поддержку 2 TiB.
+libzstd streaming по умолчанию ограничивает окно 128 MiB; на 64-bit параметр
+`ZSTD_d_windowLogMax=31` позволяет сохранить предел SDK. Синтетические frames
+с 40 bytes payload и объявленными окнами 256 MiB, 1 GiB и 2 GiB проходят SDK
+и настроенный stream decoder, но не default stream decoder. Большие allocations
+не создавались: известный маленький content size ограничивает actual buffer.
+Frame с window log 32 отвергается обоими.
+
+Single-pass и streaming нельзя считать взаимозаменяемыми для limits: libzstd
+имеет shortcut для полного known-size frame, который выполняется до streaming
+max-window gate. EROFS dictionary и initramfs policy нужно проверять явно через
+header API независимо от выбранного пути. На 32-bit SDK source допускает window
+log 31, а libzstd ограничивает его 30; runtime 32-bit не проверялся.
+
+Дополнительный 53-byte frame с declared window 2.25 GiB и actual output 40 bytes
+подтвердил shortcut: SDK его отвергает, libzstd single-pass принимает; stream
+с max log 31 и input по 13 bytes отвергает, а stream с полным input принимает.
+Это не большая allocation и не повреждение памяти, но показывает, почему
+лимит формата/consumer нельзя обеспечивать одним streaming parameter.
+
+### Поведенческий эксперимент
+
+На macOS arm64 собран diagnostic probe из неизменённых official common/
+decompress C units через существующий compiler cache (`ZSTD_DISABLE_ASM`).
+Он вызывает только libzstd public APIs и не содержит decoder implementation.
+Использованы существующие `tests/zstd_fixture.py`: 22 valid и 14 malformed cases,
+плюс empty input, size overflow, пять window boundaries и frame с sector padding —
+44 inputs. Для каждого сравнены SDK sidecar extraction, single-pass,
+default/max-window stream и остановка после первого frame. Вход/выход —
+disposable synthetic fixtures, пользовательских архивов нет.
+
+- Все 22 valid cases дают exact одинаковые bytes в SDK и настроенном stream
+  libzstd: raw/RLE, compressed/Huffman, checksum, unknown sizes, zero dictionary
+  IDs, concatenated/empty frames и все skippable IDs.
+- Все 14 malformed cases отклонены SDK и настроенным stream decoder. Это
+  совпадение acceptance, а не равенство diagnostics или recovery data.
+- В `body-short` оба stream пути дают 528 bytes и неполный результат; single-pass
+  возвращает ошибку без публичного размера пригодного partial output.
+- В `checksum-bad` SDK отдаёт 297000 bytes с CRC error; обычный libzstd stream
+  с 13-byte input / 64 KiB output chunks отдаёт 262144 bytes с checksum error.
+  При input по 1 byte libzstd успевает вернуть все 297000 bytes до ошибки;
+  при 1 KiB output и 13-byte input — 296960. Количество доступных bytes зависит
+  от границ вызова. Это конкретный риск потери recovery output при прямой замене.
+- `late-crc` также сохраняет меньше данных в обычном libzstd stream;
+  при несогласованном content size (`size-large`) partial output отличается.
+  Нельзя объявлять этот output проверенным или превращать ошибку в успех.
+- Для пустого input `ZSTD_decompressDCtx` возвращает 0 как успешный размер,
+  тогда как SDK не открывает его как Zstd archive. Нужен прежний no-archive gate.
+- После первого frame libzstd возвращает consumed boundary до padding;
+  QCOW/initramfs могут использовать этот режим. При декодировании всего input
+  тот же padding является ошибкой, как хвост standalone stream.
+
+Текущие `zstd`/`zstd_stream` suites — 2/2 PASS на macOS; они подтверждают
+исходные SDK metadata, pull/seq, source/output failure, cancellation и ZIP
+consumer contracts. Альтернативного product adapter пока нет: эти suites не
+доказывают его соответствие. Диагностические `results.json`, `recovery.json`,
+probe source и воспроизводящий driver сохранены в ignored
+`build/zstd-decoder-comparison/` (дополнительный window case —
+`window-shortcut.json`). Производительность, peak RAM, native 32-bit,
+Linux/Windows differential runtime и реальные damaged media не проверялись.
+
+### Рекомендация
+
+Не заменять SDK decoder одним вызовом `ZSTD_decompress`/`ZSTD_decompressStream`.
+Для законченной миграции сначала нужен compatibility adapter с доказанными
+partial-output, frame/consumed и diagnostic contracts. Наиболее узкий первый
+scope для prototype — bounded QCOW/SquashFS blocks; EROFS partial и standalone/
+ZIP recovery сложнее. Пока SDK остаётся для других consumers, частичная замена
+не удалит его алгоритм и временно добавит второй decoder в сборку.
+
+Это выбор источника сопровождения, а не гарантированное уменьшение кода:
+текущие SDK C/header units — около 4240 lines, official libzstd decoder C/headers —
+около 7164 без ASM. Общие libzstd units уже есть из encoder; величина adapter
+и итоговый binary footprint не измерялись. Дополнительные dictionaries/legacy
+modes библиотеки не становятся возможностями приложения без отдельной интеграции.
