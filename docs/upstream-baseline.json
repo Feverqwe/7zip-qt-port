@@ -21,6 +21,8 @@
     "src/crypto/ivgen-plain64.c",
     "src/crypto/opensslaes.cpp",
     "src/crypto/opensslaes.h",
+    "src/crypto/opensslblock.c",
+    "src/crypto/opensslblock.h",
     "src/crypto/opensslhash.c",
     "src/crypto/opensslhash.h",
     "src/crypto/opensslkdf.cpp",
@@ -93,6 +95,8 @@
   "revision": "b88c6bc09339de32f7d18bbab900686b244f42ba",
   "overrides": {},
   "runtime_adapted": [
+    "src/C/Aes.c",
+    "src/C/Aes.h",
     "src/C/Md5.c",
     "src/C/Sha1.c",
     "src/C/Sha256.c",
@@ -136,6 +140,7 @@
     "src/CPP/7zip/Crypto/Pbkdf2HmacSha1.cpp",
     "src/CPP/7zip/UI/Common/OpenArchive.cpp",
     "src/CPP/7zip/UI/Common/OpenArchive.h",
+    "src/CPP/Common/ComTry.h",
     "src/CPP/Common/Wildcard.cpp",
     "src/CPP/Common/Wildcard.h"
   ],
@@ -147,9 +152,6 @@
     "third_party/7zip/C/7zTypes.h",
     "third_party/7zip/C/7zVersion.h",
     "third_party/7zip/C/7zWindows.h",
-    "third_party/7zip/C/Aes.c",
-    "third_party/7zip/C/Aes.h",
-    "third_party/7zip/C/AesOpt.c",
     "third_party/7zip/C/Alloc.c",
     "third_party/7zip/C/Alloc.h",
     "third_party/7zip/C/Blake2.h",
@@ -194,7 +196,6 @@
     "third_party/7zip/C/Precomp.h",
     "third_party/7zip/C/RotateDefs.h",
     "third_party/7zip/C/Sha1.h",
-    "third_party/7zip/C/Sha1Opt.c",
     "third_party/7zip/C/Sha256.h",
     "third_party/7zip/C/Sha256Opt.c",
     "third_party/7zip/C/Sha3.c",
@@ -448,7 +449,6 @@
     "third_party/7zip/CPP/Common/CRC.cpp",
     "third_party/7zip/CPP/Common/C_FileIO.h",
     "third_party/7zip/CPP/Common/CksumReg.cpp",
-    "third_party/7zip/CPP/Common/ComTry.h",
     "third_party/7zip/CPP/Common/CommandLineParser.h",
     "third_party/7zip/CPP/Common/Common.h",
     "third_party/7zip/CPP/Common/Common0.h",
@@ -547,6 +547,8 @@
     "third_party/7zip/License.txt"
   ],
   "adapted": [
+    "src/C/Aes.c",
+    "src/C/Aes.h",
     "src/C/Md5.c",
     "src/C/Sha1.c",
     "src/C/Sha256.c",
@@ -775,6 +777,7 @@
     "src/CPP/7zip/UI/GUI/UpdateGUI.cpp",
     "src/CPP/7zip/UI/GUI/UpdateGUI.h",
     "src/CPP/7zip/UI/GUI/resource2.h",
+    "src/CPP/Common/ComTry.h",
     "src/CPP/Common/CommandLineParser.cpp",
     "src/CPP/Common/MyVector.h",
     "src/CPP/Common/Wildcard.cpp",
@@ -864,7 +867,10 @@
     "src/C/Sha1.c": "6c767a47face66a064dc0402f6e526bb3b9180d1a583f707d98101ef61398a03",
     "src/C/Sha256.c": "4c7422ada8bb382f69eea7622951fc8391ca8bef97bb8a7ea9dedcaedd9e5039",
     "src/C/Sha512.c": "4e4a7fe5517a87cac92a08ff5f96a2c62e69b3546ef778ead4edef6f566d123f",
-    "third_party/7zip/CPP/Build.mak": "2fa73421ef3236655890cf479d6e5c8f0083667173248cea801e46fd698374df"
+    "third_party/7zip/CPP/Build.mak": "2fa73421ef3236655890cf479d6e5c8f0083667173248cea801e46fd698374df",
+    "src/C/Aes.c": "f9cd02c597bd27c87b39144911c75ae3f85e9956b2cbae66e532162be22be469",
+    "src/CPP/Common/ComTry.h": "c05008d986a7bf399e94f265d04e5074e50f78f87b690e7154ccbf26cfe1d9bc",
+    "src/C/Aes.h": "e9bd5009e4c316abd8fbee96b63fd17f9b97ce481738660dc1dec0ce87e2fa2e"
   },
   "runtime_format_sources": [
     "src/CPP/7zip/Archive/ExtHeader.cpp",

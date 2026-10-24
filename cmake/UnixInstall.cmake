@@ -10,10 +10,8 @@ else()
     install(PROGRAMS "$<TARGET_FILE_DIR:sevenzip_desktop>/7zFM"
         "$<TARGET_FILE_DIR:sevenzip_desktop>/7zG" DESTINATION bin)
 endif()
-if(sevenzip_openssl_usable)
-    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/openssl/LICENSE.txt"
-        DESTINATION "${notices_destination}/openssl")
-endif()
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/openssl/LICENSE.txt"
+    DESTINATION "${notices_destination}/openssl")
 install(PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z"
     DESTINATION "${runtime_destination}")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z.so"

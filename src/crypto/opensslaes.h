@@ -4,20 +4,21 @@
 
 #include <cstddef>
 
-// A failed library operation leaves the unprocessed suffix and its input IV
-// available to the original cipher. No OpenSSL types cross this boundary.
-class SevenzipOpenSslAesCbc {
+// No OpenSSL types cross this boundary. Failure aborts the enclosing filter;
+// callers must not publish the current output buffer after a failed call.
+class SevenzipOpenSslAes {
     void *context_ = nullptr;
     void clear();
 
   public:
-    SevenzipOpenSslAesCbc() = default;
-    ~SevenzipOpenSslAesCbc();
-    SevenzipOpenSslAesCbc(const SevenzipOpenSslAesCbc &) = delete;
-    SevenzipOpenSslAesCbc &operator=(const SevenzipOpenSslAesCbc &) = delete;
-    bool prepare(const unsigned char *key, unsigned key_size, bool encrypt);
-    std::size_t crypt(unsigned char *data, std::size_t size, const unsigned char iv[16],
-                      unsigned char next_iv[16]);
+    SevenzipOpenSslAes() = default;
+    ~SevenzipOpenSslAes();
+    SevenzipOpenSslAes(const SevenzipOpenSslAes &) = delete;
+    SevenzipOpenSslAes &operator=(const SevenzipOpenSslAes &) = delete;
+    bool prepare(const unsigned char *key, unsigned key_size, bool encrypt,
+                 void *counter_state = nullptr);
+    bool crypt(unsigned char *data, std::size_t size, const unsigned char iv[16],
+               unsigned char next_iv[16]);
 };
 
 #endif

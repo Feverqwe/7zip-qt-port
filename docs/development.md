@@ -44,6 +44,8 @@ appear damaged, collect diagnostics before proposing a cache/build-tree repair;
 follow [cache retention](../AGENTS.md#validation-scope).
 
 Archive operations require the official native codec runtime.
+Configure CMake with the required OpenSSL dependency before preparing that runtime;
+the native builder uses the same configured library as the application.
 `./scripts/build-codec-runtime.sh [upstream-checkout] [artifact-directory]`
 builds `UI/Console` and `Bundles/Format7zF` from the pinned source
 with the engine adaptations selected in the [baseline](upstream-baseline.json),
@@ -121,9 +123,10 @@ These checks do not establish rendered pixel parity or release acceptance.
 - Python 3.9+ for CTest UI-reference checks (standard library only); clang/GCC
   additionally for extracting resources, not for comparing stored references
 - Prepared native codec runtime and its reference `7z` client for tests
-- Optional OpenSSL libcrypto development package for native crypto acceleration.
-  CMake detects a compatible library automatically; explicit provider selection
-  and the current migration scope are in the [crypto audit](upstream-port-audit/crypto-providers.md).
+- OpenSSL 3 libcrypto development package, including its SHA/MD5 state API.
+  CMake requires a library compatible with the deployment target; there is no
+  upstream crypto backend option. Scope and retained implementations are in the
+  [crypto audit](upstream-port-audit/crypto-providers.md).
   To build the pinned static dependency instead, run
   `python3 scripts/prepare-openssl.py --configure-app` in the configured compiler
   environment, then prepare the native runtime again. This requires Perl, the

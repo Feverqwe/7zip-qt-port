@@ -3,235 +3,23 @@
 This code is based on public domain code of Steve Reid from Wei Dai's Crypto++ library. */
 
 #include "Precomp.h"
-
 #include <string.h>
-
 #include "Sha1.h"
-#include "RotateDefs.h"
 #include "CpuArch.h"
-
-#ifdef MY_CPU_X86_OR_AMD64
-  #if   defined(Z7_LLVM_CLANG_VERSION)  && (Z7_LLVM_CLANG_VERSION  >= 30800) \
-     || defined(Z7_APPLE_CLANG_VERSION) && (Z7_APPLE_CLANG_VERSION >= 50100) \
-     || defined(Z7_GCC_VERSION)         && (Z7_GCC_VERSION         >= 40900) \
-     || defined(__INTEL_COMPILER) && (__INTEL_COMPILER >= 1600) \
-     || defined(_MSC_VER) && (_MSC_VER >= 1200)
-      #define Z7_COMPILER_SHA1_SUPPORTED
-  #endif
-#elif defined(MY_CPU_ARM_OR_ARM64) && defined(MY_CPU_LE) \
-   && (!defined(Z7_MSC_VER_ORIGINAL) || (_MSC_VER >= 1929) && (_MSC_FULL_VER >= 192930037))
-  #if   defined(__ARM_FEATURE_SHA2) \
-     || defined(__ARM_FEATURE_CRYPTO)
-    #define Z7_COMPILER_SHA1_SUPPORTED
-  #else
-    #if  defined(MY_CPU_ARM64) \
-      || defined(__ARM_ARCH) && (__ARM_ARCH >= 4) \
-      || defined(Z7_MSC_VER_ORIGINAL)
-    #if  defined(__ARM_FP) && \
-          (   defined(Z7_CLANG_VERSION) && (Z7_CLANG_VERSION >= 30800) \
-           || defined(__GNUC__) && (__GNUC__ >= 6) \
-          ) \
-      || defined(Z7_MSC_VER_ORIGINAL) && (_MSC_VER >= 1910)
-    #if  defined(MY_CPU_ARM64) \
-      || !defined(Z7_CLANG_VERSION) \
-      || defined(__ARM_NEON) && \
-          (Z7_CLANG_VERSION < 170000 || \
-           Z7_CLANG_VERSION > 170001)
-      #define Z7_COMPILER_SHA1_SUPPORTED
-    #endif
-    #endif
-    #endif
-  #endif
-#endif
-
-void Z7_FASTCALL Sha1_UpdateBlocks(UInt32 state[5], const Byte *data, size_t numBlocks);
-
-#ifdef Z7_COMPILER_SHA1_SUPPORTED
-  void Z7_FASTCALL Sha1_UpdateBlocks_HW(UInt32 state[5], const Byte *data, size_t numBlocks);
-#endif
-
-#ifdef SEVENZIP_OPENSSL_HASHES
 #include "../crypto/opensslhash.h"
-static void Z7_FASTCALL Sha1_UpdateBlocks_OpenSSL(UInt32 state[5], const Byte *data, size_t numBlocks)
-{
-  sevenzip_sha1_blocks(state, data, numBlocks);
-}
-#define SHA1_DEFAULT_UPDATE_BLOCKS Sha1_UpdateBlocks_OpenSSL
-#else
-#define SHA1_DEFAULT_UPDATE_BLOCKS Sha1_UpdateBlocks
-#endif
 
-#if defined(Z7_COMPILER_SHA1_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
+static void Z7_FASTCALL Sha1_UpdateBlocks(UInt32 state[5], const Byte *data, size_t numBlocks)
+{ sevenzip_sha1_blocks(state, data, numBlocks); }
 
-  static SHA1_FUNC_UPDATE_BLOCKS g_SHA1_FUNC_UPDATE_BLOCKS = SHA1_DEFAULT_UPDATE_BLOCKS;
-  static SHA1_FUNC_UPDATE_BLOCKS g_SHA1_FUNC_UPDATE_BLOCKS_HW;
-
-  #define SHA1_UPDATE_BLOCKS(p) p->v.vars.func_UpdateBlocks
-#else
-  #define SHA1_UPDATE_BLOCKS(p) Sha1_UpdateBlocks
-#endif
-
+#define SHA1_UPDATE_BLOCKS(p) (p)->v.vars.func_UpdateBlocks
+#define Sha1_UpdateBlock(p) SHA1_UPDATE_BLOCKS(p)(p->state, p->buffer, 1)
 
 BoolInt Sha1_SetFunction(CSha1 *p, unsigned algo)
 {
-  SHA1_FUNC_UPDATE_BLOCKS func = Sha1_UpdateBlocks;
-  
-  #if defined(Z7_COMPILER_SHA1_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
-    if (algo != SHA1_ALGO_SW)
-    {
-      if (algo == SHA1_ALGO_DEFAULT)
-        func = g_SHA1_FUNC_UPDATE_BLOCKS;
-      else
-      {
-        if (algo != SHA1_ALGO_HW)
-          return False;
-        func = g_SHA1_FUNC_UPDATE_BLOCKS_HW;
-        if (!func)
-          return False;
-      }
-    }
-  #else
-    if (algo > 1)
-      return False;
-  #endif
-
-  p->v.vars.func_UpdateBlocks = func;
+  if (algo != SHA1_ALGO_DEFAULT) return False;
+  p->v.vars.func_UpdateBlocks = Sha1_UpdateBlocks;
   return True;
 }
-
-
-/* define it for speed optimization */
-// #define Z7_SHA1_UNROLL
-
-// allowed unroll steps: (1, 2, 4, 5, 20)
-
-#undef Z7_SHA1_BIG_W
-#ifdef Z7_SHA1_UNROLL
-  #define STEP_PRE  20
-  #define STEP_MAIN 20
-#else
-  #define Z7_SHA1_BIG_W
-  #define STEP_PRE  5
-  #define STEP_MAIN 5
-#endif
-
-
-#ifdef Z7_SHA1_BIG_W
-  #define kNumW 80
-  #define w(i) W[i]
-#else
-  #define kNumW 16
-  #define w(i) W[(i)&15]
-#endif
-
-#define w0(i) (W[i] = GetBe32(data + (size_t)(i) * 4))
-#define w1(i) (w(i) = rotlFixed(w((size_t)(i)-3) ^ w((size_t)(i)-8) ^ w((size_t)(i)-14) ^ w((size_t)(i)-16), 1))
-
-#define f0(x,y,z)  ( 0x5a827999 + (z^(x&(y^z))) )
-#define f1(x,y,z)  ( 0x6ed9eba1 + (x^y^z) )
-#define f2(x,y,z)  ( 0x8f1bbcdc + ((x&y)|(z&(x|y))) )
-#define f3(x,y,z)  ( 0xca62c1d6 + (x^y^z) )
-
-/*
-#define T1(fx, ww) \
-    tmp = e + fx(b,c,d) + ww + rotlFixed(a, 5); \
-    e = d; \
-    d = c; \
-    c = rotlFixed(b, 30); \
-    b = a; \
-    a = tmp; \
-*/
-
-#define T5(a,b,c,d,e, fx, ww) \
-    e += fx(b,c,d) + ww + rotlFixed(a, 5); \
-    b = rotlFixed(b, 30); \
-
-
-/*
-#define R1(i, fx, wx) \
-    T1 ( fx, wx(i)); \
-
-#define R2(i, fx, wx) \
-    R1 ( (i)    , fx, wx); \
-    R1 ( (i) + 1, fx, wx); \
-
-#define R4(i, fx, wx) \
-    R2 ( (i)    , fx, wx); \
-    R2 ( (i) + 2, fx, wx); \
-*/
-
-#define M5(i, fx, wx0, wx1) \
-    T5 ( a,b,c,d,e, fx, wx0((i)  ) ) \
-    T5 ( e,a,b,c,d, fx, wx1((i)+1) ) \
-    T5 ( d,e,a,b,c, fx, wx1((i)+2) ) \
-    T5 ( c,d,e,a,b, fx, wx1((i)+3) ) \
-    T5 ( b,c,d,e,a, fx, wx1((i)+4) ) \
-
-#define R5(i, fx, wx) \
-    M5 ( i, fx, wx, wx) \
-
-
-#if STEP_PRE > 5
-
-  #define R20_START \
-    R5 (  0, f0, w0) \
-    R5 (  5, f0, w0) \
-    R5 ( 10, f0, w0) \
-    M5 ( 15, f0, w0, w1) \
-  
-  #elif STEP_PRE == 5
-  
-  #define R20_START \
-    { size_t i; for (i = 0; i < 15; i += STEP_PRE) \
-      { R5(i, f0, w0) } } \
-    M5 ( 15, f0, w0, w1) \
-
-#else
-
-  #if STEP_PRE == 1
-    #define R_PRE R1
-  #elif STEP_PRE == 2
-    #define R_PRE R2
-  #elif STEP_PRE == 4
-    #define R_PRE R4
-  #endif
-
-  #define R20_START \
-    { size_t i; for (i = 0; i < 16; i += STEP_PRE) \
-      { R_PRE(i, f0, w0) } } \
-    R4 ( 16, f0, w1) \
-
-#endif
-
-
-
-#if STEP_MAIN > 5
-
-  #define R20(ii, fx) \
-    R5 ( (ii)     , fx, w1) \
-    R5 ( (ii) + 5 , fx, w1) \
-    R5 ( (ii) + 10, fx, w1) \
-    R5 ( (ii) + 15, fx, w1) \
-
-#else
-
-  #if STEP_MAIN == 1
-    #define R_MAIN R1
-  #elif STEP_MAIN == 2
-    #define R_MAIN R2
-  #elif STEP_MAIN == 4
-    #define R_MAIN R4
-  #elif STEP_MAIN == 5
-    #define R_MAIN R5
-  #endif
-
-  #define R20(ii, fx)  \
-    { size_t i; for (i = (ii); i < (ii) + 20; i += STEP_MAIN) \
-      { R_MAIN(i, fx, w1) } } \
-
-#endif
-
-
 
 void Sha1_InitState(CSha1 *p)
 {
@@ -244,62 +32,7 @@ void Sha1_InitState(CSha1 *p)
 }
 
 void Sha1_Init(CSha1 *p)
-{
-  p->v.vars.func_UpdateBlocks =
-  #if defined(Z7_COMPILER_SHA1_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
-      g_SHA1_FUNC_UPDATE_BLOCKS;
-  #else
-      NULL;
-  #endif
-  Sha1_InitState(p);
-}
-
-
-Z7_NO_INLINE
-void Z7_FASTCALL Sha1_UpdateBlocks(UInt32 state[5], const Byte *data, size_t numBlocks)
-{
-  UInt32 a, b, c, d, e;
-  UInt32 W[kNumW];
-
-  if (numBlocks == 0)
-    return;
-
-  a = state[0];
-  b = state[1];
-  c = state[2];
-  d = state[3];
-  e = state[4];
-
-  do
-  {
-  #if STEP_PRE < 5 || STEP_MAIN < 5
-  UInt32 tmp;
-  #endif
-
-  R20_START
-  R20(20, f1)
-  R20(40, f2)
-  R20(60, f3)
-
-  a += state[0];
-  b += state[1];
-  c += state[2];
-  d += state[3];
-  e += state[4];
-
-  state[0] = a;
-  state[1] = b;
-  state[2] = c;
-  state[3] = d;
-  state[4] = e;
-
-  data += SHA1_BLOCK_SIZE;
-  }
-  while (--numBlocks);
-}
-
-
-#define Sha1_UpdateBlock(p) SHA1_UPDATE_BLOCKS(p)(p->state, p->buffer, 1)
+{ p->v.vars.func_UpdateBlocks = Sha1_UpdateBlocks; Sha1_InitState(p); }
 
 void Sha1_Update(CSha1 *p, const Byte *data, size_t size)
 {
@@ -334,7 +67,6 @@ void Sha1_Update(CSha1 *p, const Byte *data, size_t size)
   }
 }
 
-
 void Sha1_Final(CSha1 *p, Byte *digest)
 {
   unsigned pos = (unsigned)p->v.vars.count & (SHA1_BLOCK_SIZE - 1);
@@ -362,7 +94,6 @@ void Sha1_Final(CSha1 *p, Byte *digest)
   
   Sha1_InitState(p);
 }
-
 
 void Sha1_PrepareBlock(const CSha1 *p, Byte *block, unsigned size)
 {
@@ -399,62 +130,4 @@ void Sha1_GetBlockDigest(const CSha1 *p, const Byte *data, Byte *destDigest)
   SetBe32(destDigest + 4 * 4, st[4])
 }
 
-
-void Sha1Prepare(void)
-{
-#ifdef Z7_COMPILER_SHA1_SUPPORTED
-  SHA1_FUNC_UPDATE_BLOCKS f, f_hw;
-  f = Sha1_UpdateBlocks;
-  f_hw = NULL;
-#ifdef MY_CPU_X86_OR_AMD64
-  if (CPU_IsSupported_SHA()
-      && CPU_IsSupported_SSSE3()
-      )
-#else
-  if (CPU_IsSupported_SHA1())
-#endif
-  {
-    // printf("\n========== HW SHA1 ======== \n");
-#if 1 && defined(MY_CPU_ARM_OR_ARM64) && defined(Z7_MSC_VER_ORIGINAL) && (_MSC_FULL_VER < 192930037)
-    /* there was bug in MSVC compiler for ARM64 -O2 before version VS2019 16.10 (19.29.30037).
-       It generated incorrect SHA-1 code. */
-      #pragma message("== SHA1 code can work incorrectly with this compiler")
-      #error Stop_Compiling_MSC_Compiler_BUG_SHA1
-#endif
-      {
-        f = f_hw = Sha1_UpdateBlocks_HW;
-      }
-  }
-  g_SHA1_FUNC_UPDATE_BLOCKS    = f;
-  g_SHA1_FUNC_UPDATE_BLOCKS_HW = f_hw;
-#endif
-#ifdef SEVENZIP_OPENSSL_HASHES
-  g_SHA1_FUNC_UPDATE_BLOCKS = Sha1_UpdateBlocks_OpenSSL;
-#endif
-}
-
-#undef kNumW
-#undef w
-#undef w0
-#undef w1
-#undef f0
-#undef f1
-#undef f2
-#undef f3
-#undef T1
-#undef T5
-#undef M5
-#undef R1
-#undef R2
-#undef R4
-#undef R5
-#undef R20_START
-#undef R_PRE
-#undef R_MAIN
-#undef STEP_PRE
-#undef STEP_MAIN
-#undef Z7_SHA1_BIG_W
-#undef Z7_SHA1_UNROLL
-#undef Z7_COMPILER_SHA1_SUPPORTED
-
-#undef SHA1_DEFAULT_UPDATE_BLOCKS
+void Sha1Prepare(void) {}

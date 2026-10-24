@@ -3,8 +3,7 @@
 add_library(sevenzip_zip STATIC
     src/archiveexternalcodecs.cpp
     third_party/7zip/C/7zStream.c
-    third_party/7zip/C/Aes.c
-    third_party/7zip/C/AesOpt.c
+    src/C/Aes.c
     third_party/7zip/C/Bra.c
     third_party/7zip/C/Bra86.c
     third_party/7zip/C/BraIA64.c
@@ -91,26 +90,18 @@ target_link_libraries(sevenzip_zip PUBLIC sevenzip_common sevenzip_zstd PRIVATE 
 if(BUILD_TESTING)
     add_executable(crypto_hash_tests tests/crypto_hash_tests.cpp)
     set_target_properties(crypto_hash_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF)
-    target_link_libraries(crypto_hash_tests PRIVATE sevenzip_zip)
-    if(sevenzip_openssl_usable)
-        target_link_libraries(crypto_hash_tests PRIVATE OpenSSL::Crypto)
-        target_compile_definitions(crypto_hash_tests PRIVATE SEVENZIP_TEST_OPENSSL)
-    endif()
+    target_link_libraries(crypto_hash_tests PRIVATE sevenzip_zip OpenSSL::Crypto)
     add_test(NAME crypto_hash COMMAND crypto_hash_tests)
     set_tests_properties(crypto_hash PROPERTIES TIMEOUT 15)
     add_executable(crypto_aes_tests tests/crypto_aes_tests.cpp)
     set_target_properties(crypto_aes_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF)
-    target_link_libraries(crypto_aes_tests PRIVATE sevenzip_zip)
-    if(sevenzip_openssl_usable)
-        target_link_libraries(crypto_aes_tests PRIVATE OpenSSL::Crypto)
-        target_compile_definitions(crypto_aes_tests PRIVATE SEVENZIP_TEST_OPENSSL)
-    endif()
+    target_link_libraries(crypto_aes_tests PRIVATE sevenzip_zip OpenSSL::Crypto)
     add_test(NAME crypto_aes COMMAND crypto_aes_tests)
     set_tests_properties(crypto_aes PROPERTIES TIMEOUT 15)
     qt_add_executable(crypto_zip_tests tests/crypto_zip_tests.cpp)
     set_target_properties(crypto_zip_tests PROPERTIES AUTOMOC ON AUTOUIC OFF)
     target_include_directories(crypto_zip_tests PRIVATE tests)
-    target_link_libraries(crypto_zip_tests PRIVATE sevenzip_zip Qt6::Test)
+    target_link_libraries(crypto_zip_tests PRIVATE sevenzip_zip Qt6::Test OpenSSL::Crypto)
     target_compile_definitions(crypto_zip_tests PRIVATE
         "SEVENZIP_CRYPTO_REFERENCE_7Z=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z${CMAKE_EXECUTABLE_SUFFIX}\"")
     add_test(NAME crypto_zip COMMAND crypto_zip_tests -silent)

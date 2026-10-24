@@ -10,6 +10,7 @@ This code is based on public domain code from Wei Dai's Crypto++ library. */
 #include "RotateDefs.h"
 #include "CpuArch.h"
 
+#ifndef SEVENZIP_OPENSSL_HASHES
 #ifdef MY_CPU_X86_OR_AMD64
   #if   defined(Z7_LLVM_CLANG_VERSION)  && (Z7_LLVM_CLANG_VERSION  >= 170001) \
      || defined(Z7_APPLE_CLANG_VERSION) && (Z7_APPLE_CLANG_VERSION >= 170001) \
@@ -44,6 +45,8 @@ This code is based on public domain code from Wei Dai's Crypto++ library. */
 
 
 
+#endif
+
 void Z7_FASTCALL Sha512_UpdateBlocks(UInt64 state[8], const Byte *data, size_t numBlocks);
 
 #ifdef Z7_COMPILER_SHA512_SUPPORTED
@@ -64,7 +67,9 @@ static void Z7_FASTCALL Sha512_UpdateBlocks_OpenSSL(UInt64 state[8], const Byte 
 #if defined(Z7_COMPILER_SHA512_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
 
   static SHA512_FUNC_UPDATE_BLOCKS g_SHA512_FUNC_UPDATE_BLOCKS = SHA512_DEFAULT_UPDATE_BLOCKS;
+#ifndef SEVENZIP_OPENSSL_HASHES
   static SHA512_FUNC_UPDATE_BLOCKS g_SHA512_FUNC_UPDATE_BLOCKS_HW;
+#endif
 
   #define SHA512_UPDATE_BLOCKS(p) p->v.vars.func_UpdateBlocks
 #else
@@ -74,6 +79,11 @@ static void Z7_FASTCALL Sha512_UpdateBlocks_OpenSSL(UInt64 state[8], const Byte 
 
 BoolInt Sha512_SetFunction(CSha512 *p, unsigned algo)
 {
+#ifdef SEVENZIP_OPENSSL_HASHES
+  if (algo != SHA512_ALGO_DEFAULT) return False;
+  p->v.vars.func_UpdateBlocks = Sha512_UpdateBlocks_OpenSSL;
+  return True;
+#else
   SHA512_FUNC_UPDATE_BLOCKS func = Sha512_UpdateBlocks;
   
   #if defined(Z7_COMPILER_SHA512_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
@@ -97,6 +107,7 @@ BoolInt Sha512_SetFunction(CSha512 *p, unsigned algo)
 
   p->v.vars.func_UpdateBlocks = func;
   return True;
+#endif
 }
 
 
@@ -150,6 +161,7 @@ void Sha512_Init(CSha512 *p, unsigned digestSize)
   Sha512_InitState(p, digestSize);
 }
 
+#ifndef SEVENZIP_OPENSSL_HASHES
 #define S0(x) (Z7_ROTR64(x,28) ^ Z7_ROTR64(x,34) ^ Z7_ROTR64(x,39))
 #define S1(x) (Z7_ROTR64(x,14) ^ Z7_ROTR64(x,18) ^ Z7_ROTR64(x,41))
 #define s0(x) (Z7_ROTR64(x, 1) ^ Z7_ROTR64(x, 8) ^ (x >> 7))
@@ -374,6 +386,8 @@ void Z7_FASTCALL Sha512_UpdateBlocks(UInt64 state[8], const Byte *data, size_t n
   while (--numBlocks);
 }
 
+
+#endif
 
 #define Sha512_UpdateBlock(p) SHA512_UPDATE_BLOCKS(p)(p->state, p->buffer, 1)
 

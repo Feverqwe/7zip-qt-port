@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the pinned optional static libcrypto in the existing dependency tree."""
+"""Build the pinned required static libcrypto in the existing dependency tree."""
 
 import argparse
 import json
@@ -82,7 +82,7 @@ def prepare(args):
         run(["make", "-j" + str(args.jobs), "build_generated", "libcrypto.a"], source, env=environment)
     print("Static libcrypto: " + str(library), flush=True)
     if args.configure_app:
-        run(["cmake", "--preset", args.preset, "-DSEVENZIP_CRYPTO_PROVIDER=OPENSSL",
+        run(["cmake", "--preset", args.preset,
              "-DOPENSSL_USE_STATIC_LIBS=TRUE", "-DOPENSSL_ROOT_DIR=" + str(source),
              "-DOPENSSL_INCLUDE_DIR=" + str(source / "include"),
              "-DOPENSSL_CRYPTO_LIBRARY=" + str(library)], ROOT)

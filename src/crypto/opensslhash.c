@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: MIT */
 /* The SDK's copyable hash state and no-failure block interface cannot use an
  * opaque, allocated EVP context. Limit the deprecated API to this adapter;
- * CMake probes it, and unsupported builds retain the upstream primitives.
+ * CMake requires this API; there is no SDK fallback.
  * Only full blocks are processed. SDK buffering, padding and finalization stay
  * in the original modules. No OpenSSL algorithm bodies are copied here. */
 #include "opensslhash.h"
-#ifdef SEVENZIP_OPENSSL_MD5
 #define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/crypto.h>
 #include <openssl/md5.h>
+#include <openssl/sha.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -39,16 +39,6 @@ void SEVENZIP_CRYPTO_CALL sevenzip_md5_blocks(void *state, const unsigned char *
     OPENSSL_cleanse(words, sizeof(words));
     OPENSSL_cleanse(&context, sizeof(context));
 }
-#endif
-#ifdef SEVENZIP_OPENSSL_HASHES
-#ifndef OPENSSL_SUPPRESS_DEPRECATED
-#define OPENSSL_SUPPRESS_DEPRECATED
-#endif
-#include <openssl/crypto.h>
-#include <openssl/sha.h>
-#include <stdint.h>
-#include <string.h>
-
 void SEVENZIP_CRYPTO_CALL sevenzip_sha1_blocks(void *state, const unsigned char *data,
                                                size_t blocks) {
     if (!blocks)
@@ -114,4 +104,3 @@ void SEVENZIP_CRYPTO_CALL sevenzip_sha512_blocks(void *state, const unsigned cha
     memcpy(state, context.h, sizeof(context.h));
     OPENSSL_cleanse(&context, sizeof(context));
 }
-#endif

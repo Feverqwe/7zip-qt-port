@@ -3,10 +3,8 @@
 # associations or registers the extension on the build machine.
 set(SEVENZIP_WINDOWS_RUNTIME "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime" CACHE PATH
     "Official pinned Windows runtime prepared by scripts/build-codec-runtime.ps1")
-if(sevenzip_openssl_usable)
-    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/openssl/LICENSE.txt"
-        DESTINATION "share/licenses/sevenzip-desktop/openssl")
-endif()
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/openssl/LICENSE.txt"
+    DESTINATION "share/licenses/sevenzip-desktop/openssl")
 string(JSON windows_runtime_repository GET "${sfx_baseline_json}" repository)
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
     set(windows_runtime_architecture arm64)

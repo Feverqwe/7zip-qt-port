@@ -1,19 +1,15 @@
 // SPDX-License-Identifier: MIT
 #include "opensslkdf.h"
 
-#ifdef SEVENZIP_OPENSSL_CRYPTO
 #include <memory>
 #include <openssl/core_names.h>
 #include <openssl/kdf.h>
 #include <openssl/params.h>
-#endif
 
-bool SEVENZIP_CRYPTO_CALL sevenzip_try_pbkdf2_sha1(const unsigned char *password,
-                                                   std::size_t password_size,
-                                                   const unsigned char *salt, std::size_t salt_size,
-                                                   std::uint32_t iterations, unsigned char *key,
-                                                   std::size_t key_size) {
-#ifdef SEVENZIP_OPENSSL_CRYPTO
+bool SEVENZIP_CRYPTO_CALL sevenzip_pbkdf2_sha1(const unsigned char *password,
+                                               std::size_t password_size, const unsigned char *salt,
+                                               std::size_t salt_size, std::uint32_t iterations,
+                                               unsigned char *key, std::size_t key_size) {
     if (!key_size)
         return true;
     if (!iterations || (!password && password_size) || (!salt && salt_size) || !key)
@@ -39,14 +35,4 @@ bool SEVENZIP_CRYPTO_CALL sevenzip_try_pbkdf2_sha1(const unsigned char *password
         OSSL_PARAM_construct_int(OSSL_KDF_PARAM_PKCS5, &pkcs5),
         OSSL_PARAM_construct_end()};
     return EVP_KDF_derive(context.get(), key, key_size, parameters) == 1;
-#else
-    (void)password;
-    (void)password_size;
-    (void)salt;
-    (void)salt_size;
-    (void)iterations;
-    (void)key;
-    (void)key_size;
-    return false;
-#endif
 }

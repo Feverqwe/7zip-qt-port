@@ -19,15 +19,10 @@ def sha(path):
 
 def load_config(root):
     path = root / "build/crypto-provider.json"
-    if path.exists():
-        data = json.loads(path.read_text())
-    else:
-        # Keep the standalone upstream-only build possible without a Qt/CMake
-        # configuration. Configure the app first to select its library backend.
-        data = {"schema": 1, "provider": "UPSTREAM", "version": "",
-                "system": platform.system(), "deployment_target": "",
-                "definitions": [], "includes": [], "libraries": []}
-    if (data.get("schema") != 1 or data.get("provider") not in ("UPSTREAM", "OPENSSL") or
+    if not path.is_file():
+        raise ValueError("Configure the required OpenSSL dependency before preparing the native runtime")
+    data = json.loads(path.read_text())
+    if (data.get("schema") != 1 or data.get("provider") != "OPENSSL" or
             data.get("system") != platform.system()):
         raise ValueError("Crypto configuration is incompatible; configure this platform with CMake")
     for field in ("definitions", "includes", "libraries"):
@@ -109,7 +104,19 @@ def stage(root, snapshot):
         if native_rules.is_symlink():
             raise ValueError("Refusing linked native build rules")
         original = native_rules.read_bytes()
+        # Apply this before Build.mak reads its link rule. No original AES/SHA
+        # optimized objects are part of the required-OpenSSL core.
+        drop = " ".join("%/" + name + ".obj %\\" + name + ".obj"
+                        for name in ("AesOpt", "Sha1Opt", "Sha256Opt", "Sha512Opt"))
+        prefix = ("OBJS = $(filterout " + drop + ",$(OBJS))\n").encode()
         adapted = original.replace(b"$**", b"$(SEVENZIP_CRYPTO_SOURCES)")
+        anchor = b"PROGPATH ="
+        if anchor in adapted:
+            adapted = adapted.replace(anchor, prefix + anchor, 1)
+        else:
+            adapted = prefix + adapted
+        if prefix in original:
+            adapted = original
         if adapted != original:
             native_rules.write_bytes(adapted)
     state = snapshot / "crypto-provider-inputs.json"
@@ -125,7 +132,7 @@ def stage(root, snapshot):
             name = "sevenzip-crypto." + suffix
             include = ('!include "' + name + '"' if windows else 'include ' + name) + "\n"
             post_include = '!include "sevenzip-crypto-deps.mak"\n' if windows else ""
-            flags = ["-I../../../.."]
+            flags = ["-I../../../..", "-I../../.."]
             flags += ["-I" + path for path in config["includes"]]
             flags += ["-D" + definition for definition in config["definitions"]]
             if not windows and config["deployment_target"]:
@@ -154,7 +161,7 @@ def stage(root, snapshot):
                 prerequisite(path, windows) for path in record["library_sha256"]))
             # Header/library changes can alter the adapter ABI without changing
             # the native callers. Rebuild adapters and relink, retaining outputs.
-            for source in ("opensslaes", "opensslkdf", "opensslhash"):
+            for source in ("opensslaes", "opensslblock", "opensslkdf", "opensslhash"):
                 target = ("$(O)\\reference_crypto_" + source + ".obj" if windows else
                           "$(O)/reference_crypto_" + source + ".o")
                 dependencies.append(target + ": " + dependency)

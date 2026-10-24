@@ -61,7 +61,7 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
   — собственная модель над исходными folder providers и общий выбор видов.
 
 - [Криптографические примитивы и providers](upstream-port-audit/crypto-providers.md)
-  — OpenSSL/Botan, границы состояния, лицензий и проверенной совместимости.
+  — обязательная OpenSSL, удалённый fallback и границы сохранённых реализаций.
 
 - [Создание ZIP со Zstandard](upstream-port-audit/zip-zstd.md)
   — официальный libzstd encoder, узкий ZIP adapter и runtime/UI consumers.
