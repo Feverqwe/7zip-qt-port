@@ -199,6 +199,97 @@ def generate_snapshots(destination):
     return records
 
 
+def generate_encrypted(destination):
+    """Disposable legacy AES images; fake secrets are supplied through a file."""
+    records = []
+    folder = destination / "encrypted"
+    folder.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="sevenzip-qcow-encrypted-") as temporary:
+        root = Path(temporary)
+        source = bytearray((i * 17 + 3) % 256 for i in range(65536))
+        source[16384:32768] = bytes(16384)
+        (root / "source.raw").write_bytes(source)
+        for variant, fmt, options, password in (
+                ("qcow1", "qcow", "", "пароль 空"),
+                ("qcow2", "qcow2", "cluster_size=4096,compat=0.10", "0123456789abcdeЖ"),
+                ("extended", "qcow2", "cluster_size=16384,extended_l2=on", "")):
+            (root / "secret.txt").write_text(password)
+            secret = "secret,id=fixture,file=secret.txt"
+            image = variant + ".qcow2"
+            options += ("," if options else "") + "encrypt.format=aes,encrypt.key-secret=fixture"
+            def run(args):
+                subprocess.run(args, cwd=root, check=True, stdout=subprocess.DEVNULL)
+            run(["qemu-img", "convert", "--object", secret, "-f", "raw", "-O", fmt,
+                 "-o", options, "source.raw", image])
+            input_opts = f"driver={fmt},file.filename={image},encrypt.key-secret=fixture"
+            expected = bytearray(source)
+            if variant == "extended":
+                run(["qemu-img", "snapshot", "--object", secret, "--image-opts", "-c", "legacy", input_opts])
+                contents = bytearray((root / image).read_bytes())
+                table = struct.unpack_from(">Q", contents, 64)[0]
+                struct.pack_into(">II", contents, table + 16, 1700000000, 0)
+                (root / image).write_bytes(contents)
+                run(["qemu-io", "--object", secret, "--image-opts", "-c", "write -P 0x5a 4096 4096", input_opts])
+                expected[4096:8192] = bytes([0x5a]) * 4096
+                run(["qemu-img", "convert", "--object", secret, "--image-opts", "-l", "snapshot.id=1",
+                     "-O", "raw", input_opts, "snapshot.raw"])
+                if (root / "snapshot.raw").read_bytes() != source:
+                    raise ValueError("QEMU encrypted snapshot differs from saved plaintext")
+            run(["qemu-img", "convert", "--object", secret, "--image-opts", "-O", "raw",
+                 input_opts, "expected.raw"])
+            if (root / "expected.raw").read_bytes() != expected:
+                raise ValueError("QEMU legacy AES oracle differs from plaintext source")
+            record = {"name": variant, "password": password, "files": {}}
+            files = [("image", root / image), ("expected", root / "expected.raw")]
+            if variant == "extended":
+                files.append(("snapshot", root / "snapshot.raw"))
+            for name, path in files:
+                fixture = "encrypted/" + variant + "-" + name + ".gz"
+                data = path.read_bytes()
+                target = destination / fixture
+                if not target.is_file() or gzip.decompress(target.read_bytes()) != data:
+                    target.write_bytes(gzip.compress(data, mtime=0))
+                record["files"][name] = fixture
+            records.append(record)
+        password = records[1]["password"]
+        (root / "secret.txt").write_text(password)
+        image = "overlay.qcow2"
+        # Creation skips opening the existing parent, whose size is explicit;
+        # reading still supplies its real key to QEMU's backing driver.
+        run(["qemu-img", "create", "-q", "-u", "-f", "qcow2", "-F", "qcow2",
+             "-b", "qcow2.qcow2", image, "65536"])
+        input_opts = f"driver=qcow2,file.filename={image},backing.encrypt.key-secret=fixture"
+        run(["qemu-io", "--object", secret, "--image-opts", "-c", "write -P 0x6a 8192 4096", input_opts])
+        run(["qemu-img", "convert", "--object", secret, "--image-opts", "-O", "raw", input_opts, "overlay.raw"])
+        record = {"name": "overlay", "password": password, "files": {}}
+        for name, path in (("image", root / image), ("expected", root / "overlay.raw")):
+            fixture = "encrypted/overlay-" + name + ".gz"
+            data = path.read_bytes()
+            target = destination / fixture
+            if not target.is_file() or gzip.decompress(target.read_bytes()) != data:
+                target.write_bytes(gzip.compress(data, mtime=0))
+            record["files"][name] = fixture
+        record["files"]["parent"] = "encrypted/qcow2-image.gz"
+        records.append(record)
+        high = (1 << 41) + 512
+        password = "high-bit-fixture"
+        (root / "secret.txt").write_text(password)
+        image = "high.qcow2"
+        run(["qemu-img", "create", "--object", secret, "-q", "-f", "qcow2", "-o",
+             "cluster_size=65536,encrypt.format=aes,encrypt.key-secret=fixture", image, str(high + 4096)])
+        input_opts = f"driver=qcow2,file.filename={image},encrypt.key-secret=fixture"
+        run(["qemu-io", "--object", secret, "--image-opts", "-c", f"write -P 0xa7 {high} 512",
+             "-c", f"read -P 0xa7 {high} 512", input_opts])
+        fixture = "encrypted/high-image.gz"
+        data = (root / image).read_bytes()
+        target = destination / fixture
+        if not target.is_file() or gzip.decompress(target.read_bytes()) != data:
+            target.write_bytes(gzip.compress(data, mtime=0))
+        records.append({"name": "high", "password": password, "offset": high,
+                        "files": {"image": fixture}})
+    return records
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("destination", type=Path)
@@ -280,7 +371,8 @@ def main():
                 "path": "папка 空/данные с пробелом.txt",
                 "payload": "device ext4 payload\n", "images": records,
                 "reference_sets": generate_references(args.destination),
-                "snapshot_sets": generate_snapshots(args.destination)}
+                "snapshot_sets": generate_snapshots(args.destination),
+                "encrypted_sets": generate_encrypted(args.destination)}
     (args.destination / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
 

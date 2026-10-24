@@ -28,6 +28,13 @@ to their saved geometry after confirming its remaining bytes are zero. Only
 fixture timestamps are fixed for reproducible regeneration; QEMU checks the
 resulting images. Snapshot names include an unsafe path to exercise metadata
 display without using that name as an extraction path.
+`encrypted_sets` uses QEMU's legacy AES writer and reader with disposable public
+test passwords. It covers QCOW1, QCOW2 v2, extended L2, a saved encrypted snapshot,
+an unencrypted overlay with an encrypted parent and a sector above 2 TiB.
+Secrets reach QEMU through a temporary file. Unicode/password truncation, an
+explicit empty password and the full 64-bit IV are observable byte comparisons;
+legacy AES does not provide password or data authentication. No live secrets
+or user images are included.
 `manifest.json` records the raw source/image sizes, SHA-256 hashes and expected
 selected file bytes. The encoder follows the
 [QEMU QCOW2 specification](https://www.qemu.org/docs/master/interop/qcow2.html).

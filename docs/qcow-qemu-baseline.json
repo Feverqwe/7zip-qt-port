@@ -2,17 +2,28 @@
   "repository": "https://github.com/qemu/qemu.git",
   "revision": "b6c4b7e86dec12d07f5cac65265b986d38ee9002",
   "files": {
+    "COPYING.LIB": "31c90ce76b6f5aab90a205851e71d5c27e31c0aa3d7017a4383b98a6fe3f1faa",
     "block/qcow.c": "ded9a4e3201d9adff1d9c8d9702aab70d54dbed30b41be4ca24202b593d6afe2",
     "block/qcow2-cluster.c": "0bf8ea84c6230c62cc61ac1f96cef8616ab45e2303e25fa9f2b5c9a94bc58d31",
     "block/qcow2-snapshot.c": "3e7055ef8d41dacd422291c6db3a589d9376688c3b69e23dec5c9e9aabba91d3",
+    "block/qcow2-threads.c": "78727984aa47332fbe380a8c2db29b5d2f682664ead23a0d33d977aa412d35d3",
     "block/qcow2.c": "3baa34359f2b0497ba09433dd1de6f183ac0fa5f1dbd967eabbffea8f1a0bc56",
     "block/qcow2.h": "bf7bc584fb466e54a46afc0511695e551db4f486c202ca1cb8e40c186b0bbf94",
+    "crypto/block-qcow.c": "c00f4d4d3eef3dd43ee9028a870908bbdbb7fc7f3c2901788f13fb0fe67bb6c5",
+    "crypto/block-qcow.h": "9223d8dd13703d09407c78e02b073589c7a95ce39921b0811bcec50b777d8550",
+    "crypto/block.c": "78d6f70b18300439de3f686c77150d0f14e74e68b77abb39e249b0659f0c444f",
+    "crypto/blockpriv.h": "294a14c6f178d2cd89e33994904e4e305ad755c8e037699350853a3f679e295c",
+    "crypto/ivgen-plain64.c": "f9767210a6ffb468496f1af41c898a5c0cbf3d23d6fc728fdd72eb6c19fe3f7f",
     "docs/interop/qcow2.rst": "55c4d0fa03fe0690f444b3ed5ba58e7b075b7ba3f30778a6087e92ac6bc0d5d4"
   },
   "adapted": {
     "block/qcow.c": "src/block/qcow.c",
     "block/qcow2-snapshot.c": "src/block/qcow2-snapshot.c",
     "block/qcow2.c": "src/block/qcow2.c",
-    "block/qcow2.h": "src/block/qcow2.h"
+    "block/qcow2.h": "src/block/qcow2.h",
+    "crypto/block-qcow.c": "src/crypto/block-qcow.c",
+    "crypto/block-qcow.h": "src/crypto/block-qcow.h",
+    "crypto/block.c": "src/crypto/block.c",
+    "crypto/ivgen-plain64.c": "src/crypto/ivgen-plain64.c"
   }
 }

@@ -5,7 +5,11 @@
     "src/block/qcow.h",
     "src/block/qcow2-snapshot.c",
     "src/block/qcow2.c",
-    "src/block/qcow2.h"
+    "src/block/qcow2.h",
+    "src/crypto/block-qcow.c",
+    "src/crypto/block-qcow.h",
+    "src/crypto/block.c",
+    "src/crypto/ivgen-plain64.c"
   ],
   "repository": "https://github.com/ip7z/7zip.git",
   "revision": "b88c6bc09339de32f7d18bbab900686b244f42ba",

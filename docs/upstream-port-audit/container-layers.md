@@ -318,8 +318,68 @@ Source and backing files remain unchanged. Regeneration reproduced all 17 new
 gzip fixtures byte-for-byte; all six QEMU original hashes verified. No new
 Linux/Windows, full/slow or installed-package acceptance is claimed for this step.
 
-Remaining source-visible goal work: AES-CBC and
-LUKS read/decryption paths, snapshot VM-state payload scope,
+### Legacy QCOW AES-CBC — 2026-10-24
+
+Compared QEMU `crypto/block-qcow.c/.h`, `crypto/block.c`, `crypto/blockpriv.h`,
+`crypto/ivgen-plain64.c`, `qcow_co_preadv` in `block/qcow.c`, and
+`qcow2_co_encdec` in `block/qcow2-threads.c` at the pinned QEMU revision.
+Original units and LGPL text are pinned in the same QEMU baseline. Adapted C
+read branches remain in `src/crypto/block-qcow.c`, `block.c` and
+`ivgen-plain64.c`, preserving module boundaries and notices; the narrow callback
+interface is in `block-qcow.h`. Retained full LGPL-2.1 text is installed with the
+existing MIT metadata notice and the source notices permit later LGPL versions.
+
+Preserved key construction (first 16 UTF-8 bytes, zero padding), 512-byte sectors,
+little-endian plain64 virtual-sector IV and per-sector CBC initialization.
+Compressed and unallocated/explicit-zero branches retain QEMU's placement of
+decryption on allocated stored bytes only. The provider is original 7-Zip
+`NCrypto::CAesCbcDecoder`/`C/Aes` through a callback: QEMU secret objects, cipher
+pool, locks, GLib and crypto backends are omitted. Runtime C objects link into
+both console and module without introducing an AES dependency into the dynamic
+console. Cipher state belongs to each native stream; C input is aligned using
+the existing buffer allocator. There is no independent AES implementation.
+
+The handler acquires an explicit password through `ICryptoGetTextPassword`,
+using the existing 7-Zip BSTR/Unicode/UTF-8 wipe wrappers. Missing/cancelled input
+does not silently become an empty key. An explicitly supplied empty password is
+valid for this format. Child/snapshot streams copy the authorized image key,
+without retaining the opening UI callback or requesting it again for each read.
+Close wipes the raw key and releases that handler's AES provider; independently
+retained streams keep their own key/provider until their own lifetime ends.
+Arbitrary byte reads decode a bounded aligned sector before copying its requested
+portion; source bytes and archive/extraction bounds remain unchanged.
+
+Legacy QCOW AES has no key check, MAC or plaintext checksum. QEMU likewise cannot
+authenticate a wrong password or arbitrary plaintext. The archive exposes an
+explicit warning and encrypted item property; a dependency's warning propagates
+through an unencrypted overlay. Successful copying does not establish authenticity.
+No magic-byte heuristic is substituted for an absent authentication mechanism.
+LUKS keyslot/digest verification is a separate unfinished implementation.
+Distinct passwords for separately encrypted layers still require dependency-key
+selection beyond the original shared opening callback; this is integration work,
+not a claim that the current password UI can distinguish those secrets.
+
+QEMU generates and independently decrypts the fake-key fixtures: QCOW1, QCOW2 v2,
+extended L2, an encrypted snapshot and an unencrypted overlay over encrypted
+QCOW2. A sparse image verifies a guest sector beyond 2 TiB (the upper IV bits).
+The tests compare complete bytes, unaligned/backward/retained streams, snapshot
+bytes, Unicode and byte-truncated keys, an explicit empty password, open cancel,
+extraction/output failure/cancel and input immutability. A wrong-password fixture
+demonstrates unverified output accompanied by the retained warning, instead of
+claiming this unauthenticated format can reject every wrong key.
+
+macOS runtime acceptance with current combined 7-Zip 26.05 worktree: eight
+focused suites passed in 18.90 s (`archive_qcow_crypto`, QCOW, references,
+snapshots, chains, lifetime, baseline and runtime cache). The native console and
+module rebuilt incrementally; new C code uses the existing C compiler/cache.
+Thirteen original QEMU inventory hashes verified, including the LGPL text. All ten
+new gzip fixtures regenerate byte-identically. The earlier direct C AES provider
+attempt was replaced by the callback boundary after showing that the dynamic
+console does not link AES; no special console AES implementation was added.
+No new Linux/Windows, full/slow or installed-package acceptance is claimed.
+
+Remaining source-visible goal work: LUKS read/decryption paths,
+snapshot VM-state payload scope, distinct dependency secrets,
 backing-format delegation beyond raw/QCOW, and explicit dependency selection where
 the existing volume callback rejects a path or cannot resolve a stream-contained
 image's siblings. These are missing implementations

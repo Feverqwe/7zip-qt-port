@@ -135,5 +135,49 @@
         "2": "snapshots/filesystem-2.gz"
       }
     }
+  ],
+  "encrypted_sets": [
+    {
+      "name": "qcow1",
+      "password": "пароль 空",
+      "files": {
+        "image": "encrypted/qcow1-image.gz",
+        "expected": "encrypted/qcow1-expected.gz"
+      }
+    },
+    {
+      "name": "qcow2",
+      "password": "0123456789abcdeЖ",
+      "files": {
+        "image": "encrypted/qcow2-image.gz",
+        "expected": "encrypted/qcow2-expected.gz"
+      }
+    },
+    {
+      "name": "extended",
+      "password": "",
+      "files": {
+        "image": "encrypted/extended-image.gz",
+        "expected": "encrypted/extended-expected.gz",
+        "snapshot": "encrypted/extended-snapshot.gz"
+      }
+    },
+    {
+      "name": "overlay",
+      "password": "0123456789abcdeЖ",
+      "files": {
+        "image": "encrypted/overlay-image.gz",
+        "expected": "encrypted/overlay-expected.gz",
+        "parent": "encrypted/qcow2-image.gz"
+      }
+    },
+    {
+      "name": "high",
+      "password": "high-bit-fixture",
+      "offset": 2199023256064,
+      "files": {
+        "image": "encrypted/high-image.gz"
+      }
+    }
   ]
 }

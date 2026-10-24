@@ -95,6 +95,7 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lucide/LICENSE"
     DESTINATION share/licenses/sevenzip-desktop/lucide)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/qemu/LICENSE"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/qemu/COPYING.LIB"
     DESTINATION share/licenses/sevenzip-desktop/qemu)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/7z.sfx"
     "${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/7z.sfx.json" DESTINATION bin)

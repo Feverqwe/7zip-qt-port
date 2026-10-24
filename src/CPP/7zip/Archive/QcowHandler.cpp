@@ -24,9 +24,12 @@
 #include "../Common/StreamUtils.h"
 
 #include "../Compress/DeflateDecoder.h"
+#include "../Crypto/MyAes.h"
+#include "../IPassword.h"
 
 #include "../../../block/qcow.h"
 #include "../../../block/qcow2.h"
+#include "../../../crypto/block-qcow.h"
 #include "HandlerCont.h"
 
 #define Get32(p) GetBe32a(p)
@@ -83,6 +86,11 @@ Z7_class_CHandler_final : public CHandlerImg {
 
     UInt32 _version;
     UInt32 _cryptMethod;
+    CByteBuffer_Wipe _key;
+    bool _keyReady = false;
+    bool _legacyEncryption = false;
+    CAlignedBuffer _cryptoSector;
+    CMyComPtr2<ICompressFilter, NCrypto::CAesCbcDecoder> _aes;
     UInt64 _incompatFlags;
     Qcow2HeaderExtensions _extensions{};
     QCowSnapshot *_snapshots = NULL;
@@ -122,7 +130,7 @@ Z7_class_CHandler_final : public CHandlerImg {
                         IArchiveOpenCallback *callback = NULL);
 
   public:
-    CHandler() : _zstd(NULL) {}
+    CHandler() : _zstd(NULL), _key(16) {}
     ~CHandler() {
         qcow2_free_extensions(&_extensions);
         qcow2_free_snapshots(_snapshots, _numSnapshots);
@@ -316,6 +324,39 @@ Z7_COM7F_IMF(CHandler::Read(void *data, UInt32 size, UInt32 *processedSize)) {
                     }
                     if (allocated) {
                         v &= _compressedFlag - 1;
+                        if (_cryptMethod == 1) {
+                            if (!_keyReady)
+                                return E_NOTIMPL;
+                            const UInt64 sector = _virtPos & ~(UInt64)511;
+                            const size_t inSector = (size_t)_virtPos & 511;
+                            if (size > 512 - inSector)
+                                size = (UInt32)(512 - inSector);
+                            v += lowBits & ~(size_t)511;
+                            IInStream *input =
+                                _externalData ? _dataStream.Interface() : Stream.Interface();
+                            RINOK(InStream_SeekSet(input, v))
+                            _cryptoSector.AllocAtLeast(512);
+                            if (!_cryptoSector.IsAllocated())
+                                return E_OUTOFMEMORY;
+                            RINOK(ReadStream_FALSE(input, _cryptoSector, 512))
+                            if (!_externalData)
+                                _posInArc = v + 512;
+                            const auto decrypt = [](void *opaque, const unsigned char *iv,
+                                                    unsigned char *buf, size_t len) -> int32_t {
+                                auto *aes = static_cast<NCrypto::CAesCbcDecoder *>(opaque);
+                                RINOK(aes->SetInitVector(iv, 16))
+                                return aes->Filter(buf, (UInt32)len) == len ? S_OK : S_FALSE;
+                            };
+                            if (!_aes.Interface())
+                                return E_NOTIMPL;
+                            RINOK(qcrypto_block_qcow_decrypt(_aes.ClsPtr(), decrypt, sector,
+                                                             _cryptoSector, 512))
+                            memcpy(data, (const Byte *)_cryptoSector + inSector, size);
+                            _virtPos += size;
+                            if (processedSize)
+                                *processedSize = size;
+                            return S_OK;
+                        }
                         v += lowBits;
                         if (_externalData) {
                             RINOK(InStream_SeekSet(_dataStream, v))
@@ -359,11 +400,13 @@ Z7_COM7F_IMF(CHandler::Read(void *data, UInt32 size, UInt32 *processedSize)) {
     return S_OK;
 }
 
-static const Byte kProps[] = {kpidPath, kpidSize, kpidPackSize, kpidMTime, kpidComment};
+static const Byte kProps[] = {kpidPath,  kpidSize,      kpidPackSize,
+                              kpidMTime, kpidEncrypted, kpidComment};
 
 static const Byte kArcProps[] = {kpidClusterSize,
                                  kpidSectorSize, // actually we need variable to show table size
-                                 kpidHeadersSize, kpidUnpackVer, kpidMethod, kpidCharacts};
+                                 kpidHeadersSize, kpidUnpackVer, kpidMethod,
+                                 kpidCharacts,    kpidWarning};
 
 IMP_IInArchive_Props IMP_IInArchive_ArcProps
 
@@ -426,7 +469,7 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             s.Add_Space_if_NotEmpty();
             if (_cryptMethod == 1)
                 s += "AES";
-            if (_cryptMethod == 2)
+            else if (_cryptMethod == 2)
                 s += "LUKS";
             else {
                 s += "Encryption:";
@@ -437,6 +480,10 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             prop = s;
         break;
     }
+    case kpidWarning:
+        if (_legacyEncryption)
+            prop = "Legacy QCOW AES has no password or data authentication";
+        break;
 
     case kpidErrorFlags: {
         UInt32 v = 0;
@@ -471,6 +518,9 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
     switch (propID) {
     case kpidSize:
         prop = index ? _snapshots[index - 1].disk_size : _size;
+        break;
+    case kpidEncrypted:
+        prop = _cryptMethod != 0 || _legacyEncryption;
         break;
     case kpidPackSize:
         // Snapshot images share physical clusters; do not count the source
@@ -903,7 +953,26 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
     if (curTable != numTables)
         return E_FAIL;
 
-    if (_cryptMethod)
+    if (_cryptMethod == 1 && !_isDiskStream) {
+        CMyComPtr<ICryptoGetTextPassword> passwordProvider;
+        if (openCallback)
+            openCallback->QueryInterface(IID_ICryptoGetTextPassword, (void **)&passwordProvider);
+        if (!passwordProvider) {
+            _errorMessage = L"Password required for encrypted QCOW image";
+            return E_ABORT;
+        }
+        CMyComBSTR_Wipe password;
+        RINOK(passwordProvider->CryptoGetTextPassword(&password))
+        UString_Wipe unicode;
+        unicode.SetFromBstr(password);
+        AString_Wipe utf8;
+        ConvertUnicodeToUTF8(unicode, utf8);
+        qcrypto_block_qcow_init(utf8, _key);
+        _keyReady = true;
+    }
+    if (_cryptMethod == 1)
+        _legacyEncryption = true;
+    if (_cryptMethod > 1)
         _unsupported = true;
     if (_compressionType > 1)
         _unsupported = true;
@@ -993,6 +1062,8 @@ HRESULT CHandler::OpenParent(IArchiveOpenCallback *callback) {
         _unsupported = parent->_unsupported;
         return result;
     }
+    if (parent->_legacyEncryption)
+        _legacyEncryption = true;
     CMyComPtr<ISequentialInStream> sequential;
     RINOK(parent->GetStream(0, &sequential))
     if (!sequential)
@@ -1028,6 +1099,10 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _backingName.Empty();
     _sourceName.Empty();
     _errorMessage.Empty();
+    _key.Wipe();
+    _keyReady = false;
+    _legacyEncryption = false;
+    _aes.SetFromCls(NULL);
     qcow2_free_extensions(&_extensions);
     qcow2_free_snapshots(_snapshots, _numSnapshots);
     _snapshots = NULL;
@@ -1057,6 +1132,9 @@ HRESULT CHandler::CreateImage(UInt32 index, CHandler *&image, CMyComPtr<IInStrea
     image->_backingStream = _backingStream;
     image->_backingSize = _backingSize;
     image->_dataStream = _dataStream;
+    image->_key.CopyFrom(_key, 16);
+    image->_keyReady = _keyReady;
+    image->_legacyEncryption = _legacyEncryption;
     if (index) {
         const QCowSnapshot &sn = _snapshots[index - 1];
         // QEMU snapshot_load_tmp selects the saved L1 without changing disk bytes.
@@ -1163,6 +1241,12 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     *stream = NULL;
     if (_unsupported || !Stream)
         return S_FALSE;
+    if (_cryptMethod == 1) {
+        if (!_keyReady)
+            return S_FALSE;
+        _aes.Create_if_Empty();
+        RINOK(_aes->SetKey(_key, 16))
+    }
     if (_needCompression) {
         if (_compressionType > 1)
             return S_FALSE;
