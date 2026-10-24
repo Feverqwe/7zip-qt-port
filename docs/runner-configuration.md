@@ -10,8 +10,10 @@ cp scripts/config/runners.example.json scripts/config/runners.local.json
 Edit the copy for your machines. You may configure Linux, Windows or both.
 The example is the reference for connection, workspace and toolchain fields.
 Use absolute remote paths with forward slashes. The workspace must be a dedicated
-project directory; synchronization reuses its `current/` worktree and preserves
-build outputs and compiler caches. Existing nonempty directories without the
+project directory; synchronization reuses a persistent worktree for the current
+Git branch and preserves build outputs and compiler caches. The same branch
+uses the same remote directory regardless of the local source directory.
+Different branches can run concurrently. Existing nonempty directories without the
 project ownership marker are refused.
 
 The local file is ignored by Git and excluded from runner source transfers.
@@ -67,4 +69,5 @@ profile names are supplied as source-code defaults.
 
 The former `build/runners/hyperv/workspaces.json` setting is replaced by the
 workspace entries in this file. When migrating an existing installation, keep
-its current workspace and cache paths to retain incremental outputs.
+its workspace and cache paths. The former shared `current/` is left intact;
+branch worktrees build incrementally after their first use.

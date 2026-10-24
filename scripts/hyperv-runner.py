@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sync current source and run checks in one persistent worktree per Hyper-V guest."""
+"""Sync current source and run checks in a persistent guest worktree per Git branch."""
 
 import argparse
 import base64
@@ -17,7 +17,7 @@ import uuid
 from lib.hyperv_interactive import interactive_command
 from lib.hyperv_source import stage_tree
 from lib.hyperv_transport import collect_logs, sync_command
-from lib.hyperv_workspace import load_workspaces, mount_guard
+from lib.hyperv_workspace import current_branch, load_workspaces, mount_guard, worktree_root
 from lib.runner_config import load_config, runner_config
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -185,17 +185,19 @@ def script_command(arguments, platforms):
 
 
 def run_platform(platform, local, source, digest, preset, command, prepare_runtime,
-                 interactive=False, elevated=False, workspace=None):
+                 interactive=False, elevated=False, workspace=None, branch=None):
     directory = local / platform
     directory.mkdir()
     workspace = workspace or load_workspaces()[platform]
-    root = workspace["root"] + "/current"
+    branch = branch if branch is not None else current_branch(ROOT)
+    root = worktree_root(workspace, branch)
     token = local.name
     result = {"platform": platform, "sha256": digest, "status": "running", "transport": "rsync",
-              "directory": root, "interactive": interactive and platform == "windows",
+              "branch": branch, "directory": root, "interactive": interactive and platform == "windows",
               "elevated": elevated and platform == "windows", "seconds": {}}
     acquired = launched = interrupted_sync = False
-    print(f"[{platform}] Persistent worktree: {root}; log: {directory / 'transport.log'}", flush=True)
+    print(f"[{platform}] Branch: {branch}; persistent worktree: {root}; "
+          f"log: {directory / 'transport.log'}", flush=True)
     with (directory / "transport.log").open("w") as output:
         transport = {"stdout": output, "stderr": subprocess.STDOUT}
         try:
@@ -267,11 +269,12 @@ def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=Tru
     workspaces = load_workspaces()
     if set(platforms) - set(workspaces):
         raise ValueError("A selected runner has no local configuration")
+    branch = current_branch(ROOT)
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     local = STATE / (stamp + "-" + uuid.uuid4().hex[:8])
     local.mkdir(parents=True)
     summary = {"run_id": local.name, "command": command, "preset": preset, "prepare_runtime": prepare_runtime,
-               "transport": "rsync", "interactive": interactive, "elevated": elevated,
+               "transport": "rsync", "interactive": interactive, "elevated": elevated, "branch": branch,
                "revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                "status": "running", "platforms": []}
     report = local / "run.json"
@@ -285,7 +288,7 @@ def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=Tru
             with ThreadPoolExecutor(max_workers=len(platforms)) as executor:
                 futures = [executor.submit(run_platform, platform, local, source, summary["sha256"],
                                            preset, command, prepare_runtime, interactive, elevated,
-                                           workspaces[platform]) for platform in platforms]
+                                           workspaces[platform], branch) for platform in platforms]
                 summary["platforms"] = [future.result() for future in futures]
             summary["status"] = "passed" if all(p["status"] == "passed" for p in summary["platforms"]) else "failed"
     except BaseException as error:
@@ -339,6 +342,11 @@ def parse_arguments(argv):
     for action in ("probe", "check", "run", "status", "recover"):
         subparser = actions.add_parser(action)
         subparser.add_argument("platform", choices=["linux", "windows", "all"])
+        if action in ("status", "recover"):
+            selection = subparser.add_mutually_exclusive_group()
+            selection.add_argument("--branch", help="Branch to inspect (default: current Git branch)")
+            selection.add_argument("--legacy-current", action="store_true",
+                                   help="Inspect the shared current worktree used by older runners")
         if action in ("check", "run"):
             subparser.add_argument("--interactive", action="store_true")
             subparser.add_argument("--elevated", action="store_true")
@@ -376,12 +384,15 @@ def main():
     if args.action == "probe":
         return probe_platforms(args.platforms)
     if args.action in ("status", "recover"):
+        branch = None if args.legacy_current else (args.branch or current_branch(ROOT))
         for platform in args.platforms:
             record = discover(platform)
             workspace = load_workspaces()[platform]
             if "filesystem_uuid" in workspace:
                 remote(record, mount_guard(workspace))
-            lock_command(record, workspace["root"] + "/current", "", args.action)
+            root = workspace["root"] + "/current" if args.legacy_current else worktree_root(workspace, branch)
+            print(f"[{platform}] Worktree: {root}", flush=True)
+            lock_command(record, root, "", args.action)
         return 0
     return run_platforms(args.platforms, getattr(args, "preset", "dev"), args.upstream,
                          args.command, not args.skip_runtime, args.interactive, args.elevated)

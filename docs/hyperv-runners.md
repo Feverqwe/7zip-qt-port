@@ -3,26 +3,31 @@
 Connections, machine names, workspaces and tools are selected through
 [local runner configuration](runner-configuration.md). The helper supports
 direct SSH or an optional VM discovery command, with one persistent Sevenzip
-worktree per platform. Run IDs identify logs, not new source/build directories.
+worktree per Git branch on each platform. Run IDs identify logs, not new source/build directories.
 Historical installation records are linked from the archive; use local
 configuration for the identities and paths of your installation.
 
 ## Persistent worktree
 
-User instruction, 2026-10-17: synchronize the local current code into one guest
-directory and reuse its build outputs; do not create per-run build directories.
-This supersedes the former fresh-snapshot instructions, including the global
-runners skill's default fresh-directory workflow.
+Synchronize local code into a persistent guest directory and reuse its build
+outputs; do not create per-run build directories. Branch isolation (user request,
+2026-10-24) replaces the former single shared directory. The global runners
+skill's default fresh-directory workflow does not apply.
 
-The selected workspace root contains `current/`, with `build/dev`, `build/release`,
-runtime and temporary files retained there. Existing dated runs are historical;
-the retention policy below still applies to their disposable payloads. Preserve
-`current`, its incremental outputs, compiler caches and any active lock.
+The selected workspace root contains a persistent directory for each Git branch,
+with build outputs, runtime and temporary files retained there. Only the branch
+name selects the directory; local checkout paths do not affect it. Different
+branches can run concurrently; runs of the same branch share a lock even from
+different local directories. Switch to a named branch before running from a
+detached HEAD. The selected branch and remote directory appear in console output
+and run reports. Preserve branch worktrees, incremental outputs, compiler caches
+and active locks. The former `current/` is left intact; the first run of each
+branch creates its own build tree while reusing the configured compiler cache.
 
-Before transfer, an atomic `current.lock` directory reserves the entire cycle,
+Before transfer, an atomic sibling `.lock` directory reserves the entire cycle,
 including synchronization, build/tests and log retrieval. A second invocation
 fails with the owner run ID before touching source. An existing nonempty
-`current` without the project ownership marker is refused.
+worktree without the project ownership marker is refused.
 
 `rsync --checksum --compress --compress-level=1 --delete-delay --delay-updates`
 reconciles an immutable local
@@ -52,6 +57,8 @@ of guest processes. Inspect with:
 ```sh
 python3 scripts/hyperv-runner.py status all
 python3 scripts/hyperv-runner.py recover windows
+python3 scripts/hyperv-runner.py status all --branch feature/example
+python3 scripts/hyperv-runner.py status all --legacy-current
 ```
 
 `recover` only releases the recorded owner's lock when its completion marker
@@ -59,6 +66,9 @@ matches. It never steals a live/unknown lock. If synchronization or the shell
 died before writing completion, inspect guest processes, scheduled tasks and
 the recorded owner before manually releasing that exact abandoned lock; age
 alone is insufficient. The next normal sync repairs a partial source transfer.
+`status` and `recover` default to the current branch; `--branch` selects another
+branch without switching local source. `--legacy-current` accesses the former
+shared worktree for inspection or confirmed recovery.
 
 ## Storage policy (user instruction, 2026-10-07)
 
@@ -195,7 +205,7 @@ Scripts must be nonignored project files in the synced directories, with paths
 relative to the project root. `.sh` uses Bash on both platforms (Git Bash on
 Windows); `.py` uses the guest Python; `.ps1` is supported for Windows only.
 Arguments after `--` are passed literally, including spaces, Unicode and shell
-metacharacters. Scripts run from `current` in the existing platform
+metacharacters. Scripts run from the branch worktree in the existing platform
 toolchain environment. `--skip-runtime` skips engine/SFX preparation when the
 selected script does not need it; by default runtime preparation is retained.
 Each action has its own `--help` and accepts only its applicable runner options.
@@ -223,7 +233,7 @@ errors are recorded separately from script results.
 output as one block and returning nonzero if either probe fails. Preparation
 errors captured by discovery are retained in the run record and transport log.
 
-Every invocation reuses `current/build/<preset>`. CTest still needs its targets
+Every invocation reuses the branch worktree's `build/<preset>`. CTest still needs its targets
 built after synchronization: use `verify.py`, or a script calling `build.sh`
 followed by `ctest.sh`. There is no per-run build mode. Temporary local source
 copies are removed after transfer/execution; only logs and metadata get run IDs.
@@ -240,7 +250,7 @@ Native desktop availability is separate from SSH readiness. Interactive checks
 require an active desktop session as described above. Historical login and network
 diagnoses are retained in the [environment record](archive/runner-environment-2026-10-18.md#desktop-and-network-recovery).
 
-Each check updates `<selected-workspace>/current`. Source scope, untracked files
+Each check updates the selected branch worktree. Source scope, untracked files
 and exclusions are specified in [the synchronization contract](#persistent-worktree).
 
 The helper also includes an upstream Git bundle at the exact revision recorded

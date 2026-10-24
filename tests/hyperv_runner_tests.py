@@ -198,6 +198,40 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual((root / "private").read_text(), "preserve")
             self.assertFalse(root.with_name("current.lock").exists())
 
+    def test_branch_worktrees_isolate_concurrent_runs_and_reuse_builds_across_checkouts(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            project, _ = self.source_fixture(base)
+            git(project, "checkout", "-qb", "feature/Юникод")
+            workspace = {"root": str(base / "guest")}
+            branch = hyperv_workspace.current_branch(project)
+            root = Path(hyperv_workspace.worktree_root(workspace, branch))
+            hyperv_lock.operate(root, "first", "acquire")
+            (root / "build").mkdir()
+            (root / "build/result").write_text("retained build")
+            others = []
+            # Include names that collide under slash replacement or Windows
+            # case folding; they must still acquire independent locks.
+            for name in ("feature/other", "feature-other", "Feature-other"):
+                other = Path(hyperv_workspace.worktree_root(workspace, name))
+                hyperv_lock.operate(other, name, "acquire")
+                others.append((other, name))
+            clone = base / "another-checkout"
+            git(base, "clone", "-q", str(project), str(clone))
+            git(clone, "checkout", "-q", branch)
+            reused = Path(hyperv_workspace.worktree_root(workspace, hyperv_workspace.current_branch(clone)))
+            with self.assertRaisesRegex(ValueError, "busy"):
+                hyperv_lock.operate(reused, "duplicate", "acquire")
+            hyperv_lock.operate(root, "first", "release")
+            hyperv_lock.operate(reused, "next", "acquire")
+            self.assertEqual((reused / "build/result").read_text(), "retained build")
+            hyperv_lock.operate(reused, "next", "release")
+            for other, token in others:
+                hyperv_lock.operate(other, token, "release")
+            git(project, "checkout", "-q", "--detach")
+            with self.assertRaisesRegex(ValueError, "detached HEAD"):
+                hyperv_workspace.current_branch(project)
+
     def test_workspace_configuration_and_missing_mount_fail_before_sync(self):
         with tempfile.TemporaryDirectory() as temporary:
             state = Path(temporary)
@@ -214,7 +248,8 @@ class RunnerTests(unittest.TestCase):
                     patch.object(runner, "remote", side_effect=subprocess.CalledProcessError(1, "mount")), \
                     patch.object(runner, "lock_command") as lock, patch.object(runner, "invoke") as invoke:
                 result = runner.run_platform("linux", state, state, "hash", "dev", None, False, workspace=valid["linux"])
-                self.assertEqual(result["directory"], valid["linux"]["root"] + "/current")
+                self.assertEqual(result["directory"], hyperv_workspace.worktree_root(
+                    valid["linux"], hyperv_workspace.current_branch(ROOT)))
                 self.assertEqual(result["status"], "failed")
                 lock.assert_not_called()
                 invoke.assert_not_called()

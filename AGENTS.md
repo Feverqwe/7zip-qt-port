@@ -310,8 +310,9 @@ and [runner workflows](docs/hyperv-runners.md). Read the global `runners` skill
 when using its Hyper-V discovery command. Use
 `python3 scripts/hyperv-runner.py run <linux|windows|all> -- <project-script> [args]`
 or `check all` with configured guests. Prefer `python3 scripts/verify.py <profile>
---platform <linux|windows|all>` for focused checks. Each guest uses one locked
-`current` worktree and persistent build directories; rsync includes current
+--platform <linux|windows|all>` for focused checks. Each guest uses a locked
+persistent worktree per Git branch, independent of the local source directory;
+rsync includes current
 tracked and nonignored new source files and deletes removed source files.
 Build selected targets after synchronization before running CTest; do not create
 per-run build directories. Runner docs own transport/readiness/storage details.
