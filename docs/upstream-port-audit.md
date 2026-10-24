@@ -126,6 +126,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 - [Владельцы внешних процессов при исключении](upstream-port-audit/external-process-ownership.md)
   — OS handles, запуск и регистрация editor worker с сохранением временной копии.
 
+- [Подтверждение открытия неизвестных файлов](upstream-port-audit/unknown-file-open.md)
+  — системный обработчик и настраиваемый вопрос перед автоматическим внешним открытием.
+
 - [Поздняя смена языка после закрытия окна](upstream-port-audit/closed-language-event.md)
   — запрет обращения к освобождённым папкам панели из отложенного события Qt.
 

@@ -114,6 +114,9 @@ struct CExitEventLauncher {
 class IQtExternalFileServices {
   public:
     virtual ~IQtExternalFileServices() = default;
+    virtual bool ConfirmArchiveFallback(const UString &, QWidget *, const QString &) {
+        return true;
+    }
     virtual HRESULT StartApplication(const UString &dir, const UString &path, QWidget *window) = 0;
     // Qt keeps base parameters and file paths separate at the process boundary.
     virtual HRESULT CreateProcess(const UString &, const UString &, const UStringVector &,

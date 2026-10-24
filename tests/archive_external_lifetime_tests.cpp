@@ -107,6 +107,81 @@ class ArchiveExternalLifetimeTests final : public QObject {
     WidgetDialogFixture widgetDialogs_;
   private slots:
     void init() { QFile::remove(settings()); }
+    void unknownFileFallback_data() {
+        QTest::addColumn<bool>("known");
+        QTest::addColumn<bool>("ask");
+        QTest::addColumn<bool>("internal");
+        QTest::addColumn<bool>("accept");
+        QTest::newRow("unknown-cancel-default") << false << true << true << false;
+        QTest::newRow("native-unknown-cancel") << false << true << true << false;
+        QTest::newRow("unknown-open") << false << true << true << true;
+        QTest::newRow("known-opens-directly") << true << true << true << false;
+        QTest::newRow("question-disabled") << false << false << true << false;
+        QTest::newRow("explicit-open-outside") << false << true << false << false;
+    }
+    void unknownFileFallback() {
+        QFETCH(bool, known);
+        QFETCH(bool, ask);
+        QFETCH(bool, internal);
+        QFETCH(bool, accept);
+        QTemporaryDir fixture;
+        const QString name = QStringLiteral("неизвестный файл.sz-unknown-fixture");
+        const QString archive = fixture.filePath("original.zip");
+        const QByteArray contents("\0\xff\0\x81\0", 5);
+        QVERIFY(write(fixture.filePath(name), contents));
+        QVERIFY(createArchive(fixture.path(), archive, name));
+        if (!ask)
+            SaveConfirmUnknownFileOpen(false, settings());
+        QString opened;
+        QString probed;
+        const auto cleanup = qScopeGuard([&] {
+            if (!opened.isEmpty())
+                QDir(QFileInfo(opened).absolutePath()).removeRecursively();
+        });
+        std::function<bool(const QString &)> probe;
+        if (QByteArray(QTest::currentDataTag()) != "native-unknown-cancel")
+            probe = [&](const QString &path) {
+                probed = path;
+                return known;
+            };
+        QtAssociatedFileServices service(
+            [&](const QUrl &url) {
+                opened = url.toLocalFile();
+                return true;
+            },
+            {}, {}, probe);
+        ArchiveBackend backend;
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CPanel panel;
+        QVERIFY(bind(panel, manager, service, archive));
+        bool prompted = false;
+        bool cancelDefault = false;
+        QTimer responder;
+        widgetDialogs_.connectResponder(responder, this, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(widgetDialogs_.activeDialog())) {
+                if (box->objectName() == "unknownFileOpenPrompt") {
+                    prompted = true;
+                    cancelDefault = box->defaultButton() == box->button(QMessageBox::Cancel);
+                    box->done(accept ? QMessageBox::Open : QMessageBox::Cancel);
+                }
+            }
+        });
+        responder.start(1);
+        panel.OpenItem(0, internal, true);
+        responder.stop();
+        const bool expectedPrompt = ask && internal && !known;
+        QCOMPARE(prompted, expectedPrompt);
+        if (prompted)
+            QVERIFY(cancelDefault);
+        QCOMPARE(!opened.isEmpty(), !expectedPrompt || accept);
+        if (!opened.isEmpty())
+            QCOMPARE(read(opened), contents);
+        else if (probe) {
+            QVERIFY(!probed.isEmpty());
+            QVERIFY(!QFileInfo::exists(probed));
+            QVERIFY(ownedDirectory(probed).key.isEmpty());
+        }
+    }
     void childOutlivesParentAndKeepsCopyUntilItsExit() {
         QTemporaryDir fixture;
         const QString name = QStringLiteral("дочерний редактор.txt");

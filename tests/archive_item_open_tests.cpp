@@ -1,6 +1,7 @@
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "mainwindow.h"
 #include "window_state_support.h"
 
@@ -54,6 +55,10 @@ class ItemOpenBackend final : public ControlledBackend {
 class ArchiveItemOpenTests final : public QObject {
     Q_OBJECT
   private slots:
+    void init() {
+        // These transport/error checks do not depend on installed desktop handlers.
+        SaveConfirmUnknownFileOpen(false, qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+    }
     void openFileFromFilesystemAndArchive() {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());

@@ -6160,6 +6160,14 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qtassociatedfileservices</name>
         <message>
+            <source>Open in external application?</source>
+            <translation>Открыть во внешнем приложении?</translation>
+        </message>
+        <message>
+            <source>This file could not be opened as an archive, and no application is registered for its file type. Try opening it in an external application?</source>
+            <translation>Не удалось открыть файл как архив. Для этого типа файлов не назначено приложение. Попробовать открыть его во внешнем приложении?</translation>
+        </message>
+        <message>
             <location filename="../src/qtassociatedfileservices.cpp" line="+100" />
             <source>Could not open file: %1</source>
             <translation>Не удалось открыть файл: %1</translation>
@@ -6572,6 +6580,13 @@ Use `Revert` to recover timestamp.</source>
             <location line="-26" />
             <source>Volume size must be positive.</source>
             <translation>Размер тома должен быть положительным.</translation>
+        </message>
+    </context>
+    <context>
+        <name>ExternalFileOpen</name>
+        <message>
+            <source>Ask before opening unknown file types</source>
+            <translation>Спрашивать перед открытием неизвестных типов файлов</translation>
         </message>
     </context>
 </TS>

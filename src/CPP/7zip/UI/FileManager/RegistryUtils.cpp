@@ -40,6 +40,16 @@ void ReadRegDiff(UString &path, const QString &settingsPath) {
     ReadCuString(settingsPath, "Diff", path);
 }
 
+bool ReadConfirmUnknownFileOpen(const QString &settingsPath) {
+    QSettings key(settingsPath, QSettings::IniFormat);
+    return key.value("FM/ConfirmUnknownFileOpen", true).toBool();
+}
+
+void SaveConfirmUnknownFileOpen(bool enabled, const QString &settingsPath) {
+    QSettings key(settingsPath, QSettings::IniFormat);
+    key.setValue("FM/ConfirmUnknownFileOpen", enabled);
+}
+
 void ReadReg_VerCtrlPath(UString &path, const QString &settingsPath) {
     ReadCuString(settingsPath, "7vc", path);
 }

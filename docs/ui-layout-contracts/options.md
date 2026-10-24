@@ -23,6 +23,12 @@ owners retain validation, persistence and registration services. Invalid memory
 input selects Memory and focuses its input. Undoing an unapplied format choice
 preserves its previous external handler.
 
+Applications also offers confirmation before automatically opening an unknown
+archive member externally. The preference defaults to asking and follows the
+same Apply/Save/Cancel draft contract. The confirmation identifies the file,
+offers Open and Cancel, and defaults to Cancel. Explicit Open Outside and editor
+commands do not require this fallback confirmation.
+
 Navigation occupies a sidebar through the footer height. In a narrow window it
 wraps above the content with complete section names in the same order. Each page
 has a heading and can scroll while the native Apply/Cancel/Save/? footer stays

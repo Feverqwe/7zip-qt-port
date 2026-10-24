@@ -1,9 +1,11 @@
 #include "CPP/7zip/UI/FileManager/EditPage.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "fixtures/options_presentation.h"
 #include "layout_inspection.h"
 #include "qtfmoptionsdialog.h"
 #include "window_state_support.h"
+#include <QCheckBox>
 #include <QFileDialog>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -44,8 +46,16 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
         SaveRegLang(UString("-"), settings);
     }
 
+    void editorPageApplyCancelAndGeometry_data() {
+        QTest::addColumn<QString>("language");
+        QTest::newRow("English") << QString("-");
+        QTest::newRow("Russian") << QString("ru");
+    }
     void editorPageApplyCancelAndGeometry() {
+        QFETCH(QString, language);
         const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        SaveRegLang(ToUString(language), settings);
+        ReloadLang(settings);
         SaveRegEditor(false, UString(L"viewer --old"), settings);
         for (bool apply : {false, true}) {
             QtFmOptionsDialog dialog(settings);
@@ -54,6 +64,9 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
             QVERIFY(!applyButton->isEnabled());
             auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
             OptionsPresentation::show(dialog, "viewerCommand");
+            auto *confirm = dialog.findChild<QCheckBox *>("confirmUnknownFileOpenOption");
+            QVERIFY(confirm->isChecked());
+            confirm->setChecked(false);
             dialog.findChild<QLineEdit *>("viewerCommand")->setText("new viewer");
             dialog.findChild<QLineEdit *>("editorCommand")->setText("editor --edit");
             dialog.findChild<QLineEdit *>("diffCommand")->setText("diff --compare");
@@ -74,8 +87,12 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
                 }
                 QVERIFY(UiInspection::fullyVisible(
                     *dialog.findChild<QDialogButtonBox *>("settingsButtons"), dialog));
+                OptionsPresentation::show(dialog, confirm);
+                QVERIFY(UiInspection::fullyVisible(*confirm, dialog));
+                QVERIFY(confirm->width() >= confirm->sizeHint().width());
                 QVERIFY(UiInspection::writeReport(
-                    dialog, QString("external-editor-options-%1").arg(size.width())));
+                    dialog,
+                    QString("external-editor-options-%1-%2").arg(language).arg(size.width())));
             }
             if (apply) {
                 dialog.findChild<QDialogButtonBox *>("settingsButtons")
@@ -86,6 +103,7 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
                 dialog.findChild<QLineEdit *>("viewerCommand")->setText("discarded after Apply");
             }
             dialog.reject();
+            QCOMPARE(ReadConfirmUnknownFileOpen(settings), !apply);
             UString value;
             ReadRegEditor(false, value, settings);
             QCOMPARE(ToQString(value), apply ? QString("new viewer") : QString("viewer --old"));

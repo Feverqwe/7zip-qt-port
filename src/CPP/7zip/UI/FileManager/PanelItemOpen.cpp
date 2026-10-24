@@ -1085,6 +1085,10 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
         MessageBox_Error_UnsupportOperation();
         return;
     }
+    if (tryInternal && !editMode &&
+        !_externalFileServices->ConfirmArchiveFallback(fs2us(tempFilePath), GetParent(),
+                                                       _settingsPath))
+        return;
     CMyUniquePtr<CTmpProcessInfo> tpi(new CTmpProcessInfo());
     tpi->OwnedTempLease = tempDirectory.OwnedLease();
     tpi->FolderPath = tempDir;

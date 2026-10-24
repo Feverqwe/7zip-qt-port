@@ -9,6 +9,7 @@
 #include "Panel.h"
 #include "RegistryUtils.h"
 #include "qtlangcontrols.h"
+#include <QCheckBox>
 #include <QGridLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -48,13 +49,26 @@ CEditPage::CEditPage(const QString &settingsPath, QWidget *parent)
         connect(browse, &QPushButton::clicked, this,
                 [this, id = c.Button] { OnButtonClicked(id); });
     }
-    layout->setRowStretch(6, 1);
+    _confirmUnknownFileOpen = new QCheckBox(this);
+    _confirmUnknownFileOpen->setObjectName("confirmUnknownFileOpenOption");
+    QtBindLocalText(_confirmUnknownFileOpen, "ExternalFileOpen",
+                    QT_TRANSLATE_NOOP("ExternalFileOpen", "Ask before opening unknown file types"));
+    layout->addWidget(_confirmUnknownFileOpen, 6, 0, 1, 2);
+    connect(_confirmUnknownFileOpen, &QCheckBox::toggled, this, [this] {
+        if (!_initMode) {
+            _confirmChanged = true;
+            Changed();
+        }
+    });
+    layout->setRowStretch(7, 1);
     layout->setColumnStretch(0, 1);
     OnInit();
 }
 
 bool CEditPage::OnInit() {
     _initMode = true;
+    _confirmUnknownFileOpen->setChecked(ReadConfirmUnknownFileOpen(_settingsPath));
+    _confirmChanged = false;
     for (unsigned i = 0; i < 3; i++) {
         CEditPageCtrl &c = _ctrls[i];
         c.WasChanged = false;
@@ -70,6 +84,10 @@ bool CEditPage::OnInit() {
 }
 
 long CEditPage::OnApply() {
+    if (_confirmChanged) {
+        SaveConfirmUnknownFileOpen(_confirmUnknownFileOpen->isChecked(), _settingsPath);
+        _confirmChanged = false;
+    }
     for (unsigned i = 0; i < 3; i++) {
         CEditPageCtrl &c = _ctrls[i];
         if (c.WasChanged) {
@@ -136,6 +154,8 @@ bool CEditPage::OnCommand(unsigned itemID) {
 }
 
 bool CEditPage::IsModified() const {
+    if (_confirmChanged)
+        return true;
     for (const auto &c : _ctrls)
         if (c.WasChanged)
             return true;

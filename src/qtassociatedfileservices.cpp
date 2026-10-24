@@ -1,8 +1,11 @@
 #include "qtassociatedfileservices.h"
 #include "CPP/7zip/UI/FileManager/BrowseDialog2.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
+#include "qtfileassociationprobe.h"
 #include "qtlanguageservices.h"
 #include <QDesktopServices>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QProcess>
 #ifdef Q_OS_WIN
@@ -16,9 +19,32 @@ bool OpenAssociation(const QUrl &url) { return QDesktopServices::openUrl(url); }
 QtAssociatedFileServices::QtAssociatedFileServices(
     std::function<bool(const QUrl &)> opener,
     std::function<bool(CPanel &, const QtArchiveUpdateBody &)> updateRunner,
-    std::function<bool()> updateReady)
+    std::function<bool()> updateReady, std::function<bool(const QString &)> hasAssociation)
     : _opener(std::move(opener)), _updateRunner(std::move(updateRunner)),
-      _updateReady(std::move(updateReady)) {}
+      _updateReady(std::move(updateReady)), _hasAssociation(std::move(hasAssociation)) {}
+
+bool QtAssociatedFileServices::ConfirmArchiveFallback(const UString &path, QWidget *window,
+                                                      const QString &settingsPath) {
+    if (!ReadConfirmUnknownFileOpen(settingsPath))
+        return true;
+    const QString file = ToQString(path);
+    if ((_hasAssociation ? _hasAssociation : QtFileHasOpenAssociation)(file))
+        return true;
+    QMessageBox box(
+        QMessageBox::Question,
+        QCoreApplication::translate("qtassociatedfileservices", "Open in external application?"),
+        QCoreApplication::translate(
+            "qtassociatedfileservices",
+            "This file could not be opened as an archive, and no application is registered for "
+            "its file type. Try opening it in an external application?"),
+        QMessageBox::Open | QMessageBox::Cancel, window);
+    box.setObjectName("unknownFileOpenPrompt");
+    box.setTextFormat(Qt::PlainText);
+    box.setInformativeText(QFileInfo(file).fileName());
+    box.setDefaultButton(QMessageBox::Cancel);
+    box.setEscapeButton(QMessageBox::Cancel);
+    return box.exec() == QMessageBox::Open;
+}
 
 bool QtAssociatedFileServices::CanHandleExternalUpdate() const {
     return !_updateReady || _updateReady();
