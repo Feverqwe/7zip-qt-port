@@ -1,34 +1,41 @@
 #include "archivecodeccatalog.h"
-#include "benchmark_services_fixture.h"
+#include "fixtures/operation_kill.h"
+#include "fixtures/operation_temp_cleanup.h"
+#include "fixtures/scoped_environment.h"
+#include "qtoperationlauncher.h"
+#include "source_extract_fixture.h"
 #include "window_state_support.h"
 #include <QStandardPaths>
+#include <utility>
 
 namespace {
 class BenchmarkBackend final : public ArchiveBackend {
-    class Services final : public IQtBenchmarkServices {
-        BenchmarkBackend &owner_;
-
-      public:
-        explicit Services(BenchmarkBackend &owner) : owner_(owner) {}
-        ~Services() override { owner_.JoinedAtRelease = owner_.Fixture.Active == 0; }
-        bool GetRamSize(size_t &size) const override { return owner_.Fixture.GetRamSize(size); }
-        HRESULT Run(const CExternalCodecs *codecs, IBenchPrintCallback *print,
-                    IBenchCallback *results, const CObjectVector<CProperty> &props,
-                    UInt32 iterations, bool multiDict, IBenchFreqCallback *frequency) override {
-            return owner_.Fixture.Run(codecs, print, results, props, iterations, multiDict,
-                                      frequency);
-        }
-    };
-
   public:
-    FixtureBenchmarkServices Fixture;
-    bool JoinedAtRelease = false;
-    explicit BenchmarkBackend(const QString &engine) : ArchiveBackend(nullptr, engine) {
-        Fixture.Hold = true;
-        Fixture.Ram = size_t(8) << 30; // No allocation: permit original machine defaults.
-    }
-    std::unique_ptr<IQtBenchmarkServices> benchmarkServices() const override {
-        return std::make_unique<Services>(*const_cast<BenchmarkBackend *>(this));
+    QString Barrier;
+    QList<QtOperationResult> Results;
+    bool CrashNext = false;
+    unsigned Accepted = 0, Requests = 0;
+    using ArchiveBackend::ArchiveBackend;
+    QtOperationLauncher *startGuiBenchmark(bool total, QString &error) override {
+        ++Requests;
+        QtOperationMessage job;
+        job.Type = QtOperationMessage::Kind::Job;
+        job.Operation = QtOperationMessage::Command::Benchmark;
+        job.TotalMode = total;
+        ScopedTestEnvironment barrier("SEVENZIP_OPERATION_BARRIER", Barrier);
+        auto *operation =
+            QtOperationLauncher::Launch(QStringLiteral(SEVENZIP_OPERATION_HOST), job, error);
+        if (operation) {
+            const bool crash = std::exchange(CrashNext, false);
+            connect(operation, &QtOperationLauncher::accepted, this, [this, operation, crash] {
+                ++Accepted;
+                if (crash)
+                    KillOperationProbe(operation->processId());
+            });
+            connect(operation, &QtOperationLauncher::finished, this,
+                    [this](const QtOperationResult &result) { Results.append(result); });
+        }
+        return operation;
     }
 };
 } // namespace
@@ -37,7 +44,6 @@ class BenchmarkCommandTests final : public QObject, protected MainWindowTestSupp
     Q_OBJECT
     QString engine_, module_;
     quint32 version_ = 0;
-
   private slots:
     void initTestCase() {
 #ifndef SEVENZIP_CODEC_MODULE
@@ -54,62 +60,76 @@ class BenchmarkCommandTests final : public QObject, protected MainWindowTestSupp
         version_ = backend.codecCatalog()->version();
 #endif
     }
+    void cleanup() { QVERIFY(CleanupOperationTestTemps()); }
     void unavailableWithoutConfirmedProviders() {
         ArchiveBackend backend(nullptr, engine_);
         MainWindow window(&backend);
         window.show();
         QVERIFY(!action(window, "benchmarkAction")->isEnabled());
     }
-    void realMenuJoinsAndRestoresWindow_data() {
-        QTest::addColumn<bool>("failure");
-        QTest::newRow("cancel") << false;
-        QTest::newRow("engine-failure") << true;
+    void managerCanCloseWhileNativeBenchmarkContinues_data() {
+        QTest::addColumn<QString>("profile");
+        QTest::addColumn<QtOperationResult::Outcome>("expected");
+        QTest::newRow("success") << QString("bounded") << QtOperationResult::Outcome::Success;
+        QTest::newRow("failure") << QString("failure") << QtOperationResult::Outcome::Failure;
+        QTest::newRow("cancel") << QString("cancel") << QtOperationResult::Outcome::Cancelled;
     }
-    void realMenuJoinsAndRestoresWindow() {
-        QFETCH(bool, failure);
-        BenchmarkBackend backend(engine_);
-        if (failure)
-            backend.Fixture.Result = E_FAIL;
+    void managerCanCloseWhileNativeBenchmarkContinues() {
+        QFETCH(QString, profile);
+        QFETCH(QtOperationResult::Outcome, expected);
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        ScopedTestEnvironment bounded("SEVENZIP_OPERATION_BENCHMARK_PROFILE", profile);
+        BenchmarkBackend backend(nullptr, engine_);
+        backend.Barrier = directory.filePath("continue");
+        QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
+        {
+            MainWindow window(&backend);
+            window.show();
+            auto *benchmark = action(window, "benchmarkAction");
+            QTRY_VERIFY(benchmark->isEnabled());
+            benchmark->trigger();
+            QTRY_COMPARE(backend.Accepted, 1u);
+            QCOMPARE(backend.Requests, 1u);
+            QVERIFY(QApplication::activeModalWidget() == nullptr);
+            QVERIFY(window.close());
+        }
+        QVERIFY(backend.Results.isEmpty());
+        QVERIFY(SourceExtractFixture::writeFile(backend.Barrier, "continue"));
+        QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 1, 15000);
+        QCOMPARE(backend.Results[0].Status, expected);
+    }
+    void childCrashAllowsRetry() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        ScopedTestEnvironment bounded("SEVENZIP_OPERATION_BENCHMARK_PROFILE", "bounded");
+        BenchmarkBackend backend(nullptr, engine_);
+        backend.CrashNext = true;
+        backend.Barrier = directory.filePath("unreleased");
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
         MainWindow window(&backend);
         window.show();
         auto *benchmark = action(window, "benchmarkAction");
         QTRY_VERIFY(benchmark->isEnabled());
-        QStringList errors;
-        bool opened = false;
-        bool attemptedClose = false, closeWasDeferred = false;
-        QSignalSpy engines(&backend, &ArchiveBackend::engineStarted);
+        unsigned crashMessages = 0;
         QTimer responder;
         connect(&responder, &QTimer::timeout, this, [&] {
             if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
-                errors << box->text();
+                ++crashMessages;
                 box->accept();
-            } else if (auto *view = qobject_cast<QDialog *>(QApplication::activeModalWidget());
-                       view && view->objectName() == "IDD_BENCH") {
-                opened = true;
-                if ((!failure && backend.Fixture.Active) || !errors.isEmpty()) {
-                    attemptedClose = true;
-                    closeWasDeferred = !window.close() && window.isVisible();
-                    view->close();
-                }
             }
         });
-        responder.start(1);
+        responder.start(10);
         benchmark->trigger();
-        responder.stop();
-        QVERIFY(opened);
-        QVERIFY(attemptedClose && closeWasDeferred);
-        QCOMPARE(backend.Fixture.Calls.load(), 1u);
-        QCOMPARE(backend.Fixture.Active.load(), 0u);
-        QCOMPARE(backend.Fixture.Canceled.load(), failure ? 0u : 1u);
-        QVERIFY(backend.JoinedAtRelease);
-        QCOMPARE(errors.isEmpty(), !failure);
-        QCOMPARE(engines.size(), 0); // Original native Bench, no CLI benchmark process.
-        QVERIFY(QApplication::activeModalWidget() == nullptr);
+        QTRY_COMPARE(backend.Results.size(), 1);
+        QCOMPARE(backend.Results[0].Status, QtOperationResult::Outcome::Crashed);
+        QCOMPARE(crashMessages, 1u);
         QVERIFY(window.isVisible());
         QTRY_VERIFY(benchmark->isEnabled());
-        window.close();
-        QVERIFY(!window.isVisible());
+        backend.Barrier.clear();
+        benchmark->trigger();
+        QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 2, 15000);
+        QCOMPARE(backend.Results[1].Status, QtOperationResult::Outcome::Success);
     }
 };
 QTEST_MAIN(BenchmarkCommandTests)

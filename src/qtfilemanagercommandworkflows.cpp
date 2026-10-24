@@ -8,7 +8,6 @@
 #include "Windows/PropVariantConv.h"
 #include "archivecodeccatalog.h"
 #include "mainwindow.h"
-#include "qtbenchmarkservices.h"
 #include "qtfilemanagercommands.h"
 #include "qtlangcontrols.h"
 #include "qtprogramfilemenu.h"
@@ -227,16 +226,9 @@ void QtFileManagerCommands::SetTimestampLevel(int level) {
 void QtFileManagerCommands::MyBenchmark(bool totalMode) {
     auto &w = window_;
     QtAppOperationState::CallScope call(w.app_.QtOperations());
-    CPanel::CDisableTimerProcessing disableTimerProcessing1(w.app_.Panels[0]);
-    CPanel::CDisableTimerProcessing disableTimerProcessing2(w.app_.Panels[1]);
-    const auto catalog = w.backend_->codecCatalog();
-    CExternalCodecs providers;
-    HRESULT result = w.backend_->loadBenchmarkProviders(providers);
-    auto services = w.backend_->benchmarkServices();
-    if (result == S_OK)
-        result = Benchmark(totalMode, &providers, &w, services.get());
-    if (result != S_OK && result != E_ABORT && !w.app_.QtOperations().closed())
-        w.app_.GetFocusedPanel().MessageBox_Error_HRESULT(result);
+    QString error;
+    auto *operation = w.backend_->startGuiBenchmark(totalMode, error);
+    w.observeGuiArchiveOperation(operation, error);
 }
 void QtFileManagerCommands::ShowHelpWindow(const char *topic) { ::ShowHelpWindow(topic, &window_); }
 void QtFileManagerCommands::AboutDialog() {

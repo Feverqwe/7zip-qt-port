@@ -914,3 +914,49 @@ checks; portable Linux behavior was not rerun. No disks were created/attached;
 unchanged private-device VHD fixtures were not executed. No full/slow, installed
 package or rendered pixel-parity acceptance is claimed. Benchmark and installed
 three-platform acceptance remain in the active goal.
+
+### Independent benchmark process — 2026-10-24
+
+Source baseline remains `9128b80e3a471108678e2b3ec3c985861c8d7b0f` from
+<https://github.com/ip7z/7zip.git>; existing older-module provenance is retained.
+Compared `UI/Common/CompressCall.cpp::Benchmark`, the GUI dispatcher and
+`UI/GUI/BenchmarkDialog.{cpp,h,rc}` with the adapted dialog, controls, callers,
+properties, native services and complete worker/start/stop/restart/finish paths.
+The source manager launches `7zG b`, adds `-mm=*` for total mode and the configured
+large-page switch, and does not wait. The manager now uses the common app-owned
+operation launcher for that same process boundary; the framed job carries the
+mode without file paths. The child retains source Parse1/Parse2, codec/provider
+loading, properties, benchmark algorithms, callbacks, dialogs and thread join.
+
+The source dialog wrapper returns S_OK after closing even after an engine error.
+That legacy caller contract remains; an optional completion result exposes the
+existing task/thread HRESULTs, memory refusal and thread-create/wait failures to
+the GUI dispatcher. A normally completed pass is success; closing before completion
+is cancellation. Total mode uses its existing finished-pass count because the
+source exits its total worker before setting the normal-mode finish flag. No
+benchmark algorithm or callback was replaced, and no source branch/dependency was
+omitted in this scope. Existing Qt presentation, native services and the previously
+audited starting-thread validation remain. The obsolete manager-only benchmark
+service factory was removed; native service injection in the dialog is retained.
+
+Regression fixtures bound real Bench work with ordinary properties, without adding
+automation switches to production. They exercise LZMA without a console executable,
+invalid methods, normal/total cancellation, representative CRC32 output in the
+total-mode dialog, accepted work after parent exit, manager close, and crash/retry.
+The CRC32 case selects one native method after selecting the total presentation;
+it does not claim acceptance of the full all-codec performance matrix. Existing
+dialog lifecycle checks retain Stop/Restart/join and geometry coverage and now
+also check the completion result for cancellation, memory refusal and engine errors.
+
+macOS validation: affected application/test targets built incrementally. Ten of
+eleven focused suites passed in the shared 52.49 s run: operation protocol,
+benchmark lifecycle/command, operation launcher/extraction/creation/hash, manager
+hash and both toolbar workflows. The remaining operation-benchmark suite passed
+separately (23.94 s) after fixing its fixture to recognize the translated final
+report heading. Native benchmark also passed (19.77 s) in the initial focused run.
+The crash fixture now dismisses and checks the manager's real error dialog; its
+previous unattended modal caused the initial test timeout. Production behavior was
+not relaxed to satisfy either fixture. The changes are platform-independent, so
+Linux/Windows runners were not used in this iteration. Installed three-platform
+acceptance remains pending for the goal; no full/slow or pixel-parity acceptance
+is claimed here.

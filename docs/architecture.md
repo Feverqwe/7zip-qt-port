@@ -142,8 +142,10 @@ prefixes and flat-mode recursion through the original PanelCrc worker; shell
 checksums use HashCalcGUI. File-backed Windows ADS retain their source prefix
 handling in the child. Registered native hashers remain usable without an archive
 DLL. Digest/results windows belong to the child, while typed completion preserves
-cancellation and partial-input warnings. Benchmark has not yet moved to this
-process boundary.
+cancellation and partial-input warnings. Benchmark also runs in its own `7zG`,
+with the source normal/total modes and worker lifetime. Closing the manager leaves
+it running; typed completion distinguishes a finished benchmark, cancellation and
+engine/startup errors.
 
 Seekable archive items can back nested readers directly. Each reader generation
 retains its codec image, input and parents; independent cursors serialize access

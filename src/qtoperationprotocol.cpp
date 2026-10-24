@@ -82,6 +82,14 @@ bool Decode(const QJsonObject &object, QtOperationMessage &message) {
         const bool extract = object.value("command") == "extract";
         const bool compress = object.value("command") == "compress";
         const bool hash = object.value("command") == "hash";
+        const bool benchmark = object.value("command") == "benchmark";
+        if (benchmark) {
+            fields.insert("totalMode");
+            if (!object.value("totalMode").isBool())
+                return false;
+            message.Operation = QtOperationMessage::Command::Benchmark;
+            message.TotalMode = object.value("totalMode").toBool();
+        }
         if (hash) {
             fields.unite({"method", "basePrefix", "enterToDirs"});
             if (!object.value("method").isString() ||
@@ -144,11 +152,11 @@ bool Decode(const QJsonObject &object, QtOperationMessage &message) {
                 return false;
         }
         if (!ExactFields(object, fields) ||
-            (!extract && !compress && !hash && object.value("command") != "test") ||
+            (!extract && !compress && !hash && !benchmark && object.value("command") != "test") ||
             !object.value("paths").isArray())
             return false;
         const auto paths = object.value("paths").toArray();
-        if (paths.isEmpty())
+        if (benchmark ? !paths.isEmpty() : paths.isEmpty())
             return false;
         message.Type = QtOperationMessage::Kind::Job;
         message.YesToAll = object.value("yesToAll").toBool(false);
@@ -226,10 +234,13 @@ bool EncodeOperationMessage(const QtOperationMessage &message, QByteArray &frame
     QJsonObject object{{"version", int(kVersion)}, {"type", KindName(message.Type)}};
     if (message.Type == QtOperationMessage::Kind::Job) {
         object.insert("command",
-                      message.Operation == QtOperationMessage::Command::Extract    ? "extract"
-                      : message.Operation == QtOperationMessage::Command::Compress ? "compress"
-                      : message.Operation == QtOperationMessage::Command::Hash     ? "hash"
-                                                                                   : "test");
+                      message.Operation == QtOperationMessage::Command::Extract     ? "extract"
+                      : message.Operation == QtOperationMessage::Command::Compress  ? "compress"
+                      : message.Operation == QtOperationMessage::Command::Hash      ? "hash"
+                      : message.Operation == QtOperationMessage::Command::Benchmark ? "benchmark"
+                                                                                    : "test");
+        if (message.Operation == QtOperationMessage::Command::Benchmark)
+            object.insert("totalMode", message.TotalMode);
         if (message.Operation == QtOperationMessage::Command::Hash) {
             object.insert("method", message.HashMethod);
             object.insert("basePrefix", message.HashBasePrefix);

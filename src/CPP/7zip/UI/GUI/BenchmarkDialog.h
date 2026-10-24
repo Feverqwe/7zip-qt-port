@@ -14,6 +14,6 @@ const UInt32 k_NumBenchIterations_Default = 10;
 
 HRESULT Benchmark(DECL_EXTERNAL_CODECS_LOC_VARS const CObjectVector<CProperty> &props,
                   UInt32 numIterations, QWidget *hwndParent = NULL,
-                  IQtBenchmarkServices *services = nullptr);
+                  IQtBenchmarkServices *services = nullptr, HRESULT *operationResult = nullptr);
 
 #endif

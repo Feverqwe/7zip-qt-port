@@ -165,9 +165,11 @@ static int Main2(const QtGUIServiceFactory &factory, const QtGUICommandSource &c
 #endif
 
     if (options.Command.CommandType == NCommandType::kBenchmark) {
+        HRESULT operationResult = S_OK;
         HRESULT res = Benchmark(EXTERNAL_CODECS_VARS_L options.Properties,
                                 options.NumIterations_Defined ? options.NumIterations
-                                                              : k_NumBenchIterations_Default);
+                                                              : k_NumBenchIterations_Default,
+                                nullptr, nullptr, &operationResult);
         /*
         if (res == S_FALSE)
         {
@@ -176,6 +178,8 @@ static int Main2(const QtGUIServiceFactory &factory, const QtGUICommandSource &c
         }
         */
         ThrowException_if_Error(res);
+        if (operationResult != S_OK)
+            return operationResult == E_ABORT ? NExitCode::kUserBreak : NExitCode::kFatalError;
     } else if (isExtractGroupCommand) {
         UStringVector ArchivePathsSorted;
         UStringVector ArchivePathsFullSorted;

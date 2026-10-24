@@ -184,6 +184,7 @@ class ArchiveBackend : public QObject {
     virtual QtOperationLauncher *startGuiHash(const QStringList &paths, const QString &method,
                                               const QString &basePrefix, bool enterToDirs,
                                               QString &error);
+    virtual QtOperationLauncher *startGuiBenchmark(bool totalMode, QString &error);
     virtual QtOperationLauncher *startGuiCompress(const QString &archive, const QString &type,
                                                   bool addExtension, const QStringList &paths,
                                                   bool email, bool showDialog, QString &error);
@@ -197,7 +198,6 @@ class ArchiveBackend : public QObject {
     void hashMethods(const QStringList &paths, const QStringList &methods);
     HRESULT loadHashProviders(CExternalCodecs &providers) const;
     HRESULT loadBenchmarkProviders(CExternalCodecs &providers) const;
-    virtual std::unique_ptr<class IQtBenchmarkServices> benchmarkServices() const;
     virtual void create(const QString &archive, const QStringList &sources,
                         const QString &password = {}, bool encryptHeaders = false,
                         const CompressionOptions &options = {});

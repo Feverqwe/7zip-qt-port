@@ -170,7 +170,9 @@ class BenchmarkLifecycleTests final : public QObject {
             view->reject();
         });
         responder.start(1);
-        QCOMPARE(Benchmark(nullptr, properties(), 1, nullptr, &service), S_OK);
+        HRESULT completion = S_OK;
+        QCOMPARE(Benchmark(nullptr, properties(), 1, nullptr, &service, &completion), S_OK);
+        QCOMPARE(completion, E_ABORT);
         QVERIFY(closed);
         const UInt32 cpus = qMax(1u, NWindows::NSystem::GetNumberOfProcessors());
         QVERIFY2(hardware.startsWith("/ " + QString::number(cpus)), qPrintable(hardware));
@@ -426,8 +428,11 @@ class BenchmarkLifecycleTests final : public QObject {
                 view->reject();
         });
         responder.start(1);
-        QCOMPARE(Benchmark(nullptr, properties(), 1, nullptr, &service), S_OK);
+        HRESULT completion = S_OK;
+        QCOMPARE(Benchmark(nullptr, properties(), 1, nullptr, &service, &completion), S_OK);
+        QCOMPARE(completion, memory ? E_OUTOFMEMORY : result);
         QVERIFY(!errors.isEmpty());
+        // The legacy return contract is retained; 7zG consumes the operation result.
         if (!expected.isEmpty())
             QVERIFY2(errors.contains(expected), qPrintable(errors.join('\n')));
         QCOMPARE(service.Calls.load(), memory ? 0u : 1u);

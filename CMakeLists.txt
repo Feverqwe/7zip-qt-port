@@ -1549,6 +1549,18 @@ if(BUILD_TESTING)
     target_compile_definitions(operation_hash_tests PRIVATE
         "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
     add_dependencies(operation_hash_tests operation_host)
+    qt_add_executable(operation_benchmark_tests tests/operation_benchmark_tests.cpp tests/fixtures/operation_parent.cpp)
+    target_include_directories(operation_benchmark_tests PRIVATE src tests)
+    target_link_libraries(operation_benchmark_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(operation_benchmark_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    target_compile_definitions(operation_benchmark_tests PRIVATE
+        "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
+    add_dependencies(operation_benchmark_tests operation_host)
+    add_test(NAME operation_benchmark COMMAND operation_benchmark_tests -silent)
+    set_tests_properties(operation_benchmark PROPERTIES TIMEOUT 90 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     if(WIN32)
         qt_add_executable(native_mapi_host tests/fixtures/native_mapi_host.cpp
             tests/fixtures/native_mapi_loader.cpp
@@ -3986,12 +3998,15 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/link_command.ini")
     target_include_directories(benchmark_command_tests PRIVATE src tests)
     target_link_libraries(benchmark_command_tests PRIVATE ${options_window_libraries})
+    target_compile_definitions(benchmark_command_tests PRIVATE
+        "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
+    add_dependencies(benchmark_command_tests operation_host)
     if(SEVENZIP_CODEC_MODULE)
         target_compile_definitions(benchmark_command_tests PRIVATE
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
     endif()
     add_test(NAME benchmark_command COMMAND benchmark_command_tests -silent)
-    set_tests_properties(benchmark_command PROPERTIES TIMEOUT 30 ENVIRONMENT
+    set_tests_properties(benchmark_command PROPERTIES TIMEOUT 90 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/benchmark_command.ini")
     target_include_directories(native_hash_ui_tests PRIVATE src tests)
     target_link_libraries(native_hash_ui_tests PRIVATE ${options_window_libraries})

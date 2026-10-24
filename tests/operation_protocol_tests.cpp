@@ -20,6 +20,24 @@ class OperationProtocolTests final : public QObject {
     }
 
   private slots:
+    void benchmarkHasNoFileSelection() {
+        QtOperationMessage job;
+        job.Type = Kind::Job;
+        job.Operation = QtOperationMessage::Command::Benchmark;
+        job.TotalMode = true;
+        QByteArray bytes;
+        QString error;
+        QVERIFY(EncodeOperationMessage(job, bytes, error));
+        QBuffer input(&bytes);
+        QVERIFY(input.open(QIODevice::ReadOnly));
+        QtOperationMessageReader reader;
+        QtOperationMessage decoded;
+        QCOMPARE(reader.read(input, decoded, error), State::Message);
+        QCOMPARE(decoded.Operation, job.Operation);
+        QVERIFY(decoded.TotalMode && decoded.Paths.isEmpty());
+        job.Paths = {"/unrelated-file"};
+        QVERIFY(!EncodeOperationMessage(job, bytes, error));
+    }
     void fragmentedLargeSelectionRemainsLiteral() {
         QTemporaryDir root;
         QVERIFY(root.isValid());

@@ -13,7 +13,6 @@
 #include "archivedevice.h"
 #include "archiveinputlayer.h"
 #include "archivenativeopen.h"
-#include "qtbenchmarkservices.h"
 #include "qtlanguageservices.h"
 #include <QFileInfo>
 #include <cerrno>
@@ -303,10 +302,6 @@ HRESULT ArchiveBackend::loadBenchmarkProviders(CExternalCodecs &providers) const
     providers.GetCodecs = static_cast<ICompressCodecsInfo *>(&codecs);
     providers.GetHashers = static_cast<IHashers *>(&codecs);
     return providers.Load();
-}
-
-std::unique_ptr<IQtBenchmarkServices> ArchiveBackend::benchmarkServices() const {
-    return std::make_unique<QtBenchmarkServices>();
 }
 
 void ArchiveBackend::cancelCodecDiscovery() {

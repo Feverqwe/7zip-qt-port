@@ -1,6 +1,14 @@
 #include "archivebackend.h"
 #include "qtoperationlauncher.h"
 
+QtOperationLauncher *ArchiveBackend::startGuiBenchmark(bool totalMode, QString &error) {
+    QtOperationMessage job;
+    job.Type = QtOperationMessage::Kind::Job;
+    job.Operation = QtOperationMessage::Command::Benchmark;
+    job.TotalMode = totalMode;
+    return QtOperationLauncher::Launch(QtOperationLauncher::GuiProgram(), job, error);
+}
+
 QtOperationLauncher *ArchiveBackend::startGuiTest(const QStringList &archives, QString &error,
                                                   bool hashMode) {
     QtOperationMessage job;

@@ -209,6 +209,7 @@ class CBenchmarkDialog : public CQtBenchmarkWindow {
     bool NeedRestart;
 
     bool RamSize_Defined;
+    HRESULT StartResult = S_OK;
 
   public:
     bool TotalMode;
@@ -290,6 +291,18 @@ class CBenchmarkDialog : public CQtBenchmarkWindow {
     ~CBenchmarkDialog() Z7_DESTRUCTOR_override;
 
     bool PostMsg_Finish(quintptr wparam) { return PostMsg(k_Message_Finished, wparam); }
+
+    HRESULT OperationResult() const {
+        if (StartResult != S_OK)
+            return StartResult;
+        if (Sync.BenchFinish_Thread_HRESULT != S_OK)
+            return Sync.BenchFinish_Thread_HRESULT;
+        if (Sync.BenchFinish_Task_HRESULT != S_OK)
+            return Sync.BenchFinish_Task_HRESULT;
+        const bool completed =
+            TotalMode ? Sync.sd.NumPasses_Finished != 0 : Sync.sd.BenchWasFinished;
+        return completed ? S_OK : E_ABORT;
+    }
 
     qintptr Create(QWidget *wndParent = NULL) {
         return CQtBenchmarkWindow::Create(TotalMode ? IDD_BENCH_TOTAL : IDD_BENCH, wndParent);
@@ -673,6 +686,7 @@ void SetErrorMessage_MemUsage(UString &s, UInt64 reqSize, UInt64 ramSize, UInt64
                               const UString &usageString);
 
 void CBenchmarkDialog::StartBenchmark() {
+    StartResult = S_OK;
     NeedRestart = false;
     WasStopped_in_GUI = false;
 
@@ -694,6 +708,7 @@ void CBenchmarkDialog::StartBenchmark() {
     const UInt64 memUsage = GetBenchMemoryUsage(numThreads, Sync.Level, dict,
                                                 false); // totalBench
     if (!IsMemoryUsageOK(memUsage)) {
+        StartResult = E_OUTOFMEMORY;
         UString s2;
         LangString_OnlyFromLangFile(IDS_MEM_REQUIRED_MEM_SIZE, s2);
         if (s2.IsEmpty()) {
@@ -725,7 +740,9 @@ void CBenchmarkDialog::StartBenchmark() {
     PrintTime();
 
     _timer = SetTimer(kTimerID, kTimerElapse);
-    if (_thread.Create(CThreadBenchmark::MyThreadFunction, &_threadBenchmark) != 0) {
+    const WRes threadResult = _thread.Create(CThreadBenchmark::MyThreadFunction, &_threadBenchmark);
+    if (threadResult != 0) {
+        StartResult = HRESULT_FROM_WIN32(threadResult);
         MyKillTimer();
         MessageBoxError_Status(
             QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Can't create thread")));
@@ -941,7 +958,9 @@ bool CBenchmarkDialog::OnMessage(UINT message, quintptr wParam, qintptr lParam) 
             _finishTime_WasSet = true;
             MyKillTimer();
 
-            if (_thread.Wait_Close() != 0) {
+            const WRes waitResult = _thread.Wait_Close();
+            if (waitResult != 0) {
+                StartResult = HRESULT_FROM_WIN32(waitResult);
                 MessageBoxError_Status(QtDiagnosticText(
                     QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Thread Wait Error")));
             }
@@ -1509,7 +1528,8 @@ static void ParseNumberString(const UString &s, NCOM::CPropVariant &prop) {
 }
 
 HRESULT Benchmark(DECL_EXTERNAL_CODECS_LOC_VARS const CObjectVector<CProperty> &props,
-                  UInt32 numIterations, QWidget *hwndParent, IQtBenchmarkServices *services) {
+                  UInt32 numIterations, QWidget *hwndParent, IQtBenchmarkServices *services,
+                  HRESULT *operationResult) {
     QtBenchmarkServices defaultServices;
     CBenchmarkDialog bd;
     bd.Services = services ? services : &defaultServices;
@@ -1589,6 +1609,8 @@ HRESULT Benchmark(DECL_EXTERNAL_CODECS_LOC_VARS const CObjectVector<CProperty> &
     }
 
     bd.Create(hwndParent);
+    if (operationResult)
+        *operationResult = bd.OperationResult();
 
     return S_OK;
 }

@@ -25,7 +25,7 @@ Q_DECLARE_METATYPE(QtOperationResult)
 
 struct QtOperationMessage {
     enum class Kind { Ready, Job, Accepted, Outputs, Result, Rejected };
-    enum class Command { Test, Extract, Compress, Hash };
+    enum class Command { Test, Extract, Compress, Hash, Benchmark };
     Kind Type = Kind::Ready;
     Command Operation = Command::Test;
     QStringList Paths;
@@ -42,6 +42,7 @@ struct QtOperationMessage {
     QString HashMethod;
     QString HashBasePrefix;
     bool HashEnterToDirs = true;
+    bool TotalMode = false;
     QtOperationResult Result;
 };
 

@@ -9,6 +9,10 @@ int RunOperationParent(QCoreApplication &application, const QString &host) {
     job.Type = QtOperationMessage::Kind::Job;
     job.Paths = {qEnvironmentVariable("SEVENZIP_OPERATION_ARCHIVE")};
     job.YesToAll = true;
+    if (qEnvironmentVariableIsSet("SEVENZIP_OPERATION_PROBE_BENCHMARK")) {
+        job.Operation = QtOperationMessage::Command::Benchmark;
+        job.Paths.clear();
+    }
     if (qEnvironmentVariableIsSet("SEVENZIP_OPERATION_PROBE_HASH")) {
         job.Operation = QtOperationMessage::Command::Hash;
         job.HashMethod = "SHA256";
