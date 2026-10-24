@@ -359,8 +359,21 @@ def review_reference(data, upstream, new_revision, paths, root=ROOT):
         adapted = data.get("adapted", {})
         if isinstance(adapted, dict) and path in adapted:
             local = adapted[path]
-            before = git(upstream, "show", old + ":" + path).decode().splitlines(keepends=True)
-            after = (root / local).read_text().splitlines(keepends=True)
+            original = git(upstream, "show", old + ":" + path)
+            current = (root / local).read_bytes()
+            try:
+                original_text = original.decode("utf-8")
+                current_text = current.decode("utf-8")
+            except UnicodeDecodeError:
+                original_text = current_text = None
+            if original_text is None or b"\0" in original or b"\0" in current:
+                rows += ["Binary local owner: " + local,
+                         "Original SHA256: " + hashlib.sha256(original).hexdigest(),
+                         "Local SHA256: " + hashlib.sha256(current).hexdigest(),
+                         "Identical bytes." if original == current else "Local bytes differ.", ""]
+                continue
+            before = original_text.splitlines(keepends=True)
+            after = current_text.splitlines(keepends=True)
             delta = "".join(difflib.unified_diff(before, after, fromfile=old + "/" + path,
                                                tofile=local))
             rows += ["Local adaptation against the baseline:", "", "```diff", delta.rstrip(),

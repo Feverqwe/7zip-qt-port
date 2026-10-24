@@ -19,6 +19,9 @@
 [Проверка файловых систем по Linux](upstream-port-audit/filesystems-linux.md)
 — текущий scope проверки существующих read handlers и добавления EROFS.
 
+[Read-only Lzip](upstream-port-audit/lzip.md) — official lzlib C library,
+native `.lz` and nested `.tar.lz` reading with a pinned source baseline.
+
 [Read-only Brotli](upstream-port-audit/brotli.md) — Google C decoder,
 адаптация format handler, границы распаковки `.br` и проверки.
 
