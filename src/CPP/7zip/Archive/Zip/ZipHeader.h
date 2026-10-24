@@ -80,26 +80,26 @@ namespace NFileHeader
     const Byte kExtractVersion_LZMA = 63;
     const Byte kExtractVersion_PPMd = 63;
     const Byte kExtractVersion_Xz = 20; // test it
+    const Byte kExtractVersion_Zstd = 20; // WinZip / 7-Zip-zstd convention
   }
 
   namespace NExtraID
   {
-    enum
-    {
+  enum {
       kZip64 = 0x01,
       kNTFS = 0x0A,
-      kUnix0 = 0x0D,                // Info-ZIP : (UNIX) PK
+      kUnix0 = 0x0D, // Info-ZIP : (UNIX) PK
       kStrongEncrypt = 0x17,
       kIzNtSecurityDescriptor = 0x4453,
-      kUnixTime = 0x5455,           // "UT" (time) Info-ZIP
-      kUnix1 = 0x5855,              // Info-ZIP
+      kUnixTime = 0x5455, // "UT" (time) Info-ZIP
+      kUnix1 = 0x5855,    // Info-ZIP
       kIzUnicodeComment = 0x6375,
       kIzUnicodeName = 0x7075,
-      kUnix2 = 0x7855,              // Info-ZIP
-      kUnixN = 0x7875,              // Info-ZIP
+      kUnix2 = 0x7855, // Info-ZIP
+      kUnixN = 0x7875, // Info-ZIP
       kWzAES = 0x9901,
       kApkAlign = 0xD935
-    };
+  };
   }
 
   namespace NNtfsExtra

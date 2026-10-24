@@ -37,6 +37,11 @@ Cancel, SFX transitions and official-engine operations retain their source owner
 The primary action is named Create archive, with live localization. Evidence:
 [redesign audit](../upstream-port-audit/ui-redesign.md).
 
+ZIP additionally offers ZSTD compression while retaining Deflate as the default.
+ZSTD has no dictionary or word-size controls; existing levels, per-file parallelism
+and encryption remain available. Other formats retain their method choices.
+This explicit extension and its validation belong to the [ZIP audit](../upstream-port-audit/zip-zstd.md).
+
 <a id="add-metadata-options-p2-07-in-progress"></a>
 
 ### Add metadata Options (P2-07)

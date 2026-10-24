@@ -18,6 +18,7 @@
 #include "../../Compress/LzmaEncoder.h"
 #include "../../Compress/PpmdZip.h"
 #include "../../Compress/XzEncoder.h"
+#include "../../Compress/ZstdEncoder.h"
 
 #include "../Common/InStreamWithCRC.h"
 
@@ -157,24 +158,36 @@ HRESULT CAddCommon::Set_Pre_CompressionResult(bool inSeqMode, bool outSeqMode, U
   
   opRes.Method = method;
   Byte ver = 0;
-  
-  switch (method)
-  {
-    case NCompressionMethod::kStore: break;
-    case NCompressionMethod::kDeflate: ver = NCompressionMethod::kExtractVersion_Deflate; break;
-    case NCompressionMethod::kDeflate64: ver = NCompressionMethod::kExtractVersion_Deflate64; break;
-    case NCompressionMethod::kXz   : ver = NCompressionMethod::kExtractVersion_Xz; break;
-    case NCompressionMethod::kPPMd : ver = NCompressionMethod::kExtractVersion_PPMd; break;
-    case NCompressionMethod::kBZip2: ver = NCompressionMethod::kExtractVersion_BZip2; break;
-    case NCompressionMethod::kLZMA :
-    {
+
+  switch (method) {
+  case NCompressionMethod::kStore:
+      break;
+  case NCompressionMethod::kDeflate:
+      ver = NCompressionMethod::kExtractVersion_Deflate;
+      break;
+  case NCompressionMethod::kDeflate64:
+      ver = NCompressionMethod::kExtractVersion_Deflate64;
+      break;
+  case NCompressionMethod::kZstdWz:
+      ver = NCompressionMethod::kExtractVersion_Zstd;
+      break;
+  case NCompressionMethod::kXz:
+      ver = NCompressionMethod::kExtractVersion_Xz;
+      break;
+  case NCompressionMethod::kPPMd:
+      ver = NCompressionMethod::kExtractVersion_PPMd;
+      break;
+  case NCompressionMethod::kBZip2:
+      ver = NCompressionMethod::kExtractVersion_BZip2;
+      break;
+  case NCompressionMethod::kLZMA: {
       ver = NCompressionMethod::kExtractVersion_LZMA;
       const COneMethodInfo *oneMethodMain = &_options._methods[0];
       opRes.LzmaEos = oneMethodMain->Get_Lzma_Eos();
       break;
-    }
-    default: break;
   }
+    default: break;
+    }
   if (opRes.ExtractVersion < ver)
       opRes.ExtractVersion = ver;
 
@@ -345,74 +358,62 @@ HRESULT CAddCommon::Compress(
       
       default:
       {
-        if (!_compressEncoder)
-        {
-          CLzmaEncoder *_lzmaEncoder = NULL;
-          if (method == NCompressionMethod::kLZMA)
-          {
-            _compressExtractVersion = NCompressionMethod::kExtractVersion_LZMA;
-            _lzmaEncoder = new CLzmaEncoder();
-            _compressEncoder = _lzmaEncoder;
-          }
-          else if (method == NCompressionMethod::kXz)
-          {
-            _compressExtractVersion = NCompressionMethod::kExtractVersion_Xz;
-            NCompress::NXz::CEncoder *encoder = new NCompress::NXz::CEncoder();
-            _compressEncoder = encoder;
-          }
-          else if (method == NCompressionMethod::kPPMd)
-          {
-            _compressExtractVersion = NCompressionMethod::kExtractVersion_PPMd;
-            NCompress::NPpmdZip::CEncoder *encoder = new NCompress::NPpmdZip::CEncoder();
-            _compressEncoder = encoder;
-          }
-          else
-          {
-          CMethodId methodId;
-          switch (method)
-          {
-            case NCompressionMethod::kBZip2:
-              methodId = kMethodId_BZip2;
-              _compressExtractVersion = NCompressionMethod::kExtractVersion_BZip2;
-              break;
-            default:
-              _compressExtractVersion = ((method == NCompressionMethod::kDeflate64) ?
-                  NCompressionMethod::kExtractVersion_Deflate64 :
-                  NCompressionMethod::kExtractVersion_Deflate);
-              methodId = kMethodId_ZipBase + method;
-              break;
-          }
-          RINOK(CreateCoder_Id(
-              EXTERNAL_CODECS_LOC_VARS
-              methodId, true, _compressEncoder))
-          if (!_compressEncoder)
-            return E_NOTIMPL;
+          if (!_compressEncoder) {
+              CLzmaEncoder *_lzmaEncoder = NULL;
+              if (method == NCompressionMethod::kLZMA) {
+                  _compressExtractVersion = NCompressionMethod::kExtractVersion_LZMA;
+                  _lzmaEncoder = new CLzmaEncoder();
+                  _compressEncoder = _lzmaEncoder;
+              } else if (method == NCompressionMethod::kZstdWz) {
+                  _compressExtractVersion = NCompressionMethod::kExtractVersion_Zstd;
+                  _compressEncoder = new NCompress::NZSTD::CEncoder();
+              } else if (method == NCompressionMethod::kXz) {
+                  _compressExtractVersion = NCompressionMethod::kExtractVersion_Xz;
+                  NCompress::NXz::CEncoder *encoder = new NCompress::NXz::CEncoder();
+                  _compressEncoder = encoder;
+              } else if (method == NCompressionMethod::kPPMd) {
+                  _compressExtractVersion = NCompressionMethod::kExtractVersion_PPMd;
+                  NCompress::NPpmdZip::CEncoder *encoder = new NCompress::NPpmdZip::CEncoder();
+                  _compressEncoder = encoder;
+              } else {
+                  CMethodId methodId;
+                  switch (method) {
+                  case NCompressionMethod::kBZip2:
+                      methodId = kMethodId_BZip2;
+                      _compressExtractVersion = NCompressionMethod::kExtractVersion_BZip2;
+                      break;
+                  default:
+                      _compressExtractVersion = ((method == NCompressionMethod::kDeflate64)
+                                                     ? NCompressionMethod::kExtractVersion_Deflate64
+                                                     : NCompressionMethod::kExtractVersion_Deflate);
+                      methodId = kMethodId_ZipBase + method;
+                      break;
+                  }
+                  RINOK(CreateCoder_Id(EXTERNAL_CODECS_LOC_VARS methodId, true, _compressEncoder))
+                  if (!_compressEncoder)
+                      return E_NOTIMPL;
 
-          if (method == NCompressionMethod::kDeflate ||
-              method == NCompressionMethod::kDeflate64)
-          {
-          }
-          else if (method == NCompressionMethod::kBZip2)
-          {
-          }
-          }
-          {
-            CMyComPtr<ICompressSetCoderProperties> setCoderProps;
-            _compressEncoder.QueryInterface(IID_ICompressSetCoderProperties, &setCoderProps);
-            if (setCoderProps)
-            {
-              if (!_options._methods.IsEmpty())
-              {
-                COneMethodInfo *oneMethodMain = &_options._methods[0];
-
-                RINOK(oneMethodMain->SetCoderProps(setCoderProps,
-                    _options.DataSizeReduce_Defined ? &_options.DataSizeReduce : NULL))
+                  if (method == NCompressionMethod::kDeflate ||
+                      method == NCompressionMethod::kDeflate64) {
+                  } else if (method == NCompressionMethod::kBZip2) {
+                  }
               }
-            }
+              {
+                  CMyComPtr<ICompressSetCoderProperties> setCoderProps;
+                  _compressEncoder.QueryInterface(IID_ICompressSetCoderProperties, &setCoderProps);
+                  if (setCoderProps) {
+                      if (!_options._methods.IsEmpty()) {
+                          COneMethodInfo *oneMethodMain = &_options._methods[0];
+
+                          RINOK(oneMethodMain->SetCoderProps(
+                              setCoderProps,
+                              _options.DataSizeReduce_Defined ? &_options.DataSizeReduce : NULL))
+                      }
+                  }
+              }
+              if (method == NCompressionMethod::kLZMA && _lzmaEncoder)
+                  _isLzmaEos = _lzmaEncoder->Encoder->IsWriteEndMark();
           }
-          if (method == NCompressionMethod::kLZMA && _lzmaEncoder)
-            _isLzmaEos = _lzmaEncoder->Encoder->IsWriteEndMark();
-        }
 
         if (method == NCompressionMethod::kLZMA)
           opRes.LzmaEos = _isLzmaEos;

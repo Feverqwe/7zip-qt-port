@@ -31,7 +31,7 @@ add_library(sevenzip_zip STATIC
     third_party/7zip/CPP/7zip/Archive/Common/InStreamWithCRC.cpp
     third_party/7zip/CPP/7zip/Archive/Common/OutStreamWithCRC.cpp
     third_party/7zip/CPP/7zip/Archive/Common/ParseProperties.cpp
-    third_party/7zip/CPP/7zip/Archive/Zip/ZipAddCommon.cpp
+    src/CPP/7zip/Archive/Zip/ZipAddCommon.cpp
     third_party/7zip/CPP/7zip/Archive/Zip/ZipHandler.cpp
     third_party/7zip/CPP/7zip/Archive/Zip/ZipHandlerOut.cpp
     third_party/7zip/CPP/7zip/Archive/Zip/ZipIn.cpp
@@ -59,6 +59,7 @@ add_library(sevenzip_zip STATIC
     src/CPP/7zip/Compress/XzDecoder.cpp
     third_party/7zip/CPP/7zip/Compress/XzEncoder.cpp
     src/CPP/7zip/Compress/ZstdDecoder.cpp
+    src/CPP/7zip/Compress/ZstdEncoder.cpp
     third_party/7zip/CPP/7zip/Crypto/HmacSha1.cpp
     third_party/7zip/CPP/7zip/Crypto/MyAes.cpp
     third_party/7zip/CPP/7zip/Crypto/Pbkdf2HmacSha1.cpp
@@ -74,7 +75,8 @@ add_library(sevenzip_zip STATIC
 )
 set_target_properties(sevenzip_zip PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_include_directories(sevenzip_zip PUBLIC src src/C third_party/7zip/C third_party/7zip/CPP
-    src/CPP/7zip/Archive/Common src/CPP/7zip/Archive/Zip)
+    src/CPP/7zip/Archive/Common src/CPP/7zip/Archive/Zip
+    third_party/7zip/CPP/7zip/Archive/Zip third_party/7zip/CPP/7zip/Compress)
 set_source_files_properties(src/CPP/7zip/Compress/LzmaDecoder.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Compress")
 set_source_files_properties(src/CPP/7zip/Compress/XzDecoder.cpp PROPERTIES
@@ -84,3 +86,13 @@ set_source_files_properties(src/CPP/7zip/Compress/ZstdDecoder.cpp PROPERTIES
 set_source_files_properties(src/C/XzIn.c src/C/XzDec.c PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/C")
 target_link_libraries(sevenzip_zip PUBLIC sevenzip_common)
+
+# Same unchanged C compression closure as the official runtime overlay.
+file(GLOB zstd_encoder_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/zstd/lib/common/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/zstd/lib/compress/*.c")
+target_sources(sevenzip_zip PRIVATE ${zstd_encoder_sources})
+set_source_files_properties(src/CPP/7zip/Compress/ZstdEncoder.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Compress")
+set_source_files_properties(src/CPP/7zip/Archive/Zip/ZipAddCommon.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Archive/Zip")

@@ -311,8 +311,14 @@ class UpstreamBaselineTests(unittest.TestCase):
             "block/reader.h", (("#define DISK_VALUE 3\n", 3), ("#define DISK_VALUE 7\n", 7)),
             "reference_value()", adapted=False, dependency=True, c_reference=True)
 
+    def test_runtime_rebuilds_cpp_dependencies(self):
+        self.assert_runtime_rebuilds_header_consumers(
+            "block/reader.h", (("#define DISK_VALUE 3\n", 3), ("#define DISK_VALUE 7\n", 7)),
+            "reference_value()", adapted=False, dependency=True, cpp_reference=True)
+
     def assert_runtime_rebuilds_header_consumers(self, header, versions, expression, adapted,
                                                dependency=False, c_reference=False,
+                                               cpp_reference=False,
                                                directory="CPP/7zip/UI/Console"):
         include = "Model.h" if adapted else "../../../" + header
         files = {
@@ -322,6 +328,8 @@ class UpstreamBaselineTests(unittest.TestCase):
         }
         if c_reference:
             files["CPP/7zip/Common/Bridge.h"] += 'extern "C" int reference_value(void);\n'
+        if cpp_reference:
+            files["CPP/7zip/Common/Bridge.h"] += 'int reference_value();\n'
         windows = sys.platform == "win32"
         cache = shutil.which("ccache")
         self.assertIsNotNone(cache, "Runtime compilation must use the existing compiler cache")
@@ -336,7 +344,7 @@ class UpstreamBaselineTests(unittest.TestCase):
         else:
             makefile = ('O=objects\nPROGPATH=$(O)/probe\nPROGPATH_STATIC=$(O)/probes\n'
                         'OBJS=$(O)/Probe.o\n'
-                        f'CC="{cache}" cc\nCFLAGS=-c -o $@\nall: $(PROGPATH)\n'
+                        f'CC="{cache}" cc\nCFLAGS=-c -o $@\nCXX={compiler}\nCXXFLAGS=-c -o $@\nall: $(PROGPATH)\n'
                         '$(PROGPATH): $(OBJS)\n'
                         f'\t{compiler} -o $@ $(OBJS)\n'
                         '$(O)/Probe.o: Probe.cpp\n'
@@ -363,6 +371,10 @@ class UpstreamBaselineTests(unittest.TestCase):
                     source = self.port / "src/block/reader.c"
                     source.write_text('#include "reader.h"\nint reference_value(void) { return DISK_VALUE; }\n')
                     self.manifest["runtime_dependencies"] = sorted([local, "src/block/reader.c"])
+                if cpp_reference:
+                    source = self.port / "src/block/reader.cpp"
+                    source.write_text('#include "reader.h"\nint reference_value() { return static_cast<int>(DISK_VALUE); }\n')
+                    self.manifest["runtime_dependencies"] = sorted([local, "src/block/reader.cpp"])
         self.manifest["runtime_adapted"] = [local] if adapted else []
         snapshot = pathlib.Path(self.temporary.name) / "runtime"
         environment = dict(os.environ)

@@ -1,5 +1,8 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
+#include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 #include "source_creation_fixture.h"
 #include <QCheckBox>
@@ -119,6 +122,71 @@ class CodecCreationUiTests final : public QObject {
                                                                8));
         }
         QVERIFY(QFile::remove(dialog.target()));
+    }
+    void zipZstdSelection_data() {
+        QTest::addColumn<QSize>("size");
+        QTest::addColumn<QString>("language");
+        for (const QSize size : {QSize(760, 720), QSize(640, 480)})
+            for (const QString &language : {QString("-"), QString("ru")})
+                QTest::newRow(qPrintable(QString::number(size.width()) + language))
+                    << size << language;
+    }
+    void zipZstdSelection() {
+        QFETCH(QSize, size);
+        QFETCH(QString, language);
+        SaveRegLang(UString(language.toStdWString().c_str()), fixture_.filePath("settings.ini"));
+        ReloadLang(fixture_.filePath("settings.ini"));
+        const QString source = fixture_.filePath("zstd payload.txt");
+        QFile payload(source);
+        QVERIFY(payload.open(QIODevice::WriteOnly));
+        const QByteArray bytes = QByteArray("Zstandard UI payload\n").repeated(10000);
+        QCOMPARE(payload.write(bytes), qint64(bytes.size()));
+        payload.close();
+        CreateArchiveDialog dialog(fixture_.path(), {source}, nullptr, catalog_);
+        auto *format = dialog.findChild<QComboBox *>("archiveFormat");
+        auto *method = dialog.findChild<QComboBox *>("compressionMethod");
+        format->setCurrentIndex(format->findText("zip"));
+        QVERIFY(method->currentText().contains("Deflate"));
+        const int zstd = method->findText("ZSTD");
+        QVERIFY(zstd >= 0);
+        method->setCurrentIndex(zstd);
+        QCOMPARE(QString::fromWCharArray(dialog.compressionOptions().Method.Ptr()),
+                 QString("ZSTD"));
+        QVERIFY(!dialog.findChild<QComboBox *>("compressionDictionary")->isEnabled());
+        QVERIFY(!dialog.findChild<QComboBox *>("compressionWordSize")->isEnabled());
+        ExpandArchiveSections(dialog);
+        dialog.resize(size);
+        dialog.show();
+        QApplication::processEvents();
+        dialog.findChild<QScrollArea *>()->ensureWidgetVisible(method);
+        QApplication::processEvents();
+        QVERIFY(UiInspection::fullyVisible(*method, dialog));
+        auto *buttons = dialog.findChild<QDialogButtonBox *>();
+        QVERIFY(UiInspection::fullyVisible(*buttons, dialog));
+        QVERIFY(UiInspection::writeReport(
+            dialog, QString("zip-zstd-%1-%2").arg(size.width()).arg(language)));
+        const CompressionOptions options = dialog.compressionOptions();
+        CObjectVector<CProperty> properties;
+        QString error;
+        QVERIFY2(
+            ArchiveBackend::compressionProperties("zip", {}, false, options, &properties, &error),
+            qPrintable(error));
+        buttons->button(QDialogButtonBox::Ok)->click();
+        QCOMPARE(dialog.result(), int(QDialog::Accepted));
+        ArchiveBackend backend(nullptr, engine_);
+        QCOMPARE(backend.loadCodecCatalog(module_, catalog_->version()), S_OK);
+        QCOMPARE(SourceCreationFixture::Create(backend, dialog.target(), dialog.sources(), {},
+                                               false, options),
+                 S_OK);
+        QFile archive(dialog.target());
+        QVERIFY(archive.open(QIODevice::ReadOnly));
+        const QByteArray header = archive.read(10);
+        QCOMPARE(header.size(), 10);
+        QCOMPARE(quint8(header[8]) | (quint16(quint8(header[9])) << 8), 93);
+        archive.close();
+        QVERIFY(QFile::remove(dialog.target()));
+        format->setCurrentIndex(format->findText("7z"));
+        QCOMPARE(method->findText("ZSTD"), -1);
     }
     void sourceSelectionDeterminesFormatParameters() {
         const QString folder = fixture_.filePath(QStringLiteral("папка 空"));

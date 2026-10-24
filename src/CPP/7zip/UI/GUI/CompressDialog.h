@@ -31,7 +31,7 @@ enum EMethodID {
     kDeflate,
     kDeflate64,
     kPPMdZip,
-    // kZSTD,
+    kZSTD,
     kSha256,
     kSha1,
     kCrc32,

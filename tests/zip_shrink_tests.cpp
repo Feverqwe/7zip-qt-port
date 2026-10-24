@@ -12,14 +12,22 @@ QByteArray pack(const QList<unsigned> &codes) {
     QByteArray bytes;
     quint32 bits = 0;
     unsigned count = 0;
+    unsigned width = 9;
+    bool control = false;
     for (unsigned code : codes) {
         bits |= code << count;
-        count += 9;
+        count += width;
         while (count >= 8) {
             bytes.append(char(bits));
             bits >>= 8;
             count -= 8;
         }
+        if (control) {
+            if (code == 1)
+                ++width;
+            control = false;
+        } else
+            control = code == 256;
     }
     if (count)
         bytes.append(char(bits));
@@ -67,6 +75,10 @@ class ZipShrinkTests final : public QObject {
         QTest::addColumn<bool>("valid");
         QTest::newRow("literal") << pack({65}) << QByteArray("A") << true;
         QTest::newRow("dictionary-reference") << pack({65, 257}) << QByteArray("AAA") << true;
+        QTest::newRow("increased-code-width")
+            << pack({65, 256, 1, 257}) << QByteArray("AAA") << true;
+        QTest::newRow("maximum-code-width")
+            << pack({65, 256, 1, 256, 1, 256, 1, 256, 1, 257}) << QByteArray("AAA") << true;
         QTest::newRow("clear-leaves") << pack({65, 66, 256, 2, 67}) << QByteArray("ABC") << true;
         QTest::newRow("nonzero-padding") << QByteArray::fromHex("4180") << QByteArray("A") << false;
         QTest::newRow("truncated-code") << QByteArray::fromHex("41") << QByteArray("A") << false;

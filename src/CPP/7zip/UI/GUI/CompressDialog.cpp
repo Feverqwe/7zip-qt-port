@@ -19,6 +19,8 @@
 #include "qtcompressoptionsdialog.h"
 #include "qtdiagnostictext.h"
 #include "qtguimessages.h"
+#define ZSTD_STATIC_LINKING_ONLY
+#include "zstd/lib/zstd.h"
 #include <QCollator>
 #include <QComboBox>
 #include <QDir>
@@ -616,22 +618,9 @@ QString Modify_Auto(const QString &text) {
 static const UInt32 kLzmaMaxDictSize = (UInt32)15 << 28;
 static const UInt32 kSolidLog_NoSolid = 0;
 static const UInt32 kSolidLog_FullSolid = 64;
-static const char *const kMethodsNames[] = {"Copy",
-                                            "LZMA",
-                                            "LZMA2",
-                                            "PPMd",
-                                            "BZip2",
-                                            "Deflate",
-                                            "Deflate64",
-                                            "PPMd"
-                                            // , "ZSTD"
-                                            ,
-                                            "SHA256",
-                                            "SHA1",
-                                            "CRC32",
-                                            "CRC64",
-                                            "GNU",
-                                            "POSIX"};
+static const char *const kMethodsNames[] = {"Copy",    "LZMA",      "LZMA2", "PPMd", "BZip2",
+                                            "Deflate", "Deflate64", "PPMd",  "ZSTD", "SHA256",
+                                            "SHA1",    "CRC32",     "CRC64", "GNU",  "POSIX"};
 
 static const EMethodID g_7zMethods[] = {kLZMA2,
                                         kLZMA,
@@ -652,10 +641,7 @@ bool IsMethodSupportedBySfx(int methodID) {
     return false;
 }
 
-static const EMethodID g_ZipMethods[] = {
-    kDeflate, kDeflate64, kBZip2, kLZMA, kPPMdZip
-    // , kZSTD
-};
+static const EMethodID g_ZipMethods[] = {kDeflate, kDeflate64, kBZip2, kLZMA, kPPMdZip, kZSTD};
 
 static const EMethodID g_GZipMethods[] = {kDeflate};
 
@@ -1159,12 +1145,18 @@ UInt64 GetMemoryUsage_Threads_Dict_DecompMem(QStringView format, int methodId, U
             numMainZipThreads = 1;
     }
 
-    if (dict64 == (UInt64)(Int64)-1
-        // && methodId != kZSTD
-    )
+    if (dict64 == (UInt64)(Int64)-1 && methodId != kZSTD)
         return (UInt64)(Int64)-1;
 
     switch (methodId) {
+    case kZSTD: {
+        const size_t encoderMemory = ZSTD_estimateCStreamSize((int)level);
+        if (ZSTD_isError(encoderMemory))
+            return (UInt64)(Int64)-1;
+        const ZSTD_compressionParameters params = ZSTD_getCParams((int)level, 0, 0);
+        decompressMemory = (UInt64)1 << params.windowLog;
+        return size + (UInt64)encoderMemory * numMainZipThreads;
+    }
     case kLZMA:
     case kLZMA2: {
         const UInt32 dict = (dict64 >= kLzmaMaxDictSize ? kLzmaMaxDictSize : (UInt32)dict64);
