@@ -18,7 +18,7 @@ sources. Retain their copyright and license notices when redistributing them.
 | Linux ISO/Rock Ridge/zisofs read module | GPL-2.0-only as a combined module; [license text](third_party/linux/LICENSES/preferred/GPL-2.0), retained Eric Youngdale/Linus Torvalds/H. Peter Anvin/Gordon Chaffee notices, Acorn attribution to Matthew Wilcox, NLS attribution to Wolfram Pienkoss and the Unicode Organization, and [source audit](docs/upstream-port-audit/isofs-linux.md). Linux zlib retains Mark Adler/Jean-loup Gailly/H. Peter Anvin attribution and [zlib terms](third_party/linux/zlib-LICENSE.txt). Reused 7-Zip archive/stream sources retain LGPL notices. The separate module contains no unRAR implementation. |
 | Linux-derived EROFS read module | GPL-2.0-only; [license text](third_party/linux/LICENSES/preferred/GPL-2.0) and [source audit](docs/upstream-port-audit/erofs-linux.md). Linux LZ4 retains Yann Collet's copyright (2011–2016) and [BSD-2-Clause terms](third_party/linux/LICENSES/preferred/BSD-2-Clause); XZ Embedded retains Lasse Collin/Igor Pavlov attribution and [0BSD terms](third_party/linux/LICENSES/deprecated/0BSD). Reused 7-Zip decoder/ABI sources retain their notices. The separate module contains no unRAR implementation. |
 | Brotli decoder and 7-Zip codec adaptation | [Brotli MIT license](third_party/brotli/LICENSE) and [7zip-zstd LGPL notice](third_party/brotli/7zip-zstd-LICENSE.txt); see the [source audit](docs/upstream-port-audit.md). |
-| Tooling adapted from htopQt | GPL-2.0-or-later; [retained project notice](third_party/htopqt/LICENSE), [GPL text](third_party/linux/LICENSES/preferred/GPL-2.0). Includes the borrowed release, packaging, Qt installation/source-fetching and Hyper-V tooling described in [CI](docs/ci.md) and [runner provenance](docs/hyperv-runners.md#runner-configuration-and-evidence). |
+| Release, packaging, Qt setup and Hyper-V tooling | GPL-2.0-or-later; [retained notice and provenance](#tooling-notice), [GPL text](third_party/linux/LICENSES/preferred/GPL-2.0). |
 | libarchive RAR test data | [Retained license](tests/fixtures/rar/libarchive-COPYING.txt) and [fixture provenance](tests/fixtures/rar/README.md). Test data is not shipped as an application dependency. |
 | Lucide command/navigation icons | SVG geometry adapted to native Qt paths; [ISC and Feather MIT notices](third_party/lucide/LICENSE), [source provenance](docs/upstream-port-audit/ui-redesign.md#итерация-22-контурные-значки-команд). |
 
@@ -30,3 +30,35 @@ Runtime packages
 include dependency notices; packaging details and signing limitations are in
 [CI and packaging](docs/ci.md). The repository's MIT license alone does not
 describe the licensing of an entire binary distribution.
+
+## Tooling notice
+
+Release, packaging, Qt installation/source-fetching and Hyper-V tooling includes
+adaptations from [htopQt](https://github.com/Feverqwe/htop-qt-ai-driven.git),
+commit `f57b93a72d765f738a6b779b4b3c94e16c0ef64a`.
+The release/packaging import was recorded in Sevenzip commit
+`f91e0c010c35d239b6a179ebc462df24d842eb3f`, and the restored release workflow
+in `52c0b3e7205a78ac6aa7efcf8ec11dbc8e179a4e`.
+The Hyper-V helper was adapted for Sevenzip resources, MSVC, pinned engine
+builders, formatter and SSH stdin transport. Its CLI, parallel probes, shared
+Bash command payload and discovery-error reporting were refreshed on 2026-10-04
+from a modified source worktree based on
+`56320ebb4d62b3bac83f38719278cae6a5c454c1`;
+the source script SHA256 was
+`f4f53f0123a503dcc4fb85f17821d79e1cf156f29cbe015b99d561b45b1903ba`.
+Current usage is documented in [CI and packaging](docs/ci.md) and
+[Hyper-V runners](docs/hyperv-runners.md).
+
+Retained source project notice:
+
+> htopQt is distributed under the GNU General Public License, version 2 or later.
+> The full license text is in third_party/htop/COPYING.
+>
+> Upstream htop copyright notices and licenses are preserved in third_party/htop.
+> Original project glue is licensed under GPL-2.0-or-later.
+> Qt and other dependencies retain their respective licenses.
+
+Paths in that notice refer to the source project. This repository retains the
+[GPL version 2 text](third_party/linux/LICENSES/preferred/GPL-2.0).
+The notice applies to borrowed tooling and its adaptations, not to all Sevenzip
+sources.

@@ -326,8 +326,7 @@ This is project integration glue; upstream 7zFM has no runner implementation.
 
 The old `scripts/runner.py` wrapper is retained for explicitly selected local
 QEMU/UTM workflows supported by the global skill. Historical ARM64 VM checks
-do not validate the current Hyper-V guests; the removed htopQt QEMU VMs must
-not be selected as the default route.
+do not validate the current Hyper-V guests.
 
 Local task memory is initialized by the setup script in `.codex/memory/` and
 `.codex/notes/`. Repeated setup preserves the populated index, notes, and

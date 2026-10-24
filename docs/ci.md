@@ -2,9 +2,9 @@
 
 Licensing of borrowed tooling and runtime components is summarized in
 [third-party notices](../THIRD_PARTY_NOTICES.md). The root MIT license does not
-replace the GPL license of tooling adapted from htopQt.
+replace the GPL license of borrowed tooling.
 
-The [release workflow](../.github/workflows/release.yml), adapted from htopQt,
+The [release workflow](../.github/workflows/release.yml)
 builds Windows x64, Linux x64 and macOS arm64 on `v*` tags. The tag must match
 the CMake application version. After all builds succeed, it publishes runtime
 archives and `SHA256SUMS.txt` in a GitHub Release with generated release notes.
@@ -39,19 +39,18 @@ The packaging script itself does not upload artifacts or publish a release.
 
 Matching Qt source archives are checksum-verified private inputs for extracting
 license texts only; they are never copied into runtime artifacts. The ICU notice
-is included when ICU is deployed. The Qt/ICU pins match htopQt's corresponding
-license inputs. macOS binaries are thinned to the native architecture and stripped,
-then signed inside out using an ad-hoc signature, including the bundled 7-Zip
+is included when ICU is deployed. macOS binaries are thinned to the native
+architecture and stripped, then signed inside out using an ad-hoc signature, including the bundled 7-Zip
 engine/module/SFX. SFX checksum metadata is refreshed after these transformations.
 Frameworks and the app are signed last; `codesign --verify --deep --strict` must
 pass before ZIP creation. Local `build-app.sh` installations use the same runtime
-compaction and signing. This follows htopQt's signing flow. Developer ID,
+compaction and signing. Developer ID,
 notarization and Windows Authenticode are not configured.
 
 `./scripts/release.sh patch` (also `minor`, `major` or an explicit larger version)
-transfers htopQt's release helper: require a clean tree, change the CMake version,
-commit it, create an annotated `vX.Y.Z` tag, and atomically push branch and tag to
-`origin`. `--remote` selects another remote; `--dry-run` checks without changing
+requires a clean tree, changes the CMake version, commits it, creates an annotated
+`vX.Y.Z` tag, and atomically pushes branch and tag to `origin`.
+`--remote` selects another remote; `--dry-run` checks without changing
 files, commits or tags. `--check-tag vX.Y.Z` checks the version locally.
 Running this helper publishes Git refs; importing it does not run a release.
 

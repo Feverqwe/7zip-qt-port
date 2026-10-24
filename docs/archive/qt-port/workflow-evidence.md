@@ -36,6 +36,6 @@ historical. The pending statement was superseded by subsequent
 [platform acceptance](ux-port-audit.md#final-acceptance-of-product3a0b3b7).
 
 The removed GitHub workflow selected Python3.12 and Ninja1.12.1.
-The imported Windows Qt installer retained htopQt's aqtinstall3.3.0 adapter
+The imported Windows Qt installer retained the aqtinstall3.3.0 adapter
 for Qt6.12's compiler-specific repository layout. These historical pins do
 not establish an active CI job or replace the current installer configuration.

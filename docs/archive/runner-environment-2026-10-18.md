@@ -8,14 +8,8 @@ below describe earlier environments and may differ from the current kits.
 
 ## Runner script provenance
 
-The helper starts from htopQt's `scripts/hyperv-runner.py` at commit
-`f57b93a72d765f738a6b779b4b3c94e16c0ef64a`, adapted for Sevenzip resources,
-MSVC, pinned engine builders, formatter and SSH stdin transport.
-CLI, parallel probes, shared Bash command payload and discovery-error reporting
-were refreshed from htopQt's modified worktree on 2026-10-04 (base commit
-`56320ebb4d62b3bac83f38719278cae6a5c454c1`), retaining these Sevenzip adaptations.
-The source script's SHA256 was
-`f4f53f0123a503dcc4fb85f17821d79e1cf156f29cbe015b99d561b45b1903ba`.
+The helper's source revisions, adaptations and retained license notice are in
+[third-party notices](../../THIRD_PARTY_NOTICES.md#tooling-notice).
 
 ## Service-desktop diagnosis
 
@@ -37,7 +31,7 @@ and signed `pacman` packages (`pacman --noconfirm -Syu rsync`). The downloaded
 official `msys2-base-x86_64-latest.tar.xz` had SHA256
 `51612cb7ee5117b68bf342fb7885212537e19c2aa6bb8b989ba5498f39efcb22`.
 The helper addresses `usr/bin/rsync.exe` explicitly and maps destination paths
-to `/c/runner/...`. Its MSYS2 installation is separate from htopQt's Git Bash,
+to `/c/runner/...`. Its MSYS2 installation is separate from the shared Git Bash,
 MSVC and Qt, and is used only for transport; builds retain Git Bash and MSVC.
 Linux uses its installed `/usr/bin/rsync`; the Mac client needs `rsync` in PATH.
 Checks do not install or upgrade packages automatically.
@@ -87,9 +81,9 @@ Software rendering is selected for this guest without an accelerated GPU.
 
 Windows: Windows 11 Pro 10.0.26300 x64, MSVC 2022 Build Tools,
 Qt 6.8.3 `msvc2022_64`, Python/CMake/Ninja and Git Bash. The installed shared
-toolchain is under `C:\runner\htopqt`: `VS`, `Python`, `Git`,
-`Qt\6.8.3\msvc2022_64`. Sevenzip uses `vcvars64.bat` and `cl.exe` for C/C++;
-htopQt's clang-cl selection is not inherited. PATH and Qt/module discovery are
+toolchain includes `VS`, `Python`, `Git` and `Qt\6.8.3\msvc2022_64`.
+Sevenzip uses `vcvars64.bat` and `cl.exe` for C/C++;
+the shared clang-cl selection is not inherited. PATH and Qt/module discovery are
 scoped to the check process. The helper does not change shared packages or toolchains.
 Both guests build with four jobs and run CTest sequentially.
 
@@ -108,11 +102,11 @@ Project caches live at `<project-root>/cache/ccache`, outside `runs/current`,
 with a process-local 2GB limit. No existing shared compiler cache is deleted.
 
 Sevenzip uses clang-format 23.1.2, matching the local source formatting. Version
-18 in htopQt's environment rejects existing source formatting before compilation.
+18 in the shared environment rejects existing source formatting before compilation.
 Separate Python virtual environments contain the pinned PyPI formatter under
 `/home/runner/sevenzip-desktop/tools/formatter` and
 `C:\runner\sevenzip-desktop\tools\formatter`. Initial Linux provisioning also
-installed `python3-venv`; existing compilers/Qt and htopQt's formatter remain in place.
-To recreate the formatter, run the guest's `python3 -m venv <directory>` (Windows:
-`C:\runner\htopqt\Python\python.exe -m venv <directory>`), then that venv's
+installed `python3-venv`; existing compilers/Qt and the shared formatter remain in place.
+To recreate the formatter, run the guest's configured Python with
+`-m venv <directory>`, then that venv's
 Python with `-m pip install --no-cache-dir clang-format==23.1.2`.

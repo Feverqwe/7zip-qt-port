@@ -107,6 +107,6 @@ notes. See the [memory protocol](docs/agent-memory.md) for reading and handoffs.
 
 This repository contains code under several licenses. [MIT](LICENSE) applies
 to original project code unless another license is specified. Ported 7-Zip code
-retains its own licenses; the exFAT module and tools adapted from htopQt use
+retains its own licenses; the exFAT module and adapted development tools use
 GPL-2.0-or-later. Qt and other dependencies retain their own terms.
 See [third-party notices](THIRD_PARTY_NOTICES.md).

@@ -7,9 +7,9 @@
 
 This is project-owned Python/Bash/CMake integration, not archive behavior or a
 replacement 7-Zip implementation. Official 7-Zip has no Qt/CMake/Hyper-V focused
-verification runner to reuse. The existing helper's htopQt provenance and full
-commits remain in [runner documentation](../../../hyperv-runners.md#runner-configuration-and-evidence).
-No additional htopQt implementation was copied in this change.
+verification runner to reuse. The existing helper's provenance and full
+commits remain in [third-party notices](../../../../THIRD_PARTY_NOTICES.md#tooling-notice).
+No additional external tooling implementation was copied in this change.
 
 Runtime preparation still uses official source from
 `https://github.com/ip7z/7zip.git` at

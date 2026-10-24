@@ -994,7 +994,8 @@ Qt deployment, artifact filtering and macOS signing are project integration.
 No archive algorithm or upstream module is replaced by this packaging glue.
 
 `scripts/release.{py,sh}` and the Windows Qt repository-layout adapter are
-transferred from the user-selected htopQt checkout, with application naming and
+transferred from the source recorded in
+[third-party notices](../../../../THIRD_PARTY_NOTICES.md#tooling-notice), with application naming and
 build-only CI messages adapted. Its Qt 6.12.0/ICU license pins and inside-out
 ad-hoc signing sequence are retained. Source archives serve only as private
 license extraction inputs. [CI](../../../ci.md) owns artifact scope, source exclusion,

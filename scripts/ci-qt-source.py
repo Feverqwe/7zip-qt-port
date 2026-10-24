@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fetch private license inputs; source archives are never packaged or uploaded.
 
-Qt/ICU pins match htopQt/scripts/ci-qt-source.py.
+Qt/ICU source inputs supply the corresponding runtime license notices.
 """
 import hashlib
 from pathlib import Path

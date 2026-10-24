@@ -1,6 +1,0 @@
-htopQt is distributed under the GNU General Public License, version 2 or later.
-The full license text is in third_party/htop/COPYING.
-
-Upstream htop copyright notices and licenses are preserved in third_party/htop.
-Original project glue is licensed under GPL-2.0-or-later.
-Qt and other dependencies retain their respective licenses.

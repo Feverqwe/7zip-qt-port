@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Install Qt 6.12 with aqt's verified downloads and kit relocation.
 
-Repository-layout adapter shared with htopQt/scripts/install-qt-windows.py.
+Repository-layout adapter for the compiler-specific Windows Qt kit.
 """
 import argparse
 from importlib.metadata import version

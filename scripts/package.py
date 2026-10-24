@@ -83,7 +83,7 @@ def imports(path):
 
 
 def deploy_crt(root, runtime):
-    # Follow htopQt's imported CRT closure instead of shipping a CRT installer.
+    # Deploy the imported CRT dependency closure.
     for path in root.rglob("*.exe"):
         if path.name.lower().startswith("vc_redist."):
             path.unlink()
@@ -126,7 +126,7 @@ def compact_and_sign(bundle):
 
 
 def sign_bundle(bundle):
-    # Same inside-out ad-hoc signing order as htopQt/scripts/package.py.
+    # Sign nested runtime code before its enclosing containers.
     # Include the console engine/module in Resources as nested runtime code.
     containers = []
     main_executable = bundle / "Contents/MacOS/Sevenzip"

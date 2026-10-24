@@ -296,7 +296,7 @@ they require Bash, Git, CMake/Ninja, a compiler and rsync.
 
 SSH checks cover the project gate, not interactive desktop/Finder behavior,
 distribution or rendered Windows 7zFM parity. Historical ARM64 QEMU checks
-are separate evidence; those removed htopQt VMs are not the current runners.
+are separate evidence and do not validate the current runners.
 
 ## Historical evidence
 

@@ -300,5 +300,5 @@ clean obsolete project runs, build outputs and temporary data under the retentio
 and active-run safeguards in [Hyper-V runners](docs/hyperv-runners.md).
 This scoped cleanup is authorized; a capacity warning alone does not require
 another confirmation. Preserve active work, toolchains and unrelated data.
-Removed htopQt QEMU VMs and historical ARM64 results do not validate these guests.
+Historical ARM64 results do not validate these guests.
 Do not publish, push or update upstream unless the user's task calls for it.
