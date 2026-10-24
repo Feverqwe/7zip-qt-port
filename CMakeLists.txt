@@ -3200,6 +3200,9 @@ if(BUILD_TESTING)
     target_include_directories(drag_drop_add_ui_tests PRIVATE src tests)
     target_link_libraries(drag_drop_add_ui_tests PRIVATE ${folder_size_view_libraries}
         sevenzip_location sevenzip_folder_loader)
+    target_compile_definitions(drag_drop_add_ui_tests PRIVATE
+        "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
+    add_dependencies(drag_drop_add_ui_tests operation_host)
     add_test(NAME drag_drop_add_ui COMMAND drag_drop_add_ui_tests -silent)
     set_tests_properties(drag_drop_add_ui PROPERTIES TIMEOUT 60 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/drag_drop_add_ui.ini")

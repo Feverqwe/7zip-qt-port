@@ -1,11 +1,12 @@
 #include "7zip/UI/Explorer/resource.h"
 #include "7zip/UI/FileManager/resource.h"
-#include "CPP/7zip/UI/Common/CompressCall.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "mainwindow.h"
 #include "qtfilemanagerdrag.h"
 #include "qtlangcontrols.h"
-#include "qtshellarchiveservices.h"
+#include "qtoperationlauncher.h"
+#include <QEventLoop>
+#include <QFileInfo>
 #include <QScopedValueRollback>
 
 bool QtFileManagerDrag::ConfirmCopyToArchive(CPanel &panel, DWORD effect) {
@@ -57,16 +58,32 @@ UInt32 QtFileManagerDrag::Drag_OnContextMenu(int x, int y, UInt32 mask) {
 }
 HRESULT QtFileManagerDrag::CompressFiles(CPanel &, const UString &folder, const UString &name,
                                          const UStringVector &paths, bool waitFinish) {
-    const auto catalog = window_.backend_->codecCatalog();
-    QtShellArchiveServices services(
-        *window_.backend_, &window_, {}, {}, {},
-        [&](CCompressDialog &source, const CObjectVector<NWildcard::CCensorPath> &selection,
-            QWidget *parent) {
-            return CreateArchiveDialog::PresentSource(source, selection, catalog, parent);
-        },
-        MainWindow::toolbarSettingsPath());
+    QStringList inputs;
+    FOR_VECTOR(i, paths)
+    inputs.append(ToQString(paths[i]));
+    QString error;
+    auto *operation =
+        window_.backend_->startGuiCompress(QFileInfo(ToQString(folder + name)).absoluteFilePath(),
+                                           {}, true, inputs, false, true, error);
+    const HRESULT launched = window_.observeGuiArchiveOperation(operation, error);
+    if (!operation || !waitFinish)
+        return launched;
+
+    // PanelDrag keeps temporary sources alive until this call returns. Preserve
+    // CompressCall's waitFinish branch while servicing the independent child.
+    // Prevent manager teardown/reentrant commands from releasing that source.
+    QtAppOperationState::CallScope call(window_.app_.QtOperations());
     QScopedValueRollback<bool> progressOwner(window_.sourceArchiveProgress_, true);
-    // Original PanelDrag::CompressDropFiles call flags; the retained service
-    // transports the in-process CompressCall2 worker and Qt modal.
-    return ::CompressFiles(folder, name, L"", true, paths, false, true, waitFinish, services);
+    QEventLoop wait;
+    QtOperationResult result;
+    connect(operation, &QtOperationLauncher::finished, &wait,
+            [&](const QtOperationResult &finished) {
+                result = finished;
+                wait.quit();
+            });
+    wait.exec(QEventLoop::ExcludeUserInputEvents);
+    using Outcome = QtOperationResult::Outcome;
+    if (result.Status == Outcome::Cancelled)
+        return E_ABORT;
+    return result.Status == Outcome::Success ? S_OK : E_FAIL;
 }

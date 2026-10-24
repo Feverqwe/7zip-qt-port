@@ -1,12 +1,55 @@
 #include "archivecodeccatalog.h"
+#include "filetable.h"
 #include "fixtures/drag_event_position.h"
+#include "fixtures/operation_temp_cleanup.h"
+#include "fixtures/scoped_environment.h"
 #include "native_archive_fixture.h"
+#include "qtpaneldragtransport.h"
+#include "source_extract_fixture.h"
 #include "window_state_support.h"
+#include <QJsonDocument>
+#include <QJsonObject>
+
+namespace {
+class DropBackend final : public ArchiveBackend {
+  public:
+    QList<QtOperationResult> Results;
+    QString Barrier;
+    bool Cancel = false;
+    bool Fail = false;
+    unsigned Accepted = 0;
+    QtOperationLauncher *startGuiCompress(const QString &archive, const QString &type,
+                                          bool addExtension, const QStringList &paths, bool email,
+                                          bool showDialog, QString &error) override {
+        QtOperationMessage job;
+        job.Type = QtOperationMessage::Kind::Job;
+        job.Operation = QtOperationMessage::Command::Compress;
+        job.ArchivePath = archive;
+        job.ArchiveType = Fail ? QStringLiteral("unsupported-drag-format") : type;
+        job.AddExtension = addExtension;
+        job.Paths = paths;
+        job.EMail = email;
+        job.ShowDialog = showDialog;
+        ScopedTestEnvironment decision("SEVENZIP_OPERATION_CREATE_DECISION",
+                                       Cancel ? "cancel" : "accept");
+        ScopedTestEnvironment barrier("SEVENZIP_OPERATION_BARRIER", Barrier);
+        auto *operation =
+            QtOperationLauncher::Launch(QStringLiteral(SEVENZIP_OPERATION_HOST), job, error);
+        if (operation) {
+            connect(operation, &QtOperationLauncher::accepted, this, [this] { ++Accepted; });
+            connect(operation, &QtOperationLauncher::finished, this,
+                    [this](const QtOperationResult &result) { Results.append(result); });
+        }
+        return operation;
+    }
+};
+} // namespace
 
 class DragDropAddUiTests final : public QObject {
     Q_OBJECT
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void cleanup() { QVERIFY(CleanupOperationTestTemps()); }
     void externalArchiveDrop_data() {
         QTest::addColumn<bool>("valid");
         QTest::addColumn<bool>("multiple");
@@ -29,7 +72,8 @@ class DragDropAddUiTests final : public QObject {
         input.write("archive drop content");
         input.close();
         const QString archive = root.filePath(QStringLiteral("мой архив.ZIP"));
-        ArchiveBackend backend;
+        DropBackend backend;
+        backend.Cancel = multiple;
 #ifdef SEVENZIP_CODEC_MODULE
         ArchiveCodecCatalog probe(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
         QCOMPARE(probe.result(), S_OK);
@@ -78,15 +122,10 @@ class DragDropAddUiTests final : public QObject {
                               &mime, Qt::LeftButton, Qt::NoModifier);
         QCoreApplication::sendEvent(table->viewport(), &enter);
         QVERIFY(enter.isAccepted());
-        bool addShown = false, errorShown = false;
+        bool errorShown = false;
         QTimer respond;
         connect(&respond, &QTimer::timeout, &window, [&] {
-            if (auto *dialog =
-                    dynamic_cast<CreateArchiveDialog *>(QApplication::activeModalWidget())) {
-                addShown = true;
-                dialog->reject();
-            } else if (auto *error =
-                           qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+            if (auto *error = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
                 errorShown = true;
                 error->accept();
             }
@@ -96,7 +135,10 @@ class DragDropAddUiTests final : public QObject {
                         Qt::NoModifier);
         QCoreApplication::sendEvent(table->viewport(), &drop);
         respond.stop();
-        QCOMPARE(addShown, multiple);
+        if (multiple) {
+            QTRY_COMPARE(backend.Results.size(), 1);
+            QCOMPARE(backend.Results.first().Status, QtOperationResult::Outcome::Cancelled);
+        }
         QCOMPARE(errorShown, !valid);
         QVERIFY(QFileInfo::exists(archive));
         if (valid && !multiple) {
@@ -127,7 +169,7 @@ class DragDropAddUiTests final : public QObject {
         const QByteArray bytes("Add\0native bytes", 16);
         QCOMPARE(input.write(bytes), qint64(bytes.size()));
         input.close();
-        ArchiveBackend backend;
+        DropBackend backend;
 #ifdef SEVENZIP_CODEC_MODULE
         ArchiveCodecCatalog probe(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
         QCOMPARE(probe.result(), S_OK);
@@ -148,29 +190,18 @@ class DragDropAddUiTests final : public QObject {
                               Qt::LeftButton, Qt::NoModifier);
         QCoreApplication::sendEvent(table->viewport(), &enter);
         QVERIFY(enter.isAccepted());
-        QString archiveName, format, error;
-        QTimer accept;
-        accept.setInterval(5);
-        connect(&accept, &QTimer::timeout, &window, [&] {
-            if (auto *dialog =
-                    dynamic_cast<CreateArchiveDialog *>(QApplication::activeModalWidget())) {
-                accept.stop();
-                archiveName = dialog->findChild<QLineEdit *>("archiveName")->text();
-                format = dialog->findChild<QComboBox *>("archiveFormat")->currentText();
-                if (archiveName != QFileInfo(name).completeBaseName() + "." + format) {
-                    error = "Native archive name or selected format suffix is missing";
-                    dialog->reject();
-                    return;
-                }
-                dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
-            }
-        });
-        accept.start();
+        const QString nameReport = root.filePath("dialog-name.json");
+        ScopedTestEnvironment report("SEVENZIP_OPERATION_CREATE_NAME_REPORT", nameReport);
         QDropEvent drop(QPointF(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
         QCoreApplication::sendEvent(table->viewport(), &drop);
-        accept.stop();
-        QVERIFY2(error.isEmpty(), qPrintable(error));
-        QVERIFY(!archiveName.isEmpty());
+        QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 1, 30000);
+        QCOMPARE(backend.Results.first().Status, QtOperationResult::Outcome::Success);
+        const auto dialog =
+            QJsonDocument::fromJson(SourceExtractFixture::readFile(nameReport)).object();
+        const QString archiveName = dialog.value("name").toString();
+        const QString format = dialog.value("format").toString();
+        QVERIFY(!format.isEmpty());
+        QCOMPARE(archiveName, QFileInfo(name).completeBaseName() + "." + format);
         QVERIFY(drop.isAccepted());
         const QString archive = QDir(root.filePath("output")).filePath(archiveName);
         QVERIFY(QFileInfo::exists(archive));
@@ -190,6 +221,101 @@ class DragDropAddUiTests final : public QObject {
         QFile result(QDir(output).filePath(name));
         QVERIFY(result.open(QIODevice::ReadOnly));
         QCOMPARE(result.readAll(), bytes);
+    }
+
+    void sourceLifetimeAndIndependentCompletion_data() {
+        QTest::addColumn<bool>("wait");
+        QTest::addColumn<QString>("outcome");
+        for (bool wait : {false, true})
+            for (const QString &outcome :
+                 {QString("create"), QString("cancel"), QString("failure")})
+                QTest::newRow(
+                    qPrintable(QString("%1-%2").arg(wait ? "temporary" : "ordinary").arg(outcome)))
+                    << wait << outcome;
+    }
+    void sourceLifetimeAndIndependentCompletion() {
+#ifndef SEVENZIP_CODEC_MODULE
+        QSKIP("Requires the official native module");
+#else
+        QFETCH(bool, wait);
+        QFETCH(QString, outcome);
+        const bool cancel = outcome == "cancel", failure = outcome == "failure";
+        QTemporaryDir input, output;
+        QVERIFY(input.isValid() && output.isValid());
+        const QString source = input.filePath(QStringLiteral("drop 空 с пробелом.bin"));
+        const QByteArray bytes("temporary drop bytes");
+        QVERIFY(SourceExtractFixture::writeFile(source, bytes));
+        DropBackend backend;
+        backend.Barrier = output.filePath("continue");
+        backend.Cancel = cancel;
+        backend.Fail = failure;
+        ArchiveCodecCatalog catalog(QStringLiteral(SEVENZIP_CODEC_MODULE), 0);
+        QCOMPARE(backend.loadCodecCatalog(QStringLiteral(SEVENZIP_CODEC_MODULE), catalog.version()),
+                 S_OK);
+        MainWindow window(&backend);
+        window.show();
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(output.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        auto *table = dynamic_cast<FileTable *>(window.findChild<QTableWidget *>("archiveTable"));
+        QVERIFY(table);
+        QTRY_VERIFY(table->isEnabled());
+        bool returned = false, checked = false;
+        QTimer release;
+        connect(&release, &QTimer::timeout, &window, [&] {
+            if (!backend.Accepted)
+                return;
+            release.stop();
+            checked = true;
+            QCOMPARE(returned, !wait);
+            QVERIFY(backend.Results.isEmpty());
+            QCOMPARE(SourceExtractFixture::readFile(source), bytes);
+            // Waiting protects the source stack from teardown; ordinary drops
+            // can finish after the manager closes.
+            QCOMPARE(window.close(), !wait);
+            QVERIFY(SourceExtractFixture::writeFile(backend.Barrier, "continue"));
+        });
+        release.start(10);
+        UStringVector paths;
+        paths.Add(ToUString(source));
+        UInt32 flags = 0;
+        const HRESULT result = table->sourcePanel->CompressDropFiles(
+            paths, ToUString(output.path() + '/'), true, false,
+            wait ? k_SourceFlags_TempFiles : k_SourceFlags_DoNotWaitFinish, flags);
+        returned = true;
+        if (wait) {
+            QVERIFY(checked);
+            QCOMPARE(result, cancel ? E_ABORT : failure ? E_FAIL : S_OK);
+        } else {
+            QCOMPARE(result, S_OK);
+        }
+        QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 1, 30000);
+        QVERIFY(checked);
+        QCOMPARE(backend.Results.first().Status, cancel    ? QtOperationResult::Outcome::Cancelled
+                                                 : failure ? QtOperationResult::Outcome::Failure
+                                                           : QtOperationResult::Outcome::Success);
+        QCOMPARE(SourceExtractFixture::readFile(source), bytes);
+        if (!cancel && !failure) {
+            QVERIFY(!backend.Results.first().ChangedArchives.isEmpty());
+            const QString archive = backend.Results.first().ChangedArchives.first();
+            // The drag source may release its temporary bytes immediately
+            // after completion. The independent output must retain them.
+            QVERIFY(QFile::remove(source));
+            ArchiveBackend verifier;
+            QSignalSpy finished(&verifier, &ArchiveBackend::finished);
+            verifier.list(archive);
+            QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 30000);
+            QVERIFY(finished.takeFirst().first().toBool());
+            verifier.extract(archive, output.filePath("verify"));
+            QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 30000);
+            QVERIFY(finished.first().first().toBool());
+            QCOMPARE(SourceExtractFixture::readFile(
+                         QDir(output.filePath("verify")).filePath(QFileInfo(source).fileName())),
+                     bytes);
+        } else {
+            QVERIFY(backend.Results.first().ChangedArchives.isEmpty());
+        }
+#endif
     }
 };
 QTEST_MAIN(DragDropAddUiTests)

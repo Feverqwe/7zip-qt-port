@@ -1014,7 +1014,7 @@ Requirement audit against the requested plan:
 | Retain native work and original module boundaries | The preceding Test, Extract, Create/Update, checksum and benchmark sections record complete source comparisons, source revisions, dependencies and necessary Qt/OS adaptations. Selected native workers remain authoritative; this iteration changes only validation tooling. |
 | Independent process owns engine, UI and resources | `qtguimain` owns catalog/services; original GUI workers own callbacks, inputs, staged writes and dialogs. Actual module-only installed operations prove no console dependency in their selected paths. Parent-exit cases cover each operation family. |
 | One launcher, ACK and typed completion | Backend GUI entry methods share the launcher/endpoint/protocol. The request is captured before ACK; process observation distinguishes result/Cancel/warning from kill/crash and protocol failure. Version, UTF-8, exact selections and malformed frames have behavior coverage. Only the channel address enters the manager-created argv; no password/job file is produced. |
-| Complete command scenarios | Manager toolbar/shell and child consumers cover Test, Extract, Create/Update, hash and benchmark; ordinary filesystem operations use the standalone route. Success, errors, password/overwrite/Cancel, partial/corrupt extraction and malicious paths are covered by the focused operation suites. |
+| Complete command scenarios | Manager toolbar/shell and child consumers cover Test, Extract, Create/Update, hash and benchmark through the standalone route. The follow-up below also connects drag-created archives. Success, errors, password/overwrite/Cancel, partial/corrupt extraction and malicious paths are covered by the focused operation suites. |
 | Lifetime, refresh and concurrent writes | App-owned observers and native handle release do not terminate accepted work. Crash/retry, close/navigation during work, output announcement, stale-generation rejection, competing writers, atomic/cross-filesystem publication, volumes/SFX and input deletion have the recorded behavior checks. |
 | Explicit stream/device boundary | Current manager eligibility excludes raw-device prefixes and parent/open-container chains; live archive operations retain their source owner. No blanket nested read-only rule, whole-container materialization, decoding replacement or source repair/replay was introduced. |
 | Build, distribution and acceptance limits | Incremental focused checks and private installed runtimes pass on all three platforms as described above. Full/slow matrices, release distribution and pixel parity are not claimed. Computer Use returned “Computer Use was not approved to use Sevenzip” on macOS; the user explicitly chose to leave manual installed UI inspection unverified. That exception does not imply visual acceptance. Source/native dialog regressions remain part of the recorded checks. |
@@ -1025,6 +1025,62 @@ Live streams/devices and parent-update chains retain the intentional direct
 boundary; source transfer completeness and the focused runtime scope are recorded
 separately above. This completion does not extend to full engine isolation,
 the deferred lightweight executable, a full/slow gate or release distribution.
+
+### Follow-up source comparison of restored launch routes — 2026-10-24
+
+Reviewed HEAD `30b05340c989f14c1080c7e05074ef80ccc828c5` against the
+pre-native-migration parent `ff7c8bbdb96162c627b6d0544c631a66d8255444`,
+the standalone acceptance commit
+`5c258e52d8beeddfdc4a3e2f0486a2863effa84e`, and upstream
+<https://github.com/ip7z/7zip.git> at
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
+Compared Common/CompressCall launch/options and its FileManager Panel, PanelDrag,
+MyLoadMenu and Explorer/ContextMenu consumers with the corresponding port services,
+GUI dispatcher and operation endpoint. This is a source review; no new runtime
+acceptance is claimed.
+
+The restored implementation is not a source rollback. The existing GUI dispatcher
+and native workers are reused through a new portable job/ACK/result channel.
+Toolbar Add/Test/Extract, shell extract variants, compression variants,
+checksum generation/verification/calculation and both benchmark modes remain
+connected. The selected launcher, endpoint, dispatcher and drag presentation files
+have no intervening changes between standalone acceptance and this HEAD.
+Direct Test/Extract within an open archive is also present in upstream; that
+boundary alone is not a missing external launch.
+
+The review found one unported upstream launch route: PanelDrag::CompressDropFiles creates
+a new archive through Common/CompressCall in a separate 7zG, with either
+waitFinish value. At the reviewed HEAD, QtFileManagerDrag::CompressFiles calls the in-process
+CompressCall2 service for both values. In particular, an ordinary-file drop that
+does not require waiting still keeps the dialog and worker in the manager.
+The drag presentation and PanelDrag files are unchanged from the pre-migration
+parent, so this is a retained port gap, not code lost in the latest restoration.
+The earlier selected-plan completion does not establish that every upstream 7zG
+call site has been restored.
+
+The follow-up fix connects both branches to ArchiveBackend's existing standalone
+Compress operation. The original PanelDrag choice of destination, archive name,
+source selection and wait flags is unchanged. For waitFinish, a local Qt event
+loop observes completion while the existing source-call/close guards retain the
+drag source and exclude further user input. The child owns dialogs and native
+workers. Cancellation returns E_ABORT; failure returns E_FAIL. Nonwaiting drops
+reuse the application-owned observer and can finish after the manager closes.
+No decoding, update algorithm, process implementation or protocol was added.
+
+The existing drag_drop_add_ui regressions now drive the real child GUI dispatcher
+instead of a parent Create dialog. They retain the external-archive-open and
+native filename/content checks, and additionally cover waiting/nonwaiting
+success, cancellation and unsupported-format failure. A child barrier verifies
+that the temporary-source call cannot return or close the manager before child
+completion; output bytes are extracted after the source file is released.
+
+Validation of this fix on macOS: application and selected test targets built;
+drag_drop_add_ui, drag_drop_ui, drag_protocol and operation_creation passed
+(four suites, 6.60 s). The initial new output-verification rows lacked the native
+reader's list/open preparation; adding that existing public workflow fixed the
+fixture. Final diff whitespace check passed. No Windows/Linux rerun, full/slow
+gate or rendered UI comparison was performed; platform-specific process code and
+dialog layout are unchanged.
 
 ## 2026-10-24 — retire console transport, retain official `7z` sidecar
 

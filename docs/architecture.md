@@ -135,8 +135,11 @@ native writers. Completed single-file outputs are published atomically; a
 cross-filesystem move stages its cancellable copy beside the destination first.
 Readers may retain the previous generation, but a stale file-backed reader must
 refresh before editing. Completion reopens matching ordinary archive panels.
-Operations in an open archive folder or a nested parent chain, and synchronous
-drop consumers, retain their direct source workflow. Raw-device namespace commands
+Creating an archive by dropping files also launches `7zG`. When the source requires
+completion before releasing temporary files, the drag call waits for the child
+while preventing manager teardown and further user input. Other drops return
+without waiting. Updating an open archive folder or a nested parent chain retains
+its direct source workflow. Raw-device namespace commands
 also retain that owner. File Manager checksums preserve operated relative paths,
 prefixes and flat-mode recursion through the original PanelCrc worker; shell
 checksums use HashCalcGUI. File-backed Windows ADS retain their source prefix

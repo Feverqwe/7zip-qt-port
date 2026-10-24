@@ -104,6 +104,21 @@ void DriveOperationDialogs() {
                 QTimer::singleShot(0, extract, &QDialog::accept);
             }
         } else if (auto *create = qobject_cast<CreateArchiveDialog *>(widget)) {
+            const QString nameReport =
+                qEnvironmentVariable("SEVENZIP_OPERATION_CREATE_NAME_REPORT");
+            if (!nameReport.isEmpty()) {
+                QSaveFile file(nameReport);
+                if (file.open(QIODevice::WriteOnly)) {
+                    file.write(
+                        QJsonDocument(
+                            QJsonObject{
+                                {"name", create->findChild<QLineEdit *>("archiveName")->text()},
+                                {"format",
+                                 create->findChild<QComboBox *>("archiveFormat")->currentText()}})
+                            .toJson());
+                    file.commit();
+                }
+            }
             const QString decision = qEnvironmentVariable("SEVENZIP_OPERATION_CREATE_DECISION");
             if (decision == "cancel")
                 QTimer::singleShot(0, create, &QDialog::reject);
