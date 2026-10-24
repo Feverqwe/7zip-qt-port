@@ -1,5 +1,9 @@
 # Zstandard: frames, skippable metadata и source failures
 
+Исторический source review ниже описывает исходную интеграцию. Текущий общий
+libzstd block decoder с сохранённым upstream frame parser и recovery contracts
+описан в [продолжении аудита](zip-zstd.md#общий-libzstd-encoderdecoder--2026-10-24).
+
 ## Source comparison
 
 7-Zip: <https://github.com/ip7z/7zip.git>, commit

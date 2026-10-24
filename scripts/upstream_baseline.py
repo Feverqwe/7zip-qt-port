@@ -151,9 +151,10 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=()):
                 cpp = name.endswith(".cpp")
                 # Keep unchanged third-party C at CMake/MSVC's normal warning
                 # level rather than the 7-Zip-specific /Wall pragma contract.
-                flags = '$(CFLAGS_O2:-Wall=-W3)' if name.startswith("zstd/") else '$(CFLAGS_O2)'
+                flags = '$(CFLAGS_O2:-Wall=-W3) -DZSTD_DISABLE_ASM' if name.startswith("zstd/") else '$(CFLAGS_O2)'
                 lines.append(('\t$(CC) ' + flags + ' ' + ('-TP' if cpp else '-TC') + ' -Fo"' + target + '" "' + source + '"')
-                             if windows else ('\t$(CXX) $(CXXFLAGS) ' if cpp else '\t$(CC) $(CFLAGS) ') + source)
+                             if windows else ('\t$(CXX) $(CXXFLAGS) ' if cpp else
+                                              '\t$(CC) $(CFLAGS) ' + ('-DZSTD_DISABLE_ASM ' if name.startswith("zstd/") else '')) + source)
                 extra_objects.append(target)
             if extra_objects:
                 if not windows:

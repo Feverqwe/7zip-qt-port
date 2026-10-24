@@ -336,6 +336,33 @@ class ZstdStreamTests final : public QObject {
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         checkExtraction();
     }
+    void checksumErrorPreservesOutput() {
+        fixture("checksum");
+        QByteArray damaged = image_;
+        damaged[damaged.size() - 1] = char(damaged.back() ^ 1);
+        for (UInt32 chunk : {1u, 13u, 65536u}) {
+            CMyComPtr2<ICompressCoder, NCompress::NZstd::CDecoder> coder;
+            coder.SetFromCls(new NCompress::NZstd::CDecoder);
+            coder->FinishMode = true;
+            CMyComPtr<ICompressSetBufSize> buffers;
+            QCOMPARE(coder.Interface()->QueryInterface(IID_ICompressSetBufSize,
+                                                       reinterpret_cast<void **>(&buffers)),
+                     S_OK);
+            QCOMPARE(buffers->SetInBufSize(0, chunk), S_OK);
+            CMyComPtr2<IInStream, Input> input;
+            input.SetFromCls(new Input(damaged));
+            CMyComPtr2<ISequentialOutStream, Output> output;
+            output.SetFromCls(new Output);
+            QVERIFY(coder.Interface()->Code(input, output, nullptr, nullptr, nullptr) != S_OK);
+            QCOMPARE(coder->ResInfo.decode_SRes, SZ_ERROR_CRC);
+            QCOMPARE(output->bytes, payload_);
+
+            input.SetFromCls(new Input(image_));
+            output.SetFromCls(new Output);
+            QCOMPARE(coder.Interface()->Code(input, output, nullptr, nullptr, nullptr), S_OK);
+            QCOMPARE(output->bytes, payload_);
+        }
+    }
     void coderSourceErrors() {
         fixture("raw");
         for (HRESULT failure : {E_FAIL, E_ABORT}) {

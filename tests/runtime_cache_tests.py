@@ -15,6 +15,15 @@ spec.loader.exec_module(runtime)
 
 
 class RuntimeCacheTests(unittest.TestCase):
+    def setUp(self):
+        # Windows platform discovery can spawn subprocesses. Keep those probes
+        # outside the mocked builder/compiler subprocess boundary.
+        for name in ("system", "machine"):
+            value = getattr(runtime.platform, name)()
+            probe = patch.object(runtime.platform, name, return_value=value)
+            probe.start()
+            self.addCleanup(probe.stop)
+
     def test_codec_only_preserves_sfx_and_full_runtime_cache(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

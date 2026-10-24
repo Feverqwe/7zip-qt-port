@@ -8,7 +8,7 @@ import zlib
 CASES = ("raw", "empty", "empty-rle", "zero-blocks", "rle", "unknown-size", "fcs-1", "fcs-2", "fcs-8",
          "dict-zero-1", "dict-zero-2", "dict-zero-4", "unused", "multi-block",
          "compressed", "checksum", "huffman", "concatenated", "empty-first",
-         "skip-first", "skip-only", "skip-between")
+         "skip-first", "skip-only", "skip-between", "mixed-history")
 BAD = ("magic", "reserved", "block-type", "block-size", "body-short", "header-short",
        "size-small", "size-large", "checksum-bad", "dictionary", "skip-short", "tail",
        "compressed-bad", "late-crc")
@@ -68,6 +68,21 @@ def volume(kind):
     elif kind == "multi-block":
         expected = bytes(range(256)) * 1700
         image = raw(expected, fcs=0)
+    elif kind == "mixed-history":
+        # Mix raw/RLE and compressed history across cyclic-window wraps.
+        compressed = bytes.fromhex(COMPRESSED["compressed"])
+        blocks = compressed[9:]
+        position = 0
+        while position < len(blocks):
+            header = int.from_bytes(blocks[position:position + 3], "little")
+            if header & 1:
+                blocks = blocks[:position] + (header & ~1).to_bytes(3, "little") + blocks[position + 3:]
+            position += 3 + (1 if (header >> 1) & 3 == 1 else header >> 3)
+        prefix = bytes(range(256)) * 17
+        raw_block = (len(prefix) << 3).to_bytes(3, "little") + prefix
+        rle_block = ((7000 << 3) | 2).to_bytes(3, "little") + b"A"
+        image = b"\x28\xb5\x2f\xfd\x00\x38" + (raw_block + rle_block + blocks) * 9 + b"\x01\x00\x00"
+        expected = (prefix + b"A" * 7000 + payload("compressed")) * 9
     elif kind == "unknown-size":
         image = raw(expected, fcs=0)
     elif kind.startswith("fcs-"):

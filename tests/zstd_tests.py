@@ -59,6 +59,26 @@ class ZstdTests(unittest.TestCase):
                         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
                         self.assertEqual(path.read_bytes(), image)
 
+    def test_error_preserves_available_data(self):
+        checksum_payload = volume("checksum")[1]
+        raw_payload = volume("raw")[1]
+        cases = {
+            "checksum-bad": checksum_payload,
+            "late-crc": raw_payload + checksum_payload,
+            "body-short": raw_payload[:-1],
+            "size-large": raw_payload,
+        }
+        with tempfile.TemporaryDirectory(prefix="sevenzip-zstd-recovery-") as temporary:
+            path = Path(temporary) / "повреждённый 空.zst"
+            for kind, expected in cases.items():
+                with self.subTest(kind=kind):
+                    image, _ = volume(kind)
+                    path.write_bytes(image)
+                    result = self.command("7z", path, "x", "-so", "-bso0", "-bse2")
+                    self.assertEqual(result.returncode, 2, result.stderr)
+                    self.assertEqual(result.stdout, expected)
+                    self.assertEqual(path.read_bytes(), image)
+
 
 if __name__ == "__main__":
     unittest.main()

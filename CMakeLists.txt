@@ -26,6 +26,7 @@ set_source_files_properties(src/CPP/7zip/Common/LimitedStreams.cpp PROPERTIES
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools Network)
 find_package(Threads REQUIRED)
+include(cmake/Zstd.cmake)
 include(cmake/Exfat.cmake)
 include(cmake/Xfs.cmake)
 include(cmake/Cramfs.cmake)
@@ -1623,7 +1624,7 @@ if(BUILD_TESTING)
         ${source_extract_advanced_sources})
     target_include_directories(archive_layer_chain_tests PRIVATE src tests)
     target_link_libraries(archive_layer_chain_tests PRIVATE sevenzip_location Qt6::Test)
-    add_dependencies(archive_layer_chain_tests sevenzip_ext_runtime)
+    add_dependencies(archive_layer_chain_tests sevenzip_ext_runtime sevenzip_mbr_runtime)
     target_compile_definitions(archive_layer_chain_tests PRIVATE
         LAYER_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/layers"
         SEVENZIP_EXT_PYTHON="${Python3_EXECUTABLE}"
