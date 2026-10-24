@@ -3,11 +3,13 @@
 #include "CPP/7zip/UI/Agent/UpdateCallbackAgent.h"
 #include "CPP/7zip/UI/FileManager/FileFolderPluginOpen.h"
 #include "CPP/7zip/UI/FileManager/UpdateCallback100.h"
+#include "Windows/FileDir.h"
 #include "archive_backend_test_support.h"
 #include "archivecodeccatalog.h"
 #include "archivenativeopen.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivefoldermanager.h"
+#include "qtarchivewritelease.h"
 #include "qtlocationfolder.h"
 #include <QApplication>
 #include <QStandardPaths>
@@ -250,6 +252,129 @@ class CodecUpdateTests final : public QObject, protected ArchiveBackendTestSuppo
         QCOMPARE(extractor.exitCode(), 0);
         QCOMPARE(readFile(QDir(fixture.filePath("out")).filePath(name)), replacement);
         QCOMPARE(readFile(source), replacement);
+    }
+    void anotherWriterBlocksNativeFolderUpdateUntilRelease() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString source = fixture.filePath("payload.txt");
+        const QString archive = fixture.filePath("target.zip");
+        writeFile(source, "original bytes");
+        QProcess creator;
+        creator.start(engine_, {"a", "-tzip", "--", archive, source});
+        QVERIFY(creator.waitForFinished(10000));
+        QCOMPARE(creator.exitCode(), 0);
+        const QByteArray before = readFile(archive);
+        ArchiveBackend backend(nullptr, engine_);
+        QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CFfpOpen opening(manager);
+        QCOMPARE(opening.OpenFileFolderPlugin(nullptr, us2fs(archive.toStdWString().c_str()),
+                                              UString("zip"), nullptr),
+                 S_OK);
+        QCOMPARE(opening.Folder->LoadItems(), S_OK);
+        auto *folder = dynamic_cast<CAgentFolder *>(opening.Folder.Interface());
+        QVERIFY(folder);
+        auto *resource = dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource());
+        QVERIFY(resource);
+        CMyComPtr<IFolderOperations> operations;
+        QCOMPARE(opening.Folder.QueryInterface(IID_IFolderOperations, &operations), S_OK);
+        writeFile(source, "replacement bytes");
+        {
+            QtArchiveWriteLease owner;
+            QString error;
+            QVERIFY2(owner.acquire({archive}, error), qPrintable(error));
+            CCodecUpdateWorker worker(operations, source);
+            worker.DisableUserQuestions = true;
+            auto transport = resource->CreateProgressTransport(worker);
+            QCOMPARE(worker.Create(L"Conflicting writer", nullptr), S_OK);
+            QCOMPARE(worker.Result, E_FAIL);
+            QCOMPARE(readFile(archive), before);
+            QCOMPARE(readFile(source), QByteArray("replacement bytes"));
+        }
+        CCodecUpdateWorker retry(operations, source);
+        retry.DisableUserQuestions = true;
+        auto transport = resource->CreateProgressTransport(retry);
+        QCOMPARE(retry.Create(L"Retry after writer release", nullptr), S_OK);
+        QCOMPARE(retry.Result, S_OK);
+        QProcess extractor;
+        const QString output = fixture.filePath("verified");
+        extractor.start(engine_, {"x", "-y", "-o" + output, "--", archive});
+        QVERIFY(extractor.waitForFinished(10000));
+        QCOMPARE(extractor.exitCode(), 0);
+        QCOMPARE(readFile(QDir(output).filePath("payload.txt")), QByteArray("replacement bytes"));
+    }
+    void staleNativeFolderCannotOverwriteAnotherPublishedGeneration() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString source = fixture.filePath("payload.txt");
+        const QString other = fixture.filePath("other.txt");
+        const QString archive = fixture.filePath("target.zip");
+        const QString replacement = fixture.filePath("replacement.zip");
+        writeFile(source, "original payload");
+        writeFile(other, "other writer's member");
+        QProcess creator;
+        creator.start(engine_, {"a", "-tzip", "--", archive, source});
+        QVERIFY(creator.waitForFinished(10000));
+        QCOMPARE(creator.exitCode(), 0);
+        ArchiveBackend backend(nullptr, engine_);
+        QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CFfpOpen opening(manager);
+        QCOMPARE(opening.OpenFileFolderPlugin(nullptr, us2fs(archive.toStdWString().c_str()),
+                                              UString("zip"), nullptr),
+                 S_OK);
+        QCOMPARE(opening.Folder->LoadItems(), S_OK);
+        CMyComPtr<IFolderOperations> operations;
+        QCOMPARE(opening.Folder.QueryInterface(IID_IFolderOperations, &operations), S_OK);
+        auto *folder = dynamic_cast<CAgentFolder *>(opening.Folder.Interface());
+        QVERIFY(folder);
+        auto *resource = dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource());
+        QVERIFY(resource);
+        creator.start(engine_, {"a", "-tzip", "--", replacement, source, other});
+        QVERIFY(creator.waitForFinished(10000));
+        QCOMPARE(creator.exitCode(), 0);
+        const QByteArray published = readFile(replacement);
+        QVERIFY2(NWindows::NFile::NDir::MyPublishFile_with_Progress(
+                     us2fs(replacement.toStdWString().c_str()),
+                     us2fs(archive.toStdWString().c_str()), nullptr, true),
+                 qPrintable(QString::number(::GetLastError())));
+        writeFile(source, "changed by this view");
+        CCodecUpdateWorker stale(operations, source);
+        stale.DisableUserQuestions = true;
+        {
+            auto transport = resource->CreateProgressTransport(stale);
+            QCOMPARE(stale.Create(L"Stale source generation", nullptr), S_OK);
+        }
+        QCOMPARE(stale.Result, E_FAIL);
+        QCOMPARE(readFile(archive), published);
+        // Refusal leaves the retained view usable; a fresh opening can update.
+        QCOMPARE(opening.Folder->LoadItems(), S_OK);
+        CFfpOpen refreshed(manager);
+        QCOMPARE(refreshed.OpenFileFolderPlugin(nullptr, us2fs(archive.toStdWString().c_str()),
+                                                UString("zip"), nullptr),
+                 S_OK);
+        QCOMPARE(refreshed.Folder->LoadItems(), S_OK);
+        CMyComPtr<IFolderOperations> current;
+        QCOMPARE(refreshed.Folder.QueryInterface(IID_IFolderOperations, &current), S_OK);
+        auto *freshFolder = dynamic_cast<CAgentFolder *>(refreshed.Folder.Interface());
+        QVERIFY(freshFolder);
+        auto *freshResource =
+            dynamic_cast<QtArchiveFileResource *>(freshFolder->GetEngineResource());
+        QVERIFY(freshResource);
+        CCodecUpdateWorker retry(current, source);
+        retry.UseSourcePlan = true;
+        retry.DisableUserQuestions = true;
+        auto transport = freshResource->CreateProgressTransport(retry);
+        QCOMPARE(retry.Create(L"Fresh source generation", nullptr), S_OK);
+        QCOMPARE(retry.Result, S_OK);
+        const QString output = fixture.filePath("verified");
+        QProcess extractor;
+        extractor.start(engine_, {"x", "-y", "-o" + output, "--", archive});
+        QVERIFY(extractor.waitForFinished(10000));
+        QCOMPARE(extractor.exitCode(), 0);
+        QCOMPARE(readFile(QDir(output).filePath("payload.txt")),
+                 QByteArray("changed by this view"));
+        QCOMPARE(readFile(QDir(output).filePath("other.txt")), QByteArray("other writer's member"));
     }
     void unsafeNativeMutationDoesNotPublish_data() {
         QTest::addColumn<QString>("format");

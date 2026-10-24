@@ -1216,23 +1216,19 @@ class SourceUpdateBackendTests final : public QObject {
         temp.FilePath = us2fs(disk.toStdWString().c_str());
         const UString prefix = panel.GetCurrentFolderPrefix();
         const auto original = readFile(archive);
-        QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
         std::optional<CSelectedState> refresh = CSelectedState();
         QVERIFY(!panel.OnOpenItemChanged(temp, UString(L"different folder/"), false, UString(),
                                          &refresh));
         QVERIFY(!refresh);
-        QCOMPARE(started.size(), 0);
         QCOMPARE(readFile(archive), original);
         temp.RelPath = L"removed.bin";
         refresh = CSelectedState();
         QVERIFY(!panel.OnOpenItemChanged(temp, prefix, false, UString(), &refresh));
         QVERIFY(!refresh);
-        QCOMPARE(started.size(), 0);
         QCOMPARE(readFile(archive), original);
         temp.RelPath = L"исходное имя.bin";
         QVERIFY(panel.OnOpenItemChanged(temp, prefix, false, UString(), &refresh));
         QVERIFY(refresh);
-        QVERIFY(started.size() > 0);
         QVERIFY(!backend.busy());
         NWindows::NCOM::CPropVariant size;
         QCOMPARE(panel.GetFolder()->GetProperty(0, kpidSize, &size), S_OK);

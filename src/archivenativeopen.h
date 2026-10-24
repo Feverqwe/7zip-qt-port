@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CPP/7zip/UI/Common/OpenArchive.h"
+#include "Windows/FileFind.h"
 #include "fscryptkeyrequest.h"
 #include <QString>
 #include <memory>
@@ -17,6 +18,9 @@ class ArchiveNativeOpen final : public IOpenCallbackUI, public IFscryptKeyUI {
     QString transportType_;
     CArchiveLink link_;
     CMyComPtr<IInStream> input_;
+    QString sourcePath_, sourceIdentity_;
+    NWindows::NFile::NFind::CFileInfo sourceInfo_;
+    bool sourceStable_ = false;
     std::mutex itemStreamMutex_;
     HRESULT Open_CheckBreak() override;
     HRESULT Open_SetTotal(const UInt64 *files, const UInt64 *bytes) override;
@@ -32,6 +36,9 @@ class ArchiveNativeOpen final : public IOpenCallbackUI, public IFscryptKeyUI {
     HRESULT Open(const QString &path, const QString &type, IOpenCallbackUI *callback,
                  const COpenOptions *requested = nullptr);
     HRESULT Close();
+    // Reading a retained generation stays valid after publication. A writer
+    // replacing its physical source must first check that generation is current.
+    bool sourceIsCurrent() const;
     const CArc &arc() const { return *link_.GetArc(); }
     CArc &arc() { return link_.Arcs.Back(); }
     const CArchiveLink &archiveLink() const { return link_; }

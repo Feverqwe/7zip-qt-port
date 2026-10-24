@@ -448,6 +448,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 add_library(sevenzip_filesystem STATIC
+    src/qtarchivewritelease.cpp src/qtarchivewritelease.h
     src/qtoperationprocess.cpp src/qtoperationprocess.h
     src/qtoperationprotocol.cpp src/qtoperationprotocol.h
     src/qtoperationendpoint.cpp src/qtoperationendpoint.h
@@ -699,6 +700,18 @@ if(BUILD_TESTING)
     add_dependencies(operation_extraction_tests sevenzip_desktop)
     add_test(NAME operation_extraction COMMAND operation_extraction_tests -silent)
     set_tests_properties(operation_extraction PROPERTIES TIMEOUT 90 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(operation_creation_tests tests/operation_creation_tests.cpp tests/fixtures/operation_parent.cpp)
+    target_include_directories(operation_creation_tests PRIVATE src tests)
+    target_link_libraries(operation_creation_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(operation_creation_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    target_compile_definitions(operation_creation_tests PRIVATE
+        "SEVENZIP_NATIVE_GUI=\"$<TARGET_FILE_DIR:sevenzip_desktop>/7zG${CMAKE_EXECUTABLE_SUFFIX}\"")
+    add_dependencies(operation_creation_tests sevenzip_desktop)
+    add_test(NAME operation_creation COMMAND operation_creation_tests -silent)
+    set_tests_properties(operation_creation PROPERTIES TIMEOUT 90 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     add_executable(object_vector_lifetime_tests tests/object_vector_lifetime_tests.cpp)
     target_include_directories(object_vector_lifetime_tests PRIVATE src/CPP third_party/7zip/CPP)
     set_target_properties(object_vector_lifetime_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF)
@@ -1521,6 +1534,9 @@ if(BUILD_TESTING)
     target_compile_definitions(operation_extraction_tests PRIVATE
         "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
     add_dependencies(operation_extraction_tests operation_host)
+    target_compile_definitions(operation_creation_tests PRIVATE
+        "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
+    add_dependencies(operation_creation_tests operation_host)
     if(WIN32)
         qt_add_executable(native_mapi_host tests/fixtures/native_mapi_host.cpp
             tests/fixtures/native_mapi_loader.cpp
@@ -1707,7 +1723,7 @@ if(BUILD_TESTING)
     target_include_directories(source_update_backend_tests PRIVATE src)
     target_link_libraries(source_update_backend_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME source_update_backend COMMAND source_update_backend_tests -silent)
-    set_tests_properties(source_update_backend PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    set_tests_properties(source_update_backend PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 90)
     get_target_property(owned_temp_publication_sources source_update_backend_tests SOURCES)
     list(REMOVE_ITEM owned_temp_publication_sources tests/source_update_backend_tests.cpp)
     qt_add_executable(drag_archive_tests tests/drag_archive_tests.cpp ${owned_temp_publication_sources})
@@ -3529,6 +3545,18 @@ if(BUILD_TESTING)
         set_tests_properties(toolbar_archive_workflow PROPERTIES TIMEOUT 120
             RESOURCE_LOCK "sevenzip_native_ui;sevenzip_ui_artifacts" ENVIRONMENT
             "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/toolbar-archive-workflow.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+        qt_add_executable(toolbar_creation_workflow_tests tests/toolbar_creation_workflow_tests.cpp
+            tests/layout_inspection.cpp ${options_window_sources})
+        target_include_directories(toolbar_creation_workflow_tests PRIVATE src tests)
+        target_link_libraries(toolbar_creation_workflow_tests PRIVATE ${options_window_libraries})
+        target_compile_definitions(toolbar_creation_workflow_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\""
+            "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
+        add_dependencies(toolbar_creation_workflow_tests operation_host)
+        add_test(NAME toolbar_creation_workflow COMMAND toolbar_creation_workflow_tests -silent)
+        set_tests_properties(toolbar_creation_workflow PROPERTIES TIMEOUT 90
+            RESOURCE_LOCK "sevenzip_native_ui;sevenzip_ui_artifacts" ENVIRONMENT
+            "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/toolbar-creation-workflow.ini")
     endif()
     qt_add_executable(address_combo_tests tests/address_combo_tests.cpp
         tests/external_editor_fixture.cpp tests/layout_inspection.cpp ${options_window_sources})
@@ -3712,6 +3740,15 @@ if(BUILD_TESTING)
     add_test(NAME codec_creation COMMAND codec_creation_tests -silent)
     get_target_property(codec_update_sources source_update_backend_tests SOURCES)
     list(REMOVE_ITEM codec_update_sources tests/source_update_backend_tests.cpp)
+    qt_add_executable(native_update_publication_tests tests/native_update_publication_tests.cpp ${codec_update_sources})
+    target_include_directories(native_update_publication_tests PRIVATE src tests)
+    target_link_libraries(native_update_publication_tests PRIVATE sevenzip_location Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(native_update_publication_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME native_update_publication COMMAND native_update_publication_tests -silent)
+    set_tests_properties(native_update_publication PROPERTIES TIMEOUT 30 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     qt_add_executable(codec_update_tests tests/codec_update_tests.cpp ${codec_update_sources})
     target_include_directories(codec_update_tests PRIVATE src tests)
     target_link_libraries(codec_update_tests PRIVATE sevenzip_location Qt6::Test)
@@ -4558,13 +4595,15 @@ endif()
 # metrics do not describe the application's controls. Compare these dialog and
 # consumer tests using the same platform/fonts/style as the Windows application.
 if(BUILD_TESTING AND WIN32)
-    if(TEST toolbar_archive_workflow)
-        get_property(sevenzip_toolbar_environment TEST toolbar_archive_workflow PROPERTY ENVIRONMENT)
+    foreach(sevenzip_toolbar_test IN ITEMS toolbar_archive_workflow toolbar_creation_workflow)
+      if(TEST ${sevenzip_toolbar_test})
+        get_property(sevenzip_toolbar_environment TEST ${sevenzip_toolbar_test} PROPERTY ENVIRONMENT)
         list(FILTER sevenzip_toolbar_environment EXCLUDE REGEX "^QT_QPA_PLATFORM=")
         list(APPEND sevenzip_toolbar_environment "QT_QPA_PLATFORM=windows")
-        set_property(TEST toolbar_archive_workflow PROPERTY ENVIRONMENT
+        set_property(TEST ${sevenzip_toolbar_test} PROPERTY ENVIRONMENT
             "${sevenzip_toolbar_environment}")
-    endif()
+      endif()
+    endforeach()
     foreach(sevenzip_native_ui_test IN ITEMS
             native_parent_publication native_drop_publication native_rename_2 native_rename_301 native_external_2 native_external_301 native_nested_stream native_nested_memory native_nested_disk
             native_renderer_failure native_renderer_copy interarchive_refresh panel_creation_publication

@@ -18,11 +18,14 @@ bool ExactFields(const QJsonObject &object, QSet<QString> fields) {
     const QStringList keys = object.keys();
     return QSet<QString>(keys.begin(), keys.end()) == fields;
 }
-bool PathIsRepresentable(const QString &path) {
+bool TextIsRepresentable(const QString &path) {
     QStringEncoder encoder(QStringEncoder::Utf8);
     const QByteArray encoded = encoder(path);
     Q_UNUSED(encoded);
-    return !encoder.hasError() && !path.contains(QChar::Null) && QDir::isAbsolutePath(path);
+    return !encoder.hasError() && !path.contains(QChar::Null);
+}
+bool PathIsRepresentable(const QString &path) {
+    return TextIsRepresentable(path) && QDir::isAbsolutePath(path);
 }
 QString KindName(QtOperationMessage::Kind type) {
     switch (type) {
@@ -68,6 +71,7 @@ bool Decode(const QJsonObject &object, QtOperationMessage &message) {
     } else if (type == "job") {
         QSet<QString> fields{"command", "paths"};
         const bool extract = object.value("command") == "extract";
+        const bool compress = object.value("command") == "compress";
         if (extract) {
             fields.unite({"destination", "showDialog", "elimDup", "writeZone"});
             const auto zone = object.value("writeZone");
@@ -83,12 +87,29 @@ bool Decode(const QJsonObject &object, QtOperationMessage &message) {
             message.ElimDup = object.value("elimDup").toBool();
             message.WriteZone = quint32(value);
         }
+        if (compress) {
+            fields.unite({"archivePath", "archiveType", "addExtension", "email", "showDialog"});
+            if (!object.value("archivePath").isString() ||
+                !PathIsRepresentable(object.value("archivePath").toString()) ||
+                !object.value("archiveType").isString() ||
+                !TextIsRepresentable(object.value("archiveType").toString()) ||
+                !object.value("addExtension").isBool() || !object.value("email").isBool() ||
+                !object.value("showDialog").isBool())
+                return false;
+            message.Operation = QtOperationMessage::Command::Compress;
+            message.ArchivePath = object.value("archivePath").toString();
+            message.ArchiveType = object.value("archiveType").toString();
+            message.AddExtension = object.value("addExtension").toBool();
+            message.EMail = object.value("email").toBool();
+            message.ShowDialog = object.value("showDialog").toBool();
+        }
         if (object.contains("yesToAll")) {
             fields.insert("yesToAll");
             if (!object.value("yesToAll").isBool())
                 return false;
         }
-        if (!ExactFields(object, fields) || (!extract && object.value("command") != "test") ||
+        if (!ExactFields(object, fields) ||
+            (!extract && !compress && object.value("command") != "test") ||
             !object.value("paths").isArray())
             return false;
         const auto paths = object.value("paths").toArray();
@@ -113,6 +134,16 @@ bool Decode(const QJsonObject &object, QtOperationMessage &message) {
                 if (!path.isString() || !PathIsRepresentable(path.toString()))
                     return false;
                 message.Result.ChangedDirectories.append(path.toString());
+            }
+        }
+        if (object.contains("changedArchives")) {
+            fields.insert("changedArchives");
+            if (!object.value("changedArchives").isArray())
+                return false;
+            for (const auto &path : object.value("changedArchives").toArray()) {
+                if (!path.isString() || !PathIsRepresentable(path.toString()))
+                    return false;
+                message.Result.ChangedArchives.append(path.toString());
             }
         }
         if (!ExactFields(object, fields))
@@ -157,14 +188,22 @@ bool Decode(const QJsonObject &object, QtOperationMessage &message) {
 bool EncodeOperationMessage(const QtOperationMessage &message, QByteArray &frame, QString &error) {
     QJsonObject object{{"version", int(kVersion)}, {"type", KindName(message.Type)}};
     if (message.Type == QtOperationMessage::Kind::Job) {
-        object.insert("command", message.Operation == QtOperationMessage::Command::Extract
-                                     ? "extract"
-                                     : "test");
+        object.insert("command",
+                      message.Operation == QtOperationMessage::Command::Extract    ? "extract"
+                      : message.Operation == QtOperationMessage::Command::Compress ? "compress"
+                                                                                   : "test");
         if (message.Operation == QtOperationMessage::Command::Extract) {
             object.insert("destination", message.Destination);
             object.insert("showDialog", message.ShowDialog);
             object.insert("elimDup", message.ElimDup);
             object.insert("writeZone", double(message.WriteZone));
+        }
+        if (message.Operation == QtOperationMessage::Command::Compress) {
+            object.insert("archivePath", message.ArchivePath);
+            object.insert("archiveType", message.ArchiveType);
+            object.insert("addExtension", message.AddExtension);
+            object.insert("email", message.EMail);
+            object.insert("showDialog", message.ShowDialog);
         }
         object.insert("paths", QJsonArray::fromStringList(message.Paths));
         object.insert("yesToAll", message.YesToAll);
@@ -176,6 +215,9 @@ bool EncodeOperationMessage(const QtOperationMessage &message, QByteArray &frame
         }
         object.insert("changedDirectories",
                       QJsonArray::fromStringList(message.Result.ChangedDirectories));
+        if (!message.Result.ChangedArchives.isEmpty())
+            object.insert("changedArchives",
+                          QJsonArray::fromStringList(message.Result.ChangedArchives));
     } else if (message.Type == QtOperationMessage::Kind::Rejected)
         object.insert("error", message.Result.Error);
     QtOperationMessage verified;

@@ -94,6 +94,11 @@ void MainWindow::runArchiveBatchCommand(bool test) {
 void MainWindow::createDialog() {
     if (app_.QtOperations().closed())
         return;
+    const QPointer<QWidget> focus = focusWidget();
+    const auto restoreFocus = qScopeGuard([&] {
+        if (!app_.QtOperations().closed() && focus && focus->isVisible() && focus->isEnabled())
+            focus->setFocus(Qt::OtherFocusReason);
+    });
     QtAppOperationState::CallScope call(app_.QtOperations());
     if (state_ != State::Filesystem && state_ != State::Viewing)
         return;
@@ -104,8 +109,16 @@ void MainWindow::createDialog() {
     panel.SaveSelectedState(selection);
     bool dialogShown = false;
     const auto catalog = backend_->codecCatalog();
+    QtShellArchiveServices::CompressSink independent;
+    if (panel.Is_IO_FS_Folder() && panel.GetParentFolders().IsEmpty())
+        independent = [this](const UString &folder, const UString &name, const UString &type,
+                             bool addExtension, const UStringVector &paths, bool email,
+                             bool showDialog, bool /* waitFinish */) {
+            return launchGuiArchiveCompress(folder, name, type, addExtension, paths, email,
+                                            showDialog);
+        };
     QtShellArchiveServices services(
-        *backend_, this, {}, {}, {},
+        *backend_, this, {}, std::move(independent), {},
         [&](CCompressDialog &source, const CObjectVector<NWildcard::CCensorPath> &paths,
             QWidget *parent) {
             dialogShown = true;

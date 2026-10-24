@@ -1,5 +1,6 @@
 #pragma once
 #include "qtcompresscallservices.h"
+#include "qtguicommand.h"
 #include "qtupdateguiservices.h"
 #include <functional>
 #include <memory>
@@ -14,18 +15,18 @@ class QtShellArchiveServices final : public IQtCompressCallServices, public IQtU
   public:
     using ErrorSink = std::function<void(HRESULT, const UString &)>;
     using OpenSink = std::function<HRESULT(const UString &, const UString &)>;
-    using CompressSink = std::function<void(const UString &, const UString &, const UString &, bool,
-                                            const UStringVector &, bool, bool, bool)>;
+    using CompressSink = std::function<HRESULT(const UString &, const UString &, const UString &,
+                                               bool, const UStringVector &, bool, bool, bool)>;
     using ModalSink = std::function<HRESULT(
         CCompressDialog &, const CObjectVector<NWildcard::CCensorPath> &, QWidget *)>;
     using TestSink = std::function<HRESULT(const UStringVector &, bool)>;
     using ExtractSink =
         std::function<HRESULT(const UStringVector &, const UString &, bool, bool, UInt32)>;
-    using ExtractResultSink = std::function<void(const QString &)>;
+    using OutputSink = QtGUIOutputSink;
     QtShellArchiveServices(ArchiveBackend &backend, QWidget *parent, OpenSink open,
                            CompressSink compress, ErrorSink error = {}, ModalSink modal = {},
                            QString settingsPath = {}, TestSink test = {}, ExtractSink extract = {},
-                           ExtractResultSink extracted = {});
+                           OutputSink outputReady = {});
     QString CompressionSettingsPath() const override { return _settingsPath; }
     FString GetSfxModulePath() const override;
     HRESULT PresentCompressDialog(CCompressDialog &source,
@@ -65,6 +66,9 @@ class QtShellArchiveServices final : public IQtCompressCallServices, public IQtU
     void CompressFiles(const UString &folder, const UString &name, const UString &type,
                        bool addExtension, const UStringVector &paths, bool email, bool showDialog,
                        bool waitFinish) override;
+    HRESULT CompressSelection(const UString &folder, const UString &name, const UString &type,
+                              bool addExtension, const UStringVector &paths, bool email,
+                              bool showDialog, bool waitFinish) override;
     void CalcChecksum(const UStringVector &paths, const UString &method, const UString &folder,
                       const UString &generateName) override;
     void ShowErrorMessage(const UString &message) override;
@@ -83,6 +87,6 @@ class QtShellArchiveServices final : public IQtCompressCallServices, public IQtU
     ErrorSink _error;
     TestSink _test;
     ExtractSink _extract;
-    ExtractResultSink _extracted;
+    OutputSink _outputReady;
     HRESULT _result = S_OK;
 };

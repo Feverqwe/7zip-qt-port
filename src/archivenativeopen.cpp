@@ -1,6 +1,9 @@
 #include "archivenativeopen.h"
+#include "Windows/TimeUtils.h"
 #include "archivecodeccatalog.h"
 #include "archiveinputlayer.h"
+#include "qtownedtempidentity.h"
+#include <QFileInfo>
 #include <QScopeGuard>
 
 namespace {
@@ -45,6 +48,15 @@ HRESULT ArchiveNativeOpen::Open(const QString &path, const QString &type, IOpenC
     transportType_ = type.isEmpty() ? QStringLiteral("*:r") : type;
     const auto detach = qScopeGuard([&] { callback_ = nullptr; });
     input_ = requested ? requested->stream : nullptr;
+    sourcePath_.clear();
+    sourceIdentity_.clear();
+    sourceStable_ = false;
+    if (!requested || (!requested->stream && !requested->stdInMode)) {
+        sourcePath_ = QFileInfo(path).absoluteFilePath();
+        sourceIdentity_ = QtOwnedTempIdentity(QFileInfo(sourcePath_).canonicalFilePath());
+        sourceStable_ = !sourceIdentity_.isEmpty() &&
+                        sourceInfo_.Find_FollowLink(us2fs(sourcePath_.toStdWString().c_str()));
+    }
     CMyComPtr<IProgress> readRequest = CreateArchiveOpenReadRequest(callback);
     ArchiveInputReadRequestScope inputRequest(input_, readRequest);
     // Volume streams can retain the source COpenCallbackImp beyond opening.
@@ -73,7 +85,21 @@ HRESULT ArchiveNativeOpen::Open(const QString &path, const QString &type, IOpenC
             RINOK(link_.ReOpen(options))
         }
     }
+    if (!sourceIsCurrent())
+        sourceStable_ = false;
     return S_OK;
+}
+
+bool ArchiveNativeOpen::sourceIsCurrent() const {
+    if (sourcePath_.isEmpty())
+        return true; // Explicit stream/device input keeps its existing owner policy.
+    if (!sourceStable_ ||
+        sourceIdentity_ != QtOwnedTempIdentity(QFileInfo(sourcePath_).canonicalFilePath()))
+        return false;
+    NWindows::NFile::NFind::CFileInfo current;
+    return current.Find_FollowLink(us2fs(sourcePath_.toStdWString().c_str())) &&
+           current.Size == sourceInfo_.Size &&
+           Compare_FiTime(&current.MTime, &sourceInfo_.MTime) == 0;
 }
 
 HRESULT ArchiveNativeOpen::Open_CheckBreak() {

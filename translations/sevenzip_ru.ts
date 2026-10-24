@@ -6827,6 +6827,18 @@ Application modules:
     <context>
         <name>QtOperation</name>
         <message>
+            <source>The archive changed on disk. Refresh it before editing.</source>
+            <translation>Архив изменился на диске. Обновите его перед редактированием.</translation>
+        </message>
+        <message>
+            <source>Could not lock the archive for writing.</source>
+            <translation>Не удалось заблокировать архив для записи.</translation>
+        </message>
+        <message>
+            <source>Another operation is writing to this archive.</source>
+            <translation>Архив уже открыт другой операцией для записи.</translation>
+        </message>
+        <message>
             <location filename="../src/qtoperationprotocol.cpp" line="+135" />
             <source>Invalid operation message.</source>
             <translation>Некорректное сообщение операции.</translation>

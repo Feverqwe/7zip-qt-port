@@ -164,25 +164,8 @@ HRESULT ArchiveBackend::updateSourceArchive(
     // Worker code only reads the atomically published catalog, never QProcess.
     if (catalog != codecCatalog())
         return E_ABORT;
-    RINOK(catalog->updateArchive(path, types, censor, options, errorInfo, openCallback, callback,
-                                 needSetPath))
-    if (options.SfxMode && !options.StdOutMode) {
-        FOR_VECTOR(i, options.Commands) {
-            const UString output = options.Commands[i].ArchivePath.GetFinalPath();
-            if (!ArchiveSfxModule::MakeExecutable(QString::fromWCharArray(output.Ptr()))) {
-#ifdef _WIN32
-                errorInfo.SystemError = ERROR_ACCESS_DENIED;
-#else
-                errorInfo.SystemError = EACCES;
-#endif
-                errorInfo.Message = QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                                                      "Could not make the SFX archive executable");
-                errorInfo.FileNames.Add(us2fs(output));
-                return errorInfo.Get_HRESULT_Error();
-            }
-        }
-    }
-    return S_OK;
+    return catalog->updateArchive(path, types, censor, options, errorInfo, openCallback, callback,
+                                  needSetPath);
 }
 
 HRESULT ArchiveBackend::setNativeArchiveProperties(const std::shared_ptr<ArchiveNativeOpen> &reader,

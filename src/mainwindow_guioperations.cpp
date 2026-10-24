@@ -1,5 +1,7 @@
 #include "mainwindow.h"
+#include "qtarchivefileresource.h"
 #include "qtoperationlauncher.h"
+#include "qtownedtempidentity.h"
 #include <QDir>
 #include <QFileInfo>
 #include <QTimer>
@@ -19,6 +21,13 @@ bool ContainsDirectory(const QString &parent, const QString &child) {
     const QString relative = QDir(parent).relativeFilePath(child);
     return QDir::isRelativePath(relative) && relative != ".." && !relative.startsWith("../");
 }
+bool SameFile(const QString &left, const QString &right) {
+    const QString a = NormalPath(left), b = NormalPath(right);
+    if (a == b)
+        return true;
+    const QString identity = QtOwnedTempIdentity(a);
+    return !identity.isEmpty() && identity == QtOwnedTempIdentity(b);
+}
 } // namespace
 
 HRESULT MainWindow::launchGuiArchiveTest(const UStringVector &paths, bool hashMode) {
@@ -26,6 +35,17 @@ HRESULT MainWindow::launchGuiArchiveTest(const UStringVector &paths, bool hashMo
         return E_NOTIMPL;
     QString error;
     auto *operation = backend_->startGuiTest(ArchivePaths(paths), error);
+    return observeGuiArchiveOperation(operation, error);
+}
+
+HRESULT MainWindow::launchGuiArchiveCompress(const UString &folder, const UString &name,
+                                             const UString &type, bool addExtension,
+                                             const UStringVector &paths, bool email,
+                                             bool showDialog) {
+    QString error;
+    auto *operation = backend_->startGuiCompress(
+        QFileInfo(QString::fromWCharArray(folder + name)).absoluteFilePath(),
+        QString::fromWCharArray(type), addExtension, ArchivePaths(paths), email, showDialog, error);
     return observeGuiArchiveOperation(operation, error);
 }
 
@@ -50,7 +70,7 @@ HRESULT MainWindow::observeGuiArchiveOperation(QtOperationLauncher *operation,
                 if (app_.QtOperations().closed())
                     return;
                 for (unsigned i = 0; i < kNumPanelsMax; ++i)
-                    refreshGuiOutputPanel(i, result.ChangedDirectories);
+                    refreshGuiOutputPanel(i, result);
                 using Outcome = QtOperationResult::Outcome;
                 if (result.Status == Outcome::LaunchFailed ||
                     result.Status == Outcome::ProtocolFailed || result.Status == Outcome::Crashed)
@@ -60,21 +80,56 @@ HRESULT MainWindow::observeGuiArchiveOperation(QtOperationLauncher *operation,
     return S_OK;
 }
 
-void MainWindow::refreshGuiOutputPanel(unsigned index, const QStringList &directories) {
-    if (app_.QtOperations().closed() || directories.isEmpty())
+void MainWindow::refreshGuiOutputPanel(unsigned index, const QtOperationResult &result) {
+    if (app_.QtOperations().closed() ||
+        (result.ChangedDirectories.isEmpty() && result.ChangedArchives.isEmpty()))
         return;
     if (app_.QtOperations().active() || app_.QtOperations().callActive()) {
         // Another source operation/scan owns the panels. Re-evaluate the current
         // provider after it releases its guards; never restore an old location.
-        QTimer::singleShot(
-            50, this, [this, index, directories] { refreshGuiOutputPanel(index, directories); });
+        QTimer::singleShot(50, this,
+                           [this, index, result] { refreshGuiOutputPanel(index, result); });
         return;
     }
     auto &panel = app_.Panels[index];
-    if (!panel.PanelCreated || !panel.Is_IO_FS_Folder() || panel.IsArcFolder())
+    if (!panel.PanelCreated)
+        return;
+    if (panel.IsArcFolder()) {
+        auto *folder = dynamic_cast<CAgentFolder *>(panel.GetFolder());
+        auto *resource =
+            folder ? dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource()) : nullptr;
+        // Stream/device generations retain their direct owner. ReOpen of an
+        // ordinary file reuses the original source folder/subfolder workflow.
+        if (!resource || resource->HasStreamInput())
+            return;
+        for (const auto &archive : result.ChangedArchives)
+            if (SameFile(resource->EnginePath, archive)) {
+                const QPointer<QWidget> focus = focusWidget();
+                withPanelProjection(index, [this] { refreshCurrent(); });
+                // Projection retains modal source guards while restoring the
+                // original panel. Publish the resulting idle/scan state after
+                // that restoration, before restoring the remembered focus.
+                setState(state_);
+                if (focus && focus->isEnabled() && focus->isVisible())
+                    focus->setFocus(Qt::OtherFocusReason);
+                return;
+            }
+        if (!QFileInfo::exists(resource->EnginePath))
+            for (const auto &directory : result.ChangedDirectories)
+                if (ContainsDirectory(NormalPath(directory), NormalPath(resource->EnginePath))) {
+                    const QString parent = QFileInfo(resource->EnginePath).absolutePath();
+                    const QPointer<QWidget> focus = focusWidget();
+                    withPanelProjection(index, [this, parent] { showDirectory(parent, false); });
+                    if (focus && focus->isEnabled() && focus->isVisible())
+                        focus->setFocus(Qt::OtherFocusReason);
+                    return;
+                }
+        return;
+    }
+    if (!panel.Is_IO_FS_Folder())
         return;
     const QString current = NormalPath(QString::fromWCharArray(panel.GetFsPath()));
-    for (const auto &directory : directories) {
+    for (const auto &directory : result.ChangedDirectories) {
         const QString output = NormalPath(directory);
         if (ContainsDirectory(current, output) || ContainsDirectory(output, current)) {
             panel.OnReload();

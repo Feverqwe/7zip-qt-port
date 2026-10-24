@@ -244,7 +244,7 @@ HRESULT CMultiOutStream::CloseStream_and_FinalRename(unsigned index) {
             // res = GetLastError_noZero_HRESULT();
         }
     }
-    if (!MyMoveFile(tempPath, path))
+    if (!MyPublishFile_with_Progress(tempPath, path, nullptr, false))
         return GetLastError_noZero_HRESULT();
     /* we clear CVolStream::Postfix. So we will not use Temp path
        anymore for this stream, and we will work only with final path */

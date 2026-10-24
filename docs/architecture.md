@@ -117,11 +117,11 @@ and ArchiveExtractCallback in the same worker, including overwrite decisions
 delivered to the GUI and a final bounded-output policy. The CLI transport remains
 for write operations that have not yet migrated.
 
-The File Manager's Test and Extract commands for ordinary filesystem archives
+The File Manager's Test, Extract and Add commands for ordinary filesystem inputs
 launch the bundled `7zG`. The child owns native discovery, source GUI dispatch, dialogs and
 execution; the manager remains available. A versioned local request/ACK/result
 channel carries literal selections, typed options and outcomes. Before extraction
-starts, the child reports the actual output root after any source dialog edits.
+starts, the child reports the actual output paths after any source dialog edits.
 The observer retains that metadata through partial results or a crash. Native
 process observation
 distinguishes a source result from a crash or missing result. An accepted job
@@ -129,8 +129,14 @@ continues after the manager closes or the channel disconnects. Shell arguments
 still enter the original parser. Toolbar and context-menu consumers share this
 boundary. Completion refreshes currently affected filesystem panels after their
 source guards release, preserving navigation made while the child was running.
-Operations in an open archive folder or a nested parent chain retain their direct
-source workflow; other operation commands have
+Creation uses the original UpdateGUI and Common/Update workers, including volumes,
+SFX and optional input deletion. A shared per-user write lease prevents competing
+native writers. Completed single-file outputs are published atomically; a
+cross-filesystem move stages its cancellable copy beside the destination first.
+Readers may retain the previous generation, but a stale file-backed reader must
+refresh before editing. Completion reopens matching ordinary archive panels.
+Operations in an open archive folder or a nested parent chain, and synchronous
+drop consumers, retain their direct source workflow. Checksum and benchmark have
 not yet moved to this process boundary.
 
 Seekable archive items can back nested readers directly. Each reader generation

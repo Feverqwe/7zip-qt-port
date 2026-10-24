@@ -49,6 +49,14 @@ static void ThrowException_if_Error(HRESULT res) {
     }                                                                                              \
     if (result != S_OK && result != E_ABORT)                                                       \
         services.ErrorMessageHRESULT(result);
+HRESULT IQtCompressCallServices::CompressSelection(const UString &folder, const UString &name,
+                                                   const UString &type, bool addExtension,
+                                                   const UStringVector &paths, bool email,
+                                                   bool showDialog, bool waitFinish) {
+    return ::CompressFiles(folder, name, type, addExtension, paths, email, showDialog, waitFinish,
+                           *this);
+}
+
 HRESULT CompressFiles(const UString &arcPathPrefix, const UString &arcName, const UString &arcType,
                       bool addExtension, const UStringVector &names, bool email, bool showDialog,
                       bool /* waitFinish */, IQtCompressCallServices &services) {

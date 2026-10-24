@@ -9,9 +9,12 @@
 #include "7zip/Compress/CopyCoder.h"
 #include "Agent.h"
 #include "Common/ComTry.h"
+#include "archivenativeopen.h"
 #include "qtarchivedeleteinputs.h"
 #include "qtarchivefileresource.h"
+#include "qtarchivewritelease.h"
 #include "qtdiagnostictext.h"
+#include <QCoreApplication>
 #include <QScopeGuard>
 
 using namespace NWindows;
@@ -76,10 +79,8 @@ struct C_CopyFileProgress_to_FolderCallback_MoveArc Z7_final : public ICopyFileP
     virtual DWORD CopyFileProgress(UInt64 total, UInt64 current) Z7_override {
         HRESULT res = Callback->MoveArc_Progress(total, current);
         CallbackResult = res;
-        // we can ignore E_ABORT here, because we update archive,
-        // and we want to get correct archive after updating
-        if (res == E_ABORT)
-            res = S_OK;
+        // Atomic publication keeps the original on an interrupted copy, so the
+        // source no longer needs to suppress cancellation after deleting it.
         return res == S_OK ? PROGRESS_CONTINUE : PROGRESS_CANCEL;
     }
 
@@ -104,6 +105,22 @@ HRESULT CAgentFolder::CommonUpdateOperation(AGENT_OP operation, bool moveMode,
     CMyComPtr<IFolderArchiveUpdateCallback> updateCallback100;
     if (progress)
         progress->QueryInterface(IID_IFolderArchiveUpdateCallback, (void **)&updateCallback100);
+
+    QtArchiveWriteLease writeLease;
+    QString error;
+    const bool acquired =
+        writeLease.acquire({QString::fromWCharArray(_agentSpec->_archiveFilePath)}, error);
+    if (acquired)
+        if (auto *resource = dynamic_cast<QtArchiveFileResource *>(_agentSpec->GetEngineResource()))
+            if (const auto reader = resource->NativeReaderLease();
+                reader && !reader->sourceIsCurrent())
+                error = QCoreApplication::translate(
+                    "QtOperation", "The archive changed on disk. Refresh it before editing.");
+    if (!acquired || !error.isEmpty()) {
+        if (updateCallback100)
+            updateCallback100->UpdateErrorMessage(error.toStdWString().c_str());
+        return E_FAIL;
+    }
 
     try {
 

@@ -254,13 +254,12 @@ void CPanel::AddToArchive(IQtCompressCallServices &services) {
                                               false,   // isHash
                                               nullptr, // CFileInfo *fi
                                               baseName);
-    const HRESULT res = CompressFiles(destCurDirPrefix, arcName, L"",
-                                      true, // addExtension
-                                      names,
-                                      false, // email
-                                      true,  // showDialog
-                                      false, // waitFinish
-                                      services);
+    const HRESULT res = services.CompressSelection(destCurDirPrefix, arcName, L"",
+                                                   true, // addExtension
+                                                   names,
+                                                   false,  // email
+                                                   true,   // showDialog
+                                                   false); // waitFinish
     if (res != S_OK) {
         if (destCurDirPrefix.Len() >= MAX_PATH)
             MessageBox_Error_LangID(IDS_MESSAGE_UNSUPPORTED_OPERATION_FOR_LONG_PATH_FOLDER);

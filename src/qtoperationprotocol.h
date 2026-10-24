@@ -19,12 +19,13 @@ struct QtOperationResult {
     int ExitCode = 2;
     QString Error;
     QStringList ChangedDirectories;
+    QStringList ChangedArchives;
 };
 Q_DECLARE_METATYPE(QtOperationResult)
 
 struct QtOperationMessage {
     enum class Kind { Ready, Job, Accepted, Outputs, Result, Rejected };
-    enum class Command { Test, Extract };
+    enum class Command { Test, Extract, Compress };
     Kind Type = Kind::Ready;
     Command Operation = Command::Test;
     QStringList Paths;
@@ -33,6 +34,10 @@ struct QtOperationMessage {
     bool ShowDialog = true;
     bool ElimDup = false;
     quint32 WriteZone = quint32(-1);
+    QString ArchivePath;
+    QString ArchiveType;
+    bool AddExtension = true;
+    bool EMail = false;
     QtOperationResult Result;
 };
 

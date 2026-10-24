@@ -6,6 +6,8 @@
 // #include <stdio.h>
 
 #include "Update.h"
+#include "archivesfxmodule.h"
+#include "qtarchivewritelease.h"
 #include "qtdiagnostictext.h"
 
 #include "Common/StringConvert.h"
@@ -738,6 +740,8 @@ if (!options.StdOutMode) {
 COutFileStream *outStreamSpec = NULL;
 CStdOutFileStream *stdOutFileStreamSpec = NULL;
 CMultiOutStream *volStreamSpec = NULL;
+FString sfxHeaderPath;
+int sfxHeaderIndex = -1;
 
 if (options.VolumesSizes.Size() == 0) {
     if (options.StdOutMode) {
@@ -815,9 +819,13 @@ if (options.SfxMode) {
         outStreamSpec2 = new COutFileStream;
         sfxOutStream = outStreamSpec2;
         const FString realPath = us2fs(archivePath.GetFinalPath());
-        if (!outStreamSpec2->Create_NEW(realPath))
+        AString postfix;
+        if (!CreateTempFile2(realPath, true, postfix, &outStreamSpec2->File))
             return errorInfo.SetFromLastError(
                 QT_TRANSLATE_NOOP("SevenZipDiagnostics", "cannot open file"), realPath);
+        sfxHeaderPath = realPath;
+        sfxHeaderPath += postfix;
+        sfxHeaderIndex = (int)tempFiles.Paths.Add(sfxHeaderPath);
     }
 
     {
@@ -926,6 +934,31 @@ else if (volStreamSpec) {
 }
 
 RINOK(result)
+
+if (options.SfxMode && !options.StdOutMode) {
+    const FString output = !sfxHeaderPath.IsEmpty() ? sfxHeaderPath
+                           : archivePath.Temp       ? archivePath.GetTempPath()
+                                                    : us2fs(archivePath.GetFinalPath());
+    if (!ArchiveSfxModule::MakeExecutable(QString::fromWCharArray(fs2us(output).Ptr()))) {
+        return errorInfo.SetFromError_DWORD(
+            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Could not make the SFX archive executable"),
+            output,
+#ifdef _WIN32
+            ERROR_ACCESS_DENIED
+#else
+            EACCES
+#endif
+        );
+    }
+}
+
+if (sfxHeaderIndex >= 0) {
+    const FString finalPath = us2fs(archivePath.GetFinalPath());
+    if (!MyPublishFile_with_Progress(sfxHeaderPath, finalPath, nullptr, false))
+        return errorInfo.SetFromLastError(
+            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "cannot move the file"), finalPath);
+    tempFiles.Paths[(unsigned)sfxHeaderIndex] = finalPath;
+}
 
 if (processedItemsStatuses) {
     FOR_VECTOR(i, updatePairs2) {
@@ -1143,6 +1176,28 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
     }
 
     UString arcPath = options.ArchivePath.GetFinalPath();
+
+    QtArchiveWriteLease writeLease;
+    if (!options.StdOutMode) {
+        QStringList outputs{QString::fromWCharArray(arcPath)};
+        if (!options.VolumesSizes.IsEmpty())
+            outputs.append(
+                QString::fromWCharArray(options.ArchivePath.GetFinalVolPath(options.SfxMode)));
+        FOR_VECTOR(i, options.Commands) {
+            if (i == 0 && options.UpdateArchiveItself)
+                continue;
+            const CArchivePath &output = options.Commands[i].ArchivePath;
+            outputs.append(QString::fromWCharArray(output.GetFinalPath()));
+            if (!options.VolumesSizes.IsEmpty())
+                outputs.append(QString::fromWCharArray(output.GetFinalVolPath(options.SfxMode)));
+        }
+        QString error;
+        if (!writeLease.acquire(outputs, error)) {
+            errorInfo.Message = error.toUtf8().constData();
+            errorInfo.FileNames.Add(us2fs(arcPath));
+            return E_FAIL;
+        }
+    }
 
     if (!options.VolumesSizes.IsEmpty()) {
         arcPath = options.ArchivePath.GetFinalVolPath(options.SfxMode);
@@ -1383,9 +1438,9 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
     if (!options.StdOutMode && options.UpdateArchiveItself) {
         CArchivePath &ap = options.Commands[0].ArchivePath;
         ap = options.ArchivePath;
-        // if ((archive != 0 && !usesTempDir) || !options.WorkingDir.IsEmpty())
-        if ((thereIsInArchive || !options.WorkingDir.IsEmpty()) && !usesTempDir &&
-            options.VolumesSizes.Size() == 0) {
+        // New single-file archives use the source temporary-file writer too:
+        // publish only its completed output, preserving a racing destination.
+        if (!usesTempDir && options.VolumesSizes.Size() == 0) {
             createTempFile = true;
             ap.Temp = true;
             if (!options.WorkingDir.IsEmpty())
@@ -1508,11 +1563,8 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
     multiStreams.DisableDeletion();
     RINOK(multiStreams.Destruct())
 
-    // here we disable deleting of temp archives.
-    // note: archive moving can fail, or it can be interrupted,
-    // if we move new temp update from another volume.
-    // And we still want to keep temp archive in that case,
-    // because we will have deleted original archive.
+    // Retain a completed temporary archive if publication fails. The platform
+    // adapter preserves the old archive until atomic replacement succeeds.
     tempFiles.NeedDeleteFiles = false;
     // tempFiles.Paths.Clear();
 
@@ -1520,15 +1572,6 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
         try {
             CArchivePath &ap = options.Commands[0].ArchivePath;
             const FString &tempPath = ap.GetTempPath();
-
-            // DWORD attrib = 0;
-            if (thereIsInArchive) {
-                // attrib = NFind::GetFileAttrib(us2fs(arcPath));
-                if (!DeleteFileAlways(us2fs(arcPath)))
-                    return errorInfo.SetFromLastError(
-                        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "cannot delete the file"),
-                        us2fs(arcPath));
-            }
 
             UInt64 totalArcSize = 0;
             {
@@ -1540,12 +1583,9 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
                                           BoolToInt(thereIsInArchive)))
 
             C_CopyFileProgress_to_IUpdateCallbackUI2 prox(callback);
-            // if we update archive, we have removed original archive.
-            // So if we break archive moving, we will have only temporary archive.
-            // We can disable breaking here:
-            // prox.Disable_Break = thereIsInArchive;
-
-            if (!MyMoveFile_with_Progress(tempPath, us2fs(arcPath), &prox)) {
+            const bool moved =
+                MyPublishFile_with_Progress(tempPath, us2fs(arcPath), &prox, thereIsInArchive);
+            if (!moved) {
                 errorInfo.SystemError = ::GetLastError();
                 errorInfo.Message =
                     QT_TRANSLATE_NOOP("SevenZipDiagnostics", "cannot move the file");

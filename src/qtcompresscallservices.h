@@ -12,6 +12,10 @@ class IQtCompressCallServices : public virtual IQtContextMenuServices {
   public:
     virtual CCodecs &Codecs() = 0;
     virtual HRESULT LoadHashProviders(CExternalCodecs &providers) = 0;
+    virtual HRESULT CompressSelection(const UString &folder, const UString &name,
+                                      const UString &type, bool addExtension,
+                                      const UStringVector &paths, bool email, bool showDialog,
+                                      bool waitFinish);
     virtual HRESULT ExtractGUI(CCodecs &codecs, const CObjectVector<COpenType> &types,
                                UStringVector &paths, UStringVector &fullPaths,
                                const NWildcard::CCensorNode &censor, CExtractOptions &options,

@@ -74,6 +74,10 @@ Z7_PURE_INTERFACES_END
 bool MyMoveFile(CFSTR existFileName, CFSTR newFileName);
 // (progress == NULL) is allowed
 bool MyMoveFile_with_Progress(CFSTR oldFile, CFSTR newFile, ICopyFileProgress *progress);
+// Publish a completed temporary file without deleting the previous destination.
+// Cross-volume copying stages beside the destination before atomic replacement.
+bool MyPublishFile_with_Progress(CFSTR oldFile, CFSTR newFile, ICopyFileProgress *progress,
+                                 bool replaceExisting);
 
 #ifndef UNDER_CE
 bool MyCreateHardLink(CFSTR newFileName, CFSTR existFileName);

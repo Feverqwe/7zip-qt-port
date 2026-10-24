@@ -79,18 +79,19 @@ int main(int argc, char **argv) {
         [&](const QtGUICommandSource &command, const QtGUIOutputSink &outputReady) {
             if (!WaitForBarrier(barrier))
                 return 101;
-            return RunSevenzipGUICommand(application, command, [&](const QString &directory) {
-                outputReady(directory);
-                const QString gate = qEnvironmentVariable("SEVENZIP_OPERATION_OUTPUT_BARRIER");
-                if (!gate.isEmpty()) {
-                    QSaveFile ready(gate + ".ready");
-                    if (ready.open(QIODevice::WriteOnly)) {
-                        ready.write("ready");
-                        ready.commit();
+            return RunSevenzipGUICommand(
+                application, command, [&](const QString &path, QtGUIOutputKind kind) {
+                    outputReady(path, kind);
+                    const QString gate = qEnvironmentVariable("SEVENZIP_OPERATION_OUTPUT_BARRIER");
+                    if (!gate.isEmpty()) {
+                        QSaveFile ready(gate + ".ready");
+                        if (ready.open(QIODevice::WriteOnly)) {
+                            ready.write("ready");
+                            ready.commit();
+                        }
+                        WaitForBarrier(gate);
                     }
-                    WaitForBarrier(gate);
-                }
-            });
+                });
         });
     if (!report.isEmpty()) {
         QSaveFile detail(report + ".diagnostic");

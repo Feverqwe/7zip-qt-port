@@ -6,6 +6,7 @@
 #include "7zip/UI/Common/UpdateAction.h"
 #include "CPP/Common/Wildcard.h"
 #include "CompressDialog.h"
+#include <functional>
 class CUpdateCallbackGUI;
 struct CUpdateOptions;
 struct COpenType;
@@ -19,7 +20,8 @@ HRESULT ShowDialog(CCodecs *codecs, const CObjectVector<NWildcard::CCensorPath> 
 HRESULT UpdateGUI(CCodecs *codecs, const CObjectVector<COpenType> &formatIndices,
                   const UString &cmdArcPath, NWildcard::CCensor &censor, CUpdateOptions &options,
                   bool showDialog, bool &messageWasDisplayed, CUpdateCallbackGUI *callback,
-                  QWidget *hwndParent, IQtUpdateGUIServices &services);
+                  QWidget *hwndParent, IQtUpdateGUIServices &services,
+                  const std::function<void()> &outputReady = {});
 
 namespace NCompressDialog {
 // Source ShowDialog format/name preparation; Qt supplies the selected paths

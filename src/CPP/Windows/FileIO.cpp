@@ -521,7 +521,13 @@ bool CInFile::Open(CFSTR fileName, DWORD shareMode, DWORD creationDisposition, D
 }
 
 bool CInFile::OpenShared(CFSTR fileName, bool shareForWrite)
-{ return Open(fileName, FILE_SHARE_READ | (shareForWrite ? FILE_SHARE_WRITE : 0), OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL); }
+{
+  // Ordinary read generations survive atomic archive replacement. This grants
+  // no write access; retain the source sharing policy for device handles.
+  const DWORD deletionShare = IsDevicePath(fileName) ? 0 : FILE_SHARE_DELETE;
+  return Open(fileName, FILE_SHARE_READ | deletionShare | (shareForWrite ? FILE_SHARE_WRITE : 0),
+      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL);
+}
 
 bool CInFile::Open(CFSTR fileName)
   { return OpenShared(fileName, false); }

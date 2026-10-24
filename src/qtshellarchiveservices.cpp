@@ -10,6 +10,7 @@
 #include "qtarchivebatchopen.h"
 #include "qtextractpathpolicy.h"
 #include <QDir>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QScopeGuard>
 
@@ -42,11 +43,11 @@ QtShellArchiveServices::QtShellArchiveServices(ArchiveBackend &backend, QWidget 
                                                OpenSink open, CompressSink compress,
                                                ErrorSink error, ModalSink modal,
                                                QString settingsPath, TestSink test,
-                                               ExtractSink extract, ExtractResultSink extracted)
+                                               ExtractSink extract, OutputSink outputReady)
     : _backend(backend), _parent(parent), _catalog(backend.codecCatalog()), _open(std::move(open)),
       _compress(std::move(compress)), _modal(std::move(modal)),
       _settingsPath(std::move(settingsPath)), _error(std::move(error)), _test(std::move(test)),
-      _extract(std::move(extract)), _extracted(std::move(extracted)) {
+      _extract(std::move(extract)), _outputReady(std::move(outputReady)) {
     // Metadata alone supports source ParseOpenTypes. Native factories remain
     // with the retained immutable backend catalog, never copied/unloaded here.
     if (_catalog && _catalog->result() == S_OK)
@@ -114,8 +115,8 @@ HRESULT QtShellArchiveServices::ExtractGUI(CCodecs &codecs, const CObjectVector<
     const HRESULT result =
         ::ExtractGUI(&codecs, types, excludedFormats, paths, fullPaths, censor, options, hashBundle,
                      showDialog, messageWasDisplayed, &callback, &open, &open, _parent, [&] {
-                         if (_extracted)
-                             _extracted(policy.Root());
+                         if (_outputReady)
+                             _outputReady(policy.Root(), QtGUIOutputKind::Directory);
                      });
     return result;
 }
@@ -143,14 +144,22 @@ void QtShellArchiveServices::CompressFiles(const UString &folder, const UString 
                                            const UString &type, bool addExtension,
                                            const UStringVector &paths, bool email, bool showDialog,
                                            bool waitFinish) {
-    if (_compress)
-        _compress(folder, name, type, addExtension, paths, email, showDialog, waitFinish);
-    else {
-        const HRESULT result = ::CompressFiles(folder, name, type, addExtension, paths, email,
-                                               showDialog, waitFinish, *this);
-        if (result != S_OK)
-            _result = result;
-    }
+    CompressSelection(folder, name, type, addExtension, paths, email, showDialog, waitFinish);
+}
+HRESULT QtShellArchiveServices::CompressSelection(const UString &folder, const UString &name,
+                                                  const UString &type, bool addExtension,
+                                                  const UStringVector &paths, bool email,
+                                                  bool showDialog, bool waitFinish) {
+    const HRESULT result =
+        _compress
+            ? _compress(folder, name, type, addExtension, paths, email, showDialog, waitFinish)
+            : IQtCompressCallServices::CompressSelection(folder, name, type, addExtension, paths,
+                                                         email, showDialog, waitFinish);
+    // The source dispatcher can return S_OK after UpdateGUI has recorded a
+    // cancellation or catalog failure. Preserve that operation result.
+    if (result != S_OK)
+        _result = result;
+    return _result;
 }
 
 HRESULT QtShellArchiveServices::UpdateGUI(CCodecs &codecs, const CObjectVector<COpenType> &types,
@@ -164,8 +173,29 @@ HRESULT QtShellArchiveServices::UpdateGUI(CCodecs &codecs, const CObjectVector<C
     if (options.EMailMode)
         return _result = E_NOTIMPL;
 #endif
-    _result = ::UpdateGUI(&codecs, types, path, censor, options, showDialog, messageWasDisplayed,
-                          &callback, _parent, *this);
+    _result = ::UpdateGUI(
+        &codecs, types, path, censor, options, showDialog, messageWasDisplayed, &callback, _parent,
+        *this, [&] {
+            if (!_outputReady)
+                return;
+            if (options.VolumesSizes.IsEmpty() || options.SfxMode)
+                _outputReady(QFileInfo(QString::fromWCharArray(options.ArchivePath.GetFinalPath()))
+                                 .absoluteFilePath(),
+                             QtGUIOutputKind::Archive);
+            if (!options.VolumesSizes.IsEmpty()) {
+                UString first = options.ArchivePath.GetFinalVolPath(options.SfxMode);
+                first += ".001";
+                _outputReady(QFileInfo(QString::fromWCharArray(first)).absoluteFilePath(),
+                             QtGUIOutputKind::Archive);
+            }
+            if (options.DeleteAfterCompressing)
+                FOR_VECTOR(i, censor.CensorPaths) {
+                    if (censor.CensorPaths[i].Include)
+                        _outputReady(QFileInfo(QString::fromWCharArray(censor.CensorPaths[i].Path))
+                                         .absolutePath(),
+                                     QtGUIOutputKind::Directory);
+                }
+        });
     return _result;
 }
 

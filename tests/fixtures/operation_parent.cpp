@@ -14,6 +14,13 @@ int RunOperationParent(QCoreApplication &application, const QString &host) {
         job.Destination = qEnvironmentVariable("SEVENZIP_OPERATION_DESTINATION");
         job.ShowDialog = false;
     }
+    if (qEnvironmentVariableIsSet("SEVENZIP_OPERATION_PROBE_COMPRESS")) {
+        job.Operation = QtOperationMessage::Command::Compress;
+        job.ArchivePath = qEnvironmentVariable("SEVENZIP_OPERATION_CREATE_TARGET");
+        job.ArchiveType = "zip";
+        job.AddExtension = false;
+        job.ShowDialog = false;
+    }
     QObject::connect(&launcher, &QtOperationLauncher::accepted, &application,
                      [&] { application.exit(0); });
     QObject::connect(&launcher, &QtOperationLauncher::finished, &application,

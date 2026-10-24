@@ -1,5 +1,6 @@
 #pragma once
 #include <optional>
+struct QtOperationResult;
 
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/App.h"
@@ -257,10 +258,13 @@ class MainWindow : public QMainWindow {
     void extractArchives();
     void runArchiveBatchCommand(bool test);
     HRESULT launchGuiArchiveTest(const UStringVector &paths, bool hashMode);
+    HRESULT launchGuiArchiveCompress(const UString &folder, const UString &name,
+                                     const UString &type, bool addExtension,
+                                     const UStringVector &paths, bool email, bool showDialog);
     HRESULT launchGuiArchiveExtract(const UStringVector &paths, const UString &folder,
                                     bool showDialog, bool elimDup, UInt32 writeZone);
     HRESULT observeGuiArchiveOperation(QtOperationLauncher *operation, const QString &error);
-    void refreshGuiOutputPanel(unsigned index, const QStringList &directories);
+    void refreshGuiOutputPanel(unsigned index, const QtOperationResult &result);
     void createDialog();
     QStringList selectedFilesystemPaths();
     void transferFiles(const QStringList &sources, const QString &destination, bool move,

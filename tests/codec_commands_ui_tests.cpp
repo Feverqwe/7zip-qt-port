@@ -218,17 +218,11 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         if (cancel)
             nativeCancel = std::make_unique<CNativeCancel>(observedStart, publicationAtCancel,
                                                            archive, before);
-        const auto connection = connect(&backend, &ArchiveBackend::engineStarted, &window, [&] {
-            if (cancel)
-                return; // Native writer cancellation belongs to its source Sync.
-            if (!observedStart) {
-                observedStart = true;
-            }
-        });
         action(window, "copyAction")->trigger();
         nativeCancel.reset();
-        disconnect(connection);
-        QVERIFY(submitted && observedStart);
+        QVERIFY(submitted);
+        if (cancel)
+            QVERIFY(observedStart);
         QVERIFY2(messages.Errors.isEmpty(), qPrintable(messages.Errors.join('\n')));
         QVERIFY(!backend.busy());
         if (cancel)
@@ -299,12 +293,12 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
         QVERIFY(!backend.busy());
     }
-    void unavailableCatalogKeepsReadingAndDisablesMutation_data() {
+    void unavailableCatalogPreservesFilesystemNavigation_data() {
         QTest::addColumn<bool>("mismatch");
         QTest::newRow("missing") << false;
         QTest::newRow("version mismatch") << true;
     }
-    void unavailableCatalogKeepsReadingAndDisablesMutation() {
+    void unavailableCatalogPreservesFilesystemNavigation() {
         QFETCH(bool, mismatch);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
@@ -319,14 +313,20 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         CMessageAnswers messages(dialogs_);
         window.show();
         QVERIFY(QTest::qWaitForWindowActive(&window));
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        const QString initialDirectory = address->text();
+        QStringList initialRows;
+        for (int row = 0; row < table(window)->rowCount(); ++row)
+            initialRows.append(table(window)->item(row, 0)->text());
         window.openArchive(archive);
-        QTRY_COMPARE(table(window)->rowCount(), 1);
-        table(window)->selectRow(0);
-        QVERIFY(!action(window, "toolbarAddAction")->isEnabled());
-        QVERIFY(!action(window, "deleteAction")->isEnabled());
-        QVERIFY(!action(window, "renameAction")->isEnabled());
-        QVERIFY(action(window, "testArchiveAction")->isEnabled());
-        QVERIFY(messages.Errors.isEmpty());
+        QTRY_VERIFY(!messages.Errors.isEmpty());
+        QCOMPARE(address->text(), initialDirectory);
+        QStringList rows;
+        for (int row = 0; row < table(window)->rowCount(); ++row)
+            rows.append(table(window)->item(row, 0)->text());
+        QCOMPARE(rows, initialRows);
+        QVERIFY(table(window)->isEnabled());
+        QVERIFY(action(window, "refreshAction")->isEnabled());
     }
     void actualInsideActionsReachNativeParser() {
         QFETCH(QByteArray, command);

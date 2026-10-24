@@ -7,6 +7,7 @@
 #include "qtoperationprotocol.h"
 #include <QApplication>
 #include <QCoreApplication>
+#include <QFileInfo>
 #include <QLocalSocket>
 #include <QTimer>
 
@@ -17,8 +18,16 @@ void OperationOptions(const QtOperationMessage &job, CArcCmdLineOptions &options
     CArcCmdLineParser parser;
     UStringVector defaults;
     const bool extract = job.Operation == QtOperationMessage::Command::Extract;
-    defaults.Add(extract ? L"x" : L"t");
+    const bool compress = job.Operation == QtOperationMessage::Command::Compress;
+    defaults.Add(compress ? L"a" : extract ? L"x" : L"t");
     defaults.Add(L"-an");
+    if (compress) {
+        defaults.Add(job.AddExtension ? L"-saa" : L"-sae");
+        if (!job.ArchiveType.isEmpty())
+            defaults.Add(UString(L"-t") + UString(job.ArchiveType.toStdWString().c_str()));
+        if (job.EMail)
+            defaults.Add(L"-seml.");
+    }
     UString memorySwitch;
     AddLagePagesSwitch(memorySwitch, FmSettingsPath());
     memorySwitch.Trim();
@@ -28,6 +37,17 @@ void OperationOptions(const QtOperationMessage &job, CArcCmdLineOptions &options
         defaults.Add(L"-y");
     parser.Parse1(defaults, options);
     parser.Parse2(options);
+    if (compress) {
+        options.ArchiveName = job.ArchivePath.toStdWString().c_str();
+        options.ShowDialog = job.ShowDialog;
+        options.Censor.CensorPaths.Clear();
+        options.Censor.Pairs.Clear();
+        for (const auto &path : job.Paths)
+            options.Censor.AddPreItem_NoWildcard(UString(path.toStdWString().c_str()));
+        // UpdateGUI needs the literal pre-items for ShowDialog. Common/Update
+        // performs the source path conversion/enumeration in its worker.
+        return;
+    }
     if (extract) {
         options.ShowDialog = job.ShowDialog;
         options.ExtractOptions.OutputDir = us2fs(job.Destination.toStdWString().c_str());
@@ -128,15 +148,22 @@ int RunGUIOperationEndpoint(QApplication &application, const QString &channel,
             Send(socket, acknowledgement);
             QTimer::singleShot(0, &context, [&, job] {
                 QStringList changedDirectories;
+                QStringList changedArchives;
                 const int code =
                     run([&](CArcCmdLineOptions &options) { OperationOptions(job, options); },
-                        [&](const QString &directory) {
+                        [&](const QString &path, QtGUIOutputKind kind) {
+                            const QString directory = kind == QtGUIOutputKind::Archive
+                                                          ? QFileInfo(path).absolutePath()
+                                                          : path;
+                            if (kind == QtGUIOutputKind::Archive && !changedArchives.contains(path))
+                                changedArchives.append(path);
                             if (!changedDirectories.contains(directory))
                                 changedDirectories.append(directory);
                             if (socket.state() == QLocalSocket::ConnectedState) {
                                 QtOperationMessage update;
                                 update.Type = QtOperationMessage::Kind::Outputs;
                                 update.Result.ChangedDirectories = changedDirectories;
+                                update.Result.ChangedArchives = changedArchives;
                                 Send(socket, update);
                             }
                         });
@@ -145,6 +172,7 @@ int RunGUIOperationEndpoint(QApplication &application, const QString &channel,
                     result.Type = QtOperationMessage::Kind::Result;
                     result.Result = Result(code);
                     result.Result.ChangedDirectories = changedDirectories;
+                    result.Result.ChangedArchives = changedArchives;
                     Send(socket, result);
                     if (socket.bytesToWrite())
                         socket.waitForBytesWritten(1000);

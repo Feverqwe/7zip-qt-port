@@ -698,3 +698,154 @@ passed again (18.73 s). Disposable timeout/diagnostic fixtures and inactive
 registered crash images were removed; no incremental trees or compiler caches
 were reset. The Windows host storage check showed no VHDX growth. Older guest
 temporary directories without proven task ownership were preserved.
+
+### Standalone Create/Update: source comparison
+
+The next boundary review compares `CompressCall.cpp`/`CompressCall2.cpp` creation
+arguments, `CPanel::AddToArchive`, File Manager create/shell/drop consumers, GUI
+`Main2` update dispatch, `UpdateGUI`/ShowDialog option transfer, native catalog
+`UpdateArchive`, Common/Update and its move/deletion callbacks against the same
+retrievable upstream revision above. The existing GUI path already invokes the
+native official updater; it must not be routed through the separate staged CLI
+mutation API. Child dialogs can retain original action sets, properties, volumes,
+SFX and delete-input choices without serializing passwords into a job.
+
+Source-visible publication gaps must be resolved before accepting this scenario.
+Common/Update deletes the old archive before MoveArc_Start and before moving its
+completed temporary file. A cancellation there or a failed cross-volume copy can
+leave the original path missing. The current native catalog calls that body
+directly; the stronger staged CLI publication owner does not surround it.
+Also, Unix SFX executable marking currently happens in ArchiveBackend after
+UpdateArchive has already performed optional source deletion. The new process
+must preserve publication/deletion ordering and reject competing writers; simply
+adding a Compress job to the launcher would not complete the requested scenario.
+MultiOutStream's existing temporary-volume/final-name behavior and native SFX
+creation are part of the selected component, not independent replacement
+algorithms. This is source evidence, not acceptance of standalone Create/Update.
+
+The in-progress publication adaptation keeps Common/Update's compression,
+enumeration, callbacks, close, error projection and input-deletion phases.
+It removes the pre-publication deletion and calls a narrow FileDir replacement
+adapter for an existing archive. Upstream FileDir has no atomic replacement
+with cancellable cross-filesystem staging: its Windows move does not replace an
+existing destination, and its POSIX EXDEV copy creates the final destination
+directly. The adapter uses native rename/MoveFileEx publication on one filesystem
+and a registered QTemporaryFile beside the destination across filesystems, followed
+by the same native publication. Replacement is explicit; new outputs use atomic
+no-replace publication, including final numbered volumes. Copy cancellation leaves
+the previous archive intact; completed source temporaries remain available under
+the original updater's failure policy. Cross-filesystem copying preserves file
+permissions and Qt's modification-time precision. This boundary adapts platform
+file publication, not archive encoding or the original volume algorithm.
+
+SFX executable preparation now belongs immediately after the source Compress
+output closes, before temporary-file publication and optional input deletion.
+The previous post-return ArchiveBackend step is removed, including its duplicate
+ownership. This also applies the requirement to both native catalog entry points.
+The changed publication body and original Windows/POSIX move bodies were compared
+again against the upstream revision above. Fresh single-file archives now use the
+existing source temporary writer as well. MultiOutStream retains its original
+volume sizing, restriction, stream-closing and rollback algorithm; only its final
+move uses the no-replace publisher. A volume SFX header uses source CreateTempFile2
+and CTempFiles ownership, is made executable and published after completed volumes,
+and remains covered by source failure cleanup. Archive encoding is unchanged.
+
+The manager's filesystem Add and nonblocking shell Compress consumers now pass a
+typed Compress request through the existing launcher. Source filename/format
+selection and default switches remain derived from CompressCall/Panel. The child
+owns UpdateGUI dialogs and native update callbacks. Passwords stay in child UI;
+email platform support remains the original boundary. Synchronous drag/drop and
+open/nested providers retain the direct source path. The source UpdateGUI boundary
+reports chosen archive/volume outputs and input-deletion directories before the
+worker starts; the launcher preserves those paths through crash results. The
+manager refreshes current filesystem panels and reopens matching ordinary archive
+panels without restoring an obsolete navigation location.
+
+A narrow per-user QLockFile adapter serializes cooperating writers across native
+Common/Update and retained Agent CommonUpdateOperation. It canonicalizes output
+aliases and volume namespaces, locks multiple destinations in sorted order and
+does not expire a live owner based on time. Agent checks retained file identity,
+size and source modification time before editing under that lease; an obsolete
+generation remains readable but cannot overwrite a newer publication. This is
+cooperative writer exclusion, not protection against unrelated writers that ignore
+the lease. Windows CInFile::OpenShared adds FILE_SHARE_DELETE for ordinary files
+so old read generations do not prevent replacement; device sharing is unchanged.
+On Windows an open destination also needs extended rename semantics: the narrow
+publisher retries an Access denied replacement with FileRenameInfoEx and
+FILE_RENAME_FLAG_POSIX_SEMANTICS, reusing upstream CInFile's rename handle owner.
+Ordinary MoveFileEx and upstream FileDir have no equivalent open-generation
+replacement. The adapter follows Microsoft's
+[extended rename contract](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fscc/4217551b-d2c0-42cb-9dc1-69a716cf6d0c)
+and [handle API](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfileinformationbyhandle).
+Unsupported filesystems still fail without removing the original; no direct-write
+fallback is introduced.
+Source bodies, callers and dependencies for Update, MultiOutStream, WorkDir,
+FileDir, FileIO and ArchiveFolderOut were compared before these adaptations.
+
+The new native-publication regression creates its fixture through the official
+native updater without a console executable, then checks successful replacement,
+Cancel/error before publication, preservation of inputs requested for deletion,
+and executable SFX readiness before input deletion. The pre-fix macOS run lost
+the original archive path in both Cancel/error rows. Linux additionally exercises
+real `/dev/shm` to disk publication and cancellation during the destination-side
+copy. Missing a separate `/dev/shm` mount explicitly skips those rows elsewhere.
+macOS passed the focused suite (3.61 s; three cross-filesystem rows skipped).
+Linux passed all rows after preparing its official SFX runtime
+(`20261023T232250Z-97b8e5a7`, 0.16 s). No cache or build tree was reset.
+Windows passed after its SFX runtime preparation
+(`20261023T232507Z-4b66dc8d`, 1.27 s; three cross-filesystem rows skipped).
+One Windows catalog-ready observation took seven seconds; only the fixture wait
+was adjusted to ten seconds, without changing engine deadlines.
+
+A broader local diagnostic of `source_update_backend` and `codec_commands_ui`
+did not pass: one panel update and seven successful Copy rows still require the
+CLI-specific engineStarted signal, while two unavailable-catalog rows disagree
+with current Add availability. The obsolete CLI-event requirements were removed
+from those native-operation tests, retaining payload, untouched-member, source
+preservation and cancellation checks. The repeat passed `source_update_backend`
+and the new publication suite; `codec_commands_ui` reached 22 passing cases and
+only the two Add-availability disagreements. That capability behavior still
+requires review before complete Create/Update acceptance. The whole diagnostic
+set is not counted as passing acceptance. Initial runner
+attempts also exposed a Windows pointer/string conversion build error (fixed)
+and absent SFX runtime prerequisites (prepared through the existing wrappers).
+
+The complete creation candidate adds real child-process ZIP/7z create/update,
+parameter edits and Cancel, UI-only passwords, volumes, executable SFX and volume
+SFX extraction, input deletion, parent exit, competing-writer refusal/retry and
+forced-child-exit/retry checks. The manager consumer tests exercise toolbar and
+shell entry points, both panels, refreshed input/output directories, reopened
+archive peers and deleted opened inputs. Retained native update tests protect the
+newer published archive from stale writer generations. Existing CLI-event-only
+assertions were removed while preserving payload and cancellation checks. The
+unavailable-catalog scenario now verifies the actual failed opening and retained
+filesystem navigation rather than assuming an archive provider was entered.
+
+Focused consumer validation found and fixed a source Cancel result overwritten by
+the new Compress wrapper, and a peer ReOpen guard left active after projection.
+The latter regression checks that panels become usable and remember source focus
+after reload. The source update suite completed 76 cases in 35.16 s locally; its
+CTest limit is now 90 s instead of 30 s, with no added matrix or engine timeout.
+These checks cover behavior, not private implementation presence. Three-platform
+acceptance of this complete candidate is recorded separately after the runner
+results; the earlier publication-only receipts above do not establish it.
+
+Create/Update focused acceptance, 2026-10-24: macOS passed the final nine shared
+consumer suites (45.38 s), manager creation workflow (10.55 s), source update and
+shell GUI consumers (76 and 11 cases), then the changed publication fixtures
+(three suites, 42.00 s) and final creation fixture (19.39 s). Linux passed all
+11 selected suites in `20261024T004715Z-047ed054` (68.41 s), including actual
+cross-filesystem publication. Windows passed eight of those suites initially;
+its three failures identified open-destination rename semantics and a fixture
+working-directory setting written to the wrong parent-side environment path.
+After the native rename adaptation, manager creation, native publication and
+retained codec update passed in `20261024T010046Z-199442f0`; final independent
+creation passed in `20261024T010308Z-cb6e0862`. Windows UI consumers used the
+interactive desktop. The stale-view fixture now publishes with the production
+adapter rather than Qt's separate QSaveFile replacement contract.
+
+These receipts establish the selected filesystem creation/update scenario and
+its retained direct update consumers. No installed-package, visual parity, slow
+matrix or full-gate acceptance is claimed. Checksum/benchmark migration and final
+installed three-platform checks remain part of the active goal. All builds reused
+the existing incremental trees and compiler cache; sibling upstream was read-only.

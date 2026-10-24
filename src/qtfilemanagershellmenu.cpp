@@ -16,7 +16,17 @@ QtFileManagerShellMenu::QtFileManagerShellMenu(MainWindow &window, QMenu &menu,
     : _window(window), _menu(menu),
       _services(
           *window.backend_, &window,
-          [this](const UString &path, const UString &type) { return Open(path, type); }, {}, {},
+          [this](const UString &path, const UString &type) { return Open(path, type); },
+          [this](const UString &folder, const UString &name, const UString &type, bool addExtension,
+                 const UStringVector &paths, bool email, bool showDialog, bool waitFinish) {
+              const auto &panel = _window.app_.GetFocusedPanel();
+              if (!waitFinish && panel.Is_IO_FS_Folder() && panel.GetParentFolders().IsEmpty())
+                  return _window.launchGuiArchiveCompress(folder, name, type, addExtension, paths,
+                                                          email, showDialog);
+              return ::CompressFiles(folder, name, type, addExtension, paths, email, showDialog,
+                                     waitFinish, _services);
+          },
+          {},
           [this](CCompressDialog &source, const CObjectVector<NWildcard::CCensorPath> &paths,
                  QWidget *parent) {
               return CreateArchiveDialog::PresentSource(source, paths, _services.Catalog(), parent);

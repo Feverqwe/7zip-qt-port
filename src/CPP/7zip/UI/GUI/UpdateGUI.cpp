@@ -47,7 +47,8 @@ HRESULT CThreadUpdating::ProcessVirt() {
 HRESULT UpdateGUI(CCodecs *codecs, const CObjectVector<COpenType> &formatIndices,
                   const UString &cmdArcPath, NWildcard::CCensor &censor, CUpdateOptions &options,
                   bool showDialog, bool &messageWasDisplayed, CUpdateCallbackGUI *callback,
-                  QWidget *hwndParent, IQtUpdateGUIServices &services) {
+                  QWidget *hwndParent, IQtUpdateGUIServices &services,
+                  const std::function<void()> &outputReady) {
     messageWasDisplayed = false;
     bool needSetPath = true;
     if (showDialog) {
@@ -82,6 +83,8 @@ HRESULT UpdateGUI(CCodecs *codecs, const CObjectVector<COpenType> &formatIndices
     tu.WildcardCensor = &censor;
     tu.Options = &options;
     tu.IconID = IDI_ICON;
+    if (outputReady)
+        outputReady();
     RINOK(tu.Create(title, hwndParent))
     messageWasDisplayed = tu.ThreadFinishedOK && tu.MessagesDisplayed;
     return tu.Result;

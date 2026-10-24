@@ -23,6 +23,7 @@ struct QtOperationLauncher::State {
     QElapsedTimer exited_;
     std::optional<QtOperationResult> result_;
     QStringList changedDirectories_;
+    QStringList changedArchives_;
     bool sent_ = false;
     bool accepted_ = false;
     bool terminal_ = false;
@@ -184,6 +185,9 @@ void QtOperationLauncher::readMessages() {
             for (const auto &directory : message.Result.ChangedDirectories)
                 if (!state_->changedDirectories_.contains(directory))
                     state_->changedDirectories_.append(directory);
+            for (const auto &archive : message.Result.ChangedArchives)
+                if (!state_->changedArchives_.contains(archive))
+                    state_->changedArchives_.append(archive);
         } else if (message.Type == QtOperationMessage::Kind::Result && state_->accepted_ &&
                    !state_->result_)
             state_->result_ = message.Result;
@@ -252,6 +256,9 @@ void QtOperationLauncher::finish(QtOperationResult result) {
     for (const auto &directory : state_->changedDirectories_)
         if (!result.ChangedDirectories.contains(directory))
             result.ChangedDirectories.append(directory);
+    for (const auto &archive : state_->changedArchives_)
+        if (!result.ChangedArchives.contains(archive))
+            result.ChangedArchives.append(archive);
     state_->poll_.stop();
     state_->startup_.stop();
     state_->server_.close();
