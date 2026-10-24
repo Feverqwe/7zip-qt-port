@@ -1,4 +1,4 @@
-# Official zlib decoder API; unchanged C sources, private to the GPL ISO reader.
+# Official zlib decoder API; unchanged C sources, shared by the GPL readers.
 add_library(sevenzip_zisofs_zlib STATIC
     third_party/zlib/adler32.c third_party/zlib/inflate.c
     third_party/zlib/inffast.c third_party/zlib/inftrees.c third_party/zlib/zutil.c)

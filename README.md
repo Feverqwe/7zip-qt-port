@@ -39,6 +39,9 @@ compatible Android and flash-drive images.
 Experimental XFS reading provides access to server and NAS filesystem images;
 see [support and limits](docs/upstream-port-audit/xfs.md).
 
+Btrfs volumes and disk images can be browsed and extracted without changing the
+source. See [Btrfs support and limitations](docs/upstream-port-audit/btrfs-linux.md#supported-reading-and-limitations).
+
 Archive creation and updates support compression settings, encryption, volumes
 and self-extracting archives. Available formats and operations depend on the
 selected engine. Extraction supports password and overwrite prompts; an error

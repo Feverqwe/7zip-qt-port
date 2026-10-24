@@ -13,6 +13,9 @@
 [Read-only XFS](upstream-port-audit/xfs.md) — GRUB C reader для образов
 серверов/NAS, отдельный baseline, адаптации и границы проверок.
 
+[Read-only Btrfs из Linux](upstream-port-audit/btrfs-linux.md) — baseline,
+адаптация Linux read path, native/device-интеграция и границы проверок.
+
 [Удаление Background](upstream-port-audit/progress-controls.md)
 — запрошенное изменение controls/transport с сохранением Pause и Cancel.
 

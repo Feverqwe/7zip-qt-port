@@ -81,6 +81,13 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/grub/COPYING"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/grub/f2fs-tools-COPYING"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-f2fs)
+install(TARGETS sevenzip_btrfs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/exceptions/Linux-syscall-note"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/zlib-LICENSE.txt"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/brotli/7zip-zstd-LICENSE.txt"
+    DESTINATION share/licenses/sevenzip-desktop/sevenzip-btrfs)
 install(TARGETS sevenzip_linux_frames RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/BSD-2-Clause"

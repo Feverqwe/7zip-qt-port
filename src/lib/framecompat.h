@@ -3,10 +3,10 @@
 #ifndef SEVENZIP_FRAME_COMPAT_H
 #define SEVENZIP_FRAME_COMPAT_H
 #include "../linuxframe.h"
-#include "../include/linux/zutil.h"
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
+#include <zlib.h>
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -27,8 +27,7 @@ static inline u32 get_unaligned_le32(const void *p) {
 }
 uint32_t crc32_le(uint32_t crc, const unsigned char *p, size_t size);
 static inline u32 sevenzip_frame_checksum(int crc, const void *data, size_t size) {
-    return crc ? crc32_le(UINT32_MAX, data, size) ^ UINT32_MAX
-               : (u32)zlib_adler32(1, data, (uInt)size);
+    return crc ? crc32_le(UINT32_MAX, data, size) ^ UINT32_MAX : (u32)adler32(1, data, (uInt)size);
 }
 static inline void *sevenzip_frame_alloc(struct sevenzip_linux_frame_io *io, size_t size) {
     void *p = malloc(size);

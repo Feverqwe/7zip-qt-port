@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 #ifndef __LZO_H__
 #define __LZO_H__
+#include <stddef.h>
 /*
  *  LZO Public Kernel Interface
  *  A mini subset of the LZO real-time data compression library

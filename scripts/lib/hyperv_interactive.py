@@ -1,10 +1,13 @@
 """Run the persistent Windows worktree in the logged-on desktop session."""
 
 import base64
+import re
 from .runner_config import runner_config
 
 def interactive_command(root, elevated=False):
-    if root != runner_config("windows")["workspace"]["root"] + "/current":
+    workspace = runner_config("windows")["workspace"]["root"]
+    relative = root[len(workspace) + 1:] if root.startswith(workspace + "/") else ""
+    if relative != "current" and not re.fullmatch(r"branch-[A-Za-z0-9_-]{1,48}-[0-9a-f]{20}", relative):
         raise ValueError("Interactive task requires the configured persistent worktree")
     # check.cmd supplies the same toolchain, engine, environment and command as
     # the SSH path. Only the Windows logon session changes; no shell UI or app

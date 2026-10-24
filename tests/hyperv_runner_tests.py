@@ -19,7 +19,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 spec = importlib.util.spec_from_file_location("hyperv_runner", ROOT / "scripts/hyperv-runner.py")
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
-from lib import hyperv_lock, hyperv_source, hyperv_transport, hyperv_workspace
+from lib import hyperv_interactive, hyperv_lock, hyperv_source, hyperv_transport, hyperv_workspace
 from lib.runner_config import load_config
 
 
@@ -28,6 +28,16 @@ def git(root, *args):
 
 
 class RunnerTests(unittest.TestCase):
+    def test_interactive_branch_worktree_and_unsafe_roots(self):
+        workspace = load_config()["windows"]["workspace"]
+        root = hyperv_workspace.worktree_root(workspace, "feature/Btrfs images 空")
+        # Must accept the same isolated branch root used by the transport.
+        hyperv_interactive.interactive_command(root)
+        for unsafe in (root + "/child", root + "'", workspace["root"] + "/../elsewhere",
+                       workspace["root"] + "-other/current"):
+            with self.subTest(root=unsafe), self.assertRaises(ValueError):
+                hyperv_interactive.interactive_command(unsafe)
+
     def setUp(self):
         self.rsync = shutil.which("rsync")
         if os.name == "nt" and not self.rsync:
