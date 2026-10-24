@@ -60,6 +60,32 @@ def cache_valid(build, record, key, paths):
                and sha(build / name) == record["artifacts"][name] for name in paths)
 
 
+def prepare_upstream(root, upstream, baseline):
+    revision = baseline["revision"]
+
+    def contains_revision(directory):
+        return directory.exists() and subprocess.run(
+            ["git", "-C", str(directory), "cat-file", "-e", revision + "^{commit}"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+    if contains_revision(upstream):
+        return upstream
+    runner_store = upstream == root / "upstream"
+    store = upstream if runner_store else root / "build/upstream.git"
+    if contains_revision(store):
+        return store
+    if not store.exists():
+        store.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["git", "init", "-q", "--bare", str(store)], check=True)
+    source = str(root / "upstream.bundle") if runner_store else baseline["repository"]
+    ref = "refs/heads/runner-baseline" if runner_store else revision
+    print(f"Preparing pinned upstream {revision} in {store}", flush=True)
+    subprocess.run(["git", "-C", str(store), "fetch", source, ref], check=True)
+    if not contains_revision(store):
+        raise ValueError(f"Upstream source {source} did not provide pinned commit {revision}")
+    return store
+
+
 def prepare(root, upstream, codec_only=False):
     root = root.resolve()
     upstream = (root / upstream).resolve() if not upstream.is_absolute() else upstream.resolve()
@@ -78,20 +104,10 @@ def prepare(root, upstream, codec_only=False):
         print(f"Runtime cache: hit ({time.monotonic() - started:.2f}s)", flush=True)
         return
     print("Runtime cache: miss; building pinned engine" + ("" if codec_only else " and SFX"), flush=True)
-    if upstream == root / "upstream":
-        # Runner-owned bare object store; builders archive the pinned commit and
-        # never compile in or mutate a sibling source checkout.
-        if not upstream.exists():
-            subprocess.run(["git", "init", "-q", "--bare", str(upstream)], check=True)
-        revision = key["baseline"]["revision"]
-        found = subprocess.run(["git", "-C", str(upstream), "cat-file", "-e", revision + "^{commit}"],
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if found.returncode:
-            subprocess.run(["git", "-C", str(upstream), "fetch", str(root / "upstream.bundle"),
-                            "refs/heads/runner-baseline"], check=True)
     if stamp.is_symlink():
         raise ValueError("Refusing symlink runtime cache record")
     stamp.unlink(missing_ok=True)
+    upstream = prepare_upstream(root, upstream, key["baseline"])
     if platform.system() == "Windows":
         for name in (("build-codec-runtime.ps1",) if codec_only else
                      ("build-codec-runtime.ps1", "build-sfx.ps1")):

@@ -184,7 +184,10 @@ compiler/toolchain fingerprint or an artifact hash changes. A failed build does
 not publish a cache hit. The builders also prepare the pinned reference client.
 `--skip-runtime` on verify uses the existing runtime instead. When the prepared
 module exists, `build.sh` configures its exact path, replacing a stale cached
-system module. The sibling upstream checkout stays read-only.
+system module. The sibling upstream checkout stays read-only. If it is missing
+or lacks the pinned revision, preparation downloads that revision from the
+recorded upstream repository into a local build cache. Network access is needed
+only when the required source is not already available locally.
 
 Remote verification uses the same command in the single persistent guest
 worktree; see [sync, locks and recovery](hyperv-runners.md#persistent-worktree).

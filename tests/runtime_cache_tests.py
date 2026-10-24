@@ -39,7 +39,8 @@ class RuntimeCacheTests(unittest.TestCase):
                     sfx.write_bytes(b"unwanted SFX rebuild")
                 (build / "codec-runtime/engine").write_bytes(b"adapted engine")
                 return subprocess.CompletedProcess(args, 0)
-            with patch.object(runtime, "fingerprint", return_value={"revision": "one"}), \
+            with patch.object(runtime, "fingerprint", return_value={"baseline": {"revision": "one"}}), \
+                    patch.object(runtime, "prepare_upstream", return_value=root / "sibling"), \
                     patch.object(runtime, "artifact_paths", return_value=["codec-runtime/engine", "sfx/module"]), \
                     patch.object(runtime.subprocess, "run", side_effect=command) as run:
                 runtime.prepare(root, root / "sibling", codec_only=True)
@@ -49,6 +50,48 @@ class RuntimeCacheTests(unittest.TestCase):
                 run.reset_mock()
                 runtime.prepare(root, root / "sibling", codec_only=True)
                 run.assert_not_called()
+
+    def test_missing_pin_uses_local_store_without_changing_sibling(self):
+        for sibling_exists in (False, True):
+            with self.subTest(sibling_exists=sibling_exists), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source = root / "official"
+                sibling = root / "sibling"
+                source.mkdir()
+
+                def git(directory, *args):
+                    return subprocess.run(["git", "-C", str(directory), *args], check=True,
+                                          capture_output=True).stdout
+
+                git(source, "init", "-q")
+                git(source, "config", "user.name", "Fixture")
+                git(source, "config", "user.email", "fixture@example.invalid")
+                (source / "engine").write_bytes(b"old engine")
+                git(source, "add", ".")
+                git(source, "commit", "-qm", "old")
+                if sibling_exists:
+                    git(root, "clone", "-q", str(source), str(sibling))
+                    (sibling / "engine").write_bytes(b"user changes")
+                    previous_head = git(sibling, "rev-parse", "HEAD")
+                    previous_status = git(sibling, "status", "--porcelain")
+                (source / "engine").write_bytes(b"pinned engine")
+                git(source, "commit", "-qam", "pinned")
+                revision = git(source, "rev-parse", "HEAD").decode().strip()
+                (source / "engine").write_bytes(b"newer engine")
+                git(source, "commit", "-qam", "newer")
+                baseline = {"repository": str(source), "revision": revision}
+                store = runtime.prepare_upstream(root, sibling, baseline)
+                self.assertEqual(git(store, "show", revision + ":engine"), b"pinned engine")
+                # Offline reuse must work even when the source is unavailable.
+                source.rename(root / "offline")
+                reused = runtime.prepare_upstream(root, sibling, baseline)
+                self.assertEqual(git(reused, "show", revision + ":engine"), b"pinned engine")
+                if sibling_exists:
+                    self.assertEqual(git(sibling, "rev-parse", "HEAD"), previous_head)
+                    self.assertEqual(git(sibling, "status", "--porcelain"), previous_status)
+                    self.assertEqual((sibling / "engine").read_bytes(), b"user changes")
+                else:
+                    self.assertFalse(sibling.exists())
 
     def test_relative_runner_upstream_prepares_bare_store_and_publishes_verified_hit(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -110,10 +153,11 @@ class RuntimeCacheTests(unittest.TestCase):
             build = root / "build"
             build.mkdir()
             (build / "engine").write_bytes(b"engine")
-            key = {"revision": "one"}
+            key = {"baseline": {"revision": "one"}}
             stamp = build / "runtime-cache.json"
             stamp.write_text(json.dumps({"fingerprint": key, "artifacts": {"engine": runtime.sha(build / "engine")}}))
             with patch.object(runtime, "fingerprint", return_value=key), \
+                    patch.object(runtime, "prepare_upstream", return_value=root / "sibling"), \
                     patch.object(runtime, "artifact_paths", return_value=["engine"]), \
                     patch.object(runtime.subprocess, "run") as run:
                 runtime.prepare(root, root / "sibling")
