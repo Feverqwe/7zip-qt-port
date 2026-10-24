@@ -20,7 +20,8 @@ include(CTest)
 
 # Relocated source headers must also resolve from unchanged upstream headers
 # spelling MyVector.h, ../Common/MyVector.h or ../../Common/MyVector.h.
-include_directories(src/CPP src/CPP/Common src/CPP/Windows src/CPP/7zip/Common src/CPP/7zip/UI/Common)
+include_directories(src/CPP src/CPP/Common src/CPP/Windows src/CPP/7zip/Common src/CPP/7zip/UI/Common
+    src/CPP/7zip/Crypto third_party/7zip/CPP/7zip/Crypto)
 set_source_files_properties(src/CPP/7zip/Common/LimitedStreams.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Common")
 
@@ -138,10 +139,10 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     src/qtdiagnostictext.cpp src/qtdiagnostictext.h
     src/qttranslationcatalog.cpp src/qttranslationcatalog.h
     third_party/7zip/C/7zCrc.c third_party/7zip/C/7zCrcOpt.c third_party/7zip/C/CpuArch.c
-    third_party/7zip/C/Sha1.c third_party/7zip/C/Sha1Opt.c
-    third_party/7zip/C/Sha256.c third_party/7zip/C/Sha256Opt.c
-    third_party/7zip/C/Sha512.c third_party/7zip/C/Sha512Opt.c third_party/7zip/C/Sha3.c
-    third_party/7zip/C/Md5.c third_party/7zip/C/XzCrc64.c third_party/7zip/C/XzCrc64Opt.c
+    src/C/Sha1.c third_party/7zip/C/Sha1Opt.c
+    src/C/Sha256.c third_party/7zip/C/Sha256Opt.c
+    src/C/Sha512.c third_party/7zip/C/Sha512Opt.c third_party/7zip/C/Sha3.c
+    src/C/Md5.c third_party/7zip/C/XzCrc64.c third_party/7zip/C/XzCrc64Opt.c
     third_party/7zip/C/Xxh64.c third_party/7zip/CPP/7zip/Compress/BZip2Crc.cpp
     third_party/7zip/C/Blake2s.c
     third_party/7zip/CPP/7zip/Common/CreateCoder.cpp
@@ -241,6 +242,7 @@ if(WIN32)
     target_link_libraries(sevenzip_common PUBLIC ole32 oleaut32 uuid advapi32)
 endif()
 
+include(cmake/Crypto.cmake)
 include(cmake/native_zip.cmake)
 include(cmake/native_rar.cmake)
 
@@ -4712,7 +4714,9 @@ if(BUILD_TESTING)
             native_hash_ui_tests native_rar_ui_tests panel_list_key_tests source_context_menu_tests
             panel_copy_reload_tests native_drop_publication_tests panel_shortcut_tests source_delete_tests
             copy_publication_order_tests native_parent_publication_tests panel_key_source_tests)
-        target_sources(${sevenzip_widget_dialog_target} PRIVATE tests/fixtures/widget_dialogs.cpp)
+        if(TARGET ${sevenzip_widget_dialog_target})
+            target_sources(${sevenzip_widget_dialog_target} PRIVATE tests/fixtures/widget_dialogs.cpp)
+        endif()
     endforeach()
 endif()
 

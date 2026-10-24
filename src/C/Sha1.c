@@ -48,8 +48,22 @@ void Z7_FASTCALL Sha1_UpdateBlocks(UInt32 state[5], const Byte *data, size_t num
 
 #ifdef Z7_COMPILER_SHA1_SUPPORTED
   void Z7_FASTCALL Sha1_UpdateBlocks_HW(UInt32 state[5], const Byte *data, size_t numBlocks);
+#endif
 
-  static SHA1_FUNC_UPDATE_BLOCKS g_SHA1_FUNC_UPDATE_BLOCKS = Sha1_UpdateBlocks;
+#ifdef SEVENZIP_OPENSSL_HASHES
+#include "../crypto/opensslhash.h"
+static void Z7_FASTCALL Sha1_UpdateBlocks_OpenSSL(UInt32 state[5], const Byte *data, size_t numBlocks)
+{
+  sevenzip_sha1_blocks(state, data, numBlocks);
+}
+#define SHA1_DEFAULT_UPDATE_BLOCKS Sha1_UpdateBlocks_OpenSSL
+#else
+#define SHA1_DEFAULT_UPDATE_BLOCKS Sha1_UpdateBlocks
+#endif
+
+#if defined(Z7_COMPILER_SHA1_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
+
+  static SHA1_FUNC_UPDATE_BLOCKS g_SHA1_FUNC_UPDATE_BLOCKS = SHA1_DEFAULT_UPDATE_BLOCKS;
   static SHA1_FUNC_UPDATE_BLOCKS g_SHA1_FUNC_UPDATE_BLOCKS_HW;
 
   #define SHA1_UPDATE_BLOCKS(p) p->v.vars.func_UpdateBlocks
@@ -62,7 +76,7 @@ BoolInt Sha1_SetFunction(CSha1 *p, unsigned algo)
 {
   SHA1_FUNC_UPDATE_BLOCKS func = Sha1_UpdateBlocks;
   
-  #ifdef Z7_COMPILER_SHA1_SUPPORTED
+  #if defined(Z7_COMPILER_SHA1_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
     if (algo != SHA1_ALGO_SW)
     {
       if (algo == SHA1_ALGO_DEFAULT)
@@ -232,7 +246,7 @@ void Sha1_InitState(CSha1 *p)
 void Sha1_Init(CSha1 *p)
 {
   p->v.vars.func_UpdateBlocks =
-  #ifdef Z7_COMPILER_SHA1_SUPPORTED
+  #if defined(Z7_COMPILER_SHA1_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
       g_SHA1_FUNC_UPDATE_BLOCKS;
   #else
       NULL;
@@ -414,6 +428,9 @@ void Sha1Prepare(void)
   g_SHA1_FUNC_UPDATE_BLOCKS    = f;
   g_SHA1_FUNC_UPDATE_BLOCKS_HW = f_hw;
 #endif
+#ifdef SEVENZIP_OPENSSL_HASHES
+  g_SHA1_FUNC_UPDATE_BLOCKS = Sha1_UpdateBlocks_OpenSSL;
+#endif
 }
 
 #undef kNumW
@@ -439,3 +456,5 @@ void Sha1Prepare(void)
 #undef Z7_SHA1_BIG_W
 #undef Z7_SHA1_UNROLL
 #undef Z7_COMPILER_SHA1_SUPPORTED
+
+#undef SHA1_DEFAULT_UPDATE_BLOCKS

@@ -22,7 +22,7 @@ add_library(sevenzip_btrfs_core STATIC
     src/lib/lzo/lzo1x_decompress_safe.c
     src/C/ZstdDec.c
     third_party/7zip/C/Alloc.c
-    third_party/7zip/C/Sha256.c
+    src/C/Sha256.c
     third_party/7zip/C/Sha256Opt.c
     third_party/7zip/C/Xxh64.c
     third_party/7zip/C/CpuArch.c)

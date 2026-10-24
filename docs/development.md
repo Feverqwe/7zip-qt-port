@@ -121,6 +121,19 @@ These checks do not establish rendered pixel parity or release acceptance.
 - Python 3.9+ for CTest UI-reference checks (standard library only); clang/GCC
   additionally for extracting resources, not for comparing stored references
 - Prepared native codec runtime and its reference `7z` client for tests
+- Optional OpenSSL libcrypto development package for native crypto acceleration.
+  CMake detects a compatible library automatically; explicit provider selection
+  and the current migration scope are in the [crypto audit](upstream-port-audit/crypto-providers.md).
+  To build the pinned static dependency instead, run
+  `python3 scripts/prepare-openssl.py --configure-app` in the configured compiler
+  environment, then prepare the native runtime again. This requires Perl, the
+  platform make tool, Git network access and the existing compiler cache.
+  Windows x64 builds require native Windows Perl (select its executable with
+  `--perl`); Git's MSYS Perl is unsuitable. They use NASM when available and
+  retain C implementations otherwise.
+  The Windows native make glue uses the VS 2022 NMake toolchain.
+  Use the static dependency for portable bundles; custom shared libraries
+  remain system-managed dependencies.
 - Qt 6 DBus for the Linux launcher service; Unix launcher regression tests also
   need `dbus-daemon` to create their own private bus. macOS builds with testing
   enabled require Qt DBus and libdbus alongside `dbus-daemon`; Cocoa-only

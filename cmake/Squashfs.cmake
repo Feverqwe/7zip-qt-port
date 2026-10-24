@@ -42,7 +42,7 @@ add_library(sevenzip_squashfs MODULE
     third_party/7zip/C/Lzma2Dec.c third_party/7zip/C/Xz.c src/C/XzDec.c
     third_party/7zip/C/XzCrc64.c third_party/7zip/C/XzCrc64Opt.c
     third_party/7zip/CPP/Common/XzCrc64Init.cpp
-    third_party/7zip/C/Sha256.c third_party/7zip/C/Sha256Opt.c
+    src/C/Sha256.c third_party/7zip/C/Sha256Opt.c
     third_party/7zip/C/Bra.c third_party/7zip/C/Bra86.c third_party/7zip/C/BraIA64.c
     third_party/7zip/C/Delta.c src/C/ZstdDec.c third_party/7zip/C/Xxh64.c)
 target_include_directories(sevenzip_squashfs PRIVATE src src/C third_party/7zip/C third_party/7zip/CPP

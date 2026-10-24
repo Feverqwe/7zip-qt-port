@@ -10,6 +10,10 @@ This code is based on Colin Plumb's public domain md5.c code */
 #include "RotateDefs.h"
 #include "CpuArch.h"
 
+#ifdef SEVENZIP_OPENSSL_MD5
+#include "../crypto/opensslhash.h"
+#endif
+
 #define MD5_UPDATE_BLOCKS(p) Md5_UpdateBlocks
 
 Z7_NO_INLINE
@@ -63,6 +67,9 @@ static
 Z7_NO_INLINE
 void Z7_FASTCALL Md5_UpdateBlocks(UInt32 state[4], const Byte *data, size_t numBlocks)
 {
+#ifdef SEVENZIP_OPENSSL_MD5
+  sevenzip_md5_blocks(state, data, numBlocks);
+#else
   UInt32 a, b, c, d;
   // if (numBlocks == 0) return;
   a = state[0];
@@ -124,6 +131,7 @@ void Z7_FASTCALL Md5_UpdateBlocks(UInt32 state[4], const Byte *data, size_t numB
     data += MD5_BLOCK_SIZE;
   }
   while (--numBlocks);
+#endif
 }
 
 

@@ -8,6 +8,7 @@
 
 #include "HmacSha1.h"
 #include "Pbkdf2HmacSha1.h"
+#include "crypto/opensslkdf.h"
 
 namespace NCrypto {
 namespace NSha1 {
@@ -17,6 +18,9 @@ void Pbkdf2Hmac(const Byte *pwd, size_t pwdSize,
     UInt32 numIterations,
     Byte *key, size_t keySize)
 {
+  if (sevenzip_try_pbkdf2_sha1(pwd, pwdSize, salt, saltSize, numIterations, key, keySize))
+    return;
+
   MY_ALIGN (16)
   CHmac baseCtx;
   baseCtx.SetKey(pwd, pwdSize);

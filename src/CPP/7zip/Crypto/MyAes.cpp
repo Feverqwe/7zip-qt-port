@@ -17,7 +17,8 @@ CAesCoder::CAesCoder(
       ):
   _keyIsSet(false),
   // _encodeMode(encodeMode),
-  // _ctrMode(ctrMode),
+  _ctrMode(false),
+  _useLibrary(true),
   _keySize(keySize),
   // _ctrPos(0), // _ctrPos =0 will be set in Init()
   _aes(AES_NUM_IVMRK_WORDS * 4 + AES_BLOCK_SIZE * 2)
@@ -38,6 +39,22 @@ Z7_COM7F_IMF(CAesCoder::Init())
   return _keyIsSet ? S_OK : E_NOTIMPL; // E_FAIL
 }
 
+void CAesCoder::Code(Byte *data, size_t numBlocks) {
+    size_t processed = 0;
+    if (_useLibrary && !_ctrMode) {
+        Byte iv[AES_BLOCK_SIZE], nextIv[AES_BLOCK_SIZE];
+        for (unsigned i = 0; i < 4; ++i) {
+            SetUi32(iv + i * 4, Aes()[i])
+        }
+        processed = _opensslCipher.crypt(data, numBlocks * AES_BLOCK_SIZE, iv, nextIv);
+        if (processed)
+            for (unsigned i = 0; i < 4; ++i)
+                Aes()[i] = GetUi32(nextIv + i * 4);
+    }
+    if (processed / AES_BLOCK_SIZE < numBlocks)
+        _codeFunc(Aes(), data + processed, numBlocks - processed / AES_BLOCK_SIZE);
+}
+
 Z7_COM7F_IMF2(UInt32, CAesCoder::Filter(Byte *data, UInt32 size))
 {
   if (!_keyIsSet)
@@ -50,7 +67,7 @@ Z7_COM7F_IMF2(UInt32, CAesCoder::Filter(Byte *data, UInt32 size))
   }
   size >>= 4;
   // (data) must be aligned for 16-bytes here
-  _codeFunc(Aes(), data, size);
+  Code(data, size);
   return size << 4;
 }
 
@@ -62,6 +79,8 @@ Z7_COM7F_IMF(CAesCoder::SetKey(const Byte *data, UInt32 size))
   if (_keySize != 0 && size != _keySize)
     return E_INVALIDARG;
   _setKeyFunc(Aes() + 4, data, size);
+  if (!_ctrMode)
+    _opensslCipher.prepare(data, size, _setKeyFunc == Aes_SetKey_Enc);
   _keyIsSet = true;
   return S_OK;
 }
@@ -220,11 +239,12 @@ Z7_COM7F_IMF2(UInt32, CAesCtrCoder::Filter(Byte *data, UInt32 size))
 
 #define SET_AES_FUNCS(c, f0, f1, f2, f3) \
   bool c::SetFunctions(UInt32 algo) { \
+  _useLibrary = true; \
   _codeFunc = f0; if (algo < 1) return true; \
   AES_CODE_FUNC f = NULL; \
   if (algo == 1) { f = f1; } \
   SET_AES_FUNC_23(f2, f3) \
-  if (f) { _codeFunc = f; return true; } \
+  if (f) { _codeFunc = f; _useLibrary = false; return true; } \
   return false; }
 
 

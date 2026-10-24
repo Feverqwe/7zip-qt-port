@@ -24,6 +24,42 @@ class RuntimeCacheTests(unittest.TestCase):
             probe.start()
             self.addCleanup(probe.stop)
 
+    def test_changed_crypto_library_rebuilds_engine_without_port_source_changes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "scripts").mkdir()
+            (root / "docs").mkdir()
+            (root / "build/codec-runtime").mkdir(parents=True)
+            (root / "docs/upstream-baseline.json").write_text('{"revision":"one"}')
+            for name in runtime.BUILDERS:
+                (root / "scripts" / name).write_text("builder")
+            library = root / "library.a"
+            library.write_bytes(b"library one")
+            (root / "build/crypto-provider.json").write_text(json.dumps({
+                "schema": 1, "provider": "OPENSSL", "version": "fixture",
+                "system": runtime.platform.system(), "deployment_target": "",
+                "definitions": [], "includes": [], "libraries": [str(library)]}))
+            engine = root / "build/codec-runtime/engine"
+            builds = []
+
+            def command(args, **kwargs):
+                if any("build-codec-runtime" in str(arg) for arg in args):
+                    engine.write_bytes(library.read_bytes())
+                    builds.append(engine.read_bytes())
+                return subprocess.CompletedProcess(args, 0, b"compiler", b"")
+
+            with patch.object(runtime.subprocess, "run", side_effect=command), \
+                    patch.object(runtime, "prepare_upstream", return_value=root / "sibling"), \
+                    patch.object(runtime, "artifact_paths", return_value=["codec-runtime/engine"]):
+                runtime.prepare(root, root / "sibling", codec_only=True)
+                self.assertEqual(engine.read_bytes(), b"library one")
+                runtime.prepare(root, root / "sibling", codec_only=True)
+                self.assertEqual(len(builds), 1)
+                library.write_bytes(b"library two")
+                runtime.prepare(root, root / "sibling", codec_only=True)
+                self.assertEqual(engine.read_bytes(), b"library two")
+                self.assertEqual(len(builds), 2)
+
     def test_codec_only_preserves_sfx_and_full_runtime_cache(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

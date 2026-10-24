@@ -48,8 +48,22 @@ void Z7_FASTCALL Sha256_UpdateBlocks(UInt32 state[8], const Byte *data, size_t n
 
 #ifdef Z7_COMPILER_SHA256_SUPPORTED
   void Z7_FASTCALL Sha256_UpdateBlocks_HW(UInt32 state[8], const Byte *data, size_t numBlocks);
+#endif
 
-  static SHA256_FUNC_UPDATE_BLOCKS g_SHA256_FUNC_UPDATE_BLOCKS = Sha256_UpdateBlocks;
+#ifdef SEVENZIP_OPENSSL_HASHES
+#include "../crypto/opensslhash.h"
+static void Z7_FASTCALL Sha256_UpdateBlocks_OpenSSL(UInt32 state[8], const Byte *data, size_t numBlocks)
+{
+  sevenzip_sha256_blocks(state, data, numBlocks);
+}
+#define SHA256_DEFAULT_UPDATE_BLOCKS Sha256_UpdateBlocks_OpenSSL
+#else
+#define SHA256_DEFAULT_UPDATE_BLOCKS Sha256_UpdateBlocks
+#endif
+
+#if defined(Z7_COMPILER_SHA256_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
+
+  static SHA256_FUNC_UPDATE_BLOCKS g_SHA256_FUNC_UPDATE_BLOCKS = SHA256_DEFAULT_UPDATE_BLOCKS;
   static SHA256_FUNC_UPDATE_BLOCKS g_SHA256_FUNC_UPDATE_BLOCKS_HW;
 
   #define SHA256_UPDATE_BLOCKS(p) p->v.vars.func_UpdateBlocks
@@ -62,7 +76,7 @@ BoolInt Sha256_SetFunction(CSha256 *p, unsigned algo)
 {
   SHA256_FUNC_UPDATE_BLOCKS func = Sha256_UpdateBlocks;
   
-  #ifdef Z7_COMPILER_SHA256_SUPPORTED
+  #if defined(Z7_COMPILER_SHA256_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
     if (algo != SHA256_ALGO_SW)
     {
       if (algo == SHA256_ALGO_DEFAULT)
@@ -128,7 +142,7 @@ void Sha256_InitState(CSha256 *p)
 void Sha256_Init(CSha256 *p)
 {
   p->v.vars.func_UpdateBlocks =
-  #ifdef Z7_COMPILER_SHA256_SUPPORTED
+  #if defined(Z7_COMPILER_SHA256_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
       g_SHA256_FUNC_UPDATE_BLOCKS;
   #else
       NULL;
@@ -458,6 +472,9 @@ void Sha256Prepare(void)
   g_SHA256_FUNC_UPDATE_BLOCKS    = f;
   g_SHA256_FUNC_UPDATE_BLOCKS_HW = f_hw;
 #endif
+#ifdef SEVENZIP_OPENSSL_HASHES
+  g_SHA256_FUNC_UPDATE_BLOCKS = Sha256_UpdateBlocks_OpenSSL;
+#endif
 }
 
 #undef U64C
@@ -490,3 +507,5 @@ void Sha256Prepare(void)
 #undef Z7_SHA256_BIG_W
 #undef Z7_SHA256_UNROLL
 #undef Z7_COMPILER_SHA256_SUPPORTED
+
+#undef SHA256_DEFAULT_UPDATE_BLOCKS
