@@ -1,0 +1,33 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs-tools.git",
+  "revision": "83fd39a184df96db5def895ddc55bf68e720ef76",
+  "files": {
+    "COPYING": "662abb3a8a80b36ae7036c289dd1e03b361ee5dd2e6fd5211d0d8d029146449f",
+    "include/f2fs_fs.h": "02c027f5c359f0d475a08f091c3d7206740d49067c717b14aaf4a59142621bd7",
+    "lib/libf2fs.c": "adaa2aecd97200d8a7caaf2731467ac04e268c7e988f26dc30706463b104d570"
+  },
+  "adapted": {
+    "include/f2fs_fs.h": "src/fs/f2fs/f2fs.c",
+    "lib/libf2fs.c": "src/fs/f2fs/f2fs.c"
+  },
+  "selected_symbols": {
+    "include/f2fs_fs.h": [
+      "__get_extra_isize",
+      "get_inline_xattr_addrs",
+      "MAX_INLINE_DATA",
+      "NR_INLINE_DENTRY",
+      "INLINE_DENTRY_BITMAP_SIZE",
+      "INLINE_RESERVED_SIZE",
+      "f2fs_super_block selected fields",
+      "f2fs_node footer layout",
+      "F2FS feature, advice and checkpoint flags"
+    ],
+    "lib/libf2fs.c": [
+      "f2fs_inode_chksum"
+    ]
+  },
+  "unchanged": {
+    "COPYING": "third_party/grub/f2fs-tools-COPYING"
+  },
+  "reference_only": []
+}

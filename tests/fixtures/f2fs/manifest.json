@@ -1,0 +1,16 @@
+{
+  "producer": "mkfs.f2fs 1.16.0 (2023-04-11)",
+  "images": {
+    "basic": {
+      "size": 134217728,
+      "sha256": "ce33429f6f03b159a4fb7cf87f7efe7ae4d5ba117c83bec1404f00acc8102aff",
+      "features": ""
+    },
+    "modern": {
+      "size": 134217728,
+      "sha256": "11d9a0a35e17f1a1e33d795b012fe7dbc61cd806ff7c076c8ec7fda4c2e10435",
+      "features": "extra_attr,inode_checksum,sb_checksum"
+    }
+  },
+  "large_sha256": "6daf3bbe315f194f29ba454a7e7e7698f439e57f505a9ffb413aa5c7999fa95b"
+}

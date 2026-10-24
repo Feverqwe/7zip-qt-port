@@ -33,6 +33,9 @@ File → Open device adds experimental read-only browsing and copying from exter
 devices with supported filesystems without a filesystem driver or full disk image.
 See [direct device access](docs/direct-device-reading.md) for usage and limits.
 
+Read-only [F2FS support](docs/f2fs-reading.md) adds browsing and copying from
+compatible Android and flash-drive images.
+
 Archive creation and updates support compression settings, encryption, volumes
 and self-extracting archives. Available formats and operations depend on the
 selected engine. Extraction supports password and overwrite prompts; an error
