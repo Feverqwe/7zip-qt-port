@@ -140,15 +140,10 @@ Keep adaptations narrow; account for formatting separately from functional chang
 
 ## Feature worktrees and shared harness
 
-Develop each independent feature in a named branch and a linked worktree under
+Use the global `worktree` skill for worktree lifecycle and safe cleanup.
+For this repository, develop each independent feature under
 `<harness-root>/.worktrees/<feature-slug>`, normally on `feature/<feature-slug>`.
-Reuse the task's existing worktree when resuming it. Changes to the shared
-harness/instructions may be made in the main checkout; do not move an active
-task or other uncommitted work merely to adopt this layout. Do not switch the
-main checkout's branch to work on a feature, reset other worktrees, or remove
-them without a task-specific reason. Creating a worktree does not copy
-uncommitted changes; start from the intended committed base and transfer only
-explicitly selected task changes when needed.
+Changes to the shared harness/instructions may be made in the main checkout.
 
 At task start distinguish the source root from the harness root:
 
@@ -157,33 +152,6 @@ task_root="$(git rev-parse --show-toplevel)"
 harness_root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 git -C "$task_root" status --short --branch
 ```
-
-To create a feature worktree, choose the intended committed base (the example
-uses the main checkout's `HEAD`):
-
-```sh
-git -C "$harness_root" worktree add -b feature/my-feature \
-  "$harness_root/.worktrees/my-feature" HEAD
-```
-
-After the feature has been integrated and the worktree is no longer needed,
-inspect its status and remove it through Git:
-
-```sh
-git -C "$harness_root/.worktrees/my-feature" status --short --branch
-git -C "$harness_root" worktree remove "$harness_root/.worktrees/my-feature"
-```
-
-If removal refuses uncommitted or untracked work, preserve the worktree and
-report what remains. Do not bypass that refusal with `--force` or `rm -rf`.
-Check ignored files too: retain unique notes, current failure/review evidence
-and needed incremental outputs before removal. Do not move a CMake build tree
-to another source path or delete the shared harness/toolchains/compiler cache.
-An explicitly task-owned disposable test worktree may be removed with `--force`
-only after checking that its changes are reproducible or preserved elsewhere
-and no active process uses it. Removing a worktree does not delete its branch;
-after integration, delete an obsolete task-owned branch separately with
-`git branch -d feature/my-feature`. Do not use `-D` to discard unmerged commits.
 
 The main checkout owns the shared harness: current agent instructions, skills
 under `.agents/`, memory under `.codex/`, private runner configuration and installed
