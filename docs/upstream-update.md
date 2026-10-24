@@ -8,6 +8,8 @@ code review; `local` headers have no upstream counterpart at their current
 paths. `overrides` records full commits for individual modules if an update is
 applied incrementally. The function/branch scope and reasons for local changes
 remain in [the port audit](upstream-port-audit.md).
+`original_sha256` pins complete original inventory units for new selective imports;
+`verify` checks these hashes against each owner's recorded revision.
 
 Archive readers with Linux dependencies have separate variants under
 `src/gpl/CPP/`, preserving the upstream path below that source root. Compare both

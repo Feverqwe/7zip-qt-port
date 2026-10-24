@@ -118,6 +118,87 @@ def generate_references(destination):
         return sets
 
 
+def generate_snapshots(destination):
+    """Read-only snapshot oracles come from QEMU's temporary snapshot loader."""
+    records = []
+    with tempfile.TemporaryDirectory(prefix="sevenzip-qcow-snapshots-") as temporary:
+        root = Path(temporary)
+        source = root / "source.raw"
+        seed = bytes((i * 17 + 3) % 256 for i in range(65536))
+        folder = destination / "snapshots"
+        folder.mkdir(exist_ok=True)
+        def run(args):
+            subprocess.run(args, cwd=root, check=True, stdout=subprocess.DEVNULL)
+        for variant, options in (("v2", "cluster_size=4096,compat=0.10"),
+                                 ("extended", "cluster_size=16384,extended_l2=on,compression_type=zstd"),
+                                 ("backed", "cluster_size=16384,extended_l2=on"),
+                                 ("filesystem", "cluster_size=4096")):
+            source.write_bytes(gzip.decompress((ROOT / "tests/fixtures/devices/mbr.img.gz").read_bytes())
+                               if variant == "filesystem" else seed)
+            if variant == "v2":
+                with source.open("r+b") as stream:
+                    stream.truncate(196608)
+            image = variant + ".qcow2"
+            if variant == "backed":
+                run(["qemu-img", "create", "-q", "-f", "qcow2", "-F", "raw",
+                     "-b", "source.raw", "-o", options, image])
+            else:
+                command = ["qemu-img", "convert", "-f", "raw", "-O", "qcow2", "-o", options]
+                if variant in ("extended", "filesystem"):
+                    command += ["-c"]
+                run(command + ["source.raw", image])
+            run(["qemu-img", "snapshot", "-c", "../../снимок 空", image])
+            run(["qemu-io", "-f", "qcow2", "-c", "write -P 0x42 4096 4096",
+                 "-c", "write -z 0 512", image])
+            if variant in ("extended", "backed"):
+                run(["qemu-img", "resize", image, "131072"])
+            run(["qemu-io", "-f", "qcow2", "-c", "write -P 0x73 98304 512", image])
+            run(["qemu-img", "snapshot", "-c", "second", image])
+            if variant in ("extended", "backed"):
+                run(["qemu-img", "resize", image, "196608"])
+            run(["qemu-io", "-f", "qcow2", "-c", "write -P 0x5a 0 8192",
+                 "-c", "write -z 8192 8192", "-c", "write -P 0xaa 163840 512", image])
+            # Fix only fixture timestamps so regeneration is reproducible.
+            contents = bytearray((root / image).read_bytes())
+            table = struct.unpack_from(">Q", contents, 64)[0]
+            for index in range(2):
+                table = (table + 7) & ~7
+                struct.pack_into(">II", contents, table + 16, 1700000000 + index * 3600, 123456789)
+                id_size, name_size = struct.unpack_from(">HH", contents, table + 12)
+                extra_size = struct.unpack_from(">I", contents, table + 36)[0]
+                table += 40 + extra_size + id_size + name_size
+            (root / image).write_bytes(contents)
+            run(["qemu-img", "check", "-q", image])
+            files = {"image": root / image}
+            if variant == "backed":
+                files["backing"] = source
+            for index in range(3):
+                expected = variant + f"-{index}.raw"
+                command = ["qemu-img", "convert", "-f", "qcow2", "-O", "raw"]
+                if index:
+                    command += ["-l", "snapshot.id=" + str(index)]
+                run(command + [image, expected])
+                if variant in ("extended", "backed") and index:
+                    # QEMU load_tmp retains the active geometry. Keep its
+                    # decoded bytes within the snapshot's saved disk size.
+                    size = 65536 if index == 1 else 131072
+                    data = (root / expected).read_bytes()
+                    if any(data[size:]):
+                        raise ValueError("unexpected snapshot bytes beyond saved geometry")
+                    (root / expected).write_bytes(data[:size])
+                files[str(index)] = root / expected
+            record = {"name": variant, "files": {}}
+            for name, path in files.items():
+                fixture = "snapshots/" + variant + "-" + name + ".gz"
+                target = destination / fixture
+                data = path.read_bytes()
+                if not target.is_file() or gzip.decompress(target.read_bytes()) != data:
+                    target.write_bytes(gzip.compress(data, mtime=0))
+                record["files"][name] = fixture
+            records.append(record)
+    return records
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("destination", type=Path)
@@ -198,7 +279,8 @@ def main():
                 "source_sha256": hashlib.sha256(raw).hexdigest(),
                 "path": "папка 空/данные с пробелом.txt",
                 "payload": "device ext4 payload\n", "images": records,
-                "reference_sets": generate_references(args.destination)}
+                "reference_sets": generate_references(args.destination),
+                "snapshot_sets": generate_snapshots(args.destination)}
     (args.destination / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
 

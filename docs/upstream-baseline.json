@@ -3,6 +3,7 @@
   "runtime_dependencies": [
     "src/block/qcow.c",
     "src/block/qcow.h",
+    "src/block/qcow2-snapshot.c",
     "src/block/qcow2.c",
     "src/block/qcow2.h"
   ],
@@ -24,6 +25,7 @@
     "src/CPP/7zip/Archive/GptHandler.cpp",
     "src/CPP/7zip/Archive/GzHandler.cpp",
     "src/CPP/7zip/Archive/HandlerCont.cpp",
+    "src/CPP/7zip/Archive/HandlerCont.h",
     "src/CPP/7zip/Archive/HfsHandler.cpp",
     "src/CPP/7zip/Archive/IhexHandler.cpp",
     "src/CPP/7zip/Archive/Iso/IsoHandler.cpp",
@@ -151,7 +153,6 @@
     "third_party/7zip/CPP/7zip/Archive/Common/ParseProperties.cpp",
     "third_party/7zip/CPP/7zip/Archive/Common/ParseProperties.h",
     "third_party/7zip/CPP/7zip/Archive/Common/StdAfx.h",
-    "third_party/7zip/CPP/7zip/Archive/HandlerCont.h",
     "third_party/7zip/CPP/7zip/Archive/HfsHandler.h",
     "third_party/7zip/CPP/7zip/Archive/IArchive.h",
     "third_party/7zip/CPP/7zip/Archive/Iso/IsoHeader.cpp",
@@ -492,6 +493,7 @@
     "src/CPP/7zip/Archive/GptHandler.cpp",
     "src/CPP/7zip/Archive/GzHandler.cpp",
     "src/CPP/7zip/Archive/HandlerCont.cpp",
+    "src/CPP/7zip/Archive/HandlerCont.h",
     "src/CPP/7zip/Archive/HfsHandler.cpp",
     "src/CPP/7zip/Archive/IhexHandler.cpp",
     "src/CPP/7zip/Archive/Iso/IsoHandler.cpp",
@@ -757,5 +759,8 @@
     "src/gpl/CPP/7zip/Archive/Iso/IsoZisofs.h",
     "src/gpl/CPP/7zip/Archive/Udf/UdfDiscovery.cpp",
     "src/gpl/CPP/7zip/Archive/Udf/UdfLinux.cpp"
-  ]
+  ],
+  "original_sha256": {
+    "src/CPP/7zip/Archive/HandlerCont.h": "0dc3ecde43894bddb416ae8c47f6aa55ac66450fe8376a1b81c78b24ccafe40e"
+  }
 }

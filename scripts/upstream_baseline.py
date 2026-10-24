@@ -57,6 +57,11 @@ def load_manifest(path):
         not re.fullmatch(r"[0-9a-f]{40}", value) for value in overrides.values()
     ):
         raise ValueError("Revision overrides require recorded paths and full hashes")
+    hashes = data.get("original_sha256", {})
+    if not isinstance(hashes, dict) or set(hashes) - set(data["exact"] + data["adapted"]) or any(
+        not re.fullmatch(r"[0-9a-f]{64}", value) for value in hashes.values()
+    ):
+        raise ValueError("Original SHA256 values require recorded upstream source owners")
     return data
 
 
@@ -253,6 +258,9 @@ def verify(data, upstream):
     for path in data["exact"] + data["adapted"]:
         revision = data.get("overrides", {}).get(path, data["revision"])
         original = git(upstream, "show", revision + ":" + source_path(path))
+        expected = data.get("original_sha256", {}).get(path)
+        if expected and hashlib.sha256(original).hexdigest() != expected:
+            raise ValueError("Original source hash mismatch: " + path)
         if path in data["exact"] and (ROOT / path).read_bytes() != original:
             raise ValueError("Exact vendor differs from baseline: " + path)
     for path in data["local"]:

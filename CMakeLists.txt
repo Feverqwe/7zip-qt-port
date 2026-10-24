@@ -1674,6 +1674,19 @@ if(BUILD_TESTING)
     add_test(NAME archive_qcow_references COMMAND archive_qcow_references_tests -silent)
     set_tests_properties(archive_qcow_references PROPERTIES TIMEOUT 45
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(archive_qcow_snapshots_tests tests/archive_qcow_snapshots_tests.cpp
+        ${source_extract_advanced_sources})
+    target_include_directories(archive_qcow_snapshots_tests PRIVATE src tests)
+    target_link_libraries(archive_qcow_snapshots_tests PRIVATE sevenzip_location Qt6::Test)
+    target_compile_definitions(archive_qcow_snapshots_tests PRIVATE
+        LAYER_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/layers")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(archive_qcow_snapshots_tests PRIVATE
+            SEVENZIP_CODEC_MODULE="${SEVENZIP_CODEC_MODULE}")
+    endif()
+    add_test(NAME archive_qcow_snapshots COMMAND archive_qcow_snapshots_tests -silent)
+    set_tests_properties(archive_qcow_snapshots PROPERTIES TIMEOUT 45
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     set_tests_properties(archive_open_options PROPERTIES TIMEOUT 60 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/archive-open-options.ini")
     qt_add_executable(source_extract_advanced_tests tests/source_extract_advanced_tests.cpp

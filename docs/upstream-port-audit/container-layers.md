@@ -259,8 +259,67 @@ after it. Five original QEMU file hashes verified. The legacy step has no new
 Linux/Windows or installed-package acceptance; the guest evidence above predates
 this step. Full and slow suites were not run.
 
+### Internal QCOW2 snapshots — 2026-10-24
+
+Compared complete `block/qcow2-snapshot.c` at the pinned QEMU commit:
+`qcow2_do_read_snapshots`, `qcow2_free_single_snapshot`, `qcow2_free_snapshots`,
+`qcow2_snapshot_list`, `qcow2_snapshot_load_tmp`; their `qcow2_do_open` callers,
+`QCowSnapshotHeader`, `QCowSnapshotExtraData`, `QCowSnapshot` and geometry/table
+validation in `block/qcow2.c/.h`. The QEMU baseline now also pins the complete
+snapshot unit and maps it to `src/block/qcow2-snapshot.c`, compiled as C by the
+existing native runtime integration. Its MIT notice is retained.
+
+Adapted the read/free branches with native bounded read callbacks and explicit
+state arguments instead of block-graph/coroutine services. Preserved entry
+alignment, count/table/extra-data limits, known extra fields and the old-header
+disk-size fallback. Unknown extra data is bounds-checked and skipped, rather
+than retained for a future rewrite. Repair, snapshot mutation/deletion/activation,
+refcount changes and VM resume are omitted. VM-state sizes/clocks are metadata;
+VM-state payload export is not yet exposed and remains for the goal's read-side
+scope audit. No source image is changed to select a snapshot.
+
+The SDK handler reads current and saved disk mappings through the existing
+7-Zip L1/L2 validation and decoders. Selecting a snapshot supplies its saved L1
+offset/count and geometry, following QEMU's temporary loader rather than its
+mutating activation path. Each stream owns its mapping/cache and an original
+`CExtentsStream` cursor over shared immutable source bytes. Raw/QCOW backing
+references remain retained and source positions are restored on each read.
+The handler's directly exposed current-image stream remains usable too.
+QEMU rejects snapshot operations on external-data images; a declared historical
+image there returns unsupported instead of reusing current external guest bytes.
+
+`HandlerCont.h` moved from exact dependencies into the SDK adaptation root.
+Its original body is identical at 9128 and b88, SHA256
+`0dc3ecde43894bddb416ae8c47f6aa55ac66450fe8376a1b81c78b24ccafe40e`.
+Only two image operations become overridable/protected; include fallbacks serve
+both the complete upstream runtime tree and the split Qt/vendor include layout.
+Formatting is normalized separately from those declaration changes. Snapshot
+extraction retains `CHandlerImg::Extract` as the operation/error owner; a narrow
+callback adapter forwards item indexes, aggregate progress and cancellation,
+including during L1/L2 acquisition. Original-hash validation covers adapted
+7-Zip baseline units as well as the separate QEMU manifest.
+
+Snapshots use generated file paths, with their original names in comments and
+creation times in file-time properties. Untrusted names never become paths.
+The current disk and each saved disk expose their own lengths; shared physical
+bytes are not counted once per snapshot. Main-subfile auto-opening is suppressed
+when snapshots exist, so opening the image retains the snapshot selection.
+A bad saved L1 mapping reports a per-item data error while other mappings remain
+readable. Snapshotless source behavior is covered by the existing QCOW suites.
+
+Validation on macOS, current combined worktree with 7-Zip 26.05: the six existing
+focused suites passed (QCOW, references, layer chains/lifetime, baseline/cache);
+the new `archive_qcow_snapshots` suite passed after correcting the test's payload
+buffer length. It covers QEMU-oracled full bytes/geometry, interleaved and retained
+streams, metadata, selected/all Test and Extract, output failure/cancellation,
+metadata-acquisition cancellation, malformed tables and an isolated damaged
+snapshot. The native folder path also reads a file through snapshot → MBR → ext4.
+Source and backing files remain unchanged. Regeneration reproduced all 17 new
+gzip fixtures byte-for-byte; all six QEMU original hashes verified. No new
+Linux/Windows, full/slow or installed-package acceptance is claimed for this step.
+
 Remaining source-visible goal work: AES-CBC and
-LUKS read/decryption paths, internal snapshot enumeration and independent streams,
+LUKS read/decryption paths, snapshot VM-state payload scope,
 backing-format delegation beyond raw/QCOW, and explicit dependency selection where
 the existing volume callback rejects a path or cannot resolve a stream-contained
 image's siblings. These are missing implementations

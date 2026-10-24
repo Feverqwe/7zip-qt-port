@@ -75,6 +75,15 @@ class UpstreamBaselineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Exact vendor differs"):
             baseline.verify(data, self.upstream)
 
+    def test_adapted_original_hash_is_checked_against_upstream(self):
+        data = dict(self.manifest, original_sha256={
+            "src/" + self.source: hashlib.sha256(
+                baseline.git(self.upstream, "show", self.old + ":" + self.source)).hexdigest()})
+        baseline.verify(data, self.upstream)
+        data["original_sha256"]["src/" + self.source] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "Original source hash mismatch"):
+            baseline.verify(data, self.upstream)
+
     def reference_manifest(self):
         paths = [self.source, "CPP/Windows/Net.cpp"]
         return {

@@ -4,12 +4,14 @@
   "files": {
     "block/qcow.c": "ded9a4e3201d9adff1d9c8d9702aab70d54dbed30b41be4ca24202b593d6afe2",
     "block/qcow2-cluster.c": "0bf8ea84c6230c62cc61ac1f96cef8616ab45e2303e25fa9f2b5c9a94bc58d31",
+    "block/qcow2-snapshot.c": "3e7055ef8d41dacd422291c6db3a589d9376688c3b69e23dec5c9e9aabba91d3",
     "block/qcow2.c": "3baa34359f2b0497ba09433dd1de6f183ac0fa5f1dbd967eabbffea8f1a0bc56",
     "block/qcow2.h": "bf7bc584fb466e54a46afc0511695e551db4f486c202ca1cb8e40c186b0bbf94",
     "docs/interop/qcow2.rst": "55c4d0fa03fe0690f444b3ed5ba58e7b075b7ba3f30778a6087e92ac6bc0d5d4"
   },
   "adapted": {
     "block/qcow.c": "src/block/qcow.c",
+    "block/qcow2-snapshot.c": "src/block/qcow2-snapshot.c",
     "block/qcow2.c": "src/block/qcow2.c",
     "block/qcow2.h": "src/block/qcow2.h"
   }

@@ -96,5 +96,44 @@
       },
       "expected": "references/expected.gz"
     }
+  ],
+  "snapshot_sets": [
+    {
+      "name": "v2",
+      "files": {
+        "image": "snapshots/v2-image.gz",
+        "0": "snapshots/v2-0.gz",
+        "1": "snapshots/v2-1.gz",
+        "2": "snapshots/v2-2.gz"
+      }
+    },
+    {
+      "name": "extended",
+      "files": {
+        "image": "snapshots/extended-image.gz",
+        "0": "snapshots/extended-0.gz",
+        "1": "snapshots/extended-1.gz",
+        "2": "snapshots/extended-2.gz"
+      }
+    },
+    {
+      "name": "backed",
+      "files": {
+        "image": "snapshots/backed-image.gz",
+        "backing": "snapshots/backed-backing.gz",
+        "0": "snapshots/backed-0.gz",
+        "1": "snapshots/backed-1.gz",
+        "2": "snapshots/backed-2.gz"
+      }
+    },
+    {
+      "name": "filesystem",
+      "files": {
+        "image": "snapshots/filesystem-image.gz",
+        "0": "snapshots/filesystem-0.gz",
+        "1": "snapshots/filesystem-1.gz",
+        "2": "snapshots/filesystem-2.gz"
+      }
+    }
   ]
 }

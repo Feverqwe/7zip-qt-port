@@ -20,6 +20,14 @@ QEMU still confirms the complete raw disk, exercising its full-output reading ru
 `reference_sets` in the manifest describes dependent images and their local file
 names. QEMU generates these backing-chain/external-data fixtures and the expected
 raw disk; they contain disposable patterned bytes and no user data.
+`snapshot_sets` contains QEMU-created internal snapshots: ordinary v2 tables,
+extended L2 with Zstandard, a raw backing dependency, and an MBR/ext4 disk.
+QEMU's temporary snapshot loader supplies the expected disk bytes. Since that
+loader retains active geometry, shorter snapshots' expected output is bounded
+to their saved geometry after confirming its remaining bytes are zero. Only
+fixture timestamps are fixed for reproducible regeneration; QEMU checks the
+resulting images. Snapshot names include an unsafe path to exercise metadata
+display without using that name as an extraction path.
 `manifest.json` records the raw source/image sizes, SHA-256 hashes and expected
 selected file bytes. The encoder follows the
 [QEMU QCOW2 specification](https://www.qemu.org/docs/master/interop/qcow2.html).
