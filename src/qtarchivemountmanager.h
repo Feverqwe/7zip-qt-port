@@ -9,6 +9,7 @@ struct IUnknown;
 class QTreeWidget;
 class QPlainTextEdit;
 class QPushButton;
+class QAction;
 
 // Modeless mount management, independent of either file-manager panel.
 class QtArchiveMountManager final : public QDialog {
@@ -18,7 +19,8 @@ class QtArchiveMountManager final : public QDialog {
     QHash<QtArchiveMountSession *, QStringList> issues_;
     QTreeWidget *list_;
     QPlainTextEdit *details_;
-    QPushButton *open_, *copy_, *unmount_, *force_, *remove_;
+    QPushButton *open_, *copy_, *unmount_, *force_;
+    QAction *remove_;
     bool closingOwner_ = false;
     QtArchiveMountSession *selected() const;
     void refresh();
@@ -33,6 +35,7 @@ class QtArchiveMountManager final : public QDialog {
 
   public:
     explicit QtArchiveMountManager(QWidget *owner);
-    void mount(IUnknown *resource, const QString &label, const QString &archivePassword);
+    void mount(IUnknown *resource, const QString &label, const QString &archivePassword,
+               const QString &folder = {});
     bool canCloseOwner();
 };

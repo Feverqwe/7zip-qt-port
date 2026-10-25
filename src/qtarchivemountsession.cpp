@@ -68,7 +68,8 @@ QtArchiveMountSession::~QtArchiveMountSession() {
 }
 
 void QtArchiveMountSession::start(IUnknown *resource, quint64 quota, const QString &archivePassword,
-                                  const QString &serverExecutable) {
+                                  const QString &serverExecutable, const QString &folder,
+                                  std::shared_ptr<ArchiveReadOnlyView> preparedView) {
     if (started_)
         return;
     started_ = true;
@@ -94,7 +95,7 @@ void QtArchiveMountSession::start(IUnknown *resource, quint64 quota, const QStri
     password_ = QUuid::createUuid().toString(QUuid::Id128);
     share_ = QStringLiteral("Sevenzip-") + QUuid::createUuid().toString(QUuid::Id128);
     source_ = new QtArchiveMountSource(resource, quota, archivePassword, user_, password_, endpoint,
-                                       share_);
+                                       share_, folder, std::move(preparedView));
     source_->moveToThread(&worker_);
     connect(&worker_, &QThread::started, source_, &QtArchiveMountSource::initialize);
     connect(&worker_, &QThread::finished, source_, &QObject::deleteLater);
@@ -105,17 +106,22 @@ void QtArchiveMountSession::start(IUnknown *resource, quint64 quota, const QStri
             &QtArchiveMountSession::unverifiedDataRequired);
     connect(source_, &QtArchiveMountSource::entryIssue, this, &QtArchiveMountSession::entryIssue);
     connect(source_, &QtArchiveMountSource::failure, this, &QtArchiveMountSession::fail);
-    connect(source_, &QtArchiveMountSource::prepared, this,
-            [this, endpoint, serverExecutable](const QString &limitations) {
-                if (cleaning_)
-                    return;
-                limitations_ = limitations;
-                child_.start(serverExecutable, {"--source", endpoint.toString()});
-                QTimer::singleShot(15000, this, [this] {
-                    if (status_ == Status::Preparing)
-                        fail(tr("The SMB server did not become ready."));
-                });
+    connect(
+        source_, &QtArchiveMountSource::prepared, this,
+        [this, endpoint, serverExecutable](const QString &limitations, const QStringList &skipped) {
+            if (cleaning_)
+                return;
+            limitations_ = limitations;
+            skipped_ = skipped;
+            emit changed();
+            if (cleaning_)
+                return;
+            child_.start(serverExecutable, {"--source", endpoint.toString()});
+            QTimer::singleShot(15000, this, [this] {
+                if (status_ == Status::Preparing)
+                    fail(tr("The SMB server did not become ready."));
             });
+        });
     connect(source_, &QtArchiveMountSource::serverListening, this, [this](quint16 port) {
         if (cleaning_)
             return;
@@ -187,3 +193,4 @@ QString QtArchiveMountSession::label() const { return label_; }
 QString QtArchiveMountSession::path() const { return path_; }
 QString QtArchiveMountSession::error() const { return error_; }
 QString QtArchiveMountSession::limitations() const { return limitations_; }
+QStringList QtArchiveMountSession::skippedEntries() const { return skipped_; }

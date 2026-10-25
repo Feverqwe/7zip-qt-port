@@ -59,6 +59,170 @@ class ArchiveReadOnlyViewTests final : public QObject {
         QTest::newRow("repeated current directory") << QByteArray("./.");
     }
     void caseDistinctEntries_data() { retainedRanges_data(); }
+    void cacheRequirementFollowsReader_data() { retainedRanges_data(); }
+    void cacheRequirementFollowsReader() {
+        QFETCH(QString, format);
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath("source." + format);
+        QVERIFY(NativeArchiveFixture::Write(path, {{"nested.zip", "raw file bytes"}}, format));
+        CMyComPtr<IUnknown> resource;
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QCOMPARE(Worker([&] { return Open(path, format, resource, reader); }), S_OK);
+        std::shared_ptr<ArchiveReadOnlyView> view;
+        QString error;
+        QCOMPARE(Worker([&] {
+                     return ArchiveBackend::createReadOnlyView(resource, 0, {}, view, error);
+                 }),
+                 S_OK);
+        bool required = true;
+        QCOMPARE(Worker([&] { return view->needsCache(required); }), S_OK);
+        QCOMPARE(required, format == "zip");
+        int extractions = 0;
+        view->setReadOptions(required ? 4096 : 0, {},
+                             [&](const QString &, quint64) {
+                                 ++extractions;
+                                 return true;
+                             },
+                             {});
+        resource.Release();
+        reader.reset();
+        // Preparation is reused when the dialog hands this view to the mount worker.
+        QCOMPARE(Worker([&] { return ArchiveBackend::prepareReadOnlyView(view, error); }), S_OK);
+        const auto result = Worker([&] { return view->read(FileId(view, "nested.zip"), 0, 1024); });
+        QCOMPARE(result.Result, S_OK);
+        QCOMPARE(result.Data, QByteArray("raw file bytes"));
+        QCOMPARE(extractions, required ? 1 : 0);
+    }
+    void openedFolderIsMountRoot_data() { retainedRanges_data(); }
+    void openedFolderIsMountRoot() {
+        QFETCH(QString, format);
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath("scope." + format);
+        QVERIFY(NativeArchiveFixture::Write(path,
+                                            {{"chosen/data.bin", "selected bytes"},
+                                             {"chosen/../unsafe.bin", "unsafe"},
+                                             {"chosen-neighbor/secret.bin", "outside"},
+                                             {"outside:bad", "outside"}},
+                                            format));
+        CMyComPtr<IUnknown> resource;
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QCOMPARE(Worker([&] { return Open(path, format, resource, reader); }), S_OK);
+        std::shared_ptr<ArchiveReadOnlyView> view;
+        QString error;
+        QStringList confirmations;
+        QCOMPARE(Worker([&] {
+                     return ArchiveBackend::createReadOnlyView(
+                         resource, 4096, {}, view, error,
+                         [&](const QString &name, quint64) {
+                             confirmations.append(name);
+                             return true;
+                         },
+                         {}, "chosen/");
+                 }),
+                 S_OK);
+        QCOMPARE(view->entries().size(), 2);
+        QCOMPARE(view->entries().last().Name, QStringLiteral("data.bin"));
+        QCOMPARE(view->entries().last().Parent, quint64(1));
+        QCOMPARE(view->skippedEntries().size(), 1);
+        QVERIFY(view->skippedEntries().first().contains("chosen/../unsafe.bin"));
+        resource.Release();
+        reader.reset();
+        const auto result = Worker([&] { return view->read(FileId(view, "data.bin"), 0, 1024); });
+        QCOMPARE(result.Result, S_OK);
+        QCOMPARE(result.Data, QByteArray("selected bytes"));
+        QCOMPARE(confirmations, format == "zip" ? QStringList{"data.bin"} : QStringList{});
+    }
+    void boundDotFolderIsMountRoot_data() {
+        QTest::addColumn<QByteArray>("root");
+        QTest::newRow("dot") << QByteArray(".");
+        QTest::newRow("literal parent directory") << QByteArray("..");
+    }
+    void boundDotFolderIsMountRoot() {
+        QFETCH(QByteArray, root);
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath("Payload.cpio");
+        QFile archive(path);
+        QVERIFY(archive.open(QIODevice::WriteOnly));
+        const auto bytes = DotPathCpioFixture(root);
+        QCOMPARE(archive.write(bytes), qint64(bytes.size()));
+        archive.close();
+        CMyComPtr<IUnknown> resource;
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QCOMPARE(Worker([&] { return Open(path, "cpio", resource, reader); }), S_OK);
+        std::shared_ptr<ArchiveReadOnlyView> view;
+        QString error;
+        QCOMPARE(Worker([&] {
+                     return ArchiveBackend::createReadOnlyView(
+                         resource, 4096, {}, view, error, {}, {},
+                         QString::fromUtf8(root) + "/ProxyBridge.app/");
+                 }),
+                 S_OK);
+        QCOMPARE(view->entries().size(), 2);
+        QVERIFY(view->skippedEntries().isEmpty());
+        const auto result =
+            Worker([&] { return view->read(FileId(view, QStringLiteral("имя 空.txt")), 0, 1024); });
+        QCOMPARE(result.Result, S_OK);
+        QCOMPARE(result.Data, QByteArray("payload bytes"));
+    }
+    void additionalStreamsDoNotBlockFiles_data() {
+        QTest::addColumn<bool>("alternate");
+        QTest::addColumn<bool>("scoped");
+        QTest::newRow("typed directory attribute") << true << false;
+        QTest::newRow("attribute of mount root") << true << true;
+        QTest::newRow("ordinary colon filename") << false << false;
+    }
+    void additionalStreamsDoNotBlockFiles() {
+        QFETCH(bool, alternate);
+        QFETCH(bool, scoped);
+        QTemporaryDir fixture;
+        const QString format = alternate ? QStringLiteral("wim") : QStringLiteral("zip");
+        const QString path = fixture.filePath("attributes." + format);
+        NativeArchiveFixture::Item directory{"diff", {}, false, {}, {}, true};
+        NativeArchiveFixture::Item attribute{"diff:$XATTR.trusted.overlay.impure", "attribute"};
+        attribute.AltStream = alternate;
+        QVERIFY(NativeArchiveFixture::Write(
+            path, {directory, {"diff/data.bin", "ordinary bytes"}, attribute}, format));
+        CMyComPtr<IUnknown> resource;
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QCOMPARE(Worker([&] { return Open(path, format, resource, reader); }), S_OK);
+        std::shared_ptr<ArchiveReadOnlyView> view;
+        QString error;
+        const auto result = Worker([&] {
+            return ArchiveBackend::createReadOnlyView(
+                resource, 4096, {}, view, error, [](const QString &, quint64) { return true; }, {},
+                scoped ? QStringLiteral("diff/") : QString());
+        });
+        QCOMPARE(result, S_OK);
+        QCOMPARE(view->skippedEntries().size(), 1);
+        QVERIFY(view->skippedEntries().first().contains(attribute.Path));
+        QCOMPARE(view->entries().size(), scoped ? 2 : 3);
+        const auto ordinary = Worker([&] { return view->read(FileId(view, "data.bin"), 0, 1024); });
+        QCOMPARE(ordinary.Result, S_OK);
+        QCOMPARE(ordinary.Data, QByteArray("ordinary bytes"));
+        if (!alternate)
+            return;
+        // The retained reader still exposes the attribute to normal extraction.
+        UInt32 count = 0, attributeIndex = UInt32(-1);
+        QCOMPARE(reader->arc().Archive->GetNumberOfItems(&count), S_OK);
+        for (UInt32 index = 0; index < count; ++index) {
+            bool stream = false;
+            QCOMPARE(Archive_IsItem_AltStream(reader->arc().Archive, index, stream), S_OK);
+            if (stream)
+                attributeIndex = index;
+        }
+        QVERIFY(attributeIndex != UInt32(-1));
+        const QString saved = fixture.filePath("attribute.bin");
+        QtArchiveReadOperation operation(reader, {});
+        operation.Output.NativeIndex = attributeIndex;
+        operation.Output.AltStream = true;
+        operation.Output.Path = saved;
+        operation.start();
+        QVERIFY(operation.wait(10000));
+        QCOMPARE(operation.Result, S_OK);
+        QFile output(saved);
+        QVERIFY(output.open(QIODevice::ReadOnly));
+        QCOMPARE(output.readAll(), QByteArray("attribute"));
+    }
     void caseDistinctEntries() {
         QFETCH(QString, format);
         QTemporaryDir fixture;
@@ -409,7 +573,7 @@ class ArchiveReadOnlyViewTests final : public QObject {
         QCOMPARE(cached.Data, payload.left(4096));
         QCOMPARE(authorized.size(), 3);
     }
-    void rejectsUnsafeOrAmbiguousNamespace_data() {
+    void skipsUnsafeOrAmbiguousNamespace_data() {
         QTest::addColumn<QStringList>("names");
         QTest::newRow("parent traversal") << QStringList{"../outside.bin"};
         QTest::newRow("parent after current directory") << QStringList{"./../outside.bin"};
@@ -418,11 +582,11 @@ class ArchiveReadOnlyViewTests final : public QObject {
         QTest::newRow("duplicate file") << QStringList{"data.bin", "data.bin"};
         QTest::newRow("stream syntax") << QStringList{"data:stream.bin"};
     }
-    void rejectsUnsafeOrAmbiguousNamespace() {
+    void skipsUnsafeOrAmbiguousNamespace() {
         QFETCH(QStringList, names);
         QTemporaryDir fixture;
         const QString path = fixture.filePath("unsafe.zip");
-        QList<NativeArchiveFixture::Item> items;
+        QList<NativeArchiveFixture::Item> items{{"readable.bin", "safe bytes"}};
         for (const auto &name : names)
             items.append({name, "x"});
         QVERIFY(NativeArchiveFixture::Write(path, items, "zip"));
@@ -431,11 +595,17 @@ class ArchiveReadOnlyViewTests final : public QObject {
         QCOMPARE(Worker([&] { return Open(path, "zip", resource, reader); }), S_OK);
         std::shared_ptr<ArchiveReadOnlyView> view;
         QString error;
-        QVERIFY(Worker([&] {
-                    return ArchiveBackend::createReadOnlyView(resource, 4096, {}, view, error);
-                }) != S_OK);
-        QVERIFY(!view);
-        QVERIFY(!error.isEmpty());
+        QCOMPARE(Worker([&] {
+                     return ArchiveBackend::createReadOnlyView(
+                         resource, 4096, {}, view, error,
+                         [](const QString &, quint64) { return true; });
+                 }),
+                 S_OK);
+        QVERIFY(!view->skippedEntries().isEmpty());
+        const auto result =
+            Worker([&] { return view->read(FileId(view, "readable.bin"), 0, 1024); });
+        QCOMPARE(result.Result, S_OK);
+        QCOMPARE(result.Data, QByteArray("safe bytes"));
         QVERIFY(!QFileInfo::exists(fixture.filePath("outside.bin")));
     }
 };

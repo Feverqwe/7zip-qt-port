@@ -13,14 +13,14 @@
 #include <algorithm>
 
 void QtArchiveMountManager::mount(IUnknown *resource, const QString &label,
-                                  const QString &archivePassword) {
+                                  const QString &archivePassword, const QString &folder) {
     CMyComPtr<IUnknown> retained = resource;
     const QString unavailable = QtSmbMountPlatform::unavailableReason();
     if (!unavailable.isEmpty()) {
         QMessageBox::information(owner_, tr("Mount read-only"), unavailable);
         return;
     }
-    const auto options = QtAskMountOptions(owner_, label, archivePassword);
+    const auto options = QtAskMountOptions(owner_, label, archivePassword, retained, folder);
     if (!options.Accepted)
         return;
     QString helper = QDir(QCoreApplication::applicationDirPath()).filePath("SevenzipSmb");
@@ -65,7 +65,7 @@ void QtArchiveMountManager::mount(IUnknown *resource, const QString &label,
     refresh();
     list_->setCurrentItem(list_->topLevelItem(sessions_.size() - 1));
     showManager();
-    session->start(retained, options.Quota, options.Password, helper);
+    session->start(retained, options.Quota, options.Password, helper, folder, options.View);
 }
 
 void QtArchiveMountManager::refresh() {
@@ -93,6 +93,7 @@ void QtArchiveMountManager::refresh() {
         if (!item)
             item = new QTreeWidgetItem(list_);
         item->setText(0, session->label());
+        item->setToolTip(0, session->label());
         item->setText(1, session->path());
         const auto status = session->status() == Status::Mounted && session->path().isEmpty()
                                 ? tr("Connection needs recovery")

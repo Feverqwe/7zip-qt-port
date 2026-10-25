@@ -1,5 +1,6 @@
 #include "qtarchivemountmanager.h"
 #include "qtarchivemountsession.h"
+#include <QAction>
 #include <QApplication>
 #include <QClipboard>
 #include <QDesktopServices>
@@ -23,7 +24,15 @@ QtArchiveMountManager::QtArchiveMountManager(QWidget *owner) : QDialog(owner), o
     list_->setRootIsDecorated(false);
     list_->setSelectionMode(QAbstractItemView::SingleSelection);
     list_->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    list_->header()->setSectionResizeMode(0, QHeaderView::Interactive);
+    list_->setColumnWidth(0, list_->fontMetrics().horizontalAdvance(QString(28, u'M')));
     list_->header()->setStretchLastSection(true);
+    list_->setTextElideMode(Qt::ElideMiddle);
+    list_->setContextMenuPolicy(Qt::ActionsContextMenu);
+    remove_ = new QAction(tr("Remove from List"), list_);
+    remove_->setObjectName("removeMountAction");
+    list_->addAction(remove_);
+    connect(remove_, &QAction::triggered, this, &QtArchiveMountManager::removeSelected);
     layout->addWidget(list_, 2);
     details_ = new QPlainTextEdit(this);
     details_->setObjectName("mountDetails");
@@ -33,9 +42,8 @@ QtArchiveMountManager::QtArchiveMountManager(QWidget *owner) : QDialog(owner), o
     auto *buttons = new QDialogButtonBox(this);
     open_ = buttons->addButton(tr("Open Folder"), QDialogButtonBox::ActionRole);
     copy_ = buttons->addButton(tr("Copy Path"), QDialogButtonBox::ActionRole);
-    auto *disconnectButtons = new QDialogButtonBox(this);
-    unmount_ = disconnectButtons->addButton(tr("Unmount"), QDialogButtonBox::ActionRole);
-    force_ = disconnectButtons->addButton(tr("Force Unmount…"), QDialogButtonBox::ActionRole);
+    unmount_ = buttons->addButton(tr("Unmount"), QDialogButtonBox::ActionRole);
+    force_ = buttons->addButton(tr("Force Unmount…"), QDialogButtonBox::ActionRole);
     force_->setObjectName("forceUnmountButton");
     unmount_->setObjectName("unmountButton");
     copy_->setObjectName("copyMountPathButton");
@@ -43,13 +51,8 @@ QtArchiveMountManager::QtArchiveMountManager(QWidget *owner) : QDialog(owner), o
     for (auto *button : {open_, copy_, unmount_, force_})
         button->setAutoDefault(false);
     layout->addWidget(buttons);
-    layout->addWidget(disconnectButtons);
     auto *footer = new QDialogButtonBox(QDialogButtonBox::Close, this);
-    remove_ = footer->addButton(tr("Remove from List"), QDialogButtonBox::ActionRole);
-    remove_->setObjectName("removeMountButton");
-    remove_->setAutoDefault(false);
     layout->addWidget(footer);
-    connect(remove_, &QPushButton::clicked, this, &QtArchiveMountManager::removeSelected);
     connect(footer, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(list_, &QTreeWidget::itemSelectionChanged, this, &QtArchiveMountManager::updateDetails);
     connect(open_, &QPushButton::clicked, this, [this] {
@@ -104,6 +107,7 @@ void QtArchiveMountManager::updateDetails() {
             details << session->limitations();
         if (!session->error().isEmpty())
             details << session->error();
+        details << session->skippedEntries();
         details << issues_.value(const_cast<QtArchiveMountSession *>(session));
     }
     details_->setPlainText(details.join(u'\n'));

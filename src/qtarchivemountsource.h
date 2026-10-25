@@ -6,6 +6,7 @@
 #include <QHash>
 #include <QMutex>
 #include <QSet>
+#include <QStringList>
 #include <atomic>
 #include <memory>
 
@@ -28,7 +29,8 @@ class QtArchiveMountSource final : public ArchiveMountSource {
   public:
     QtArchiveMountSource(IUnknown *resource, quint64 quota, QString archivePassword, QString user,
                          QString password, QUrl endpoint,
-                         QString share = QStringLiteral("Sevenzip"));
+                         QString share = QStringLiteral("Sevenzip"), const QString &folder = {},
+                         std::shared_ptr<ArchiveReadOnlyView> preparedView = {});
     ~QtArchiveMountSource() override;
     void requestCancel();
     QList<MountTreeEntry> entries() const override;
@@ -44,7 +46,7 @@ class QtArchiveMountSource final : public ArchiveMountSource {
     void close();
 
   signals:
-    void prepared(QString limitations);
+    void prepared(QString limitations, QStringList skipped);
     void closed();
     void serverListening(quint16 port);
     void failure(QString error);

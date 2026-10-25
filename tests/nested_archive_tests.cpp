@@ -6,6 +6,8 @@
 #include "fixtures/progress_dialog.h"
 #include "mainwindow.h"
 #include "native_archive_fixture.h"
+#include "qtarchivemountsession.h"
+#include "qtsmbmountplatform.h"
 
 #include <QAction>
 #include <QFile>
@@ -18,6 +20,7 @@
 #include <QTableWidget>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QTreeWidget>
 #include <QtTest>
 
 class NestedBackend : public ArchiveBackend {
@@ -96,6 +99,65 @@ class NestedArchiveTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void mountCommandKeepsOpenedFolderScope() {
+        const auto unavailable = QtSmbMountPlatform::unavailableReason();
+        if (!unavailable.isEmpty())
+            QSKIP(qPrintable(unavailable));
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath("scope.tar");
+        QVERIFY(NativeArchiveFixture::Write(path,
+                                            {{"chosen/data.bin", "selected"},
+                                             {"chosen/unsupported:entry", "skip"},
+                                             {"outside:entry", "outside"}},
+                                            "tar"));
+        ArchiveBackend backend;
+        QCOMPARE(NativeArchiveFixture::Attach(backend), S_OK);
+        MainWindow window(&backend);
+        window.show();
+        auto *table = window.findChild<FileTable *>("archiveTable");
+        QVERIFY(table);
+        const auto row = [&](const QString &name) {
+            for (int index = 0; index < table->rowCount(); ++index)
+                if (table->model()->index(index, 0).data().toString() == name)
+                    return index;
+            return -1;
+        };
+        window.openArchive(path);
+        QTRY_VERIFY(row("chosen") >= 0);
+        table->selectRow(row("chosen"));
+        table->setCurrentCell(row("chosen"), 0);
+        window.findChild<QAction *>("openInsideAction")->trigger();
+        QTRY_VERIFY(row("data.bin") >= 0);
+        auto *mount = window.findChild<QAction *>("mountReadOnlyAction");
+        QVERIFY(mount && mount->isEnabled());
+        QTimer answer;
+        connect(&answer, &QTimer::timeout, this, [] {
+            if (auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+                dialog && dialog->objectName() == "archiveMountSettings")
+                dialog->accept();
+        });
+        answer.start(5);
+        mount->trigger();
+        answer.stop();
+        const auto sessions = window.findChildren<QtArchiveMountSession *>();
+        QCOMPARE(sessions.size(), 1);
+        auto *session = sessions.first();
+        // Stop after preparation, before the OS client starts. This exercises
+        // the real panel command without requiring an elevated native mount.
+        connect(session, &QtArchiveMountSession::changed, &window, [session] {
+            if (session->status() == QtArchiveMountSession::Status::Preparing &&
+                !session->skippedEntries().isEmpty())
+                session->unmount();
+        });
+        QTRY_COMPARE(session->status(), QtArchiveMountSession::Status::Stopped);
+        const auto *mountList = window.findChild<QTreeWidget *>("mountList");
+        QVERIFY(mountList);
+        QString sourcePath = mountList->topLevelItem(0)->text(0);
+        sourcePath.replace(u'\\', u'/');
+        QCOMPARE(sourcePath, QStringLiteral("chosen/"));
+        QCOMPARE(session->skippedEntries().size(), 1);
+        QVERIFY(session->skippedEntries().first().contains("chosen/unsupported:entry"));
+    }
     void extractsDotFolderInNestedPayload_data() {
         QTest::addColumn<bool>("selectedOnly");
         QTest::addColumn<QString>("prefix");

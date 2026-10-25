@@ -12,6 +12,7 @@
 #include "qtarchiveitemstream.h"
 #include "qtarchivereadoperation.h"
 #include <QCoreApplication>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -54,9 +55,11 @@ struct ArchiveReadOnlyView::State {
     };
     CMyComPtr<IUnknown> Resource;
     std::shared_ptr<ArchiveNativeOpen> Reader;
-    bool NativeMetadata = false, Prepared = false;
+    bool NativeMetadata = false, Prepared = false, Ready = false;
     quint64 Depth = 0;
     QString Limitations;
+    QString FolderPrefix;
+    QStringList Skipped;
     QList<Entry> Entries;
     QHash<quint64, Item> Items;
     QHash<QString, quint64> Paths;
@@ -72,10 +75,15 @@ struct ArchiveReadOnlyView::State {
 
     State(IUnknown *resource, quint64 quota, QString password,
           std::function<bool(const QString &, quint64)> extractionConsent,
-          std::function<bool(const QString &, quint64, Int32)> recoveryConsent)
+          std::function<bool(const QString &, quint64, Int32)> recoveryConsent,
+          const QString &folder)
         : Resource(resource), Quota(quota), Password(std::move(password)),
           ExtractionConsent(std::move(extractionConsent)),
           RecoveryConsent(std::move(recoveryConsent)) {
+        FolderPrefix = folder;
+        FolderPrefix.replace(u'\\', u'/');
+        if (!FolderPrefix.isEmpty() && !FolderPrefix.endsWith(u'/'))
+            FolderPrefix += u'/';
         if (const auto *owner = dynamic_cast<QtArchiveFileResource *>(resource)) {
             Reader = owner->NativeReaderLease();
             NativeMetadata = owner->NativeItemProperties() != nullptr;
@@ -87,6 +95,12 @@ struct ArchiveReadOnlyView::State {
                     "Limited access was allowed for this device. Files may be "
                     "missing, outdated or unreadable.");
         }
+    }
+    void skip(const QString &path, const QString &reason) {
+        const QString message =
+            QCoreApplication::translate("ArchiveReadOnlyView", "Skipped %1: %2").arg(path, reason);
+        Skipped.append(message);
+        qInfo().noquote() << message;
     }
     bool evict(quint64 except, quint64 needed) {
         while (Cached > Quota - needed || Active >= 64) {
@@ -138,6 +152,11 @@ struct ArchiveReadOnlyView::State {
         }
 
         const quint64 size = Entries.at(qsizetype(id - 1)).Size;
+        if (!Quota) {
+            result.Error =
+                QStringLiteral("The reader could not provide direct access to this entry.");
+            return streamed != S_OK ? streamed : E_NOTIMPL;
+        }
         if (size > Quota) {
             result.Error =
                 QStringLiteral("This entry requires decoding beyond the mount cache limit.");
@@ -230,9 +249,10 @@ struct ArchiveReadOnlyView::State {
 ArchiveReadOnlyView::ArchiveReadOnlyView(
     IUnknown *resource, quint64 quota, QString password,
     std::function<bool(const QString &, quint64)> extractionConsent,
-    std::function<bool(const QString &, quint64, Int32)> recoveryConsent)
+    std::function<bool(const QString &, quint64, Int32)> recoveryConsent, const QString &folder)
     : state_(std::make_unique<State>(resource, quota, std::move(password),
-                                     std::move(extractionConsent), std::move(recoveryConsent))) {}
+                                     std::move(extractionConsent), std::move(recoveryConsent),
+                                     folder)) {}
 ArchiveReadOnlyView::~ArchiveReadOnlyView() {
     // Close cached file handles before QTemporaryDir removes its files.
     state_->Items.clear();
@@ -241,6 +261,46 @@ const QList<ArchiveReadOnlyView::Entry> &ArchiveReadOnlyView::entries() const {
     return state_->Entries;
 }
 QString ArchiveReadOnlyView::limitations() const { return state_->Limitations; }
+const QStringList &ArchiveReadOnlyView::skippedEntries() const { return state_->Skipped; }
+void ArchiveReadOnlyView::setReadOptions(
+    quint64 quota, QString password,
+    std::function<bool(const QString &, quint64)> extractionConsent,
+    std::function<bool(const QString &, quint64, Int32)> recoveryConsent) {
+    auto &state = *state_;
+    Q_ASSERT(!state.Active && !state.Directory);
+    state.Quota = quota;
+    state.Password = std::move(password);
+    state.ExtractionConsent = std::move(extractionConsent);
+    state.RecoveryConsent = std::move(recoveryConsent);
+}
+HRESULT ArchiveReadOnlyView::needsCache(bool &required) {
+    COM_TRY_BEGIN
+    required = false;
+    auto &state = *state_;
+    if (!state.Ready)
+        return E_FAIL;
+    CMyComPtr<IProgress> request = new ReadRequest(state.Cancelled);
+    for (auto item = state.Items.cbegin(); item != state.Items.cend(); ++item) {
+        if (state.Cancelled || QThread::currentThread()->isInterruptionRequested())
+            return E_ABORT;
+        if (!state.Entries.at(qsizetype(item.key() - 1)).Size)
+            continue;
+        CMyComPtr<ISequentialInStream> stream;
+        const HRESULT result = CreateArchiveItemStream(state.Resource, state.Reader, state.Depth,
+                                                       item->Index, &stream, request);
+        if (result == E_ABORT || result == E_OUTOFMEMORY)
+            return result;
+        CMyComPtr<IInStream> seekable;
+        if (result == S_OK && stream)
+            stream.QueryInterface(IID_IInStream, &seekable);
+        if (!seekable) {
+            required = true;
+            break;
+        }
+    }
+    return state.Cancelled ? E_ABORT : S_OK;
+    COM_TRY_END
+}
 void ArchiveReadOnlyView::cancel() {
     state_->Cancelled = true;
     QMutexLocker lock(&state_->OperationMutex);
@@ -251,7 +311,7 @@ void ArchiveReadOnlyView::cancel() {
 HRESULT ArchiveReadOnlyView::initialize(QString &error) {
     auto &state = *state_;
     if (state.Prepared)
-        return E_FAIL;
+        return state.Ready ? S_OK : E_FAIL;
     state.Prepared = true;
     if (!state.Reader || !state.NativeMetadata) {
         error = QStringLiteral("This container has no retained native reader.");
@@ -268,14 +328,49 @@ HRESULT ArchiveReadOnlyView::initialize(QString &error) {
         if (state.Cancelled || QThread::currentThread()->isInterruptionRequested())
             return E_ABORT;
         CReadArcItem native;
-        RINOK(state.Reader->arc().GetItem(index, native))
+        const HRESULT itemResult = state.Reader->arc().GetItem(index, native);
+        if (itemResult != S_OK) {
+            if (itemResult == E_ABORT || itemResult == E_OUTOFMEMORY)
+                return itemResult;
+            state.skip(
+                QStringLiteral("#%1").arg(index),
+                QCoreApplication::translate("ArchiveReadOnlyView", "Cannot read entry metadata."));
+            continue;
+        }
+        QString path = QString::fromWCharArray(native.Path.Ptr(), native.Path.Len());
+        path.replace(u'\\', u'/');
+        bool alternate = false;
+        const HRESULT streamResult =
+            Archive_IsItem_AltStream(state.Reader->arc().Archive, index, alternate);
+        if (!state.FolderPrefix.isEmpty()) {
+            const QString root = state.FolderPrefix.chopped(1);
+            if (path == root || (native.IsDir && path == state.FolderPrefix))
+                continue;
+            if (!path.startsWith(state.FolderPrefix) &&
+                !(alternate && path.startsWith(root + u':')))
+                continue;
+        }
+        const QString originalPath = path;
+        if (streamResult != S_OK) {
+            if (streamResult == E_ABORT || streamResult == E_OUTOFMEMORY)
+                return streamResult;
+            state.skip(path, QCoreApplication::translate("ArchiveReadOnlyView",
+                                                         "Cannot read entry metadata."));
+            continue;
+        }
+        if (alternate) {
+            state.skip(path,
+                       QCoreApplication::translate(
+                           "ArchiveReadOnlyView",
+                           "Alternate streams and extended attributes are not exposed by SMB."));
+            continue;
+        }
+        path.remove(0, state.FolderPrefix.size());
         NWindows::NCOM::CPropVariant time;
         const bool hasTime =
             state.Reader->arc().Archive->GetProperty(index, kpidMTime, &time) == S_OK &&
             time.vt == VT_FILETIME;
         const quint64 modified = hasTime ? FILETIME_To_UInt64(time.filetime) : 0;
-        QString path = QString::fromWCharArray(native.Path.Ptr(), native.Path.Len());
-        path.replace(u'\\', u'/');
         if (native.IsDir && path.endsWith(u'/'))
             path.chop(1);
         auto parts = path.split(u'/');
@@ -289,9 +384,10 @@ HRESULT ArchiveReadOnlyView::initialize(QString &error) {
         if (parts.isEmpty() || path.size() > 32767 ||
             std::any_of(parts.cbegin(), parts.cend(),
                         [](const QString &part) { return !SafeComponent(part); })) {
-            error = QStringLiteral("An entry name cannot be represented safely in an SMB mount: ") +
-                    path;
-            return E_INVALIDARG;
+            state.skip(originalPath,
+                       QCoreApplication::translate(
+                           "ArchiveReadOnlyView", "The name cannot be represented safely in SMB."));
+            continue;
         }
         quint64 parent = 1;
         QString prefix;
@@ -306,8 +402,10 @@ HRESULT ArchiveReadOnlyView::initialize(QString &error) {
             if (existing != state.Paths.cend()) {
                 auto &entry = state.Entries[qsizetype(*existing - 1)];
                 if (!directory || !entry.Directory || entry.Name != parts.at(component)) {
-                    error = QStringLiteral("Entry names conflict in the SMB namespace: ") + path;
-                    return E_INVALIDARG;
+                    state.skip(originalPath, QCoreApplication::translate(
+                                                 "ArchiveReadOnlyView",
+                                                 "The name conflicts with an existing SMB entry."));
+                    break;
                 }
                 parent = *existing;
                 if (last)
@@ -317,11 +415,16 @@ HRESULT ArchiveReadOnlyView::initialize(QString &error) {
             quint64 size = 0;
             if (!directory) {
                 NWindows::NCOM::CPropVariant value;
-                RINOK(state.Reader->arc().Archive->GetProperty(index, kpidSize, &value))
+                const HRESULT sizeResult =
+                    state.Reader->arc().Archive->GetProperty(index, kpidSize, &value);
+                if (sizeResult == E_ABORT || sizeResult == E_OUTOFMEMORY)
+                    return sizeResult;
                 UInt64 nativeSize;
-                if (!ConvertPropVariantToUInt64(value, nativeSize)) {
-                    error = QStringLiteral("The reader does not report this entry's size: ") + path;
-                    return E_NOTIMPL;
+                if (sizeResult != S_OK || !ConvertPropVariantToUInt64(value, nativeSize)) {
+                    state.skip(originalPath, QCoreApplication::translate(
+                                                 "ArchiveReadOnlyView",
+                                                 "The reader does not report the entry size."));
+                    break;
                 }
                 size = nativeSize;
             }
@@ -340,6 +443,7 @@ HRESULT ArchiveReadOnlyView::initialize(QString &error) {
             parent = id;
         }
     }
+    state.Ready = true;
     return S_OK;
 }
 
@@ -395,11 +499,11 @@ HRESULT ArchiveBackend::createReadOnlyView(
     IUnknown *resource, quint64 cacheLimit, const QString &password,
     std::shared_ptr<ArchiveReadOnlyView> &view, QString &error,
     std::function<bool(const QString &, quint64)> extractionConsent,
-    std::function<bool(const QString &, quint64, Int32)> recoveryConsent) {
+    std::function<bool(const QString &, quint64, Int32)> recoveryConsent, const QString &folder) {
     COM_TRY_BEGIN
     view.reset();
     auto opened = retainReadOnlyView(resource, cacheLimit, password, std::move(extractionConsent),
-                                     std::move(recoveryConsent));
+                                     std::move(recoveryConsent), folder);
     const HRESULT result = prepareReadOnlyView(opened, error);
     if (result == S_OK)
         view = std::move(opened);
@@ -410,9 +514,10 @@ HRESULT ArchiveBackend::createReadOnlyView(
 std::shared_ptr<ArchiveReadOnlyView> ArchiveBackend::retainReadOnlyView(
     IUnknown *resource, quint64 cacheLimit, const QString &password,
     std::function<bool(const QString &, quint64)> extractionConsent,
-    std::function<bool(const QString &, quint64, Int32)> recoveryConsent) {
-    return std::shared_ptr<ArchiveReadOnlyView>(new ArchiveReadOnlyView(
-        resource, cacheLimit, password, std::move(extractionConsent), std::move(recoveryConsent)));
+    std::function<bool(const QString &, quint64, Int32)> recoveryConsent, const QString &folder) {
+    return std::shared_ptr<ArchiveReadOnlyView>(
+        new ArchiveReadOnlyView(resource, cacheLimit, password, std::move(extractionConsent),
+                                std::move(recoveryConsent), folder));
 }
 HRESULT ArchiveBackend::prepareReadOnlyView(const std::shared_ptr<ArchiveReadOnlyView> &view,
                                             QString &error) {

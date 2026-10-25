@@ -3,6 +3,7 @@
 #include <QByteArray>
 #include <QList>
 #include <QString>
+#include <QStringList>
 #include <functional>
 #include <memory>
 
@@ -29,6 +30,12 @@ class ArchiveReadOnlyView final {
     ~ArchiveReadOnlyView();
     const QList<Entry> &entries() const;
     QString limitations() const;
+    const QStringList &skippedEntries() const;
+    HRESULT needsCache(bool &required);
+    // Set before serving reads, after handing a prepared view to its worker.
+    void setReadOptions(quint64 quota, QString password,
+                        std::function<bool(const QString &, quint64)> extractionConsent,
+                        std::function<bool(const QString &, quint64, Int32)> recoveryConsent);
     ReadResult read(quint64 id, quint64 offset, quint32 length);
     void cancel();
 
@@ -37,7 +44,8 @@ class ArchiveReadOnlyView final {
     std::unique_ptr<State> state_;
     ArchiveReadOnlyView(IUnknown *resource, quint64 quota, QString password,
                         std::function<bool(const QString &, quint64)> extractionConsent,
-                        std::function<bool(const QString &, quint64, Int32)> recoveryConsent);
+                        std::function<bool(const QString &, quint64, Int32)> recoveryConsent,
+                        const QString &folder);
     HRESULT initialize(QString &error);
     friend class ArchiveBackend;
 };

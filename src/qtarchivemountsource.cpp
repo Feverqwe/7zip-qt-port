@@ -8,7 +8,8 @@
 
 QtArchiveMountSource::QtArchiveMountSource(IUnknown *resource, quint64 quota,
                                            QString archivePassword, QString user, QString password,
-                                           QUrl endpoint, QString share)
+                                           QUrl endpoint, QString share, const QString &folder,
+                                           std::shared_ptr<ArchiveReadOnlyView> preparedView)
     : user_(std::move(user)), password_(std::move(password)), share_(std::move(share)),
       endpoint_(std::move(endpoint)) {
     qRegisterMetaType<ArchiveMountDecisionPtr>();
@@ -28,7 +29,13 @@ QtArchiveMountSource::QtArchiveMountSource(IUnknown *resource, quint64 quota,
         emit unverifiedDataRequired(path, size, operation, decision);
         return decision->wait(cancelled_);
     };
-    view_ = ArchiveBackend::retainReadOnlyView(resource, quota, archivePassword, consent, recovery);
+    if (preparedView) {
+        view_ = std::move(preparedView);
+        view_->setReadOptions(quota, archivePassword, consent, recovery);
+    } else {
+        view_ = ArchiveBackend::retainReadOnlyView(resource, quota, archivePassword, consent,
+                                                   recovery, folder);
+    }
 }
 QtArchiveMountSource::~QtArchiveMountSource() = default;
 
@@ -61,7 +68,7 @@ void QtArchiveMountSource::initialize() {
         emit failure(QStringLiteral("Could not create the private mount channel."));
         return;
     }
-    emit prepared(view->limitations());
+    emit prepared(view->limitations(), view->skippedEntries());
 }
 
 void QtArchiveMountSource::requestCancel() {

@@ -6552,6 +6552,38 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>QtArchiveMountManager</name>
         <message>
+            <source>Temporary cache</source>
+            <translation>Временный кеш</translation>
+        </message>
+        <message>
+            <source>Checking file access…</source>
+            <translation>Проверка доступа к файлам…</translation>
+        </message>
+        <message>
+            <source>Could not check file access.</source>
+            <translation>Не удалось проверить доступ к файлам.</translation>
+        </message>
+        <message>
+            <source>Cancelling…</source>
+            <translation>Отмена…</translation>
+        </message>
+        <message>
+            <source>Sevenzip connects the folder currently open in the file manager. It reuses the open reader and any temporary container files already created.
+
+Files that support direct reading are passed to other applications without extraction. For example, a ZIP inside a filesystem in a QCOW image is read as an ordinary ZIP file.
+
+When connecting a folder inside a compressed archive, files may need decoding. They are extracted with your confirmation when another application reads them, and kept in a temporary disk cache. The source remains read-only.
+
+The limit is the total size of these extracted files. Older cached files are removed to make room and may need to be extracted again. If one file exceeds the limit, that file cannot be read through this connection; other files and the connection remain available. Directly read files are not subject to this limit.</source>
+            <translation>Sevenzip подключает папку, открытую в файловом менеджере. При этом используются уже открытый читатель и временные файлы контейнеров, созданные ранее.
+
+Файлы с прямым доступом передаются другим приложениям без извлечения. Например, ZIP внутри файловой системы образа QCOW читается как обычный ZIP-файл.
+
+Если подключена папка внутри сжатого архива, для чтения её файлов может понадобиться распаковка. Когда другое приложение обращается к такому файлу, Sevenzip запрашивает подтверждение, извлекает файл и сохраняет его во временном кеше на диске. Источник остаётся доступен только для чтения.
+
+Лимит ограничивает суммарный размер извлечённых файлов в этом кеше. Старые файлы удаляются из кеша, чтобы освободить место; при повторном обращении их может потребоваться извлечь заново. Если один файл больше всего лимита, прочитать его через это подключение не получится. Остальные файлы и само подключение продолжат работать. На файлы с прямым чтением этот лимит не распространяется.</translation>
+        </message>
+        <message>
             <source>Remove from List</source>
             <translation>Убрать из списка</translation>
         </message>
@@ -6649,11 +6681,6 @@ Use `Revert` to recover timestamp.</source>
             <location filename="../src/qtmountsettings.cpp" line="+18" />
             <source>Mount read-only</source>
             <translation>Подключение только для чтения</translation>
-        </message>
-        <message>
-            <location filename="../src/qtmountsettings.cpp" line="+4" />
-            <source>Expose this container to other applications through a local read-only mount. Files that require extraction will ask for confirmation individually.</source>
-            <translation>Откройте другим приложениям доступ к этому контейнеру через локальное подключение только для чтения. Перед извлечением каждого файла потребуется отдельное подтверждение.</translation>
         </message>
         <message>
             <location line="+16" />
@@ -6981,6 +7008,30 @@ Check that your distribution's CIFS support and cifs-utils are installed.</sourc
     </context>
     <context>
         <name>ArchiveReadOnlyView</name>
+        <message>
+            <source>Skipped %1: %2</source>
+            <translation>Пропущено %1: %2</translation>
+        </message>
+        <message>
+            <source>Cannot read entry metadata.</source>
+            <translation>Не удалось прочитать сведения о записи.</translation>
+        </message>
+        <message>
+            <source>Alternate streams and extended attributes are not exposed by SMB.</source>
+            <translation>Альтернативные потоки и расширенные атрибуты не представлены через SMB.</translation>
+        </message>
+        <message>
+            <source>The name cannot be represented safely in SMB.</source>
+            <translation>Имя нельзя безопасно представить в SMB.</translation>
+        </message>
+        <message>
+            <source>The name conflicts with an existing SMB entry.</source>
+            <translation>Имя конфликтует с существующей записью SMB.</translation>
+        </message>
+        <message>
+            <source>The reader does not report the entry size.</source>
+            <translation>Движок чтения не сообщает размер записи.</translation>
+        </message>
         <message>
             <source>Limited access was allowed for this device. Files may be missing, outdated or unreadable.</source>
             <translation>Для этого устройства разрешён ограниченный доступ. Файлы могут отсутствовать, быть устаревшими или нечитаемыми.</translation>

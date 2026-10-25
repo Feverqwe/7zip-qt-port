@@ -1,5 +1,8 @@
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
+#include "archivenativeopen.h"
+#include "archivereadonlyview.h"
+#include "qtarchivefileresource.h"
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -10,6 +13,7 @@
 #include <QtEndian>
 #include <QtTest>
 #include <algorithm>
+#include <future>
 
 class ExtXattrBackendTests final : public QObject {
     Q_OBJECT
@@ -56,6 +60,35 @@ class ExtXattrBackendTests final : public QObject {
         backend.list(path);
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        CMyComPtr<IUnknown> resource;
+        std::shared_ptr<ArchiveReadOnlyView> view;
+        QString mountError;
+        bool cacheRequired = true;
+        QByteArray mountedBytes;
+        auto probe = std::async(std::launch::async, [&]() -> HRESULT {
+            std::shared_ptr<ArchiveNativeOpen> reader;
+            RINOK(ArchiveBackend::openNativeArchive(backend.codecCatalog(), path, "Ext", nullptr,
+                                                    reader, nullptr))
+            auto *owner = new QtArchiveFileResource(path);
+            resource = owner;
+            owner->AttachNativeOpen(reader);
+            owner->UseNativeMetadata();
+            RINOK(ArchiveBackend::createReadOnlyView(resource, 0, {}, view, mountError))
+            RINOK(view->needsCache(cacheRequired))
+            for (const auto &entry : view->entries())
+                if (!entry.Directory && entry.Name == "data.bin") {
+                    const auto read = view->read(entry.Id, 0, 1024);
+                    mountedBytes = read.Data;
+                    return read.Result;
+                }
+            return E_FAIL;
+        });
+        while (probe.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+            QTest::qWait(1);
+        QCOMPARE(probe.get(), S_OK);
+        QVERIFY(!cacheRequired);
+        QCOMPARE(mountedBytes,
+                 QByteArray::fromHex(record["files"].toObject()["data.bin"].toString().toLatin1()));
         for (const QString &entry : {QString("data.bin:$XATTR.user.large"),
                                      QString("data.bin:$XATTR.system.posix_acl_access"),
                                      QString("nested:$XATTR.system.posix_acl_default"),

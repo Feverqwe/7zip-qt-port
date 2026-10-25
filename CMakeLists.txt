@@ -1386,7 +1386,7 @@ if(BUILD_TESTING)
     set_tests_properties(ext_fscrypt_backend PROPERTIES TIMEOUT 45)
     qt_add_executable(ext_xattr_backend_tests tests/ext_xattr_backend_tests.cpp)
     target_include_directories(ext_xattr_backend_tests PRIVATE src)
-    target_link_libraries(ext_xattr_backend_tests PRIVATE sevenzip_panel Qt6::Test)
+    target_link_libraries(ext_xattr_backend_tests PRIVATE sevenzip_location Qt6::Test)
     target_compile_definitions(ext_xattr_backend_tests PRIVATE
         "SEVENZIP_EXT_CORE=\"$<TARGET_FILE:sevenzip_ext>\""
         "SEVENZIP_EXT_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
@@ -2685,6 +2685,7 @@ if(BUILD_TESTING)
     qt_add_executable(nested_archive_tests tests/nested_archive_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp  src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filepanelmodel.cpp src/filepanelmodel.h src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_rename.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/qtfiletransfertransaction.cpp src/qtfiletransfertransaction.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h  src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
     target_include_directories(nested_archive_tests PRIVATE src)
     target_link_libraries(nested_archive_tests PRIVATE Qt6::Widgets Qt6::Test)
+    add_dependencies(nested_archive_tests sevenzip_smb_server)
     if(SEVENZIP_CODEC_MODULE)
         target_compile_definitions(nested_archive_tests PRIVATE
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")

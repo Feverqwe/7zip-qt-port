@@ -25,6 +25,14 @@ default-deny choice controls use of recoverable unverified extraction output.
 Cached unverified output retains its warning. Wrong-password/encrypted failure
 output is never offered as recovered data.
 
+Mount setup checks seekable-stream availability for the selected folder using the
+retained native reader, without reading file contents or extracting them. Only
+folders requiring materialization show cache settings and Help/F1. The prepared
+view is passed into the session, preserving the open container chain. Capability
+depends on the reader: extraction-only image readers still require a cache.
+This is local mount integration with no upstream 7zFM counterpart. Its localized
+help uses the existing Qt help viewer; the original bundled CHM pages are unchanged.
+
 Tools exposes Mount read-only and Read-only mounts for a retained native
 container. The modeless manager owns sessions independently of panel navigation,
 provides paths and unmount actions, preserves a busy mount and intercepts owner
@@ -166,13 +174,38 @@ Physical-device authorization/removal through a native mounted path is unverifie
 
 ## Runtime evidence
 
+### Current-folder projection and skipped entries
+
+The panel command captures the source folder's bound path together with its
+retained reader generation. Only that folder's descendants are projected, with
+the folder prefix removed before SMB name validation. An explicitly bound `.`
+or `..` archive directory is therefore usable without interpreting it as host
+filesystem navigation. Siblings are excluded, including sibling paths that merely
+start with the selected folder's name. The existing native indices and stream
+leases remain authoritative for reads and per-file extraction consent.
+
+Unrepresentable names, conflicting entries, unreadable item metadata and items
+without usable sizes are skipped individually; supported entries remain available.
+The first accepted namespace entry is retained on a conflict. Cancellation and
+resource-exhaustion failures still stop preparation. Each skip records its source
+path and reason in diagnostic output and the selected session's details log;
+there is no count-based gate or substitution of unsafe names.
+
+Items identified by `kpidIsAltStream`, including ext `$XATTR.*` metadata, are also
+logged and omitted from this projection. Their contents remain available through
+Sevenzip's existing reader and extraction paths. The mount does not claim to
+restore xattrs or expose SMB named streams. This reuses the existing upstream
+`Archive_IsItem_AltStream` helper and `CAgentFolder` path contract without importing
+or changing a reader. Regressions cover the real panel command, scoped TAR/ZIP and
+CPIO reads, retained extraction of an omitted stream and native SMB folder contents.
+
 ### Case-distinct entries
 
 The archive projection and server namespace preserve case-distinct files and
 directories. The server advertises case-sensitive search and uses it for opens
 and directory patterns. It no longer folds paths to lowercase for identity;
-canonical Unicode normalization and rejection of duplicate or unsafe paths stay
-in place. This corrects local integration, without importing or changing an
+canonical Unicode normalization stays in place; duplicate or unsafe paths are
+omitted and logged during projection. This corrects local integration, without importing or changing an
 archive reader or the SMB library. Backend regressions read different bytes from
 case-distinct TAR/ZIP files and directories. The native-client fixture alternates
 opens of `libip6t_hl.so` and `libip6t_HL.so` with different contents, so an alias
@@ -191,7 +224,7 @@ so focused builds do not depend on modules left by an earlier application build.
 The mount namespace accepts explicit current-directory records and `./` path
 components, as found in installer Payload CPIO archives. They refer to the mount
 root and ordinary descendants. Parent traversal, absolute paths and conflicting
-names remain rejected. This is local SMB namespace integration; the upstream
+names are omitted and logged. This is local SMB namespace integration; the upstream
 extraction path correction also handles dot components, but additionally changes
 unsafe names, which is unsuitable for a faithful mounted namespace. No reader or
 external source was imported for this correction. Synthetic CPIO regressions

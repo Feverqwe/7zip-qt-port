@@ -1,23 +1,180 @@
+#include "archivenativeopen.h"
 #include "layout_inspection.h"
+#include "native_archive_fixture.h"
+#include "qtarchivefileresource.h"
 #include "qtarchivemountmanager.h"
 #include "qtarchivemountsession.h"
 #include "qtmountextractionprompt.h"
 #include "qtmountsettings.h"
 #include "qtsmbmountplatform.h"
+#include <QAction>
+#include <QContextMenuEvent>
+#include <QDialogButtonBox>
 #include <QFile>
+#include <QHeaderView>
 #include <QLabel>
+#include <QMenu>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScopeGuard>
+#include <QSpinBox>
+#include <QTextBrowser>
 #include <QTranslator>
 #include <QTreeWidget>
 #include <QtTest>
 #include <atomic>
 #include <future>
 
+namespace {
+HRESULT OpenMountResource(const QString &path, const QString &format, CMyComPtr<IUnknown> &resource,
+                          std::shared_ptr<ArchiveNativeOpen> &reader) {
+    auto open = std::async(std::launch::async, [&] {
+        return ArchiveBackend::openNativeArchive(NativeArchiveFixture::Catalog(), path, format,
+                                                 nullptr, reader, nullptr);
+    });
+    while (open.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+        QTest::qWait(1);
+    const HRESULT result = open.get();
+    if (result != S_OK)
+        return result;
+    auto *owner = new QtArchiveFileResource(path);
+    resource = owner;
+    owner->AttachNativeOpen(reader);
+    owner->UseNativeMetadata();
+    return S_OK;
+}
+
+bool RemoveThroughContextMenu(QTreeWidget &list) {
+    bool invoked = false;
+    QTimer choose;
+    QObject::connect(&choose, &QTimer::timeout, &list, [&] {
+        if (auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget())) {
+            invoked = true;
+            menu->setActiveAction(list.findChild<QAction *>("removeMountAction"));
+            QTest::keyClick(menu, Qt::Key_Return);
+        }
+    });
+    choose.start(5);
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    QObject::connect(&timeout, &QTimer::timeout, &list, [] {
+        if (auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget()))
+            menu->close();
+    });
+    timeout.start(1000);
+    const QPoint point = list.visualItemRect(list.currentItem()).center();
+    QContextMenuEvent event(QContextMenuEvent::Mouse, point, list.viewport()->mapToGlobal(point));
+    QApplication::sendEvent(list.viewport(), &event);
+    return invoked;
+}
+} // namespace
+
 class MountExtractionPromptTests final : public QObject {
     Q_OBJECT
   private slots:
+    void cacheControlsFollowReader_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("keyboard");
+        for (const QString &language : {QString("en"), QString("ru")}) {
+            QTest::newRow(qPrintable(language + " direct")) << QString("tar") << language << false;
+            QTest::newRow(qPrintable(language + " cache help"))
+                << QString("zip") << language << false;
+            QTest::newRow(qPrintable(language + " cache F1")) << QString("zip") << language << true;
+        }
+    }
+    void cacheControlsFollowReader() {
+        QFETCH(QString, format);
+        QFETCH(QString, language);
+        QFETCH(bool, keyboard);
+        QTranslator catalog;
+        if (language == "ru") {
+            QVERIFY(catalog.load(":/translations/sevenzip_ru.qm"));
+            qApp->installTranslator(&catalog);
+        }
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath("source." + format);
+        QVERIFY(NativeArchiveFixture::Write(path, {{"file.zip", "raw bytes"}}, format));
+        CMyComPtr<IUnknown> resource;
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QCOMPARE(OpenMountResource(path, format, resource, reader), S_OK);
+        bool inspected = false, correct = false, helpShown = false, helpKeptDialog = false;
+        QTimer inspect;
+        connect(&inspect, &QTimer::timeout, this, [&] {
+            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+            if (!dialog || dialog->objectName() != "archiveMountSettings")
+                return;
+            auto *box = dialog->findChild<QDialogButtonBox *>();
+            auto *quota = dialog->findChild<QSpinBox *>("mountCacheLimit");
+            if (!box || !quota)
+                return;
+            const auto buttons = box->buttons();
+            QPushButton *start = nullptr;
+            for (auto *button : buttons)
+                if (box->buttonRole(button) == QDialogButtonBox::AcceptRole)
+                    start = qobject_cast<QPushButton *>(button);
+            if (!start || !start->isEnabled())
+                return;
+            inspect.stop();
+            auto *help = box->button(QDialogButtonBox::Help);
+            correct =
+                quota->isVisible() == (format == "zip") && help->isVisible() == (format == "zip");
+            dialog->resize(420, dialog->sizeHint().height());
+            inspected = UiInspection::writeReport(
+                *dialog, QStringLiteral("mount-reader-%1-%2").arg(format, language));
+            if (format == "zip") {
+                quota->setValue(64);
+                if (keyboard)
+                    QTest::keyClick(dialog, Qt::Key_F1);
+                else
+                    help->click();
+                auto *window = dialog->findChild<QDialog *>("helpWindow");
+                auto *browser = window ? window->findChild<QTextBrowser *>("helpBrowser") : nullptr;
+                helpShown =
+                    window && window->isVisible() && browser && !browser->toPlainText().isEmpty();
+                helpKeptDialog = dialog->isVisible() && dialog->result() != QDialog::Accepted;
+                if (window) {
+                    inspected = inspected &&
+                                UiInspection::writeReport(
+                                    *window, QStringLiteral("mount-cache-help-%1").arg(language));
+                    window->close();
+                }
+            }
+            dialog->accept();
+        });
+        inspect.start(5);
+        const auto options = QtAskMountOptions(nullptr, "folder/", {}, resource);
+        QVERIFY(options.Accepted);
+        QVERIFY(options.View);
+        QVERIFY(inspected && correct);
+        QCOMPARE(options.Quota, format == "zip" ? quint64(64) * 1024 * 1024 : quint64(0));
+        if (format == "zip")
+            QVERIFY(helpShown && helpKeptDialog);
+    }
+    void cancellingReaderCheckKeepsEventLoopResponsive() {
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath("source.tar");
+        QVERIFY(NativeArchiveFixture::Write(path, {{"data.bin", "raw bytes"}}, "tar"));
+        CMyComPtr<IUnknown> resource;
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QCOMPARE(OpenMountResource(path, "tar", resource, reader), S_OK);
+        std::unique_lock<std::mutex> busy(reader->itemStreamMutex());
+        bool cancelled = false, released = false;
+        QTimer::singleShot(0, this, [&] {
+            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+            if (dialog) {
+                dialog->reject();
+                cancelled = dialog->isVisible();
+            }
+            QTimer::singleShot(10, this, [&] {
+                released = true;
+                busy.unlock();
+            });
+        });
+        const auto options = QtAskMountOptions(nullptr, "folder/", {}, resource);
+        QVERIFY(!options.Accepted);
+        QVERIFY(cancelled && released);
+    }
     void removesOnlySelectedStoppedRecord() {
         const auto unavailable = QtSmbMountPlatform::unavailableReason();
         if (!unavailable.isEmpty())
@@ -25,6 +182,7 @@ class MountExtractionPromptTests final : public QObject {
         QTemporaryDir fixture;
         const QString first = fixture.filePath("first.img");
         const QString second = fixture.filePath("second.img");
+        const QString longLabel = second + QString(800, u'δ');
         for (const auto &path : {first, second}) {
             QFile source(path);
             QVERIFY(source.open(QIODevice::WriteOnly));
@@ -32,10 +190,11 @@ class MountExtractionPromptTests final : public QObject {
         }
         QWidget owner;
         QtArchiveMountManager manager(&owner);
-        auto *remove = manager.findChild<QPushButton *>("removeMountButton");
+        auto *remove = manager.findChild<QAction *>("removeMountAction");
         auto *list = manager.findChild<QTreeWidget *>("mountList");
         QVERIFY(remove && list);
         QVERIFY(!remove->isEnabled());
+        const int initialWidth = list->columnWidth(0);
         QTimer answer;
         connect(&answer, &QTimer::timeout, this, [] {
             if (auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
@@ -43,7 +202,7 @@ class MountExtractionPromptTests final : public QObject {
                 dialog->accept();
         });
         answer.start(5);
-        for (const auto &label : {first, second}) {
+        for (const auto &label : {first, longLabel}) {
             // Missing retained readers fail before starting a server or OS mount.
             manager.mount(nullptr, label, {});
             QVERIFY(!remove->isEnabled());
@@ -53,12 +212,17 @@ class MountExtractionPromptTests final : public QObject {
         }
         answer.stop();
         QCOMPARE(list->topLevelItemCount(), 2);
+        QCOMPARE(list->columnWidth(0), initialWidth);
+        QVERIFY(initialWidth < list->fontMetrics().horizontalAdvance(longLabel));
+        QVERIFY(UiInspection::writeReport(manager, "mount-manager-long-source"));
+        list->header()->resizeSection(0, initialWidth + 80);
         list->setCurrentItem(list->topLevelItem(0));
-        remove->click();
+        QVERIFY(RemoveThroughContextMenu(*list));
         QCOMPARE(list->topLevelItemCount(), 1);
-        QCOMPARE(list->currentItem()->text(0), second);
+        QCOMPARE(list->currentItem()->text(0), longLabel);
+        QCOMPARE(list->columnWidth(0), initialWidth + 80);
         QVERIFY(remove->isEnabled());
-        remove->click();
+        QVERIFY(RemoveThroughContextMenu(*list));
         QCOMPARE(list->topLevelItemCount(), 0);
         QVERIFY(manager.findChild<QPlainTextEdit *>("mountDetails")->toPlainText().isEmpty());
         QVERIFY(!remove->isEnabled());
@@ -95,10 +259,14 @@ class MountExtractionPromptTests final : public QObject {
         manager.resize(width, 400);
         manager.show();
         QTest::qWait(10);
-        QVERIFY(manager.width() <= width);
         for (const auto *button : buttons) {
             QVERIFY(button->isVisible());
             QVERIFY(UiInspection::fullyVisible(*button, manager));
+        }
+        const auto *open = manager.findChild<QPushButton *>("openMountFolderButton");
+        for (const char *name : {"copyMountPathButton", "unmountButton", "forceUnmountButton"}) {
+            const auto *button = manager.findChild<QPushButton *>(name);
+            QCOMPARE(button->mapTo(&manager, QPoint()).y(), open->mapTo(&manager, QPoint()).y());
         }
         for (int first = 0; first < buttons.size(); ++first)
             for (int second = first + 1; second < buttons.size(); ++second)

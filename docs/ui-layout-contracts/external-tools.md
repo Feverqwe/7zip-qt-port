@@ -2,18 +2,29 @@
 
 ## Extraction for mounted access
 
-The mount command applies to the currently opened container and retains its reader
-independently of panel navigation. Its contextual setup shows the source, temporary
-cache limit and optional archive password. Cancel starts no mount. Mount management
+The mount command applies to the currently opened archive folder and retains its reader
+independently of panel navigation. Its contextual setup shows the source and optional
+archive password. Check file access in the background before enabling Mount; Cancel
+remains responsive during this check. Show the temporary cache limit and Help/F1
+only when files need materialization. Help opens a separate explanation of direct
+access, extraction consent, eviction and files exceeding the limit; keep this text
+out of the setup form. Reuse the prepared reader for the connection.
+Cancel starts no mount. Mount management
 is modeless: source/path/status rows, read-only details and errors, Open Folder,
 Copy Path and Unmount. Closing this manager hides it without disconnecting mounts.
-Remove from List is enabled only for a stopped session, including a failed mount.
+Remove from List is a context-menu action enabled only for a stopped session,
+including a failed mount; it is absent from the dialog button rows.
 It removes the selected record and its details without touching source files.
-Keep this list action in the footer alongside Close, separate from active-mount actions.
+Details include a per-entry log of unsupported names, metadata and conflicts
+skipped while preparing this folder; supported entries remain mounted.
+Show the source path relative to the current container. Bound the initial source
+column width, elide long text and retain the full path in its tooltip. Allow manual
+column resizing and preserve the chosen width when rows/statuses refresh.
 Closing the owner window offers Unmount and Close or Cancel. A busy unmount keeps
 the reader/server alive, leaves the owner open and offers an explicit force option.
-Group file-access and disconnect actions into separate rows above the standard
-Close footer so that every action, including force unmount, fits the compact window in EN/RU.
+Keep file-access and disconnect actions in one row above the standard Close footer.
+Compact resize requests respect native control minima so every action remains
+visible in EN/RU without wrapping the row.
 These new commands have no original Windows7zFM resource counterpart.
 
 Before extracting an entry for a read-only mount, show its source, relative path

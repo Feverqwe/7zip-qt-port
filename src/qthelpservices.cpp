@@ -227,6 +227,40 @@ pre, pre.syntax, pre.example {
 
     QHash<QUrl, QByteArray> styles;
 };
+
+HelpBrowser *CreateHelpBrowser(QWidget *parent, const QUrl &root, const QString &title = {}) {
+    auto *window = new QDialog(parent);
+    window->setAttribute(Qt::WA_DeleteOnClose);
+    window->setObjectName("helpWindow");
+    if (title.isEmpty())
+        QtBindLocalText(window, "qthelpservices",
+                        QT_TRANSLATE_NOOP("qthelpservices", "7-Zip Help"));
+    else
+        window->setWindowTitle(title);
+    window->resize(760, 560);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Close, window);
+    buttons->setObjectName("helpButtons");
+    auto *layout = QtCreateDialogLayout(*window, *buttons);
+    auto *browser = new HelpBrowser(window, root);
+    browser->setObjectName("helpBrowser");
+    browser->setOpenLinks(false);
+    layout->addWidget(browser, 1);
+    QObject::connect(browser, &QTextBrowser::anchorClicked, window, [browser](const QUrl &url) {
+        const QUrl target = browser->source().resolved(url);
+        if (target.scheme() == "http" || target.scheme() == "https")
+            QDesktopServices::openUrl(target);
+        else if (target.scheme() == browser->source().scheme())
+            browser->setSource(target);
+    });
+    auto *back = buttons->addButton(QString(), QDialogButtonBox::ActionRole);
+    back->setObjectName("helpBack");
+    QtBindLocalText(back, "qthelpservices", QT_TRANSLATE_NOOP("qthelpservices", "Back"));
+    back->setEnabled(false);
+    QObject::connect(browser, &QTextBrowser::backwardAvailable, back, &QPushButton::setEnabled);
+    QObject::connect(back, &QPushButton::clicked, browser, &QTextBrowser::backward);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, window, &QDialog::close);
+    return browser;
+}
 } // namespace
 
 FString QtHelpModuleDirPrefix() {
@@ -256,38 +290,20 @@ void QtOpenHelpTopic(const QString &topic, QWidget *parent, const QString &root)
                 .arg(topic));
         return;
     }
-    auto *window = new QDialog(parent);
-    window->setAttribute(Qt::WA_DeleteOnClose);
-    window->setObjectName("helpWindow");
-    QtBindLocalText(window, "qthelpservices", QT_TRANSLATE_NOOP("qthelpservices", "7-Zip Help"));
-    window->resize(760, 560);
-    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Close, window);
-    buttons->setObjectName("helpButtons");
-    auto *layout = QtCreateDialogLayout(*window, *buttons);
     const QUrl helpRoot = root.isEmpty() ? QUrl("qrc:/upstream/7zip/Help/")
                                          : QUrl::fromLocalFile(QDir(root).absolutePath() + '/');
-    auto *browser = new HelpBrowser(window, helpRoot);
-    browser->setObjectName("helpBrowser");
-    browser->setOpenLinks(false);
-    layout->addWidget(browser, 1);
+    auto *browser = CreateHelpBrowser(parent, helpRoot);
     QUrl source =
         root.isEmpty() ? QUrl("qrc:/upstream/7zip/Help/" + fileName) : QUrl::fromLocalFile(path);
     source.setFragment(relative.fragment());
     browser->setSource(source);
-    QObject::connect(browser, &QTextBrowser::anchorClicked, window, [browser](const QUrl &url) {
-        const QUrl target = browser->source().resolved(url);
-        if (target.scheme() == "http" || target.scheme() == "https")
-            QDesktopServices::openUrl(target);
-        else if (target.scheme() == browser->source().scheme())
-            browser->setSource(target);
-    });
-    auto *back = buttons->addButton(QString(), QDialogButtonBox::ActionRole);
-    back->setObjectName("helpBack");
-    QtBindLocalText(back, "qthelpservices", QT_TRANSLATE_NOOP("qthelpservices", "Back"));
-    back->setEnabled(false);
-    QObject::connect(browser, &QTextBrowser::backwardAvailable, back, &QPushButton::setEnabled);
-    QObject::connect(back, &QPushButton::clicked, browser, &QTextBrowser::backward);
-    QObject::connect(buttons, &QDialogButtonBox::rejected, window, &QDialog::close);
-    window->show();
+    browser->window()->show();
+    browser->setFocus(Qt::OtherFocusReason);
+}
+
+void QtOpenHelpText(const QString &title, const QString &text, QWidget *parent) {
+    auto *browser = CreateHelpBrowser(parent, {}, title);
+    browser->setPlainText(text);
+    browser->window()->show();
     browser->setFocus(Qt::OtherFocusReason);
 }
