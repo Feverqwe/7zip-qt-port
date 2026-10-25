@@ -243,10 +243,10 @@ the check keeps the server alive and retries a busy normal unmount. This is
 native-framework acceptance, not a rendered Preview/QuickTime UI check: computer
 use access to Sevenzip was unavailable in this session.
 
-A synthetic exFAT device is also exercised through the macOS native SMB mount:
+A synthetic exFAT device is also exercised through macOS and Windows native SMB mounts:
 removal before the first data read reports an entry error without successful
 bytes, and restoring the source permits a correct retry. The source's disconnect
-switch is atomic because native reads run on another thread. A separate native
+switch is atomic because native reads run on another thread. A separate macOS native
 session test kills its own SMB child after a successful read, observes the session
 failure and force-detaches the remaining OS mount. These are deterministic
 simulations, not physical-device removal acceptance.
@@ -258,11 +258,11 @@ broker: macOS checks the exact mountpoint and SMB share, Windows selects only th
 exact session UNC mapping, and Linux checks the protected session mountpoint in
 the kernel mount table. A mismatching volume is preserved. The macOS native
 lifecycle test kills only its own broker, verifies continued reads, and successfully
-detaches through a replacement broker. Normal detach and control-channel loss also
-pass. The updated Linux broker compiles and its prerequisite/device/wire checks
-pass; native recovery remains unverified without mount.cifs. Windows recovery
-still requires a current MSVC build and platform-specific acceptance: the runner
-is held by a separate maintenance operation.
+detaches through a replacement broker. The same lifecycle scenarios now pass on
+Windows using the current MSVC build: normal detach, control-channel loss, and
+terminating only the test's own broker followed by continued reads and recovery
+detach. The updated Linux broker compiles and its prerequisite/device/wire checks
+pass; native recovery remains unverified without mount.cifs.
 
 Windows 11 Pro 10.0.26300 x64 passed alternate-port signed SMB 2.1 synthetic
 directory/Unicode/spaces, parallel ranges, >4 GiB, EOF, mmap and write-denial
@@ -278,6 +278,10 @@ pkexec; no packages were installed. The product's missing-cifs-utils explanation
 is tested; its installed mount.cifs/pkexec path is compiled but not runtime-accepted
 on this runner. `noserverino` avoids relying on an unsupported QFid CREATE context;
 the client assigns inode values. Hardlink inode identity is not promised.
+The private Linux installation passes native X11 startup. Both installed helpers
+reach their command-line entrypoints with developer library paths removed;
+`ldd` resolves their Qt/libsmb2 dependencies without the Qt kit or build tree.
+This verifies deployment/startup, not an installed CIFS mount.
 
 macOS runtime packaging installs the dynamic libsmb2, helpers, Qt dependencies
 and licenses, rewrites loader paths and signs nested code. Installed Cocoa startup
@@ -285,8 +289,22 @@ passes. The installed native PDF/video tests for root and nested TAR also pass u
 OS broker and codec module with developer DYLD paths removed. Only its temporary
 test driver used a separate QtTest library; the test overlay was removed and the
 original bundle's deep/strict signature verified afterward.
-Physical source removal, rendered application media
-UI, Windows/Linux installed deployment and broader malformed-protocol cases remain
+The private Windows installation passes the native exFAT loss/retry/unmount
+scenario and GUI startup with PATH restricted to the installed payload, system
+directories and a separate test-only QtTest runtime. The driver is temporarily
+placed next to the installed broker and removed afterward; the server and native
+codec are selected from that installation. No developer Qt/server directory is
+available to the child processes. Reproduce this installed check after preparing
+the runtime with the existing packaging command:
+
+```sh
+python3 scripts/hyperv-runner.py run windows --interactive --elevated --skip-runtime -- \
+  scripts/probe-native-smb.py --product-device --installed-root build/readonly-smb-install
+```
+
+Current Windows focused regressions cover the backend, retained reader lifetime,
+device handling, forged SMB signatures, extraction prompts and command consumers.
+Physical source removal, rendered application media UI and broader malformed-protocol cases remain
 outside current runtime evidence. Slow suites and full/release gates were not run.
 
 ### Platform constraints to validate

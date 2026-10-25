@@ -10,6 +10,11 @@
 #ifdef Q_OS_MACOS
 #include <csignal>
 #include <unistd.h>
+#elif defined(Q_OS_WIN)
+// clang-format off
+#include <windows.h>
+#include <tlhelp32.h>
+// clang-format on
 #endif
 
 class NativeMountClientTests final : public QObject {
@@ -34,7 +39,7 @@ class NativeMountClientTests final : public QObject {
         QTest::addColumn<int>("mode");
         QTest::newRow("explicit unmount") << 0;
         QTest::newRow("owner channel lost") << 1;
-#ifdef Q_OS_MACOS
+#if defined(Q_OS_MACOS) || defined(Q_OS_WIN)
         QTest::newRow("broker killed then recovered") << 2;
 #endif
     }
@@ -109,10 +114,11 @@ class NativeMountClientTests final : public QObject {
             client.reset();
             QTRY_VERIFY_WITH_TIMEOUT(!QFileInfo::exists(root.filePath("hello.txt")), 45000);
         } else {
-#ifdef Q_OS_MACOS
+#if defined(Q_OS_MACOS) || defined(Q_OS_WIN)
             if (mode == 2) {
                 // Target only the broker spawned by this test process. Never
                 // kill another application's mount helper or the SMB server.
+#ifdef Q_OS_MACOS
                 QProcess identify;
                 identify.start("/usr/bin/pgrep",
                                {"-P", QString::number(QCoreApplication::applicationPid()), "-x",
@@ -124,6 +130,28 @@ class NativeMountClientTests final : public QObject {
                 const auto broker = candidates.front().toLongLong(&valid);
                 QVERIFY(valid && broker > 0);
                 QCOMPARE(::kill(pid_t(broker), SIGKILL), 0);
+#else
+                const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+                QVERIFY(snapshot != INVALID_HANDLE_VALUE);
+                const auto closeSnapshot = qScopeGuard([&] { CloseHandle(snapshot); });
+                PROCESSENTRY32W entry{};
+                entry.dwSize = sizeof(entry);
+                QList<DWORD> candidates;
+                if (Process32FirstW(snapshot, &entry)) {
+                    do {
+                        if (entry.th32ParentProcessID == GetCurrentProcessId() &&
+                            QString::fromWCharArray(entry.szExeFile)
+                                    .compare(QStringLiteral("SevenzipMount.exe"),
+                                             Qt::CaseInsensitive) == 0)
+                            candidates.append(entry.th32ProcessID);
+                    } while (Process32NextW(snapshot, &entry));
+                }
+                QCOMPARE(candidates.size(), 1);
+                const HANDLE broker = OpenProcess(PROCESS_TERMINATE, FALSE, candidates.front());
+                QVERIFY(broker);
+                const auto closeBroker = qScopeGuard([&] { CloseHandle(broker); });
+                QVERIFY(TerminateProcess(broker, 1));
+#endif
                 QTRY_COMPARE_WITH_TIMEOUT(unmounted.size(), 1, 10000);
                 QVERIFY(!unmounted[0][0].toString().isEmpty());
                 QFile stillReadable(root.filePath("hello.txt"));

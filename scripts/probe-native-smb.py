@@ -142,26 +142,76 @@ def mount(port, temporary, kernel_probe, global_mapping):
     return target, lambda: command([*privilege, 'umount', str(target)])
 
 
+def installed_device_probe(root, test, scenario, environment):
+    """Keep the test-only QtTest DLL separate from the production payload."""
+    binary = root.resolve() / 'bin'
+    driver = binary / 'SevenzipMountDeviceTest.exe'
+    if driver.exists():
+        raise RuntimeError('A previous test driver exists; preserve it for inspection')
+    cache = Path('build/dev/CMakeCache.txt').read_text().splitlines()
+    qt = next(Path(line.split('=', 1)[1]).parents[2]
+              for line in cache if line.startswith('Qt6_DIR:PATH='))
+    test_libraries = list((qt / 'bin').glob('Qt6Test*.dll'))
+    if not test_libraries:
+        raise RuntimeError('The configured Qt kit has no test runtime')
+    with tempfile.TemporaryDirectory(prefix='sevenzip-mount-test-runtime-') as temporary:
+        for library in test_libraries:
+            shutil.copy2(library, temporary)
+        isolated = dict(environment)
+        for name in ('QT_PLUGIN_PATH', 'QT_QPA_PLATFORM_PLUGIN_PATH',
+                     'QML_IMPORT_PATH', 'QML2_IMPORT_PATH'):
+            isolated.pop(name, None)
+        system = Path(os.environ['SystemRoot'])
+        isolated.update(PATH=os.pathsep.join(map(str, (binary, Path(temporary),
+                                                       system / 'System32', system))),
+                        QT_QPA_PLATFORM='windows',
+                        SEVENZIP_SETTINGS_PATH=str(Path(temporary) / 'settings.ini'),
+                        SEVENZIP_CODEC_MODULE_PATH=str(binary / '7z.dll'),
+                        SEVENZIP_TEST_MOUNT_SERVER=str(binary / 'SevenzipSmb.exe'))
+        shutil.copy2(test, driver)
+        try:
+            subprocess.run([str(driver), scenario, '-silent'], env=isolated, check=True)
+        finally:
+            driver.unlink()
+        subprocess.run([str(binary / '7zFM.exe'), '--smoke-test'],
+                       env=isolated, check=True, timeout=30)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--server', type=Path)
     parser.add_argument('--product-client', action='store_true',
                         help='Exercise the production native-client broker and private IPC')
+    parser.add_argument('--product-device', action='store_true',
+                        help='Exercise native mounting, source loss and retry of a synthetic device')
+    parser.add_argument('--installed-root', type=Path,
+                        help='Consume an existing Windows installation with the device probe')
     parser.add_argument('--kernel-without-helper', action='store_true',
                         help='Linux protocol diagnostic only, using util-linux mount -i')
     parser.add_argument('--windows-global', action='store_true',
                         help='Use a temporary global mapping restricted to the current account')
     parser.add_argument('--trace', action='store_true', help='Log synthetic server diagnostics')
     args = parser.parse_args()
-    if args.product_client:
-        subprocess.run(['bash', 'scripts/build.sh', 'dev', 'native_mount_client_tests'], check=True)
-        test = Path('build/dev/native_mount_client_tests' + ('.exe' if os.name == 'nt' else ''))
+    if args.installed_root and (not args.product_device or sys.platform != 'win32'):
+        parser.error('--installed-root requires --product-device on Windows')
+    if args.product_client or args.product_device:
+        if args.product_client and args.product_device:
+            parser.error('Choose one product probe per invocation')
+        if args.product_device and sys.platform not in ('darwin', 'win32'):
+            parser.error('The native device probe currently supports macOS and Windows')
+        target = 'archive_mount_device_tests' if args.product_device else 'native_mount_client_tests'
+        scenario = 'nativeDeviceRemovalAndRetry' if args.product_device else 'nativeLifecycle'
+        subprocess.run(['bash', 'scripts/build.sh', 'dev', target], check=True)
+        test = Path('build/dev/' + target + ('.exe' if os.name == 'nt' else ''))
         environment = dict(os.environ, SEVENZIP_NATIVE_SMB_TEST='1')
-        subprocess.run([str(test.resolve()), 'nativeLifecycle', '-silent'],
-                       env=environment, check=True)
+        if args.installed_root:
+            installed_device_probe(args.installed_root, test, scenario, environment)
+        else:
+            subprocess.run([str(test.resolve()), scenario, '-silent'],
+                           env=environment, check=True)
         return
     if args.server is None:
-        parser.error('--server is required unless --product-client is selected')
+        parser.error('--server is required unless a product probe is selected')
     # The runner has just synchronized source. Reuse its normal incremental
     # target before accepting native results from the executable.
     subprocess.run(['bash', 'scripts/build.sh', 'dev', 'smb2_mount_probe'], check=True)

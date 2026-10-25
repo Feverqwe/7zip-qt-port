@@ -4,6 +4,7 @@
 #include "native_archive_fixture.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivemountsession.h"
+#include "qtsmbmountplatform.h"
 #include <QDir>
 #include <QFile>
 #include <QScopeGuard>
@@ -90,10 +91,13 @@ class ArchiveMountDeviceTests final : public QObject {
         QCOMPARE(bytes.Result, S_OK);
         QCOMPARE(bytes.Data, QByteArray(12, 'A') + QByteArray(188, 'B'));
     }
-#ifdef Q_OS_MACOS
+#if defined(Q_OS_MACOS) || defined(Q_OS_WIN)
     void nativeDeviceRemovalAndRetry() {
         if (qEnvironmentVariableIntValue("SEVENZIP_NATIVE_SMB_TEST") != 1)
             QSKIP("Opt-in native mount of an isolated synthetic device.");
+        const QString unavailable = QtSmbMountPlatform::unavailableReason();
+        if (!unavailable.isEmpty())
+            QSKIP(qPrintable(unavailable));
         ExfatFixture fixture;
         auto *raw = new CDeviceInput(fixture.image);
         CMyComPtr<IInStream> lease = raw, input;
@@ -121,7 +125,9 @@ class ArchiveMountDeviceTests final : public QObject {
                  ++attempt)
                 QTest::qWait(100);
         });
-        session.start(resource, 4096, {}, QStringLiteral(SEVENZIP_SMB_SERVER));
+        session.start(resource, 4096, {},
+                      qEnvironmentVariable("SEVENZIP_TEST_MOUNT_SERVER",
+                                           QStringLiteral(SEVENZIP_SMB_SERVER)));
         retained.Release();
         input.Release();
         QTRY_VERIFY_WITH_TIMEOUT(session.status() == QtArchiveMountSession::Status::Mounted ||
