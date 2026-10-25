@@ -3,7 +3,6 @@
 #include "../../../third_party/linux/include/linux/crc32poly.h"
 #include <inttypes.h>
 
-static uint32_t crc32table_le[256];
 static uint32_t crc32table_be[256];
 static uint32_t crc32ctable_le[256];
 
@@ -26,11 +25,6 @@ static void crc32init_le_generic(const uint32_t polynomial, uint32_t tab[256])
 		for (j = 0; j < 256; j += 2 * i)
 			tab[i + j] = crc ^ tab[j];
 	}
-}
-
-static void crc32init_le(void)
-{
-	crc32init_le_generic(CRC32_POLY_LE, crc32table_le);
 }
 
 static void crc32cinit_le(void)
@@ -68,11 +62,6 @@ static void output_table(const uint32_t table[256])
 int main(int argc, char** argv)
 {
 	printf("/* this file is generated - do not edit */\n\n");
-
-	crc32init_le();
-	printf("static const u32 ____cacheline_aligned crc32table_le[256] = {\n");
-	output_table(crc32table_le);
-	printf("};\n");
 
 	crc32init_be();
 	printf("static const u32 ____cacheline_aligned crc32table_be[256] = {\n");

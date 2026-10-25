@@ -886,7 +886,18 @@
     "src/CPP/7zip/Compress/ZlibDecoder.cpp": "366f098d2c90e66ca333519ac4920890585a6dd66e4187f0aa593f1ce3a23e63",
     "third_party/7zip/CPP/Build.mak": "2fa73421ef3236655890cf479d6e5c8f0083667173248cea801e46fd698374df",
     "src/C/XzCrc64.c": "188d92f49d76a9acd4768e09f4f478caf109d15583c40cbb0660627c54611f8c",
-    "src/C/XzCrc64Opt.c": "54aa33b09aa5cf1bf5661c226d30908499c89c0e345eb0b46a6d671ef9808a3f"
+    "src/C/XzCrc64Opt.c": "54aa33b09aa5cf1bf5661c226d30908499c89c0e345eb0b46a6d671ef9808a3f",
+    "third_party/7zip/C/Sha3.c": "ad909a245e28ee3ddf3caccb22810faa0399f3e6a7c3401cc52dea46920c2075",
+    "third_party/7zip/C/Sha3.h": "3568ab07dbcbbe738ccafbfab6d10e3038ff9e3bd09538c5ddd4d480af29a771",
+    "third_party/7zip/C/Sha256.h": "24516d74d4d7b3732995cf34967d274ee36e4d4f5724a5d8efcdbdd21fd3e456",
+    "third_party/7zip/C/Sha512.h": "4b866706140196a2921c1ab924204205744a8504e19a44eecae77e2da55c8f51",
+    "third_party/7zip/C/Sha1.c": "6c767a47face66a064dc0402f6e526bb3b9180d1a583f707d98101ef61398a03",
+    "third_party/7zip/C/Sha1.h": "4998c044bfc31bcc8b322c63152a860561fe5e4db2cdd5431ce946b8aa0841ce",
+    "third_party/7zip/C/Sha1Opt.c": "78546a5bc7b0e51963ca8389a5e5ad375c2e8b08b69434c91b09ef1e4647724b",
+    "third_party/7zip/C/Sha256.c": "4c7422ada8bb382f69eea7622951fc8391ca8bef97bb8a7ea9dedcaedd9e5039",
+    "third_party/7zip/C/Sha256Opt.c": "2e966144ef46243960cef6921fa2e08d3110cb7549b4cb03baac3e70f48023e6",
+    "third_party/7zip/C/Sha512.c": "4e4a7fe5517a87cac92a08ff5f96a2c62e69b3546ef778ead4edef6f566d123f",
+    "third_party/7zip/C/Sha512Opt.c": "74a8a58eadaef679aaea01e266b6e1a73e674242db510268d2a17ab6ce221dd2"
   },
   "runtime_format_sources": [
     "src/CPP/7zip/Archive/ExtHeader.cpp",

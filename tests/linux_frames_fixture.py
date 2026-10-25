@@ -71,7 +71,8 @@ BAD = tuple("lz4-" + s for s in ("short-magic", "short-length", "oversize", "sho
                                   "bad-match", "overflow-output", "junk")) + tuple(
     "lzo-" + s for s in ("short-header", "header-checksum", "data-checksum", "compressed-checksum",
                          "dst-oversize", "src-oversize", "src-zero", "short-data", "no-end",
-                         "filter", "method", "late-checksum", "junk"))
+                         "filter", "method", "late-checksum", "junk",
+                         "crc-header", "crc-data", "crc-compressed"))
 
 
 def volume(kind):
@@ -116,11 +117,14 @@ def volume(kind):
     else:
         fmt = "Lzop"
         flags = {"lzo-crc": 0x1100, "lzo-both": 0x1101, "lzo-no-checksum": 0,
+                 "lzo-crc-header": 0x1100, "lzo-crc-data": 0x1100,
+                 "lzo-crc-compressed": 0x1300,
                  "lzo-compressed-checksums": 0x1303,
                  "lzo-compressed-checksum": 3, "lzo-filter-identity": 0x801,
                  "lzo-metadata-flags": 0x0300249d}.get(kind, 1)
         data, packed = lzo_rle()
-        compressed = kind in ("lzo-rle", "lzo-compressed-checksums", "lzo-compressed-checksum")
+        compressed = kind in ("lzo-rle", "lzo-compressed-checksums", "lzo-compressed-checksum",
+                              "lzo-crc-compressed")
         if compressed:
             payload = data
         header = lzo_header(flags, old=kind == "lzo-old",
@@ -142,11 +146,11 @@ def volume(kind):
             payload += b"second"
         elif kind == "lzo-short-header":
             image = header[:25]
-        elif kind == "lzo-header-checksum":
+        elif kind in ("lzo-header-checksum", "lzo-crc-header"):
             image = image[:len(header) - 1] + bytes([image[len(header) - 1] ^ 1]) + image[len(header):]
-        elif kind == "lzo-data-checksum":
+        elif kind in ("lzo-data-checksum", "lzo-crc-data"):
             image = image[:len(header) + 8] + bytes([image[len(header) + 8] ^ 1]) + image[len(header) + 9:]
-        elif kind == "lzo-compressed-checksum":
+        elif kind in ("lzo-compressed-checksum", "lzo-crc-compressed"):
             image = image[:len(header) + 12] + bytes([image[len(header) + 12] ^ 1]) + image[len(header) + 13:]
         elif kind in ("lzo-dst-oversize", "lzo-src-oversize", "lzo-src-zero"):
             sizes = {"lzo-dst-oversize": ((256 << 10) + 1, 1),

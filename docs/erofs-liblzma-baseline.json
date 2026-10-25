@@ -38,7 +38,10 @@
     "src/liblzma/check/crc64_fast.c": "9e2604c827de4ab73c7de46cc7f169c53f8aec0c77566263aa1131aa95ce2d9b",
     "src/liblzma/check/crc64_table_be.h": "17975947e0333a0d4966e905693cc94a29bf39139a01884915360bd48b416831",
     "src/liblzma/check/crc64_table_le.h": "f1144cf12f0e375641e5e43eaf14842c52cecd589ecbdde15122a4aeeed26756",
-    "src/liblzma/check/crc_common.h": "fdcdad4486db8da3a9f5d63b648c5a935535fb92bd5a7378c918c05ba5efa7e1"
+    "src/liblzma/check/crc_common.h": "fdcdad4486db8da3a9f5d63b648c5a935535fb92bd5a7378c918c05ba5efa7e1",
+    "src/liblzma/check/crc32_fast.c": "52ddb26f101d4d3a0bbc796bb873b220f23fdf2eb2d9a8bc6adce44bb65883f5",
+    "src/liblzma/check/crc32_table_le.h": "de3eb74ce4ae83dd43c9b40e9759655e430cd2d478e66988c147e1002c6690fa",
+    "src/liblzma/check/crc32_table_be.h": "e86e91325bf892827232d441980f90e6d68067c397518cf7fdc3da2c6a3f09c8"
   },
   "adapted": {
     "COPYING.0BSD": "third_party/xz/COPYING.0BSD",
@@ -76,7 +79,10 @@
     "src/liblzma/check/crc64_fast.c": "third_party/xz/src/liblzma/check/crc64_fast.c",
     "src/liblzma/check/crc64_table_be.h": "third_party/xz/src/liblzma/check/crc64_table_be.h",
     "src/liblzma/check/crc64_table_le.h": "third_party/xz/src/liblzma/check/crc64_table_le.h",
-    "src/liblzma/check/crc_common.h": "third_party/xz/src/liblzma/check/crc_common.h"
+    "src/liblzma/check/crc_common.h": "third_party/xz/src/liblzma/check/crc_common.h",
+    "src/liblzma/check/crc32_fast.c": "third_party/xz/src/liblzma/check/crc32_fast.c",
+    "src/liblzma/check/crc32_table_le.h": "third_party/xz/src/liblzma/check/crc32_table_le.h",
+    "src/liblzma/check/crc32_table_be.h": "third_party/xz/src/liblzma/check/crc32_table_be.h"
   },
   "unchanged_dependencies": {
     "COPYING.0BSD": "third_party/xz/COPYING.0BSD",
@@ -114,13 +120,19 @@
     "src/liblzma/check/crc64_fast.c": "third_party/xz/src/liblzma/check/crc64_fast.c",
     "src/liblzma/check/crc64_table_be.h": "third_party/xz/src/liblzma/check/crc64_table_be.h",
     "src/liblzma/check/crc64_table_le.h": "third_party/xz/src/liblzma/check/crc64_table_le.h",
-    "src/liblzma/check/crc_common.h": "third_party/xz/src/liblzma/check/crc_common.h"
+    "src/liblzma/check/crc_common.h": "third_party/xz/src/liblzma/check/crc_common.h",
+    "src/liblzma/check/crc32_fast.c": "third_party/xz/src/liblzma/check/crc32_fast.c",
+    "src/liblzma/check/crc32_table_le.h": "third_party/xz/src/liblzma/check/crc32_table_le.h",
+    "src/liblzma/check/crc32_table_be.h": "third_party/xz/src/liblzma/check/crc32_table_be.h"
   },
   "local_integration": [
     "cmake/Erofs.cmake",
     "src/erofsnativedecoders.c",
     "cmake/LiblzmaCrc.cmake",
-    "src/C/XzCrc64.c"
+    "src/C/XzCrc64.c",
+    "src/lib/crc/crc32-main.c",
+    "src/lib/framecompat.h",
+    "cmake/LinuxFrames.cmake"
   ],
-  "scope": "Unchanged liblzma 5.8.4 MicroLZMA decoder and CRC64 API, portable slice-by-four CRC64 tables, LZMA1/LZ core and public API headers; CMakeLists.txt is reference-only. No encoders, other formats, filters, tools, threading or CRC CPU dispatch compiled."
+  "scope": "Unchanged liblzma 5.8.4 MicroLZMA decoder and CRC32/CRC64 APIs, portable slice-by-eight CRC32 and slice-by-four CRC64 tables, LZMA1/LZ core and public API headers; CMakeLists.txt is reference-only. No encoders, other formats, filters, tools, threading or CRC CPU dispatch compiled."
 }

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 /* Independent digest answers across padding/rate boundaries and split updates. */
 #include <crypto/hash.h>
+#include <crypto/sha3.h>
 #include <stdio.h>
 
 static const struct { const char *algorithm; unsigned size; const char *hex; } vectors[] = {
@@ -15,8 +16,41 @@ static bool matches(const u8 *digest, const char *hex, unsigned size)
 			return false;
 	return true;
 }
+static int check_shake(void)
+{
+	static const struct { unsigned bits, size; const char *hex; } cases[] = {
+#include "fixtures/asn1/shake-vectors.h"
+	};
+	u8 input[258], output[400];
+	for (unsigned i = 0; i < sizeof(input) - 1; ++i)
+		input[i + 1] = (u8)(i * 37 + 11);
+	for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {
+		struct shake_ctx ctx;
+		if (cases[i].bits == 128) shake128_init(&ctx);
+		else shake256_init(&ctx);
+		unsigned first = min(cases[i].size, 17);
+		shake_update(&ctx, input + 1, first);
+		shake_update(&ctx, input + 1 + first, cases[i].size - first);
+		struct shake_ctx copy = ctx;
+		shake_squeeze(&ctx, output, sizeof(output));
+		if (!matches(output, cases[i].hex, sizeof(output))) return 1;
+		/* Continuation must match a single squeeze across multiple rate blocks. */
+		ctx = copy;
+		for (unsigned pos = 0; pos < sizeof(output);) {
+			unsigned count = min((unsigned)sizeof(output) - pos, 31);
+			shake_squeeze(&ctx, output + pos, count);
+			pos += count;
+		}
+		if (!matches(output, cases[i].hex, sizeof(output))) return 1;
+		shake_zeroize_ctx(&ctx);
+		shake_zeroize_ctx(&copy);
+	}
+	return 0;
+}
+
 int main(void)
 {
+	if (check_shake()) { fprintf(stderr, "SHAKE streaming/continuation mismatch\n"); return 1; }
 	u8 input[4098], output[64];
 	for (unsigned i = 0; i < sizeof(input) - 1; ++i) input[i + 1] = (u8)(i * 37 + 11);
 	for (size_t i = 0; i < ARRAY_SIZE(vectors); ++i) {

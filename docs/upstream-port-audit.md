@@ -66,8 +66,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 - [Общий CRC64](upstream-port-audit/shared-crc64.md)
   — liblzma для SDK, native runtime и вложенных XZ-потоков.
 
-- [Общие XXHash и Adler32](upstream-port-audit/shared-checksums.md)
-  — повторное использование libzstd xxHash и zlib с сохранением контрактов SDK.
+- [Общие checksum/hash primitives](upstream-port-audit/shared-checksums.md)
+  — XXHash, Adler32, CRC32 и повторное использование SDK hash-кода в GPL readers;
+  проверенные ограничения оставшихся замен записаны в том же аудите.
 
 - [Файловая панель: Qt Model/View](upstream-port-audit/file-panel-model-view.md)
   — собственная модель над исходными folder providers и общий выбор видов.

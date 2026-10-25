@@ -12,159 +12,17 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 #include <crypto/sha3.h>
+#include "sdkhashblocks.h"
 #include <crypto/hmac.h>
 #include <crypto/utils.h>
 
-/*
- * On some 32-bit architectures, such as h8300, GCC ends up using over 1 KB of
- * stack if the round calculation gets inlined into the loop in
- * sha3_keccakf_generic().  On the other hand, on 64-bit architectures with
- * plenty of [64-bit wide] general purpose registers, not inlining it severely
- * hurts performance.  So let's use 64-bitness as a heuristic to decide whether
- * to inline or not.
- */
-#if UINTPTR_MAX > UINT32_MAX
-#define SHA3_INLINE inline
-#else
-#define SHA3_INLINE SEVENZIP_CRYPTO_NOINLINE
-#endif
-
-#define SHA3_KECCAK_ROUNDS 24
-
-static const u64 sha3_keccakf_rndc[SHA3_KECCAK_ROUNDS] = {
-	0x0000000000000001ULL, 0x0000000000008082ULL, 0x800000000000808aULL,
-	0x8000000080008000ULL, 0x000000000000808bULL, 0x0000000080000001ULL,
-	0x8000000080008081ULL, 0x8000000000008009ULL, 0x000000000000008aULL,
-	0x0000000000000088ULL, 0x0000000080008009ULL, 0x000000008000000aULL,
-	0x000000008000808bULL, 0x800000000000008bULL, 0x8000000000008089ULL,
-	0x8000000000008003ULL, 0x8000000000008002ULL, 0x8000000000000080ULL,
-	0x000000000000800aULL, 0x800000008000000aULL, 0x8000000080008081ULL,
-	0x8000000000008080ULL, 0x0000000080000001ULL, 0x8000000080008008ULL
-};
-
-/*
- * Perform a single round of Keccak mixing.
- */
-static SHA3_INLINE void sha3_keccakf_one_round_generic(u64 st[25], int round)
-{
-	u64 t[5], tt, bc[5];
-
-	/* Theta */
-	bc[0] = st[0] ^ st[5] ^ st[10] ^ st[15] ^ st[20];
-	bc[1] = st[1] ^ st[6] ^ st[11] ^ st[16] ^ st[21];
-	bc[2] = st[2] ^ st[7] ^ st[12] ^ st[17] ^ st[22];
-	bc[3] = st[3] ^ st[8] ^ st[13] ^ st[18] ^ st[23];
-	bc[4] = st[4] ^ st[9] ^ st[14] ^ st[19] ^ st[24];
-
-	t[0] = bc[4] ^ rol64(bc[1], 1);
-	t[1] = bc[0] ^ rol64(bc[2], 1);
-	t[2] = bc[1] ^ rol64(bc[3], 1);
-	t[3] = bc[2] ^ rol64(bc[4], 1);
-	t[4] = bc[3] ^ rol64(bc[0], 1);
-
-	st[0] ^= t[0];
-
-	/* Rho Pi */
-	tt = st[1];
-	st[ 1] = rol64(st[ 6] ^ t[1], 44);
-	st[ 6] = rol64(st[ 9] ^ t[4], 20);
-	st[ 9] = rol64(st[22] ^ t[2], 61);
-	st[22] = rol64(st[14] ^ t[4], 39);
-	st[14] = rol64(st[20] ^ t[0], 18);
-	st[20] = rol64(st[ 2] ^ t[2], 62);
-	st[ 2] = rol64(st[12] ^ t[2], 43);
-	st[12] = rol64(st[13] ^ t[3], 25);
-	st[13] = rol64(st[19] ^ t[4],  8);
-	st[19] = rol64(st[23] ^ t[3], 56);
-	st[23] = rol64(st[15] ^ t[0], 41);
-	st[15] = rol64(st[ 4] ^ t[4], 27);
-	st[ 4] = rol64(st[24] ^ t[4], 14);
-	st[24] = rol64(st[21] ^ t[1],  2);
-	st[21] = rol64(st[ 8] ^ t[3], 55);
-	st[ 8] = rol64(st[16] ^ t[1], 45);
-	st[16] = rol64(st[ 5] ^ t[0], 36);
-	st[ 5] = rol64(st[ 3] ^ t[3], 28);
-	st[ 3] = rol64(st[18] ^ t[3], 21);
-	st[18] = rol64(st[17] ^ t[2], 15);
-	st[17] = rol64(st[11] ^ t[1], 10);
-	st[11] = rol64(st[ 7] ^ t[2],  6);
-	st[ 7] = rol64(st[10] ^ t[0],  3);
-	st[10] = rol64(    tt ^ t[1],  1);
-
-	/* Chi */
-	bc[ 0] = ~st[ 1] & st[ 2];
-	bc[ 1] = ~st[ 2] & st[ 3];
-	bc[ 2] = ~st[ 3] & st[ 4];
-	bc[ 3] = ~st[ 4] & st[ 0];
-	bc[ 4] = ~st[ 0] & st[ 1];
-	st[ 0] ^= bc[ 0];
-	st[ 1] ^= bc[ 1];
-	st[ 2] ^= bc[ 2];
-	st[ 3] ^= bc[ 3];
-	st[ 4] ^= bc[ 4];
-
-	bc[ 0] = ~st[ 6] & st[ 7];
-	bc[ 1] = ~st[ 7] & st[ 8];
-	bc[ 2] = ~st[ 8] & st[ 9];
-	bc[ 3] = ~st[ 9] & st[ 5];
-	bc[ 4] = ~st[ 5] & st[ 6];
-	st[ 5] ^= bc[ 0];
-	st[ 6] ^= bc[ 1];
-	st[ 7] ^= bc[ 2];
-	st[ 8] ^= bc[ 3];
-	st[ 9] ^= bc[ 4];
-
-	bc[ 0] = ~st[11] & st[12];
-	bc[ 1] = ~st[12] & st[13];
-	bc[ 2] = ~st[13] & st[14];
-	bc[ 3] = ~st[14] & st[10];
-	bc[ 4] = ~st[10] & st[11];
-	st[10] ^= bc[ 0];
-	st[11] ^= bc[ 1];
-	st[12] ^= bc[ 2];
-	st[13] ^= bc[ 3];
-	st[14] ^= bc[ 4];
-
-	bc[ 0] = ~st[16] & st[17];
-	bc[ 1] = ~st[17] & st[18];
-	bc[ 2] = ~st[18] & st[19];
-	bc[ 3] = ~st[19] & st[15];
-	bc[ 4] = ~st[15] & st[16];
-	st[15] ^= bc[ 0];
-	st[16] ^= bc[ 1];
-	st[17] ^= bc[ 2];
-	st[18] ^= bc[ 3];
-	st[19] ^= bc[ 4];
-
-	bc[ 0] = ~st[21] & st[22];
-	bc[ 1] = ~st[22] & st[23];
-	bc[ 2] = ~st[23] & st[24];
-	bc[ 3] = ~st[24] & st[20];
-	bc[ 4] = ~st[20] & st[21];
-	st[20] ^= bc[ 0];
-	st[21] ^= bc[ 1];
-	st[22] ^= bc[ 2];
-	st[23] ^= bc[ 3];
-	st[24] ^= bc[ 4];
-
-	/* Iota */
-	st[0] ^= sha3_keccakf_rndc[round];
-}
-
-/* Generic implementation of the Keccak-f[1600] permutation */
+/* Generic Keccak permutation through the existing portable SDK library. */
 static void sha3_keccakf_generic(struct sha3_state *state)
 {
-	/*
-	 * Temporarily convert the state words from little-endian to native-
-	 * endian so that they can be operated on.  Note that on little-endian
-	 * machines this conversion is a no-op and is optimized out.
-	 */
-
 	for (int i = 0; i < ARRAY_SIZE(state->words); i++)
 		state->native_words[i] = le64_to_cpu(state->words[i]);
 
-	for (int round = 0; round < SHA3_KECCAK_ROUNDS; round++)
-		sha3_keccakf_one_round_generic(state->native_words, round);
+	sevenzip_gpl_keccakf(state->native_words);
 
 	for (int i = 0; i < ARRAY_SIZE(state->words); i++)
 		state->words[i] = cpu_to_le64(state->native_words[i]);

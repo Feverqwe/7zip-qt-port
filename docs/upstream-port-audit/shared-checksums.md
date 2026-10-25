@@ -1,4 +1,4 @@
-# Shared XXHash and Adler32
+# Shared checksum and hash primitives
 
 Scope: XXH32 for EROFS xattr filters and LZ4 Frame; SDK XXH64 for hash
 commands, Zstandard checksums and Btrfs; Adler32 in the SDK zlib wrapper
@@ -107,3 +107,127 @@ sources, libraries and driver are removed; incremental trees/caches are kept.
 No full/slow gate, release installation, physical media, UI/pixel acceptance
 or performance claim is included. Checksum equivalence covers the frozen
 vectors and selected consumers, not every possible corrupt input.
+
+## CRC32 and GPL hash-library consolidation, 2026-10-25
+
+This continuation examines checksum, hash, compression and text-conversion
+implementations against libraries already present in the production build.
+Similar names and disabled historical bodies are not treated as live duplicates.
+
+### Implemented ownership
+
+- `src/lib/crc/crc32-main.c::crc32_le` preserves Linux's raw seeded state API
+  around public `lzma_crc32`, complementing the incoming and returned state.
+  Empty updates retain the seed. LZOP keeps its existing header/data/compressed
+  checksum branches. The duplicate IEEE loop/table are removed; the existing
+  generator emits the retained BE and CRC32C tables. `crc32_be` and `crc32c`
+  retain their bodies. Frame Adler calls use the existing size-aware `adler32_z`.
+- The shared liblzma target now provides CRC32 and CRC64 with immutable tables
+  and its existing endian configuration. Added unchanged XZ units are
+  `src/liblzma/check/crc32_fast.c`, `crc32_table_le.h` and `crc32_table_be.h`.
+  The native core still needs only its existing CRC64 source closure.
+- `src/lib/crypto/sha512.c::sha512_blocks_generic` delegates full blocks to the
+  existing SDK `CSha512`, `Sha512_Init` and `Sha512_Update`. Linux keeps its
+  SHA-384/SHA-512 IVs, buffering, 128-bit length accounting, padding, HMAC,
+  precomputed states and finalization. SDK finalization is not used.
+- `src/lib/crypto/sha3.c::sha3_keccakf_generic` keeps Linux endian conversion
+  and delegates the permutation to the existing SDK SHA-3 implementation.
+  Linux still owns absorb buffering, domain separation, HMAC and incremental
+  SHAKE output. The bridge imports native lanes into `CSha3`, then absorbs one
+  complete zero SHA3-256 rate block: XOR with zero preserves the lanes before
+  the SDK permutation. It adds no padding and does not call SDK finalization.
+- `src/lib/crypto/sdkhashblocks.c/.h` is local C integration. Its temporary SDK
+  contexts are erased with existing `memzero_explicit`. The SDK bodies remain
+  byte-exact. Their C objects now belong to `sevenzip_fscrypt_crypto`, also reused
+  by ext/fs-verity consumers instead of compiling another set of those objects.
+
+The [existing liblzma manifest](../erofs-liblzma-baseline.json) pins complete
+original files and unchanged owners at <https://github.com/tukaani-project/xz.git>,
+`d3e650e63c110e830fd5391e7f8b45df0b91d3da` (0BSD). The
+[EROFS Linux manifest](../erofs-linux-baseline.json) keeps original CRC/generator
+hashes and records the partial API adaptation and regenerated output. The
+[ext Linux manifest](../ext-linux-baseline.json) pins complete original hash
+units at <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git>,
+`58161ead29e50d70a317ea26b472e0c7508e69da`, with selected SDK adapter symbols and
+retained Linux scope. Existing notices are preserved.
+
+The [SDK manifest](../upstream-baseline.json) pins full original implementation
+and API units at <https://github.com/ip7z/7zip.git>,
+`b88c6bc09339de32f7d18bbab900686b244f42ba`, including public state layouts used
+by the bridge and the units compared for rejected candidates. SDK sources stay
+public domain and byte-exact under `third_party/7zip/C`; new glue is local GPL
+integration. The rebased production source uses the restored original SDK crypto;
+this continuation introduces no OpenSSL dependency or backend selection.
+
+### Reviewed boundaries and remaining candidates
+
+| Examined implementation | Finding and disposition |
+| --- | --- |
+| Linux SHA-1 and SHA-224/SHA-256 versus SDK | Linux explicitly erases its round workspaces. SDK public update APIs do not expose private workspaces for erasure. Prototypes matched digests but could not retain that property through the public API. Original Linux bodies remain; they are not counted as completed consolidation. |
+| SDK CRC32 (`7zCrc.h`, `CrcReg.cpp`) | The seeded API includes byte updates via `g_CrcTable` and explicit SW/HW hash selectors through `z7_GetFunc_CrcUpdate`. A generic library call would not preserve all those controls. Keep the existing SDK implementation for these consumers. |
+| CRC32C in filesystems/VHDX/XFS | zlib/liblzma CRC32 uses a different polynomial. Linux CRC32C is already shared by its GPLv2 consumers. XFS uses an LGPL-derived primitive rather than linking GPLv2-only Linux code into its GPLv3 module. A cross-license common provider needs a separately reviewed SDK extraction/API, absent from the current library interfaces. |
+| Commented CRC32C in `ExtHandler.cpp` | The body and former caller are disabled history. Live metadata checking belongs to Linux; no functional duplicate was removed or claimed here. |
+| Linux and SDK AES | Linux block/ECB/CBC/XTS/CTR/XCTR APIs support existing CTS/HCTR2/Adiantum consumers. SDK uses aligned prepared-key CBC/CTR contexts. Sharing blocks requires a key-state/mode adapter and a separate compatibility/erasure review. It is not a direct replacement of the current Linux API. |
+| SDK raw LZMA/XZ and liblzma | liblzma restricts `lc + lp` to four; SDK supports the broader legacy property range. Random XZ blocks, consumed-input accounting, recovery prefixes and cancellation are further contracts. The completed MicroLZMA migration does not establish general replacement. |
+| SDK DEFLATE and zlib | Filesystem DEFLATE already uses zlib. SDK also serves Deflate64 and NSIS, and its zlib wrapper supports optional absent Adler trailers. Removing it would lose contracts or require further adaptation. |
+| BLAKE2 | Linux BLAKE2b and SDK BLAKE2sp are different algorithms. Sequential BLAKE2s does not replace the tree hash; current production dependencies offer no matching replacement API. |
+| Base64 and UTF conversion | SDK archive Base64 includes discovery, whitespace and tail contracts; Linux Base64 serves filesystem name variants. GPL/module and independent-console boundaries preclude a direct swap. SDK UTF conversion also preserves raw non-UTF-8 names and escape modes beyond ordinary Qt Unicode conversion. |
+| Pinned dependency internals | Private CRC/LZMA helpers inside lzlib and other unchanged libraries have no public primitive-delegation API. Replacing them would create a dependency fork. Existing archive/filesystem library assessments retain their format/recovery compatibility limits. |
+
+These are dispositions for the reviewed scope, not a claim that future
+compatible consolidation is impossible. In particular, AES and a common CRC32C
+service remain possible separate adaptation work; they are not reported as fixed.
+
+### Verification
+
+Use existing `upstream_baseline.py verify/review` for SDK units and
+`reference-verify/reference-review` with the owning Linux/liblzma manifests.
+Compare proposed full original units, their pinned baseline and local adapters
+before advancing revisions. Regenerate the retained CRC tables with the recorded
+C generator. Original source hashes do not follow local formatting changes.
+
+`linux_checksum` freezes pre-change raw CRC outputs across seeds, alignment,
+split updates and empty calls, and distinguishes IEEE/BE/Castagnoli results.
+LZOP fixtures add independently corrupted CRCs for header, decoded data and
+compressed data. Existing asymmetric/fscrypt/fs-verity suites cover digest,
+HMAC/HKDF, signatures, certificates and encrypted image reading. Additional
+SHAKE128/256 vectors check copied contexts and split output across rate blocks
+against Python hashlib. Regenerate with
+`scripts/generate-asymmetric-hash-fixtures.py --shake`.
+
+The final focused selection contains 29 suites covering raw checksums, native
+hashes, Linux frames/CPIO/XZ, filesystem readers/modules and asymmetric/fscrypt
+consumers. macOS arm64 passed all 29 (14.94 s). Linux x64 passed all 29
+(105.86 s), receipt `20261025T052520Z-c8332c7f`.
+
+Windows x64/MSVC built the runtime and selected targets. The combined selection
+passed 26/29 (206.29 s), receipt `20261025T052417Z-d891dcf6`: Btrfs and nested
+frame backend discovery timed out, and the ext CLI suite exceeded its unchanged
+45-second limit. An isolated repeat passed both backend suites while ext repeated
+the timeout, receipt `20261025T053255Z-30e4ebba`. A control restored the complete
+CRC/SHA bodies and CRC table from rebased master in the same incremental build;
+ext also timed out (45.39 s), receipt `20261025T053558Z-3e666611`. The control
+driver restored the adapters, but its redundant final CMake configuration stalled
+and was stopped; `--build-only` encountered the same regeneration stall
+(`20261025T054349Z-46d849cd`). Restoration then reused an unchanged temporary copy
+of the existing Ninja graph in the same build tree. The current ext module rebuilt,
+and `ext_stream` plus `ext_fscrypt` passed, receipt `20261025T054952Z-fdc56e86`.
+No compiler flags, dependency revisions or cache settings changed. Thus 28 selected Windows
+suites passed, but complete Windows ext CLI acceptance remains unverified;
+the timeout is not attributed to the new primitives. No timeout was increased.
+
+SDK baseline verification passed 408 exact, 261 adapted and 21 local owners;
+all 40 liblzma original units verified. Existing reference verification/review
+also checked the selected complete Linux CRC/generator and SHA-512/SHA-3
+original units against their pinned hashes. This is not a full Linux-manifest
+verification. CRC table and SHAKE fixture regeneration matched retained bytes.
+
+After rebasing onto restored SDK crypto, the existing native make outputs still
+contained objects compiled against the former OpenSSL AES ABI and, on Windows,
+an incompatible PCH. Their linker/loader diagnostics identified the obsolete
+objects/PCH for removal; affected objects were rebuilt with the existing compiler
+cache. Build trees, toolchains and caches were retained.
+
+No full/slow gate, release installation, UI, performance or big-endian runtime
+acceptance is included. Source consolidation covers the selected primitives;
+Linux streaming/finalization remains an intentional adaptation boundary.

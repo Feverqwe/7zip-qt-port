@@ -28,7 +28,8 @@ add_library(sevenzip_btrfs_core STATIC
     third_party/7zip/C/CpuArch.c)
 target_include_directories(sevenzip_btrfs_core PRIVATE src src/include
     third_party/linux/include)
-target_link_libraries(sevenzip_btrfs_core PUBLIC sevenzip_zstd sevenzip_zisofs_zlib)
+target_link_libraries(sevenzip_btrfs_core PUBLIC sevenzip_zstd sevenzip_zisofs_zlib
+    sevenzip_liblzma_crc)
 set_target_properties(sevenzip_btrfs_core PROPERTIES
     AUTOMOC OFF AUTOUIC OFF POSITION_INDEPENDENT_CODE ON
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
