@@ -36,10 +36,6 @@ Qt and other runtime dependencies keep their own licenses.
 The linked Qt Remote Objects module uses Qt's LGPL-3.0 licensing option
 (with its other available licenses retained in the SDK). Its matching source is
 available from the [official Qt repository](https://github.com/qt/qtremoteobjects/tree/v6.12.0).
-The QCOW/QCOW2 reader also uses QEMU metadata code under the
-[retained MIT notice](third_party/qemu/LICENSE) and read-only legacy crypto
-code under [LGPL-2.1-or-later](third_party/qemu/COPYING.LIB); see the
-[source audit](docs/upstream-port-audit/container-layers.md#qcow).
 Qt Base translations are merged from the matching SDK; the corresponding official
 [Qt Translations source](https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/qttranslations-everywhere-src-6.12.0.tar.xz)
 and source provenance are recorded in the [localization audit](docs/upstream-port-audit/qt-linguist.md).

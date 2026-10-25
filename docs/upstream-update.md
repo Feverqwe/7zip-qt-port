@@ -86,39 +86,11 @@ after review, including when a member is unchanged in the new release.
 Early verification and synthetic-review evidence is preserved in
 [the tooling archive](archive/qt-port/workflow-evidence.md).
 
-## QEMU and Linux reference baselines
+## External reference baselines
 
-ZIP's libzstd encoder and its 7-Zip-zstd adapter use the same reference
+ZIP's libzstd encoder and its 7-Zip-zstd adapter use the reference
 verification/review commands with explicit source-to-owner maps. Their pinned
 revisions, imported scope and example commands are in the
 [ZIP encoder audit](upstream-port-audit/zip-zstd.md).
-
-QEMU follows the Linux reference-baseline model: original inventory units and
-SHA256 values are pinned to a retrievable commit, with an explicit mapping to
-local source owners. Local paths follow project boundaries and need not mirror
-the external repository. [QCOW's baseline](qcow-qemu-baseline.json)
-maps the borrowed QEMU header to its local owner. The
-[QCOW source audit](upstream-port-audit/container-layers.md#qemu-read-side-update--2026-10-24)
-records transferred symbols, dependencies, omitted scope and licenses.
-The 7-Zip handler keeps its separate 7-Zip provenance.
-
-Use a separate QEMU Git checkout containing the recorded and proposed commits:
-
-```sh
-git clone --filter=blob:none --no-checkout https://github.com/qemu/qemu.git /tmp/qemu-update-review
-python3 scripts/upstream_baseline.py reference-verify \
-  --manifest docs/qcow-qemu-baseline.json --upstream /tmp/qemu-update-review
-python3 scripts/upstream_baseline.py reference-review \
-  --manifest docs/qcow-qemu-baseline.json --upstream /tmp/qemu-update-review \
-  --new-revision <full-commit> --output /tmp/qcow-update-review.md
-```
-
-The report compares complete original units and shows the local adaptation
-against the recorded original. It does not change sources or advance the
-baseline. Review dependencies and omitted branches before transferring changes
-into the partial port; merging the complete QEMU header over the selected
-helpers would introduce unported block services. Retain local fixes, validate
-the affected reading scenarios and update original hashes/revision together
-with the source audit. `--path` can restrict review to recorded upstream paths.
 The same reference commands accept the existing Linux baseline manifests;
 explicit adaptation maps additionally enable local-difference reports.
