@@ -17,6 +17,7 @@ class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
     explicit QtFileManagerCommands(MainWindow &window);
     void AttachActions();
     void RefreshActions();
+    void RefreshViewActions();
     void ActivateItems(Qt::KeyboardModifiers modifiers);
     bool CanExecuteCommand(unsigned id) override;
     bool IsShiftDown() const override;
@@ -91,7 +92,7 @@ class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
         QHash<unsigned, bool> hashMethods;
         bool selected = false, one = false, oneFile = false, operated = false, focused = false;
         bool focusedFile = false, folderSize = false, selectedParent = false;
-        bool split = false, combine = false, entries = false, rows = false, foldersHistory = false;
+        bool split = false, combine = false, rows = false, foldersHistory = false;
     };
     TransportCapabilities ReadTransportCapabilities();
     bool TransportAllows(unsigned id, const TransportCapabilities &capabilities) const;

@@ -44,10 +44,6 @@ void MainWindow::connectBackend() {
                 overwriteDialog_ = nullptr;
                 backend_->provideOverwriteAnswer(answer);
             });
-    connect(backend_, &ArchiveBackend::infoReady, this, [this](const ArchiveInfo &info) {
-        if (!app_.QtOperations().closed() && !sourceArchiveProgress_)
-            info_ = info;
-    });
     connect(backend_, &ArchiveBackend::passwordRequired, this, [this] {
         if (app_.QtOperations().closed() || sourceArchiveProgress_)
             return;

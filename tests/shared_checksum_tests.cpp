@@ -1,6 +1,7 @@
 #include "7zip/Common/StreamObjects.h"
 #include "7zip/Compress/ZlibDecoder.h"
 #include "Xxh64.h"
+#include "XzCrc64.h"
 #include <QTest>
 #include <algorithm>
 #include <array>
@@ -47,6 +48,50 @@ const HashVector vectors[] = {
 class SharedChecksumTests : public QObject {
     Q_OBJECT
   private slots:
+    void crc64Streaming() {
+        // Frozen raw-state results from the original pinned SDK implementation.
+        struct Vector {
+            size_t size;
+            std::array<UInt64, 3> states;
+        };
+        const Vector cases[] = {
+            {0, {0x0000000000000000ULL, 0xffffffffffffffffULL, 0x0123456789abcdefULL}},
+            {1, {0xb00bfde054f94352ULL, 0x5059a36ccf6183f4ULL, 0x2d3cdeee0624b18fULL}},
+            {3, {0x9a840f0ca046de66ULL, 0x8f82af352f60fadfULL, 0xf16ed30336c32680ULL}},
+            {4, {0xf17061ba5d02c2c2ULL, 0xfa2a1870bce6a276ULL, 0x28a2409a9b79fd23ULL}},
+            {5, {0x2683f2a0039b5e10ULL, 0x1298df80122741daULL, 0xc3995210bed83e31ULL}},
+            {31, {0xa6b544c38f00acf3ULL, 0xa4ac72e70925d6c8ULL, 0x693d97e5c21a93eaULL}},
+            {32, {0x2a42f2fc27312c8aULL, 0x1ce7f562a41be079ULL, 0x139910a0acf6b3f5ULL}},
+            {33, {0x48334c3c5de6a2d1ULL, 0x24d90cc5a7935511ULL, 0x61cb6138b28d5555ULL}},
+            {4096, {0xa197dcac36a634a9ULL, 0x78bbf0c7ecb33bf3ULL, 0x0e80779ccee96231ULL}},
+            {65537, {0xfcd155f2bf9e12fcULL, 0x7d7d5c5ffc6e3ed9ULL, 0x528e2261da1c0e81ULL}},
+        };
+        const UInt64 seeds[] = {0, UINT64_MAX, 0x0123456789abcdefULL};
+        Crc64GenerateTable();
+        for (const auto &v : cases) {
+            for (size_t offset : {0U, 1U, 3U, 7U}) {
+                const auto storage = bytes(v.size + 1, offset);
+                const Byte *data = storage.data() + offset;
+                for (size_t s = 0; s < std::size(seeds); ++s) {
+                    QCOMPARE(Crc64Update(seeds[s], data, v.size), v.states[s]);
+                    for (size_t chunk : {1U, 4U, 31U, 4096U}) {
+                        UInt64 crc = seeds[s];
+                        QCOMPARE(Crc64Update(crc, nullptr, 0), crc);
+                        for (size_t pos = 0; pos < v.size;) {
+                            const size_t count = std::min(chunk, v.size - pos);
+                            crc = Crc64Update(crc, data + pos, count);
+                            QCOMPARE(Crc64Update(crc, nullptr, 0), crc);
+                            pos += count;
+                        }
+                        QCOMPARE(crc, v.states[s]);
+                    }
+                }
+            }
+        }
+        QCOMPARE(CRC64_GET_DIGEST(Crc64Update(CRC64_INIT_VAL, "123456789", 9)),
+                 UInt64(0x995dc9bbdf1939faULL));
+    }
+
     void xxhashVectorsAndStreaming() {
         for (const auto &v : vectors) {
             for (size_t offset : {0U, 1U, 3U, 7U}) {

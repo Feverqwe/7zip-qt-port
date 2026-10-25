@@ -501,7 +501,7 @@ class CodecUpdateTests final : public QObject, protected ArchiveBackendTestSuppo
         CMyComPtr<IFolderFolder> metadata;
         QCOMPARE(CreateArchiveMetadata(entries, &metadata), S_OK);
         CMyComPtr2_Create<IFolderArcProps, CAgent> agent;
-        QCOMPARE(agent->Init(entries, metadata, UString(L"zip"), resource), S_OK);
+        QCOMPARE(agent->Init(metadata, UString(L"zip"), resource), S_OK);
         CMyComPtr<IFolderFolder> root;
         QCOMPARE(agent->BindToRootFolder(&root), S_OK);
         QCOMPARE(root->LoadItems(), S_OK);

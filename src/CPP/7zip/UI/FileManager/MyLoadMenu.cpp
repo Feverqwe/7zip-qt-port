@@ -48,7 +48,7 @@ static const char *const g_Zvc_Strings[] = {QT_TRANSLATE_NOOP("VersionControl", 
                                             QT_TRANSLATE_NOOP("VersionControl", "Ver Revert"),
                                             QT_TRANSLATE_NOOP("VersionControl", "Ver Diff (&0)")};
 
-static unsigned GetSortControlID(PROPID propID) {
+unsigned GetSortControlID(PROPID propID) {
     switch (propID) {
     case kpidName:
         return IDM_VIEW_ARANGE_BY_NAME;

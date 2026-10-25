@@ -102,6 +102,8 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib/LICENSE"
     DESTINATION "${notices_destination}/sevenzip-erofs" RENAME zlib-LICENSE.txt)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/xz/COPYING.0BSD"
     DESTINATION "${notices_destination}/sevenzip-erofs" RENAME liblzma-COPYING.0BSD)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/xz/COPYING.0BSD"
+    DESTINATION "${notices_destination}" RENAME liblzma-COPYING.0BSD)
 install(TARGETS sevenzip_brotli LIBRARY DESTINATION "${runtime_destination}/Formats")
 install(TARGETS sevenzip_lz4_frame LIBRARY DESTINATION "${runtime_destination}/Formats")
 install(TARGETS sevenzip_lzip LIBRARY DESTINATION "${runtime_destination}/Formats")

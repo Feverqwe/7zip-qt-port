@@ -29,7 +29,7 @@ bool BindArchive(CPanel &panel, ArchiveBackend &backend, const QString &path, co
     CMyComPtr<IFolderFolder> metadata =
         new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
     CMyComPtr2_Create<IFolderArcProps, CAgent> agent;
-    if (agent->Init({}, metadata, UString("zip"), owner) != S_OK)
+    if (agent->Init(metadata, UString("zip"), owner) != S_OK)
         return false;
     CMyComPtr<IFolderFolder> folder;
     if (agent->BindToRootFolder(&folder) != S_OK || folder->LoadItems() != S_OK)

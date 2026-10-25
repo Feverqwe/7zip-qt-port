@@ -307,6 +307,7 @@ class XzStreamTests final : public QObject {
     void integrity_data() {
         QTest::addColumn<QString>("kind");
         QTest::newRow("CRC") << QString("block-crc");
+        QTest::newRow("CRC64") << QString("block-crc64");
         QTest::newRow("Index size") << QString("index-unpack");
     }
     void nativeZipConsumer() {

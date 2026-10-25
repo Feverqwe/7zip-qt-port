@@ -134,7 +134,6 @@ QtArchiveFolderManager::QtArchiveFolderManager(ArchiveBackend &backend) : _backe
                     dynamic_cast<QtArchiveFileResource *>(request->Resource.Interface());
                 if (resource) {
                     resource->Info = request->Info;
-                    resource->SetArchiveMetadata(request->Info.physicalSize, request->Info.offset);
                     const QString transportFormat = resource->TransportFormat();
                     resource->AttachReopenService(_backend, transportFormat);
                     // A split archive opens through the outer Split handler before its

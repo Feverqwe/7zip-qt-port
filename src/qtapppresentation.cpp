@@ -59,8 +59,8 @@ bool QtAppPresentation::CreatePanel(CPanel &panel, unsigned index) {
     window_.restorePanelUi(index);
     window_.app_.SetFocusedPanel(index);
     panel.LoadFullPath();
-    window_.flatArchive_ = panel.GetFlatModeForArc();
-    panel.SetFlatModeForDisk(window_.flatDisk_);
+    const QSettings settings(window_.toolbarSettingsPath(), QSettings::IniFormat);
+    panel.SetFlatModeForDisk(settings.value("view/flatDisk", false).toBool());
     panel.AttachViewModePresentation([window = QPointer<MainWindow>(&window_), index](UInt32 mode) {
         if (window)
             window->withPanelProjection(index, [window, mode] { window->setViewMode(int(mode)); });

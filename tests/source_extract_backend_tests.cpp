@@ -44,7 +44,7 @@ class CNativeExtractWorker final : public CProgressThreadVirt {
         CMyComPtr<IFolderFolder> metadata =
             new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
         CMyComPtr2_Create<IFolderArcProps, CAgent> agent;
-        RINOK(agent->Init({}, metadata, UString("zip"), _resource))
+        RINOK(agent->Init(metadata, UString("zip"), _resource))
         CMyComPtr<IFolderFolder> root, inside;
         RINOK(agent->BindToRootFolder(&root))
         RINOK(root->BindToFolder(L"inside", &inside))
@@ -153,7 +153,7 @@ class SourceExtractBackendTests final : public QObject {
         CMyComPtr<IFolderFolder> metadata =
             new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
         CMyComPtr2_Create<IFolderArcProps, CAgent> agent;
-        QCOMPARE(agent->Init({}, metadata, UString("zip"), resource), S_OK);
+        QCOMPARE(agent->Init(metadata, UString("zip"), resource), S_OK);
         CMyComPtr<IFolderFolder> root, inside;
         QCOMPARE(agent->BindToRootFolder(&root), S_OK);
         QCOMPARE(root->BindToFolder(L"inside", &inside), S_OK);

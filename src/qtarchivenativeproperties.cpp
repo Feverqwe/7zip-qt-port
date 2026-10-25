@@ -13,7 +13,6 @@ void QtArchiveFileResource::UseNativeMetadata() {
             Info.format = QString::fromWCharArray(format->Name.Ptr());
         Info.physicalSize = qint64(_nativeOpen->arc().FileSize);
         Info.offset = qint64(_nativeOpen->arc().GetGlobalOffset());
-        SetArchiveMetadata(Info.physicalSize, Info.offset);
     }
 }
 

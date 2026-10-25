@@ -4,7 +4,8 @@
 
 2026-10-25, по запросу пользователя, ветка `feature/crypto-upstream` от
 `d89dfe1f`: приложение и официальный native runtime возвращены к криптографии
-7-Zip. Основная ветка не изменяется. Новая криптографическая библиотека пока
+7-Zip. Эксперимент сначала изолирован от master; последующая интеграция описана
+ниже. Новая криптографическая библиотека пока
 не подключается: преимущества рассмотренных кандидатов перед upstream для
 приложения не установлены. Это выбор для экспериментальной сборки, а не
 утверждение о непригодности сторонних библиотек.
@@ -111,3 +112,25 @@ bootstrap и его специальные инструменты. YAML разо
 кроссплатформенные performance benchmarks и UI appearance acceptance не
 выполнялись. Предварительная локальная проба ZIP Store AES256 не использована
 для выбора backend: она шумная и предшествует финальной проверке minOS.
+
+## Интеграция в master (2026-10-25)
+
+По запросу пользователя ветка совмещена с master `6f52da72`. Разрешены
+пересечения source owners и native build rules: сохранены liblzma CRC64,
+новые изменения FileManager/Agent и исходная криптография 7-Zip без OpenSSL.
+Baseline verify после совмещения: 408 exact, 261 adapted, 21 local.
+
+macOS arm64: 11/11 focused suites PASS — crypto primitives/ZIP, native hash,
+extraction/update, shared checksums, XZ/streaming и baseline tooling.
+Дополнительно проверена итоговая CMake configuration с сохранённым master
+guard для ещё не созданных test targets. Native console/module сохраняют
+minOS 14.4.
+
+Linux x86_64 и Windows x64: по 5/5 PASS — `crypto_aes`, `crypto_zip`,
+`shared_checksum`, `xz_stream`, `native_hash_bundle`; runner evidence
+`20261025T044310Z-41dcb511`. Проверки повторно использовали те же branch build
+trees и compiler caches. Full gate и slow suites не запускались.
+
+Ранее установленный отдельный `.app` сохранён как проверенный артефакт
+`d6761528`; после совмещения с master он не пересобирался. Worktree оставлен
+для этого артефакта и текущих свидетельств. Push не выполнялся.

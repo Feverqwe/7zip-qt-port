@@ -1,5 +1,6 @@
 """XZ framing, filters, blocks, padding and integrity failures."""
 from pathlib import Path
+import lzma
 import shutil
 import subprocess
 import sys
@@ -58,6 +59,23 @@ class XzTests(unittest.TestCase):
                         result = self.command(engine, path, "t")
                         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
                         self.assertEqual(path.read_bytes(), image)
+
+    def test_crc64_write_interoperability(self):
+        payload = bytes(range(256)) * 257
+        with tempfile.TemporaryDirectory(prefix="sevenzip-xz-write-") as temporary:
+            root = Path(temporary)
+            source = root / "данные 空.bin"
+            archive = root / "архив 空.xz"
+            source.write_bytes(payload)
+            result = subprocess.run(
+                [str(self.runtime / ("7z" + SUFFIX)), "a", "-txz", "-mcrc=8", "-mmt=1",
+                 "--", str(archive), str(source)], capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            decoder = lzma.LZMADecompressor()
+            self.assertEqual(decoder.decompress(archive.read_bytes()), payload)
+            self.assertTrue(decoder.eof)
+            self.assertEqual(decoder.check, lzma.CHECK_CRC64)
+            self.assertEqual(source.read_bytes(), payload)
 
 
 if __name__ == "__main__":

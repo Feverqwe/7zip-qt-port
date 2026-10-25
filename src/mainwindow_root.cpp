@@ -28,7 +28,6 @@ HRESULT MainWindow::renderRootFolder(bool updateAddress) {
     displayArchive_.clear();
     archivePassword_.clear();
     archiveFolder_.clear();
-    entries_.clear();
     autoRefreshSnapshot_.clear();
     static_cast<FileTable *>(table_)->filesystem = false;
     if (updateAddress)

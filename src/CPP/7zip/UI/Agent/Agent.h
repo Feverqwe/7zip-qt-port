@@ -10,7 +10,6 @@
 #include "Common/MyString.h"
 #include "Common/MyVector.h"
 #include "IFolderArchive.h"
-#include "archivebackend.h"
 #include "archivelayercontext.h"
 #include "archivereadstream.h"
 #include "qtfolderpropertycapabilities.h"
@@ -185,8 +184,8 @@ class CAgent final : public IInFolderArchive,
     Z7_IFACE_COM7_IMP(ISetProperties)
     explicit CAgent(IQtAgentOpenServices *openServices = nullptr);
     ~CAgent();
-    HRESULT Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveProps,
-                 const UString &archiveType, IUnknown *engineResource = nullptr);
+    HRESULT Init(IFolderFolder *archiveProps, const UString &archiveType,
+                 IUnknown *engineResource = nullptr);
     CProxyArc *_proxy;
     CProxyArc2 *_proxy2;
     CArchiveLink _archiveLink;

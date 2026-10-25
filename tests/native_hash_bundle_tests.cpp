@@ -5,6 +5,25 @@
 class NativeHashBundleTests final : public QObject {
     Q_OBJECT
   private slots:
+    void crc64Provider() {
+        CHashBundle bundle;
+        UStringVector names;
+        names.Add(L"CRC64");
+        QCOMPARE(bundle.SetMethods(nullptr, names), S_OK);
+        bundle.InitForNewFile();
+        bundle.Update("1234", 4);
+        bundle.Update("", 0);
+        bundle.Update("56789", 5);
+        bundle.Final(false, false, L"CRC64 空.bin");
+        char text[160];
+        bundle.Hashers[0].WriteToString(k_HashCalc_Index_Current, text);
+        QCOMPARE(QByteArray(text), QByteArray("995DC9BBDF1939FA"));
+        bundle.InitForNewFile();
+        bundle.Final(false, false, L"empty");
+        bundle.Hashers[0].WriteToString(k_HashCalc_Index_Current, text);
+        QCOMPARE(QByteArray(text), QByteArray("0000000000000000"));
+    }
+
     void defaultCRCAndSourceStatistics() {
         CHashBundle bundle;
         QCOMPARE(bundle.SetMethods(nullptr, UStringVector()), S_OK);

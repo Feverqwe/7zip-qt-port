@@ -137,7 +137,8 @@ void MainWindow::finishFilesystemRename(quint32 sourceIndex, const QString &orig
     const bool streams = panel.GetFolder() && panel.IsAltStreamsFolder();
     if (state_ != State::Filesystem && !archive && !streams)
         return;
-    if (!archive && !streams && QFileInfo(originalPath).absolutePath() != directory_ && !flatDisk_)
+    if (!archive && !streams && QFileInfo(originalPath).absolutePath() != directory_ &&
+        !panel.GetFlatMode())
         return;
     {
         QScopedValueRollback<bool> source(sourceArchiveProgress_, true);

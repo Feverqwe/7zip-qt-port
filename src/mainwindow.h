@@ -170,7 +170,6 @@ class MainWindow : public QMainWindow {
                              std::function<void()> cancel);
 
     enum class State { Filesystem, Namespace, Loading, Viewing, Operating };
-    enum class SortMode { Name, Type, Date, Size, Unsorted };
     void setViewMode(int mode);
 
   public:
@@ -307,10 +306,7 @@ class MainWindow : public QMainWindow {
     QAction *saveBookmarks_[10]{};
     QAction *openBookmarks_[10]{};
     State state_ = State::Filesystem;
-    SortMode sortMode_ = SortMode::Name;
-    int sortColumn_ = 0;
     bool configuringColumns_ = false;
-    Qt::SortOrder sortOrder_ = Qt::AscendingOrder;
     QAction *sortActions_[5]{};
     QAction *timeActions_[5]{};
     QAction *utcTimeAction_ = nullptr;
@@ -318,8 +314,6 @@ class MainWindow : public QMainWindow {
     QAction *viewActions_[4]{};
     QAction *flatView_ = nullptr;
     QAction *twoPanelsAction_ = nullptr;
-    bool flatDisk_ = false;
-    bool flatArchive_ = false;
     bool scanningDisk_ = false;
     bool scanningArchive_ = false;
     QtFolderProjection *listProjection_ = nullptr;
@@ -351,15 +345,7 @@ class MainWindow : public QMainWindow {
         QString archivePassword;
         QString archiveFolder;
         QStringList history;
-        QList<ArchiveEntry> entries;
-        ArchiveInfo info;
         State state = State::Filesystem;
-        SortMode sortMode = SortMode::Name;
-        int sortColumn = 0;
-        Qt::SortOrder sortOrder = Qt::AscendingOrder;
-        int viewMode = 3;
-        bool flatDisk = false;
-        bool flatArchive = false;
         bool scanningDisk = false;
         bool scanningArchive = false;
         FilesystemScanner *filesystemScanner = nullptr;
@@ -381,7 +367,6 @@ class MainWindow : public QMainWindow {
     FilesystemScanner *filesystemScanner_ = nullptr;
     std::optional<CSelectedState> scanSelectedState_;
     std::optional<QStringList> scanSelectedPaths_;
-    int viewMode_ = 3;
     State previousState_ = State::Filesystem;
     bool creating_ = false;
     bool updatingArchive_ = false;
@@ -389,8 +374,6 @@ class MainWindow : public QMainWindow {
     ArchiveMoveStage archiveMoveStage_ = ArchiveMoveStage::None;
     CRecordVector<UInt32> archiveMoveIndices_;
     std::optional<unsigned> transferDestinationPanel_;
-    QList<ArchiveEntry> entries_;
-    ArchiveInfo info_;
     QLineEdit *path_ = nullptr;
     QComboBox *pathCombo_ = nullptr;
     QString directory_;

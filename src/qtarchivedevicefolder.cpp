@@ -25,7 +25,6 @@ HRESULT QtArchiveFileResource::RefreshDeviceInput(IOpenCallbackUI *callback, QSt
     Info.format = _nativeOpen->resolvedOpenType();
     Info.physicalSize = qint64(_nativeOpen->arc().FileSize);
     Info.offset = 0;
-    SetArchiveMetadata(Info.physicalSize, 0);
     return S_OK;
 }
 

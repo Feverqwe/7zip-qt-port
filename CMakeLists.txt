@@ -141,7 +141,7 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     third_party/7zip/C/Sha1.c third_party/7zip/C/Sha1Opt.c
     third_party/7zip/C/Sha256.c third_party/7zip/C/Sha256Opt.c
     third_party/7zip/C/Sha512.c third_party/7zip/C/Sha512Opt.c third_party/7zip/C/Sha3.c
-    third_party/7zip/C/Md5.c third_party/7zip/C/XzCrc64.c third_party/7zip/C/XzCrc64Opt.c
+    third_party/7zip/C/Md5.c src/C/XzCrc64.c
     src/C/Xxh64.c third_party/7zip/CPP/7zip/Compress/BZip2Crc.cpp
     third_party/7zip/C/Blake2s.c
     third_party/7zip/CPP/7zip/Common/CreateCoder.cpp
@@ -199,6 +199,7 @@ target_link_libraries(sevenzip_common PUBLIC sevenzip_hash_registration)
 target_link_libraries(sevenzip_common PUBLIC ${CMAKE_DL_LIBS})
 target_link_libraries(sevenzip_common PUBLIC Threads::Threads)
 target_link_libraries(sevenzip_common PUBLIC sevenzip_zstd)
+include(cmake/LiblzmaCrc.cmake)
 target_sources(sevenzip_common PRIVATE
     src/CPP/Common/CommandLineParser.cpp
     third_party/7zip/CPP/Common/ListFileUtils.cpp
@@ -4713,7 +4714,9 @@ if(BUILD_TESTING)
             native_hash_ui_tests native_rar_ui_tests panel_list_key_tests source_context_menu_tests
             panel_copy_reload_tests native_drop_publication_tests panel_shortcut_tests source_delete_tests
             copy_publication_order_tests native_parent_publication_tests panel_key_source_tests)
-        target_sources(${sevenzip_widget_dialog_target} PRIVATE tests/fixtures/widget_dialogs.cpp)
+        if(TARGET ${sevenzip_widget_dialog_target})
+            target_sources(${sevenzip_widget_dialog_target} PRIVATE tests/fixtures/widget_dialogs.cpp)
+        endif()
     endforeach()
 endif()
 

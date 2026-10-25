@@ -60,6 +60,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 - [Возврат upstream crypto и оценка библиотек](upstream-port-audit/crypto-backend-assessment.md)
   — отдельная сборка без OpenSSL, совместимость и границы выбора альтернатив.
 
+- [Общий CRC64](upstream-port-audit/shared-crc64.md)
+  — liblzma для SDK, native runtime и вложенных XZ-потоков.
+
 - [Общие XXHash и Adler32](upstream-port-audit/shared-checksums.md)
   — повторное использование libzstd xxHash и zlib с сохранением контрактов SDK.
 
@@ -214,6 +217,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 - [Состояние нового архивного запроса](upstream-port-audit/qt-request-state.md)
   — независимый результат отказа и повторное извлечение после отмены.
+
+- [FileManager / Agent / Qt: единый источник состояния](upstream-port-audit/fm-agent-qt-state.md)
+  — metadata, режимы панели и shared mapping сортировки без параллельных Qt-копий.
 
 - [Отложенные события файлового списка](upstream-port-audit/qt-list-events.md)
   — отмена hover при блокировке и завершение Shift-выделения до следующего нажатия.

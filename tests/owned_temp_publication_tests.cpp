@@ -27,7 +27,7 @@ class CSpoolRenameWorker final : public CProgressThreadVirt {
         CMyComPtr<IFolderFolder> props =
             new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
         CMyComPtr2_Create<IFolderArcProps, CAgent> agent;
-        RINOK(agent->Init({}, props, UString("zip"), &_resource))
+        RINOK(agent->Init(props, UString("zip"), &_resource))
         CMyComPtr<IFolderFolder> root;
         RINOK(agent->BindToRootFolder(&root))
         RINOK(root->LoadItems())

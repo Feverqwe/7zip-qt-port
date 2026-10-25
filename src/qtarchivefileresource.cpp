@@ -92,7 +92,7 @@ bool QtArchiveFileResource::HasUpdateService() const {
     // input stream and offset are retained. A process-only plan cannot do so.
     const bool preservesPrefix = HasNativeUpdateService() && _nativeOpen->arc().InStream &&
                                  _nativeOpen->arc().ArcStreamOffset != 0;
-    return bool(_update) && (_offset == 0 || preservesPrefix) && !RequiresOuterOpen() &&
+    return bool(_update) && (Info.offset == 0 || preservesPrefix) && !RequiresOuterOpen() &&
            !_nativeReadOnly && _filesystemReadLimitations.isEmpty() &&
            (!_nativeOpen || NativeItemProperties());
 }
@@ -150,10 +150,10 @@ HRESULT QtArchiveFileResource::GetArchiveProperty(PROPID id, PROPVARIANT *value)
     NWindows::NCOM::CPropVariant prop;
     if (id == kpidReadOnly)
         prop = !_filesystemReadLimitations.isEmpty();
-    else if (id == kpidPhySize && _physicalSize >= 0)
-        prop = UInt64(_physicalSize);
+    else if (id == kpidPhySize && Info.physicalSize >= 0)
+        prop = UInt64(Info.physicalSize);
     else if (id == kpidOffset)
-        prop.Set_Int64(_offset);
+        prop.Set_Int64(Info.offset);
     else if (id >= 0x10000 && id - 0x10000 < unsigned(Info.properties.size())) {
         auto i = Info.properties.cbegin();
         std::advance(i, id - 0x10000);

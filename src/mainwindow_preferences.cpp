@@ -6,6 +6,7 @@
 #include "mainwindow.h"
 #include "qtapppresentation.h"
 #include "qtcommandicons.h"
+#include "qtfilemanagercommands.h"
 #include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
 #include "qtmainwindowchrome.h"
@@ -53,16 +54,20 @@ void MainWindow::applySortMode(bool enableSorting) {
     if (!table_)
         return;
     auto &panel = app_.GetFocusedPanel();
-    panel._sortID = static_cast<FileTable *>(table_)->propertyId(sortColumn_);
-    panel._ascending = sortOrder_ == Qt::AscendingOrder;
+    auto *view = static_cast<FileTable *>(table_);
+    int column = view->columnForProperty(panel.GetSortID());
+    if (column < 0)
+        column = panel.GetSortID() == kpidNoProperty ? 6 : 0;
+    const Qt::SortOrder order = panel._ascending ? Qt::AscendingOrder : Qt::DescendingOrder;
+    panel._sortID = view->propertyId(column);
     panel.SetSortRawStatus();
     if (enableSorting && !table_->isSortingEnabled()) {
         // Enabling Qt sorting already sorts; configure the source order first.
         const QSignalBlocker blocker(table_->horizontalHeader());
-        table_->horizontalHeader()->setSortIndicator(sortColumn_, sortOrder_);
+        table_->horizontalHeader()->setSortIndicator(column, order);
         table_->setSortingEnabled(true);
     } else
-        table_->sortItems(sortColumn_, sortOrder_);
+        table_->sortItems(column, order);
     saveColumns();
 }
 
@@ -76,14 +81,11 @@ void MainWindow::sortIndicatorChanged(unsigned index, int column, Qt::SortOrder 
                         window->sortIndicatorChanged(index, column, order);
                 }))
             return;
-        sortColumn_ = column;
-        sortOrder_ = order;
         auto &panel = app_.GetFocusedPanel();
         {
             const QSignalBlocker blocked(table_->horizontalHeader());
             if (view->takeSourceColumnClick()) {
                 panel.OnColumnClick(view->propertyId(column));
-                sortOrder_ = panel._ascending ? Qt::AscendingOrder : Qt::DescendingOrder;
             } else {
                 // Explicit Qt sort requests retain their requested direction.
                 panel._sortID = view->propertyId(column);
@@ -92,19 +94,11 @@ void MainWindow::sortIndicatorChanged(unsigned index, int column, Qt::SortOrder 
             }
             // Qt's initial automatic sort precedes this signal consumer. Project
             // the authoritative source flag/order onto the clicked section.
-            table_->sortItems(column, sortOrder_);
+            table_->sortItems(column, panel._ascending ? Qt::AscendingOrder : Qt::DescendingOrder);
         }
         if (!configuringColumns_) {
-            const PROPID property = view->propertyId(column);
-            const int mode = property == kpidExtension    ? 1
-                             : property == kpidMTime      ? 2
-                             : property == kpidSize       ? 3
-                             : property == kpidNoProperty ? 4
-                                                          : 0;
-            sortMode_ = static_cast<SortMode>(mode);
-            if (active && (property == kpidName || property == kpidSize || property == kpidMTime ||
-                           property == kpidExtension || property == kpidNoProperty))
-                sortActions_[mode]->setChecked(true);
+            if (active && commands_)
+                commands_->RefreshViewActions();
             saveColumns();
         }
     });
@@ -296,7 +290,6 @@ void MainWindow::setViewMode(int mode) {
     const QWidget *previousView = stack->currentWidget();
     const bool restoreFocus =
         previousView && focused && (focused == previousView || previousView->isAncestorOf(focused));
-    viewMode_ = mode;
     viewActions_[mode]->setChecked(true);
     if (mode != 3) {
         static_cast<FileIconList *>(iconList_)->SetListViewMode(mode);

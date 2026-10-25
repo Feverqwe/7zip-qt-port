@@ -163,7 +163,7 @@ class ArchivePropertyCatalogTests : public QObject {
         CMyComPtr<IFolderFolder> metadata = new QtPanelFolder("", items);
         auto *agentSpec = new CAgent;
         CMyComPtr<IFolderArcProps> agent = agentSpec;
-        QCOMPARE(agentSpec->Init({ArchiveEntry{"file.txt", 9, 4}}, metadata, UString(L"7z")), S_OK);
+        QCOMPARE(agentSpec->Init(metadata, UString(L"7z")), S_OK);
         CMyComPtr<IFolderFolder> folder;
         QCOMPARE(agentSpec->BindToRootFolder(&folder), S_OK);
         QVERIFY(!agentSpec->ThereIsPathProp);
@@ -194,7 +194,7 @@ class ArchivePropertyCatalogTests : public QObject {
         metadataSpec->FailDescriptor = true;
         auto *agentSpec = new CAgent;
         CMyComPtr<IFolderArcProps> agent = agentSpec;
-        QCOMPARE(agentSpec->Init({}, metadata, UString(L"7z")), S_OK);
+        QCOMPARE(agentSpec->Init(metadata, UString(L"7z")), S_OK);
         CMyComPtr<IFolderFolder> folder;
         QCOMPARE(agentSpec->BindToRootFolder(&folder), E_FAIL);
         QVERIFY(!folder);
@@ -237,7 +237,7 @@ class ArchivePropertyCatalogTests : public QObject {
         metadataSpec->CountFailure = HRESULT(countResult);
         auto *agentSpec = new CAgent;
         CMyComPtr<IInFolderArchive> agent = agentSpec;
-        QCOMPARE(agentSpec->Init({}, metadata, UString(L"7z")), S_OK);
+        QCOMPARE(agentSpec->Init(metadata, UString(L"7z")), S_OK);
         CMyComPtr<IFolderFolder> folder;
         QCOMPARE(agent->BindToRootFolder(&folder), S_OK);
         QVERIFY(folder);
@@ -261,7 +261,7 @@ class ArchivePropertyCatalogTests : public QObject {
         // failure; an already loaded proxy keeps the original caching policy.
         auto *repairedSpec = new CAgent;
         CMyComPtr<IInFolderArchive> repaired = repairedSpec;
-        QCOMPARE(repairedSpec->Init({}, metadata, UString(L"7z")), S_OK);
+        QCOMPARE(repairedSpec->Init(metadata, UString(L"7z")), S_OK);
         CMyComPtr<IFolderFolder> repairedFolder;
         QCOMPARE(repaired->BindToRootFolder(&repairedFolder), S_OK);
         QVERIFY(repairedSpec->ThereIsPathProp);

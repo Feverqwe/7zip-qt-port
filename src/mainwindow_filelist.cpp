@@ -50,11 +50,6 @@ HRESULT MainWindow::showDirectory(const QString &path, bool remember, bool sourc
     displayArchive_.clear();
     archivePassword_.clear();
     archiveFolder_.clear();
-    {
-        const QSignalBlocker blocked(flatView_);
-        flatView_->setChecked(flatDisk_);
-    }
-    entries_.clear();
     renameEdit_.reset();
     table_->clearSelection();
     table_->setSortingEnabled(false);
@@ -76,7 +71,7 @@ HRESULT MainWindow::startFilesystemListing(bool sourceAlreadyBound, bool updateA
     }
     if (result == S_OK && updateAddress)
         static_cast<QtPanelAddressCombo *>(pathCombo_)->ShowCurrentPath(directory_, true);
-    if (flatDisk_) {
+    if (panel.GetFlatMode()) {
         scanningDisk_ = true;
         setState(State::Filesystem);
         statusBar()->showMessage(QtLangText(IDS_SCANNING));
@@ -143,7 +138,7 @@ HRESULT MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceI
 #ifdef Q_OS_WIN
     // Normal Windows folders already use source FindChangeNotification. Keep
     // the portable fallback for flat descendants, outside its nonrecursive watch.
-    if (flatDisk_)
+    if (app_.GetFocusedPanel().GetFlatMode())
 #endif
         autoRefreshSnapshot_.insert(file.absoluteFilePath(),
                                     filesystemSignature(file.absoluteFilePath()));
@@ -160,7 +155,7 @@ HRESULT MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceI
     FilePanelModel::Row row;
     row.sourceIndex = sourceIndex;
     row.name = nativeName;
-    row.prefix = flatDisk_ ? nativePrefix : QString();
+    row.prefix = app_.GetFocusedPanel().GetFlatMode() ? nativePrefix : QString();
     row.path = file.absoluteFilePath();
     row.toolTip = row.path;
     row.directory = directory;

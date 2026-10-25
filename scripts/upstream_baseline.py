@@ -176,11 +176,21 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                 flags = '$(CFLAGS_O2:-Wall=-W3) -DZSTD_DISABLE_ASM' if name.startswith("zstd/") else '$(CFLAGS_O2)'
                 if name.startswith("zlib/"):
                     flags = '$(subst -Gr,-Gd,$(CFLAGS_O2:-Wall=-W3)) -DZ_PREFIX'
+                xz_flags = ''
+                if name.startswith("xz/"):
+                    includes = ("xz/src/liblzma/api", "xz/src/common", "xz/src/liblzma/common")
+                    xz_flags = ' '.join('-I' + posixpath.relpath(path, directory) for path in includes)
+                    xz_flags += ' -DLZMA_API_STATIC -DHAVE_STDBOOL_H -DHAVE__BOOL -DHAVE_STDINT_H -DHAVE_INTTYPES_H'
+                    if sys.byteorder == 'big':
+                        xz_flags += ' -DWORDS_BIGENDIAN'
+                    flags = '$(subst -Gr,-Gd,$(CFLAGS_O2:-Wall=-W3)) -std:c11 ' + xz_flags
                 lines.append(('\t$(CC) ' + flags + ' ' + ('-TP' if cpp else '-TC') + ' -Fo"' + target + '" "' + source + '"')
                              if windows else ('\t$(CXX) $(CXXFLAGS) ' if cpp else
                                               '\t$(CC) $(CFLAGS) ' + ('-DZSTD_DISABLE_ASM ' if name.startswith("zstd/") else
                                                                       '-DZ_PREFIX ' if name.startswith("zlib/") else '')) +
                              source)
+                if xz_flags and not windows:
+                    lines[-1] = '\t$(CC) $(CFLAGS) -std=c11 ' + xz_flags + ' ' + source
                 extra_objects.append(target)
             if extra_objects:
                 if not windows:

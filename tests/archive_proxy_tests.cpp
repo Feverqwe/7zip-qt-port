@@ -146,7 +146,7 @@ class ArchiveProxyTests : public QObject {
             QCOMPARE(selected[i], i);
         auto *agentSpec = new CAgent;
         CMyComPtr<IFolderArcProps> agent = agentSpec;
-        QCOMPARE(agentSpec->Init({}, metadata, UString("tree")), S_OK);
+        QCOMPARE(agentSpec->Init(metadata, UString("tree")), S_OK);
         auto *folderSpec = new CAgentFolder;
         CMyComPtr<IFolderFolder> folder = folderSpec;
         folderSpec->Init(nullptr, &proxy, k_Proxy2_RootDirIndex, agentSpec);
@@ -230,7 +230,7 @@ class ArchiveProxyTests : public QObject {
         QCOMPARE(indices.Size(), unsigned(3));
         auto *agentSpec = new CAgent;
         CMyComPtr<IFolderArcProps> agent = agentSpec;
-        QCOMPARE(agentSpec->Init({}, metadata, UString("tree")), S_OK);
+        QCOMPARE(agentSpec->Init(metadata, UString("tree")), S_OK);
         auto *folderSpec = new CAgentFolder;
         CMyComPtr<IFolderFolder> folder = folderSpec;
         folderSpec->Init(nullptr, &proxy, k_Proxy2_RootDirIndex, agentSpec);

@@ -32,6 +32,11 @@ operation semantics. `MainWindow` projects that state into widgets and connects
 the platform services. It must not become a second owner of archive algorithms
 or command-availability decisions.
 
+List mode, Flat View and sort preferences stay with the source panel. Qt reads
+them when presenting controls, changing columns or returning from another panel's
+callback; it does not retain a second mutable copy of those preferences. Archive
+command consumers read the bound resource's metadata rather than a window copy.
+
 `QtAppOperationState` extends original timer/notification guards across asynchronous
 work. Each window retains its own operation state and panel bindings. Completion
 must update the captured owning panel even if focus changes while a modal dialog

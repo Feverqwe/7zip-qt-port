@@ -11,7 +11,7 @@ import zlib
 CASES = ("crc32", "none", "crc64", "sha256", "empty", "multiple-blocks", "zero-blocks",
          "padding", "long-padding", "concatenated", "empty-first", "uncompressed",
          "x86", "powerpc", "arm", "thumb", "sparc", "arm64", "riscv", "delta")
-BAD = ("magic", "header-crc", "block-crc", "index-crc", "footer-crc", "footer-magic",
+BAD = ("magic", "header-crc", "block-crc", "block-crc64", "index-crc", "footer-crc", "footer-magic",
        "block-padding", "padding-short", "tail", "body-short", "index-size",
        "index-unpack", "filter", "dictionary", "header-padding", "flags")
 
@@ -156,8 +156,10 @@ def volume(kind, producer=None):
         offset = {"magic": 0, "header-crc": 8, "footer-crc": len(image) - 12,
                   "footer-magic": len(image) - 1, "index-crc": len(image) - 16}[kind]
         image = image[:offset] + bytes((image[offset] ^ 1,)) + image[offset + 1:]
-    elif kind == "block-crc":
-        offset = index_position(image) - 4
+    elif kind in ("block-crc", "block-crc64"):
+        if kind == "block-crc64":
+            image = encode(payload, check=lzma.CHECK_CRC64)
+        offset = index_position(image) - (8 if kind == "block-crc64" else 4)
         image = image[:offset] + bytes((image[offset] ^ 1,)) + image[offset + 1:]
     elif kind == "block-padding":
         payload = b"abc"
