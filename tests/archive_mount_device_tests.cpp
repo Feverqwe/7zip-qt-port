@@ -91,7 +91,7 @@ class ArchiveMountDeviceTests final : public QObject {
         QCOMPARE(bytes.Result, S_OK);
         QCOMPARE(bytes.Data, QByteArray(12, 'A') + QByteArray(188, 'B'));
     }
-#if defined(Q_OS_MACOS) || defined(Q_OS_WIN)
+#if defined(Q_OS_MACOS) || defined(Q_OS_WIN) || defined(Q_OS_LINUX)
     void nativeDeviceRemovalAndRetry() {
         if (qEnvironmentVariableIntValue("SEVENZIP_NATIVE_SMB_TEST") != 1)
             QSKIP("Opt-in native mount of an isolated synthetic device.");

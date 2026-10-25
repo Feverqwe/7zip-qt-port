@@ -1,11 +1,11 @@
 #pragma once
-#include "7zip/IStream.h"
 #include <QCoreApplication>
 #include <QDialog>
 #include <QHash>
 #include <QList>
 
 class QtArchiveMountSession;
+struct IUnknown;
 class QTreeWidget;
 class QPlainTextEdit;
 class QPushButton;

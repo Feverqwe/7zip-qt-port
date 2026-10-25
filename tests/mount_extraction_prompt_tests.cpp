@@ -1,4 +1,5 @@
 #include "layout_inspection.h"
+#include "qtarchivemountmanager.h"
 #include "qtmountextractionprompt.h"
 #include "qtmountsettings.h"
 #include <QLabel>
@@ -12,6 +13,43 @@
 class MountExtractionPromptTests final : public QObject {
     Q_OBJECT
   private slots:
+    void managerActionsGeometry_data() {
+        QTest::addColumn<int>("width");
+        QTest::addColumn<QString>("language");
+        for (const QString &language : {QStringLiteral("en"), QStringLiteral("ru")})
+            for (int width : {640, 780})
+                QTest::newRow(qPrintable(QStringLiteral("%1 %2").arg(language).arg(width)))
+                    << width << language;
+    }
+    void managerActionsGeometry() {
+        QFETCH(int, width);
+        QFETCH(QString, language);
+        QTranslator catalog;
+        if (language == "ru") {
+            QVERIFY(catalog.load(":/translations/sevenzip_ru.qm"));
+            qApp->installTranslator(&catalog);
+        }
+        QWidget owner;
+        QtArchiveMountManager manager(&owner);
+        // Exercise the width needed when the busy-mount force action is
+        // exposed, without requiring a privileged OS mount for layout checks.
+        const auto buttons = manager.findChildren<QPushButton *>();
+        for (auto *button : buttons)
+            button->show();
+        manager.resize(width, 400);
+        manager.show();
+        QTest::qWait(10);
+        QVERIFY(manager.width() <= width);
+        for (const auto *button : buttons) {
+            QVERIFY(button->isVisible());
+            QVERIFY(UiInspection::fullyVisible(*button, manager));
+        }
+        for (int first = 0; first < buttons.size(); ++first)
+            for (int second = first + 1; second < buttons.size(); ++second)
+                QVERIFY(UiInspection::separate(*buttons[first], *buttons[second], manager));
+        QVERIFY(UiInspection::writeReport(
+            manager, QStringLiteral("mount-manager-actions-%1-%2").arg(language).arg(width)));
+    }
     void decision_data() {
         QTest::addColumn<int>("action");
         QTest::addColumn<bool>("unverified");

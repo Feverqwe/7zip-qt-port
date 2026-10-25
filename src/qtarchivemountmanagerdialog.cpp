@@ -30,7 +30,7 @@ QtArchiveMountManager::QtArchiveMountManager(QWidget *owner) : QDialog(owner), o
     details_->setReadOnly(true);
     details_->setAccessibleName(tr("Mount details"));
     layout->addWidget(details_, 1);
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
+    auto *buttons = new QDialogButtonBox(this);
     open_ = buttons->addButton(tr("Open Folder"), QDialogButtonBox::ActionRole);
     copy_ = buttons->addButton(tr("Copy Path"), QDialogButtonBox::ActionRole);
     unmount_ = buttons->addButton(tr("Unmount"), QDialogButtonBox::ActionRole);
@@ -42,7 +42,9 @@ QtArchiveMountManager::QtArchiveMountManager(QWidget *owner) : QDialog(owner), o
     for (auto *button : {open_, copy_, unmount_, force_})
         button->setAutoDefault(false);
     layout->addWidget(buttons);
-    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    auto *footer = new QDialogButtonBox(QDialogButtonBox::Close, this);
+    layout->addWidget(footer);
+    connect(footer, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(list_, &QTreeWidget::itemSelectionChanged, this, &QtArchiveMountManager::updateDetails);
     connect(open_, &QPushButton::clicked, this, [this] {
         if (const auto *session = selected(); session && !session->path().isEmpty())

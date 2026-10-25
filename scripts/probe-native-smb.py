@@ -143,37 +143,53 @@ def mount(port, temporary, kernel_probe, global_mapping):
 
 
 def installed_device_probe(root, test, scenario, environment):
-    """Keep the test-only QtTest DLL separate from the production payload."""
+    """Keep the test-only QtTest runtime separate from the production payload."""
+    linux = sys.platform == 'linux'
     binary = root.resolve() / 'bin'
-    driver = binary / 'SevenzipMountDeviceTest.exe'
+    driver = binary / ('SevenzipMountDeviceTest' if linux else 'SevenzipMountDeviceTest.exe')
     if driver.exists():
         raise RuntimeError('A previous test driver exists; preserve it for inspection')
     cache = Path('build/dev/CMakeCache.txt').read_text().splitlines()
     qt = next(Path(line.split('=', 1)[1]).parents[2]
               for line in cache if line.startswith('Qt6_DIR:PATH='))
-    test_libraries = list((qt / 'bin').glob('Qt6Test*.dll'))
+    test_libraries = ([qt / 'lib/libQt6Test.so.6'] if linux else
+                      list((qt / 'bin').glob('Qt6Test*.dll')))
     if not test_libraries:
         raise RuntimeError('The configured Qt kit has no test runtime')
     with tempfile.TemporaryDirectory(prefix='sevenzip-mount-test-runtime-') as temporary:
         for library in test_libraries:
             shutil.copy2(library, temporary)
+            if linux:
+                subprocess.run(['patchelf', '--set-rpath', str(binary.parent / 'lib'),
+                                str(Path(temporary) / library.name)], check=True)
         isolated = dict(environment)
         for name in ('QT_PLUGIN_PATH', 'QT_QPA_PLATFORM_PLUGIN_PATH',
                      'QML_IMPORT_PATH', 'QML2_IMPORT_PATH'):
             isolated.pop(name, None)
-        system = Path(os.environ['SystemRoot'])
-        isolated.update(PATH=os.pathsep.join(map(str, (binary, Path(temporary),
-                                                       system / 'System32', system))),
-                        QT_QPA_PLATFORM='windows',
-                        SEVENZIP_SETTINGS_PATH=str(Path(temporary) / 'settings.ini'),
-                        SEVENZIP_CODEC_MODULE_PATH=str(binary / '7z.dll'),
-                        SEVENZIP_TEST_MOUNT_SERVER=str(binary / 'SevenzipSmb.exe'))
+        isolated['SEVENZIP_SETTINGS_PATH'] = str(Path(temporary) / 'settings.ini')
+        if linux:
+            isolated.update(PATH=os.pathsep.join(map(str, (binary, '/usr/bin', '/bin'))),
+                            LD_LIBRARY_PATH=temporary, QT_QPA_PLATFORM='xcb',
+                            SEVENZIP_CODEC_MODULE_PATH=str(binary / '7z.so'),
+                            SEVENZIP_TEST_MOUNT_SERVER=str(binary / 'SevenzipSmb'))
+        else:
+            system = Path(os.environ['SystemRoot'])
+            isolated.update(PATH=os.pathsep.join(map(str, (binary, Path(temporary),
+                                                           system / 'System32', system))),
+                            QT_QPA_PLATFORM='windows',
+                            SEVENZIP_CODEC_MODULE_PATH=str(binary / '7z.dll'),
+                            SEVENZIP_TEST_MOUNT_SERVER=str(binary / 'SevenzipSmb.exe'))
         shutil.copy2(test, driver)
         try:
+            if linux:
+                subprocess.run(['patchelf', '--set-rpath', '$ORIGIN/../lib', str(driver)], check=True)
             subprocess.run([str(driver), scenario, '-silent'], env=isolated, check=True)
         finally:
             driver.unlink()
-        subprocess.run([str(binary / '7zFM.exe'), '--smoke-test'],
+        smoke = [str(binary / ('7zFM' if linux else '7zFM.exe')), '--smoke-test']
+        if linux:
+            smoke = ['xvfb-run', '-a', *smoke]
+        subprocess.run(smoke,
                        env=isolated, check=True, timeout=30)
 
 
@@ -184,30 +200,42 @@ def main():
                         help='Exercise the production native-client broker and private IPC')
     parser.add_argument('--product-device', action='store_true',
                         help='Exercise native mounting, source loss and retry of a synthetic device')
+    parser.add_argument('--product-manager', action='store_true',
+                        help='Exercise the mount UI, extraction consent and busy unmount')
     parser.add_argument('--installed-root', type=Path,
-                        help='Consume an existing Windows installation with the device probe')
+                        help='Consume an existing Windows/Linux installation with the device probe')
     parser.add_argument('--kernel-without-helper', action='store_true',
                         help='Linux protocol diagnostic only, using util-linux mount -i')
     parser.add_argument('--windows-global', action='store_true',
                         help='Use a temporary global mapping restricted to the current account')
     parser.add_argument('--trace', action='store_true', help='Log synthetic server diagnostics')
     args = parser.parse_args()
-    if args.installed_root and (not args.product_device or sys.platform != 'win32'):
-        parser.error('--installed-root requires --product-device on Windows')
-    if args.product_client or args.product_device:
-        if args.product_client and args.product_device:
+    if args.installed_root and (not args.product_device or sys.platform not in ('win32', 'linux')):
+        parser.error('--installed-root requires --product-device on Windows or Linux')
+    if args.product_client or args.product_device or args.product_manager:
+        if sum((args.product_client, args.product_device, args.product_manager)) != 1:
             parser.error('Choose one product probe per invocation')
-        if args.product_device and sys.platform not in ('darwin', 'win32'):
-            parser.error('The native device probe currently supports macOS and Windows')
-        target = 'archive_mount_device_tests' if args.product_device else 'native_mount_client_tests'
-        scenario = 'nativeDeviceRemovalAndRetry' if args.product_device else 'nativeLifecycle'
+        if args.product_manager and sys.platform not in ('darwin', 'linux'):
+            parser.error('The native manager probe supports macOS and Linux')
+        if args.product_device and sys.platform not in ('darwin', 'win32', 'linux'):
+            parser.error('The native device probe supports macOS, Windows and Linux')
+        target = ('archive_mount_transport_tests' if args.product_manager else
+                  'archive_mount_device_tests' if args.product_device else 'native_mount_client_tests')
+        scenario = ('nativeMountThroughManager' if args.product_manager else
+                    'nativeDeviceRemovalAndRetry' if args.product_device else 'nativeLifecycle')
         subprocess.run(['bash', 'scripts/build.sh', 'dev', target], check=True)
         test = Path('build/dev/' + target + ('.exe' if os.name == 'nt' else ''))
         environment = dict(os.environ, SEVENZIP_NATIVE_SMB_TEST='1')
+        if args.product_manager:
+            environment['SEVENZIP_UI_REPORT_DIR'] = str(Path('build/dev/ui-reports').resolve())
         if args.installed_root:
             installed_device_probe(args.installed_root, test, scenario, environment)
         else:
-            subprocess.run([str(test.resolve()), scenario, '-silent'],
+            arguments = [str(test.resolve()), scenario, '-silent']
+            if args.product_manager and sys.platform == 'linux':
+                environment['QT_QPA_PLATFORM'] = 'xcb'
+                arguments = ['xvfb-run', '-a', *arguments]
+            subprocess.run(arguments,
                            env=environment, check=True)
         return
     if args.server is None:

@@ -9,6 +9,8 @@ is modeless: source/path/status rows, read-only details and errors, Open Folder,
 Copy Path and Unmount. Closing this manager hides it without disconnecting mounts.
 Closing the owner window offers Unmount and Close or Cancel. A busy unmount keeps
 the reader/server alive, leaves the owner open and offers an explicit force option.
+Keep mount actions together above the standard Close footer so that the complete
+action group, including force unmount, fits the compact window in EN/RU.
 These new commands have no original Windows7zFM resource counterpart.
 
 Before extracting an entry for a read-only mount, show its source, relative path

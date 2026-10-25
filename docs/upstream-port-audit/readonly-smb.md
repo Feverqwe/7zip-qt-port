@@ -262,7 +262,9 @@ detaches through a replacement broker. The same lifecycle scenarios now pass on
 Windows using the current MSVC build: normal detach, control-channel loss, and
 terminating only the test's own broker followed by continued reads and recovery
 detach. The updated Linux broker compiles and its prerequisite/device/wire checks
-pass; native recovery remains unverified without mount.cifs.
+pass. Linux normal detach and loss of the controller channel also pass through
+mount.cifs; replacement-broker recovery after a forced helper crash is not yet
+runtime-accepted on Linux.
 
 Windows 11 Pro 10.0.26300 x64 passed alternate-port signed SMB 2.1 synthetic
 directory/Unicode/spaces, parallel ranges, >4 GiB, EOF, mmap and write-denial
@@ -273,15 +275,35 @@ restricted to the requesting account. Actual UAC interaction and a non-elevated
 consumer's access to that global mapping remain unverified.
 
 Ubuntu 24.04 x64/kernel 6.8 passed the same native kernel CIFS data checks via an
-explicit util-linux diagnostic. The runner has kernel CIFS but no mount.cifs or
-pkexec; no packages were installed. The product's missing-cifs-utils explanation
-is tested; its installed mount.cifs/pkexec path is compiled but not runtime-accepted
-on this runner. `noserverino` avoids relying on an unsupported QFid CREATE context;
+explicit util-linux diagnostic. The initial runner had no mount.cifs, and the
+missing-cifs-utils explanation was checked in that state. The user subsequently
+authorized installing cifs-utils (7.0); no Samba server or replacement driver was
+installed. The actual Sevenzip broker now passes system mount.cifs connection,
+reading and unmount with the runner's existing sudo authorization. EN/RU manager
+checks cover setup, extraction consent, Copy Path, owner-close cancellation,
+continued reads after a busy unmount and successful detach after the file closes.
+A native exFAT source-loss/retry scenario also passes. PolicyKit's interactive
+authorization path is unverified because pkexec is not installed on this runner.
+`noserverino` avoids relying on an unsupported QFid CREATE context;
 the client assigns inode values. Hardlink inode identity is not promised.
 The private Linux installation passes native X11 startup. Both installed helpers
 reach their command-line entrypoints with developer library paths removed;
 `ldd` resolves their Qt/libsmb2 dependencies without the Qt kit or build tree.
-This verifies deployment/startup, not an installed CIFS mount.
+After cifs-utils installation, the relocated device probe also passes source
+loss/retry and normal unmount through that installed runtime. Its driver and the
+separate test-only QtTest copy have their ELF search paths rewritten to the
+installation; the production helpers do not use the developer Qt kit.
+
+The Linux native manager run exposed a Russian compact-window minimum width
+larger than requested when force unmount was visible. Mount actions now occupy
+their own row above the standard Close footer. EN/RU normal/compact widget
+geometry and the actual busy-mount scenario are checked on macOS and Linux.
+The follow-up Windows geometry run is blocked by shared runner maintenance;
+earlier Windows native/installed mount acceptance remains separate from that
+unverified layout update.
+Widget responders use the existing fixture that selects Qt dialogs; native
+NSAlert automation is not inferred from that check. The test waits for session
+cleanup before checking that the owner may close.
 
 macOS runtime packaging installs the dynamic libsmb2, helpers, Qt dependencies
 and licenses, rewrites loader paths and signs nested code. Installed Cocoa startup
@@ -299,6 +321,10 @@ the runtime with the existing packaging command:
 
 ```sh
 python3 scripts/hyperv-runner.py run windows --interactive --elevated --skip-runtime -- \
+  scripts/probe-native-smb.py --product-device --installed-root build/readonly-smb-install
+python3 scripts/hyperv-runner.py run linux --skip-runtime -- \
+  scripts/probe-native-smb.py --product-manager
+python3 scripts/hyperv-runner.py run linux --skip-runtime -- \
   scripts/probe-native-smb.py --product-device --installed-root build/readonly-smb-install
 ```
 

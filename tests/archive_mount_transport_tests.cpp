@@ -1,9 +1,11 @@
 #include "archivenativeopen.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "native_archive_fixture.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivemountsource.h"
-#ifdef Q_OS_MACOS
+#include "qtsmbmountplatform.h"
+#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
 #include "qtarchivemountmanager.h"
 #include "qtarchivemountsession.h"
 #include "qtmountextractionprompt.h"
@@ -283,8 +285,11 @@ class ArchiveMountTransportTests final : public QObject {
         QCOMPARE(bytes, QByteArray(4096, '\0'));
         QCOMPARE(ClientWork([&] { return smb2_close(client.Context, file); }), 0);
     }
-#ifdef Q_OS_MACOS
+#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
     void cancellingMountSetupStartsNoSession() {
+        const auto unavailable = QtSmbMountPlatform::unavailableReason();
+        if (!unavailable.isEmpty())
+            QSKIP(qPrintable(unavailable));
         QWidget owner;
         QtArchiveMountManager manager(&owner);
         QTimer answer;
@@ -307,6 +312,10 @@ class ArchiveMountTransportTests final : public QObject {
     void nativeMountThroughManager() {
         if (!qEnvironmentVariableIsSet("SEVENZIP_NATIVE_SMB_TEST"))
             QSKIP("Opt-in native OS mount; uses only an isolated synthetic fixture.");
+        const auto unavailable = QtSmbMountPlatform::unavailableReason();
+        if (!unavailable.isEmpty())
+            QSKIP(qPrintable(unavailable));
+        WidgetDialogFixture dialogs;
         QFETCH(QString, language);
         QTranslator catalog;
         if (language == "ru") {
@@ -328,6 +337,23 @@ class ArchiveMountTransportTests final : public QObject {
         resource->UseNativeMetadata();
         QWidget owner;
         QtArchiveMountManager manager(&owner);
+        int held = -1;
+        const auto cleanup = qScopeGuard([&] {
+            if (held >= 0)
+                ::close(held);
+            const auto sessions = manager.findChildren<QtArchiveMountSession *>();
+            for (auto *session : sessions)
+                session->unmount(true);
+            for (int attempt = 0; attempt < 300; ++attempt) {
+                bool stopped = true;
+                for (auto *session : sessions)
+                    stopped =
+                        stopped && session->status() == QtArchiveMountSession::Status::Stopped;
+                if (stopped)
+                    break;
+                QTest::qWait(100);
+            }
+        });
         int confirmations = 0;
         QTimer answer;
         connect(&answer, &QTimer::timeout, this, [&] {
@@ -360,7 +386,7 @@ class ArchiveMountTransportTests final : public QObject {
                 dialog->reject();
         });
         QVERIFY(!manager.canCloseOwner());
-        const int held = ClientWork([&] { return ::open(encodedPath.constData(), O_RDONLY); });
+        held = ClientWork([&] { return ::open(encodedPath.constData(), O_RDONLY); });
         QVERIFY(held >= 0);
         manager.findChild<QPushButton *>("unmountButton")->click();
         QTRY_VERIFY_WITH_TIMEOUT(copy->isEnabled(), 15000);
@@ -376,9 +402,13 @@ class ArchiveMountTransportTests final : public QObject {
         QByteArray afterBusy(1024, '\0');
         const auto count = ClientWork([&] { return ::pread(held, afterBusy.data(), 1024, 7000); });
         ::close(held);
+        held = -1;
         manager.findChild<QPushButton *>("unmountButton")->click();
         auto *list = manager.findChild<QTreeWidget *>("mountList");
         QTRY_VERIFY_WITH_TIMEOUT(list->topLevelItem(0)->text(1).isEmpty(), 15000);
+        auto *session = manager.findChild<QtArchiveMountSession *>();
+        QVERIFY(session);
+        QTRY_COMPARE_WITH_TIMEOUT(session->status(), QtArchiveMountSession::Status::Stopped, 15000);
         QVERIFY(manager.canCloseOwner());
         QCOMPARE(confirmations, 1);
         QVERIFY(geometryFits);
