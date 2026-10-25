@@ -21,11 +21,12 @@ evidence applies only to the recorded revision, platform and scenario.
 | Set up, build, run or prepare runtime dependencies | [Development](development.md) |
 | Update interface translations | [Localization](localization.md) |
 | Select checks and clean up temporary artifacts | [Testing](testing.md) |
+| Maintain agent setup, skills or validation helpers | [Agent rules](../AGENTS.md), [tooling checks](testing.md#проверка-tooling), [memory protocol](agent-memory.md) |
 | Find workflows, source owners and regressions | [Regression matrix](regression-matrix.md) |
 | Find a test suite or UI data producer | [Coverage](testing/coverage.md), [geometry](testing/geometry.md) |
 | Understand UI/backend ownership and boundaries | [Architecture](architecture.md) |
-| Implement direct read-only access to external ext devices | [First-version plan](direct-device-reading-plan.md) |
-| Implement the proposed interface simplification and redesign | [Redesign plan](ui-redesign-plan.md) |
+| Change direct read-only device access | [Usage and limits](direct-device-reading.md), [source audit](upstream-port-audit/direct-devices.md) |
+| Change the redesigned interface or shortcuts | [UI contracts](ui-layout-contracts.md), [shortcut scheme](ui-shortcuts-design.md), [source audit](upstream-port-audit/ui-redesign.md) |
 | Check behavior and platform differences | [Parity](7zfm-parity.md) |
 | Change layout, text, visibility or resizing | [UI contracts](ui-layout-contracts.md) |
 | Extract resources and compare them with widgets | [UI reference tooling](ui-reference.md) |

@@ -1,4 +1,4 @@
 interface:
   display_name: 'Sevenzip C++ and Qt'
   short_description: 'Port upstream source and adapt UI to Qt'
-  default_prompt: 'Use $sz-cpp-qt to copy the upstream implementation and adapt its UI and platform dependencies for this feature.'
+  default_prompt: 'Use $sz-cpp-qt to inspect the affected upstream bodies and callers, preserve their behavior, and implement or review the Qt/platform adaptation needed for this task.'

@@ -41,6 +41,7 @@ using the footer retains that context. The help button retains its accessible
 name and tooltip. Source algorithms and original defaults
 are unchanged. This surface supersedes the old six-page container geometry.
 
+<a id="options-initial-frame-p3-06-2026-10-16"></a>
 ### Original Options frame reference (P3-06, 2026-10-16)
 
 Original `OptionsDialog.cpp`/`MyPropertySheet` use the largest desktop page

@@ -41,6 +41,9 @@ batch file and actual computer name. Native registration/reference commands
 check that name before running. Other tools, including CMake, Ninja, Git,
 ccache, clang-format and Bash, must be available on the configured PATH.
 Install the dependencies described in [development](development.md#dependencies).
+The helper forwards the selected `computer_name` as `SEVENZIP_WINDOWS_RUNNER_HOST`;
+native registration/reference fixtures require a matching actual computer name.
+Changing this environment selection refreshes the build wrapper's configuration.
 
 For a Linux workspace on a separate mounted filesystem, set both `mount` and
 `filesystem_uuid` in its workspace entry. The helper checks the actual UUID

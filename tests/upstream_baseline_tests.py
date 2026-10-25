@@ -258,6 +258,26 @@ class UpstreamBaselineTests(unittest.TestCase):
         self.assertEqual((snapshot / self.source).stat().st_mtime_ns, before)
         self.assertEqual(compiled.read_bytes(), b"incremental SFX output")
 
+    def test_reference_snapshot_preserves_original_make_rules_and_incremental_output(self):
+        original = b"compile: input.c\n\t$(CC) $**\n"
+        (self.upstream / "CPP/Build.mak").write_bytes(original)
+        git(self.upstream, "add", ".")
+        git(self.upstream, "commit", "-qm", "reference build rules")
+        self.manifest["revision"] = git(self.upstream, "rev-parse", "HEAD")
+        self.manifest_path.write_text(json.dumps(self.manifest))
+        snapshot = pathlib.Path(self.temporary.name) / "reference"
+        command = [sys.executable, str(SCRIPT), "runtime-snapshot", "--original-only", "--no-build-rules",
+                   "--manifest", str(self.manifest_path), "--upstream", str(self.upstream),
+                   "--snapshot", str(snapshot)]
+        subprocess.run(command, check=True)
+        self.assertEqual((snapshot / "CPP/Build.mak").read_bytes(), original)
+        before = (snapshot / "CPP/Build.mak").stat().st_mtime_ns
+        output = snapshot / "cached.obj"
+        output.write_bytes(b"retained reference object")
+        subprocess.run(command, check=True)
+        self.assertEqual((snapshot / "CPP/Build.mak").stat().st_mtime_ns, before)
+        self.assertEqual(output.read_bytes(), b"retained reference object")
+
     def test_runtime_snapshot_applies_partial_exact_update(self):
         snapshot = pathlib.Path(self.temporary.name) / "runtime"
         baseline.prepare_runtime_snapshot(self.manifest, snapshot, self.upstream)

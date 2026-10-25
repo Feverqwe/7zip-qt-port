@@ -11,16 +11,21 @@ import subprocess
 import sys
 import time
 
+from lib.runner_timing import mark
+
+INVOCATION_STARTED = time.monotonic()
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def run(command, root, timings, phase, capture=False):
     started = time.monotonic()
     print(f"[{phase}]", flush=True)
+    mark(phase + "_start")
     try:
         return subprocess.run(command, cwd=root, check=True, text=True,
                               stdout=subprocess.PIPE if capture else None)
     finally:
+        mark(phase + "_end")
         timings[phase] = round(time.monotonic() - started, 3)
 
 
@@ -68,7 +73,9 @@ def verify(root, args, profile):
     result = {"status": "running", "profile": args.profile, "selection": args.tests or profile["tests"],
               "preset": args.preset, "tests": [], "targets": [], "seconds": timings,
               "run_token": os.environ.get("SEVENZIP_RUN_TOKEN")}
+    mark("cache_stats_before_start")
     before_cache = cache_stats()
+    mark("cache_stats_before_end")
     try:
         if not args.plan and not args.skip_runtime and profile.get("runtime", True) and \
                 os.environ.get("SEVENZIP_RUNTIME_PREPARED") != "1":
@@ -114,7 +121,9 @@ def verify(root, args, profile):
         result["error"] = str(error)
         raise
     finally:
+        mark("cache_stats_after_start")
         after_cache = cache_stats()
+        mark("cache_stats_after_end")
         result["ccache_delta"] = {name: value - before_cache.get(name, value) for name, value in after_cache.items()}
         report.write_text(json.dumps(result, indent=2) + "\n")
         print("Timing: " + ", ".join(f"{name}={seconds:.2f}s" for name, seconds in timings.items()), flush=True)
@@ -125,7 +134,8 @@ def parse_args(argv, profiles):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("profile", nargs="?", choices=sorted(profiles))
     parser.add_argument("--tests", help="CTest regex; CMake supplies actual executable targets")
-    parser.add_argument("--preset", choices=["dev", "release"], default="dev")
+    parser.add_argument("--preset", choices=["dev"], default="dev",
+                        help="test-enabled preset; build the application with scripts/build.sh release")
     parser.add_argument("--platform", choices=["local", "linux", "windows", "all"], default="local")
     parser.add_argument("--plan", action="store_true", help="configure and show tests/targets without building or testing")
     parser.add_argument("--list", action="store_true", help="list scenario profiles")
@@ -165,7 +175,8 @@ def main(argv=None):
             command.append("--plan")
         if args.skip_runtime:
             command.append("--skip-runtime")
-        return subprocess.run(command, cwd=ROOT).returncode
+        environment = dict(os.environ, SEVENZIP_INVOCATION_STARTED=str(INVOCATION_STARTED))
+        return subprocess.run(command, cwd=ROOT, env=environment).returncode
     verify(ROOT, args, profile)
     return 0
 

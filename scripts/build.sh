@@ -71,6 +71,7 @@ configure() {
     "${CMAKE_PREFIX_PATH:-}" "${CC:-}" "${CXX:-}" "${OBJCXX:-}" \
     "${CFLAGS:-}" "${CXXFLAGS:-}" "${OBJCXXFLAGS:-}" "${LDFLAGS:-}" \
     "${CMAKE_TOOLCHAIN_FILE:-}" "${SDKROOT:-}" "${CPLUS_INCLUDE_PATH:-}" \
+    "${SEVENZIP_WINDOWS_RUNNER_HOST:-}" "${COMPUTERNAME:-}" \
     "$(cksum "$project_root/scripts/build.sh" "$project_root/CMakePresets.json")" | cksum)"
   local existing_signature=""
   if [[ -f "$cache_file" && -f "$signature_file" && -f "build/$preset/build.ninja" ]]; then

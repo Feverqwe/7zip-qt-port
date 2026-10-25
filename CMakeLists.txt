@@ -528,6 +528,8 @@ target_include_directories(sevenzip_filesystem PUBLIC "${CMAKE_CURRENT_BINARY_DI
 target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
 target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core Qt6::Network Qt6::RemoteObjects sevenzip_common sevenzip_zip sevenzip_progress_sync)
 target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_system_icons sevenzip_name_sort)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/docs/upstream-baseline.json")
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/docs/upstream-baseline.json" sfx_baseline_json)
 string(JSON sfx_upstream_revision GET "${sfx_baseline_json}" revision)
 target_compile_definitions(sevenzip_filesystem PRIVATE
@@ -3498,11 +3500,15 @@ if(BUILD_TESTING)
     add_test(NAME shell_context COMMAND shell_context_tests -silent)
     if(WIN32)
         qt_add_executable(native_system_menu_tests tests/native_system_menu_tests.cpp)
-        qt_add_executable(native_menu_integration_tests tests/native_menu_integration_tests.cpp)
+        qt_add_executable(native_menu_integration_tests tests/native_menu_integration_tests.cpp
+            ${language_backend_sources})
         target_include_directories(native_menu_integration_tests PRIVATE src)
-        target_link_libraries(native_menu_integration_tests PRIVATE sevenzip_panel sevenzip_location Qt6::Test)
+        target_link_libraries(native_menu_integration_tests PRIVATE
+            ${language_backend_libraries} sevenzip_location Qt6::Test)
         add_dependencies(native_menu_integration_tests sevenzip_shell)
-        if("$ENV{COMPUTERNAME}" STREQUAL "RUNNER-WINDOWS")
+        string(TOUPPER "$ENV{COMPUTERNAME}" sevenzip_test_computer)
+        string(TOUPPER "$ENV{SEVENZIP_WINDOWS_RUNNER_HOST}" sevenzip_test_host)
+        if(sevenzip_test_host AND sevenzip_test_computer STREQUAL sevenzip_test_host)
             add_test(NAME native_menu_integration COMMAND native_menu_integration_tests -silent)
             set_tests_properties(native_menu_integration PROPERTIES TIMEOUT 60
                 RESOURCE_LOCK sevenzip_shell_registration ENVIRONMENT "QT_QPA_PLATFORM=windows")
@@ -3513,11 +3519,15 @@ if(BUILD_TESTING)
         target_include_directories(native_menu_presentation_tests PRIVATE src)
         target_link_libraries(native_menu_presentation_tests PRIVATE sevenzip_panel Qt6::Test)
         add_test(NAME native_menu_presentation COMMAND native_menu_presentation_tests -silent)
-        if(EXISTS "${CMAKE_SOURCE_DIR}/build/windows-reference/reference.json")
+        file(GLOB sevenzip_native_reference_manifest CONFIGURE_DEPENDS
+            "${CMAKE_SOURCE_DIR}/build/windows-reference/reference.json")
+        if(sevenzip_native_reference_manifest)
             qt_add_executable(native_rendered_system_menu_tests
-                tests/native_rendered_system_menu_tests.cpp src/qtnativeshellmenupresentation.cpp)
+                tests/native_rendered_system_menu_tests.cpp src/qtnativeshellmenupresentation.cpp
+                ${language_backend_sources})
             target_include_directories(native_rendered_system_menu_tests PRIVATE src)
-            target_link_libraries(native_rendered_system_menu_tests PRIVATE sevenzip_panel Qt6::Test advapi32)
+            target_link_libraries(native_rendered_system_menu_tests PRIVATE
+                ${language_backend_libraries} sevenzip_location Qt6::Test advapi32)
             target_compile_definitions(native_rendered_system_menu_tests PRIVATE
                 "SEVENZIP_NATIVE_REFERENCE_DIR=\"${CMAKE_SOURCE_DIR}/build/windows-reference\""
                 "SEVENZIP_UPSTREAM_REVISION=\"${sfx_upstream_revision}\"")
@@ -4892,6 +4902,11 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/${sevenzip_workflow_suite}_tests.py")
         set_tests_properties(${sevenzip_workflow_suite} PROPERTIES TIMEOUT 60)
     endforeach()
+    if(WIN32)
+        add_test(NAME windows_reference_builder COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/windows_reference_builder_tests.py")
+        set_tests_properties(windows_reference_builder PROPERTIES TIMEOUT 60)
+    endif()
 endif()
 include(cmake/SharedWorkflowObjects.cmake)
 include(cmake/DeveloperWorkflow.cmake)

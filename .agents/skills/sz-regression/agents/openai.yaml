@@ -1,4 +1,4 @@
 interface:
   display_name: 'Sevenzip regression checks'
-  short_description: 'Add tests and verify archive behavior'
-  default_prompt: 'Use $sz-regression to add meaningful coverage and run the project regression gate.'
+  short_description: 'Select focused checks for observable behavior'
+  default_prompt: 'Use $sz-regression to select existing checks for the affected behavior, add coverage only for an uncovered concrete risk, and run focused validation under AGENTS.md.'

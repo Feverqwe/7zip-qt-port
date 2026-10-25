@@ -2,7 +2,9 @@
 """Check the project wrapper's slow-test opt-in using actual CTest selection."""
 
 import os
+import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -16,6 +18,10 @@ class CTestSelectionTests(unittest.TestCase):
     def test_slow_tests_require_opt_in_and_other_exclusions_are_preserved(self):
         with tempfile.TemporaryDirectory(prefix="ctest selection ") as temporary:
             root = Path(temporary)
+            (root / "scripts/lib").mkdir(parents=True)
+            (root / "runner-tmp").mkdir()
+            for name in ("ctest.sh", "lib/runner_timing.py"):
+                shutil.copy2(ROOT / "scripts" / name, root / "scripts" / name)
             (root / "mark.py").write_text("from pathlib import Path\nimport sys\nPath(sys.argv[1]).touch()\n")
             commands = []
             for name in ("fast", "slow", "other"):
@@ -26,22 +32,37 @@ class CTestSelectionTests(unittest.TestCase):
                 "\n".join(commands) + "\nset_tests_properties(slow PROPERTIES LABELS slow)\n" +
                 "set_tests_properties(other PROPERTIES LABELS other)\n")
             self.run_command(["cmake", "-S", str(root), "-B", str(root / "build"), "-G", "Ninja"])
-            wrapper = ["bash", str(ROOT / "scripts/ctest.sh"), "--test-dir", str(root / "build"),
+            wrapper = ["bash", str(root / "scripts/ctest.sh"), "--test-dir", str(root / "build"),
                        "--output-on-failure"]
-            env = dict(os.environ, SEVENZIP_INCLUDE_SLOW_TESTS="0")
+            timing = root / "runner-tmp/timing.jsonl"
+            timing.write_text("")
+            env = dict(os.environ, SEVENZIP_INCLUDE_SLOW_TESTS="0", SEVENZIP_RUN_TOKEN="fixture",
+                       SEVENZIP_RUNNER_PYTHON=Path(sys.executable).as_posix(),
+                       SEVENZIP_RUNNER_TIMING=timing.as_posix())
+            self.run_command([*wrapper, "--show-only=json-v1"], env)
+            self.assertEqual(timing.read_text(), "")
             self.run_command([*wrapper, "--label-exclude", "^other$"], env)
+            events = [json.loads(line) for line in timing.read_text().splitlines()]
+            self.assertEqual([event["event"] for event in events], ["tests_start"])
             self.assertTrue((root / "fast").exists())
             self.assertFalse((root / "slow").exists())
             self.assertFalse((root / "other").exists())
-            self.run_command([*wrapper, "-R", "^slow$"], env)
+            self.run_command([*wrapper, "-R", "^slow$"], env, succeeds=False)
             self.assertFalse((root / "slow").exists())
+            self.run_command([*wrapper, "-R", "^missing$"], env, succeeds=False)
+            # Discovery remains usable even when a selection has no runnable tests.
+            self.run_command([*wrapper, "-R", "^slow$", "--show-only=json-v1"], env)
+            self.assertEqual([json.loads(line) for line in timing.read_text().splitlines()], events)
             env["SEVENZIP_INCLUDE_SLOW_TESTS"] = "1"
             self.run_command([*wrapper, "-L", "slow"], env)
             self.assertTrue((root / "slow").exists())
 
-    def run_command(self, command, env=None):
+    def run_command(self, command, env=None, succeeds=True):
         result = subprocess.run(command, env=env, text=True, capture_output=True)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        if succeeds:
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        else:
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

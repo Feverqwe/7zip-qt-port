@@ -37,6 +37,10 @@ incremental build outputs. `runtime_format_sources` selects dependencies linked
 only into Format7zF, such as probes and HFS compression shared with APFS. The
 console executable and original SFX do not link these format support objects.
 
+Native UI reference builds use `runtime-snapshot --original-only --no-build-rules`
+to retain the original makefiles as well as source bytes. This mode is separate
+from runtime/SFX integration, which still generates the required build rules.
+
 Start from a disposable Git snapshot of the official repository. The old
 `../7zip-upstream` checkout is not required, and it must not be modified:
 

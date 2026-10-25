@@ -42,7 +42,7 @@ belong in [the audit](upstream-port-audit.md).
 | focus/marks/keyboard/mouse | PanelSelect/PanelKey; shared hover adapter | `panel_key`, `panel_key_source`, `panel_selection`, `list_settings_runtime`, `list_activation` |
 | two-panel focus/persistence | CApp/Panel; MainWindow projection | `panel_focus`, `panel_runtime`, `window_info`, `ui_copy_same` |
 | menu/toolbar/context/status | MyLoadMenu/PanelMenu/PanelListNotify; Qt presentation | `main_shell`, `view_menu`, `panel_shell`, `native_toolbar_state`, `file_menu_policy` |
-| progress/pause/background/cancel | CProgressDialog/CProgressSync; native worker and child-operation transport | `progress_dialog`, `progress_cancel`, `progress_priority_failure`, `worker_checkpoint` |
+| progress/pause/cancel | CProgressDialog/CProgressSync; native worker and child-operation transport | `progress_dialog`, `progress_cancel`, `progress_sync`, `worker_checkpoint` |
 | conflict decisions/rollback | OverwriteDialog/AutoRenamePath/FSFolderCopy; transaction | `extract_prompt`, `file_transfer`, `file_transfer_direct` |
 | selected/root/batch Ask | ExtractGUI/ExtractCallback/PanelCopy; ArchiveBackend path guard | `source_extract_backend`, `source_extract_contract`, `extraction_options`, `ui_operations` |
 | toolbar Extract/Test in both panes, archive Copy To, one/multiple filesystem archives, Cancel, corrupt archive, caption/language/focus | CApp/CPanel ExtractArchives/TestArchives; CompressCall2/ExtractGUI/ExtractDialog; QtShellArchiveServices backend bridge | `toolbar_archive_workflow`, `toolbar_archive_batch`, `shell_archive_services`, `language_dialog`, `ui_navigation`, `ui_archive_states`, Windows `native_gui_workflow` |

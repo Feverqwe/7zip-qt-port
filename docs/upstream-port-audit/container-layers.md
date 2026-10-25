@@ -103,7 +103,7 @@ dependencies and omitted block services. Official 7-Zip HEAD
 [The QEMU baseline](../qcow-qemu-baseline.json) pins SHA256 values for these
 complete original units and maps the adapted header to its local owner, using
 the same reference model as Linux. The
-[update workflow](../upstream-update.md#qemu-and-linux-reference-baselines)
+[update workflow](../upstream-update.md#external-reference-baselines)
 verifies the snapshot and produces upstream/local-difference reports without
 overwriting the partial port. This inventory records reference-only callers
 and specification files as well as the transferred header; it does not claim

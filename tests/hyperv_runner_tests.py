@@ -21,6 +21,7 @@ runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
 from lib import hyperv_interactive, hyperv_lock, hyperv_source, hyperv_transport, hyperv_workspace
 from lib.runner_config import load_config
+from lib.runner_timing import summarize
 
 
 def git(root, *args):
@@ -28,6 +29,20 @@ def git(root, *args):
 
 
 class RunnerTests(unittest.TestCase):
+    def test_test_start_timing_uses_guest_clock_and_rejects_previous_run(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "timing.jsonl"
+            events = [("old", "tests_start", 1), ("current", "configure_start", 1002),
+                      ("current", "configure_end", 1005), ("current", "tests_start", 1008),
+                      ("current", "tests_start", 1010)]
+            path.write_text("".join(json.dumps({"token": token, "event": event, "monotonic": stamp}) + "\n"
+                                    for token, event, stamp in events))
+            result = summarize(path, "current", (15, 1000, 17), 10)
+            self.assertEqual(result["to_tests_seconds"], 14)
+            self.assertEqual(result["to_tests_bounds_seconds"], [13, 15])
+            self.assertEqual(result["guest_seconds"]["configure"], 3)
+            self.assertNotIn("to_tests_seconds", summarize(path, "missing", (15, 1000, 17), 10))
+
     def test_interactive_branch_worktree_and_unsafe_roots(self):
         workspace = load_config()["windows"]["workspace"]
         root = hyperv_workspace.worktree_root(workspace, "feature/Btrfs images 空")
@@ -197,6 +212,22 @@ class RunnerTests(unittest.TestCase):
             self.assertFalse((root / ".runner-complete").exists())
             hyperv_lock.operate(root, "second", "release")
 
+    def test_busy_remote_lock_reports_owner_without_traceback_or_changing_lock(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "guest"
+            hyperv_lock.operate(root, "active-run", "acquire")
+            def local_remote(record, script, **kwargs):
+                return subprocess.run(["bash", "-se"], input=script, text=True,
+                                      capture_output=True, check=True)
+            record = {"platform": "linux", "config": {"python": Path(sys.executable).as_posix()}}
+            with patch.object(runner, "remote", local_remote), \
+                    self.assertRaises(subprocess.CalledProcessError) as error:
+                runner.lock_command(record, str(root), "new-run", "acquire")
+            self.assertIn("active-run", error.exception.stderr)
+            self.assertNotIn("Traceback", error.exception.stderr)
+            owner = json.loads((root.with_name("guest.lock") / "owner.json").read_text())
+            self.assertEqual(owner["token"], "active-run")
+
     def test_unowned_existing_directory_is_never_adopted_or_deleted(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "current"
@@ -343,6 +374,26 @@ raise SystemExit(runner.main())
                 runner.discover("linux")
             invoke.assert_not_called()
 
+    def test_missing_timing_still_collects_verification_and_command_log(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary)
+            def download(command, **kwargs):
+                path = Path(command[-1])
+                if path.name == "timing.jsonl":
+                    path.write_text("partial transfer")
+                    raise subprocess.CalledProcessError(1, command)
+                if path.name == "check.log":
+                    path.write_text("Command diagnostics retained")
+                else:
+                    path.write_text(json.dumps({"status": "passed", "run_token": "current"}))
+            result = hyperv_transport.collect_logs(
+                {"ssh_argv": ["ssh", "fixture"]}, "/guest", destination,
+                ["python", "scripts/verify.py"], "current", download, None)
+            self.assertEqual(result["verification"]["status"], "passed")
+            self.assertIn("timing_error", result)
+            self.assertEqual((destination / "check.log").read_text(), "Command diagnostics retained")
+            self.assertFalse((destination / "timing.jsonl").exists())
+
     def test_connections_use_configured_alias_port_and_nondefault_windows_drive(self):
         settings = {"schema": 1, "runners": load_config()}
         settings["runners"]["windows"]["ssh"] = ["ssh", "-p", "2222", "builder@custom-host"]
@@ -358,7 +409,7 @@ raise SystemExit(runner.main())
         invoke = Mock()
         hyperv_transport.collect_logs(record, "D:/build/custom/runs/current", Path("logs"),
                                       None, "token", invoke, None)
-        command = invoke.call_args.args[0]
+        command = invoke.call_args_list[0].args[0]
         self.assertEqual(command[:4], ["scp", "-P", "2222", "builder@custom-host:D:/build/custom/runs/current/check.log"])
 
     def test_custom_readiness_command_supplies_connection_without_fixed_vm_names(self):
@@ -388,6 +439,8 @@ raise SystemExit(runner.main())
         with tempfile.TemporaryDirectory(prefix="runner Юникод ") as temporary:
             root = Path(temporary)
             (root / "scripts").mkdir()
+            (root / "scripts/lib").mkdir()
+            shutil.copy2(ROOT / "scripts/lib/runner_timing.py", root / "scripts/lib/runner_timing.py")
             (root / "scripts/fixture.sh").write_text('printf "%s\\n" "$@" "$TEMP" "$QT_QPA_PLATFORM" "$CMAKE_BUILD_PARALLEL_LEVEL"\nexit 23\n')
             args = ["space name", "Юникод", "$(touch injected)", "a'b", "", "first\nsecond"]
             def local_remote(record, script, **kwargs):
@@ -454,6 +507,22 @@ raise SystemExit(runner.main())
             self.assertEqual(result.returncode, 29)
             self.assertFalse((root / "unexpected").exists())
 
+    def test_release_payload_builds_after_gate_without_testing_disabled_release(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "scripts").mkdir()
+            (root / "scripts/check.sh").write_text("touch gate-passed\n")
+            (root / "scripts/build.sh").write_text(
+                'test -f gate-passed || exit 31\n'
+                'test "$1" = release || exit 32\n'
+                'touch release-built\n')
+            # Release has BUILD_TESTING=OFF: asking CTest for it is an error.
+            (root / "scripts/ctest.sh").write_text("exit 33\n")
+            result = subprocess.run(["bash", "-se"], input=runner.command_payload("release", None),
+                                    cwd=root, text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertTrue((root / "release-built").exists())
+
     def test_interrupted_execution_requests_confirmed_release_and_records_failure(self):
         with tempfile.TemporaryDirectory() as temporary:
             record = {"name": "runner-linux", "ssh_argv": ["ssh", "fixture"], "ip": "fixture"}
@@ -469,6 +538,22 @@ raise SystemExit(runner.main())
                 self.assertTrue(current.with_name("current.lock").is_dir())
             result = json.loads((Path(temporary) / "linux/run.json").read_text())
             self.assertEqual(result["status"], "interrupted")
+
+    @unittest.skipUnless(os.name == "nt", "Windows PowerShell script dispatch")
+    def test_powershell_script_dispatch_works_with_restricted_process_default(self):
+        with tempfile.TemporaryDirectory(prefix="PowerShell script ") as temporary:
+            root = Path(temporary)
+            git(root, "init", "-q")
+            (root / "scripts").mkdir()
+            (root / "scripts/fixture.ps1").write_text("Write-Output $args[0]\n")
+            with patch.object(runner, "ROOT", root):
+                command = runner.script_command(["scripts/fixture.ps1", "literal space $(not-executed)"],
+                                                ["windows"])
+            environment = dict(os.environ, PSExecutionPolicyPreference="Restricted")
+            result = subprocess.run(command, cwd=root, env=environment, text=True,
+                                    capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(result.stdout.strip(), "literal space $(not-executed)")
 
     def test_cli_rejects_wrong_desktop_transport_and_unsafe_script_paths(self):
         for argv in (["check", "linux", "--interactive"], ["check", "windows", "--elevated"],

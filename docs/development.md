@@ -1,5 +1,9 @@
 # Development toolchain
 
+Start with [dependencies](#dependencies) for setup, [local commands](#local-commands)
+for focused builds/tests, or [automation](#automation) for optional remote runners.
+Native runtime preparation and deployment requirements are described below.
+
 The Qt kit must include Remote Objects and its `repc` compiler. Install the
 `qtremoteobjects` module alongside the selected Qt version on all platforms.
 Both GUI processes must come from the same build: their generated operation
@@ -166,8 +170,9 @@ come from generated CMake/CTest registrations, including executable arguments
 and fixture producers; their names are not guessed from suite names. An empty
 enabled selection fails. Slow suites retain their explicit opt-in requirement.
 `--plan` configures and prints the selection without building, testing or
-preparing runtime. Verification uses the `dev` preset by default; the `release`
-preset disables test programs for application-only builds.
+preparing runtime. Verification uses the test-enabled `dev` preset. Use
+`./scripts/build.sh release` for application-only builds; that preset disables tests
+and is rejected by `verify.py` before configuration.
 
 Keep command entrypoints in `scripts/`, shared implementation and build helpers
 in `scripts/lib/`, and scenario configuration in `scripts/config/`.
@@ -194,8 +199,8 @@ or lacks the pinned revision, preparation downloads that revision from the
 recorded upstream repository into a local build cache. Network access is needed
 only when the required source is not already available locally.
 
-Remote verification uses the same command in the single persistent guest
-worktree; see [sync, locks and recovery](hyperv-runners.md#persistent-worktree).
+Remote verification uses the same command in the persistent guest worktree
+selected by the current Git branch; see [sync, locks and recovery](hyperv-runners.md#persistent-worktree).
 There are no per-run source/build directories on the guests. Distinct run IDs
 identify local logs and timing records only.
 
@@ -248,6 +253,8 @@ not automatically prune old runs; the agent performs the scoped cleanup.
 Long suites are excluded by default, including focused `-R` selections;
 see [opt-in commands](#long-suites). Agents follow the explicit-request rule
 in [AGENTS.md](../AGENTS.md#validation-and-ui-reference).
+An empty executed selection fails, including a regex matching only excluded
+slow suites. `--show-only` still allows discovery without running tests.
 
 Qt Test suites run with `-silent`, so a failed suite reports its failed cases without listing the cases that passed. `ctest.sh` filters CTest's `Start` and successful `Passed` lines as they arrive; failed suite status, diagnostics, and the final summary remain visible. Each retained line is flushed immediately, and a failed CTest still returns a nonzero exit status.
 
@@ -283,23 +290,19 @@ Some Apple Command Line Tools installations contain C++ standard headers inside 
 
 ## Long suites
 
-The stable list is in [SlowTests.cmake](../cmake/SlowTests.cmake), based on
-suites observed above 30 seconds on macOS; other platforms may differ.
+The current labels are in [SlowTests.cmake](../cmake/SlowTests.cmake).
+Long matrices and high-memory boundary checks are excluded by default.
 Agents run these only on an explicit request for long tests or the exhaustive
 suite, following [AGENTS.md](../AGENTS.md#validation-and-ui-reference).
 
-`interarchive_recovery` is opt-in; its full rollback matrix exceeded the earlier
-120 s cap while obsolete process hooks were being migrated. The default
+The full `interarchive_recovery` and `copy_archive_refresh` matrices are opt-in. The default
 `interarchive_recovery_native` subset covers native reopen failure, cancellation
 and failed restore. Acceptance of that subset does not accept the full matrix.
 
-`copy_archive_refresh` is also opt-in: its full native matrix has192 workflows.
-The corrected Cocoa fixture completed89 without row failures before the120s
-whole-suite cap. Its macOS cap is540s, using twice the extrapolated full time
-rounded to a minute; Windows retains its measured360s cap. This changes neither
-individual state waits nor the application codec-discovery deadline.
-Its new full three-platform replay was explicitly declined on2026-10-17;
-earlier receipts retain their original revision and scope. Exclusion is not PASS.
+Prior timing observations and cap rationale are retained in
+[the maintenance archive](archive/agent-maintenance-2026-10-25.md#прежние-основания-long-suite-лимитов).
+Current timeouts belong to CMake; old results and exclusions are not acceptance
+of the current matrices.
 
 ```sh
 # Only long suites:
@@ -335,7 +338,7 @@ For a separate Release build, use
 Run tests with the `dev` preset; Release disables test targets.
 The helper uses either the configured SSH connection or an optional
 readiness command for VM startup and address discovery. Each guest reuses its
-configured Sevenzip `current` worktree. See [Hyper-V runners](hyperv-runners.md)
+configured Sevenzip worktree for the current Git branch. See [Hyper-V runners](hyperv-runners.md)
 for toolchains, pinned engine caching, source sync scope and validation results.
 This is project integration glue; upstream 7zFM has no runner implementation.
 
@@ -345,7 +348,7 @@ do not validate the current Hyper-V guests.
 
 Local task memory is initialized by the setup script in `.codex/memory/` and
 `.codex/notes/`. Repeated setup preserves the populated index, notes, and
-attachments; it refreshes navigation pages and templates. See
+attachments; it refreshes documentation symlinks and task templates. See
 [the memory protocol](agent-memory.md) for reading, updating, and transferring
 memory between checkouts.
 

@@ -413,7 +413,7 @@ remains unverified.
 
 ### Redesign: shared form and diagnostic layout (2026-10-18)
 
-The approved [redesign](../ui-redesign-plan.md) replaces presentation geometry
+The approved [redesign](../archive/plans/ui-redesign-plan.md) replaces presentation geometry
 for Combo and Messages with a shared content/footer layout. Combo retains its
 label above the editable history control, raw accepted value, initial selection
 and Cancel semantics; initial height fits content instead of a resource-height

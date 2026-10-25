@@ -155,7 +155,7 @@ Agent и QtArchiveFileResource принимают отдельный прямо�
 
 ## Текущее состояние
 
-Реализована экспериментальная [первая версия](../direct-device-reading-plan.md).
+Реализована экспериментальная [первая версия](../archive/plans/direct-device-reading-plan.md).
 Подключены native access macOS/Linux/Windows, stream-level partition discovery,
 filesystem readers и пользовательский выбор устройства/раздела. Просмотр и копирование
 проверены на частных образцах. Автоматические проверки не используют реальные

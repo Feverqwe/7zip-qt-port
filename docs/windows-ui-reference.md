@@ -177,11 +177,17 @@ Null не означает отсутствие текста. `dpiAwareness`: 0 
 python3 scripts/hyperv-runner.py run windows --interactive -- scripts/check-native-menu-reference.sh
 ```
 
-Сначала `build-windows-reference.ps1` извлекает закреплённый upstream commit
-в отдельный snapshot и собирает оригинальные FileManager makefile/resources
-через MSVC/nmake. Sibling checkout остаётся read-only. Entry wrapper включает
+`build-windows-reference.ps1` повторно использует проверенный эталон, а при
+изменении закреплённого upstream, wrapper, builder или compiler environment
+обновляет owned snapshot и собирает оригинальные FileManager makefile/resources
+через MSVC/nmake с доступным ccache. Сборочные outputs сохраняются;
+новый guest snapshot для повторного запуска не нужен. Чужой output и reparse
+points отклоняются. Подготовка исходников использует существующий
+`upstream_baseline.py runtime-snapshot --original-only --no-build-rules`,
+сохраняя исходные makefiles. Sibling checkout остаётся read-only. Entry wrapper включает
 полный исходный FM.cpp с alias имени WinMain. Два product-path macro в
-RegistryUtils.cpp/ViewSettings.cpp заменяются уникальным private HKCU path;
+RegistryUtils.cpp/ViewSettings.cpp заменяются уникальным private HKCU path,
+сохраняемым при повторных сборках этого эталона;
 это сохраняет исходные function bodies и registry view системных providers.
 Fixture отказывает при существующем key, отмечает owner PID и удаляет только
 свой key. Original7zFM normal exit и cleanup проверяются тестом; emergency
@@ -189,7 +195,8 @@ cleanup требует совпадающий marker. Официальная р�
 
 `build/windows-reference/reference.json` содержит source repository/full
 revision, hashes оригинальных и adapted files, wrapper и executable. Только
-при наличии этого manifest CMake регистрирует `native_rendered_system_menu`.
+при наличии этого manifest CMake регистрирует `native_rendered_system_menu`;
+его появление отслеживается и в уже настроенном build-каталоге.
 Тест открывает настоящий native7zFM File/System menu на disposable Unicode
 файле и сравнивает его runtime HMENU с raw source query и Qt projection.
 Он пишет в `build/dev/ui-reports/` два `native-system-rendered-*.json` с rows,

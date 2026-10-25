@@ -37,8 +37,14 @@ def collect_logs(record, root, directory, command, token, invoke, output):
                 str(directory / name)], stdout=output, stderr=subprocess.STDOUT)
 
     download("check.log", "check.log")
+    details = {}
+    try:
+        download("runner-tmp/timing.jsonl", "timing.jsonl")
+    except subprocess.CalledProcessError:
+        (directory / "timing.jsonl").unlink(missing_ok=True)
+        details["timing_error"] = "Guest timing report is unavailable"
     if not command or len(command) < 2 or command[1] != "scripts/verify.py":
-        return {}
+        return details
     preset = (command + [""])[command.index("--preset") + 1] if "--preset" in command else "dev"
     if preset not in ("dev", "release"):
         raise ValueError("Invalid verification preset")
@@ -46,6 +52,6 @@ def collect_logs(record, root, directory, command, token, invoke, output):
     download(f"build/{preset}/{name}", name)
     verification = json.loads((directory / name).read_text())
     if verification.get("run_token") == token:
-        return {"verification": verification}
+        return dict(details, verification=verification)
     (directory / name).unlink()
-    return {"verification_error": "Report belongs to another invocation"}
+    return dict(details, verification_error="Report belongs to another invocation")

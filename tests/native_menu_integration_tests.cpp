@@ -48,7 +48,11 @@ class OwnedRegistration {
     OwnedRegistration() = default;
     explicit OwnedRegistration(DWORD child) : _keys(Paths()), _owner(child) {}
     LONG Reserve() {
-        if (!_deleteTree || qEnvironmentVariable("COMPUTERNAME") != "RUNNER-WINDOWS")
+        const QString expected = qEnvironmentVariable("SEVENZIP_WINDOWS_RUNNER_HOST");
+        wchar_t computer[MAX_COMPUTERNAME_LENGTH + 1]{};
+        DWORD length = MAX_COMPUTERNAME_LENGTH + 1;
+        if (!_deleteTree || expected.isEmpty() || !GetComputerNameW(computer, &length) ||
+            QString::fromWCharArray(computer).compare(expected, Qt::CaseInsensitive) != 0)
             return ERROR_ACCESS_DENIED;
         HKEY approved = nullptr;
         if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, kApproved, 0, KEY_QUERY_VALUE, &approved) ==

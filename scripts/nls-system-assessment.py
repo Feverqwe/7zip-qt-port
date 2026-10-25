@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Compare current reader NLS mappings with OS services; no product changes.
+"""Compare a pre-conversion NLS snapshot with OS services; no product changes.
 
-Builds the existing C owners as a private shared library using CMake/ccache.
+Builds the explicitly selected historical C owners using CMake/ccache.
 The result is diagnostic evidence, not a new expected-value baseline.
 """
 import argparse
@@ -336,12 +336,15 @@ def main():
     parser.add_argument("--output", type=Path, default=ROOT / "build/review/nls-system")
     parser.add_argument("--backend", choices=["iconv", "windows", "cf", "adapter"])
     parser.add_argument("--charset", action="append")
-    parser.add_argument("--reference-root", type=Path, default=ROOT)
-    parser.add_argument("--reuse-reference", action="store_true")
+    reference_mode = parser.add_mutually_exclusive_group(required=True)
+    reference_mode.add_argument("--reference-root", type=Path,
+                                help="Snapshot containing the pre-conversion NLS owners")
+    reference_mode.add_argument("--reuse-reference", action="store_true",
+                                help="Reuse the reference library already built under --output")
     args = parser.parse_args()
     args.output = args.output.resolve()
     args.output.mkdir(parents=True, exist_ok=True)
-    lib = reference(args.output, args.reference_root.resolve(), args.reuse_reference)
+    lib = reference(args.output, (args.reference_root or ROOT).resolve(), args.reuse_reference)
     backend = args.backend or ("windows" if os.name == "nt" else "iconv")
     if backend == "adapter":
         Adapter.prepare(args.output)

@@ -106,6 +106,18 @@ insufficient, report the remaining capacity requirement; do not add a disk.
 
 ## Runner configuration and evidence
 
+Run reports include the time from local script invocation to the first CTest
+test starting, with lower/upper bounds for SSH clock correlation. This uses
+monotonic clocks and does not require synchronized wall clocks. The marker is
+recorded when the wrapper receives CTest's first `Start` line; listing tests or
+failing before execution does not produce a test-start measurement.
+Reports separate local source preparation, readiness, workspace checks/locking,
+transfer and remote execution. Focused `verify.py` runs additionally record
+guest runtime preparation, configuration, target discovery, selection, build
+and test durations and milestones. Missing stages are not reported as zero.
+Timing is diagnostic: unavailable measurements do not change the command result
+or prevent collection of its log and verification report.
+
 `CMAKE_BUILD_PARALLEL_LEVEL` is forwarded to guest builds when set to a positive
 integer. Use `1` when a guest runs out of memory during compilation; this
 retains its incremental build and compiler cache.
@@ -211,6 +223,8 @@ python3 scripts/hyperv-runner.py run all --skip-runtime -- scripts/check_ui_pari
 Scripts must be nonignored project files in the synced directories, with paths
 relative to the project root. `.sh` uses Bash on both platforms (Git Bash on
 Windows); `.py` uses the guest Python; `.ps1` is supported for Windows only.
+PowerShell project scripts use process-scoped `RemoteSigned`, like the runtime
+builders; the helper does not change machine/user execution-policy settings.
 Arguments after `--` are passed literally, including spaces, Unicode and shell
 metacharacters. Scripts run from the branch worktree in the existing platform
 toolchain environment. `--skip-runtime` skips engine/SFX preparation when the
@@ -218,6 +232,8 @@ selected script does not need it; by default runtime preparation is retained.
 Each action has its own `--help` and accepts only its applicable runner options.
 `--preset` is accepted only by the `check` shortcut; `run` passes build/test options through
 the script arguments. `scripts/build.sh` takes `dev` or `release` positionally.
+`check --preset release` runs the development gate followed by a Release build;
+it does not run CTest against Release, where test targets are disabled.
 
 The source transport is directory rsync over the verified SSH connection, with
 deletion/protection and locking as described [above](#persistent-worktree).
@@ -268,8 +284,8 @@ network fetch is needed. Bundles are cached locally by revision. The guest keeps
 a bare `upstream/` object store and fetches the supplied bundle only when its
 pinned commit is missing. `prepare-runtime.py` verifies a toolchain/builder/source
 fingerprint and artifact hashes before reusing the dynamic engine, codec module,
-standalone client and SFX. Misses invoke the official project builders; temporary
-upstream build trees are removed by those builders. All runtime binaries match
+standalone client and SFX. Misses invoke the official project builders, which
+retain their owned upstream snapshots and incremental build outputs. All runtime binaries match
 the guest architecture and pinned source. Environment changes are process-local.
 
 Before transfer, the helper checks actual local staged/worktree diffs for
@@ -305,12 +321,16 @@ Use a formatter compatible with the repository's formatting configuration,
 in a separate tool environment when other projects require a different version.
 
 `python3 scripts/verify.py tooling` runs the registered offline workflow, runner,
-runtime-cache, CTest selection and output suites. They cover a first build with
+runtime-cache, memory setup, CTest selection and output suites. On Windows it also
+checks reference-builder reuse/rebuild and refusal of unowned output using a
+synthetic compiler fixture, without launching the actual native reference UI.
+These checks cover a first build with
 missing executables, fixture closure, incremental reuse, empty/slow selections,
 Unicode/current/untracked/deleted source, actual rsync deletion and protected
 outputs, lock ownership/completion and failure/context/quoting behavior. These
 tests use temporary deterministic local fixtures and no VM/network access;
-they require Bash, Git, CMake/Ninja, a compiler and rsync.
+they require Bash, Git, CMake/Ninja, a compiler and rsync, plus Windows PowerShell
+for the Windows builder fixture.
 
 SSH checks cover the project gate, not interactive desktop/Finder behavior,
 distribution or rendered Windows 7zFM parity. Historical ARM64 QEMU checks

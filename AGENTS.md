@@ -142,9 +142,14 @@ Keep adaptations narrow; account for formatting separately from functional chang
 ## Feature worktrees and shared harness
 
 Use the global `worktree` skill for worktree lifecycle and safe cleanup.
-For this repository, develop each independent feature under
-`<harness-root>/.worktrees/<feature-slug>`, normally on `feature/<feature-slug>`.
-Changes to the shared harness/instructions may be made in the main checkout.
+Work in the current checkout and branch by default. Create a new branch and
+worktree only when the user explicitly asks to work in a new branch; a feature,
+fix or audit request alone does not authorize that move. Continue existing
+branch/worktree work in its checkout when the user asks to resume it.
+When a new branch is requested, use
+`<harness-root>/.worktrees/<feature-slug>` and the requested branch name, or
+`codex/<feature-slug>` if none was given. Shared harness/instruction changes
+may be made in the main checkout.
 
 At task start distinguish the source root from the harness root:
 
@@ -211,8 +216,11 @@ Preserve unrelated working-tree changes and other tasks' memory entries.
   Do not format unrelated files or run a separate dry-run during iteration.
 - Identify the owner and boundary before adding a feature. Widgets own presentation
   and interaction; application state owns navigation/command availability;
-  `ArchiveBackend` owns archive operations, process arguments/parsing, validation
-  and cancellation. Derive command availability from state and selection in one place.
+  `ArchiveBackend` owns native archive operations and validation. Independent
+  `7zG` operations use the existing typed operation boundary described in
+  [architecture](docs/architecture.md); do not introduce console argument/output
+  parsing. Keep cancellation with the owning operation. Derive command
+  availability from state and selection in one place.
 - New Qt/integration classes have one responsibility, substantial bodies in
   `.cpp`, focused headers and CMake registration for affected app/test targets.
   Separate UI construction, state transitions, filesystem actions and archive
@@ -255,25 +263,31 @@ Preserve unrelated working-tree changes and other tasks' memory entries.
 
 ### Validation scope
 
+Local focused tests and incremental compilation may run during implementation.
+Batch remote validation when further related edits are already planned: do not
+start remote suites after each minor/nonfinal patch. Run the affected suites and
+direct consumers together when the combined change is ready. An intermediate
+remote diagnostic is appropriate only to resolve a concrete platform uncertainty,
+failure or prerequisite that prevents further work. Repeat remote checks only
+when later edits affect their tested behavior or dependencies.
+
 Validate platform-independent changes on macOS. For platform-dependent changes,
 run the relevant checks on all supported platforms: macOS, Linux and Windows.
 Select focused checks from the changed behavior and its platform dependencies;
 do not repeat cross-platform validation for platform-independent changes alone.
 
-For behavior changes, cover the concrete observable bug or risk with a regression
-that fails without the fix; reuse sufficient existing coverage rather than adding
-trivial or implementation-mirroring tests. A pre-fix failing run follows the
+For behavior changes, use the [test usefulness criteria](#test-usefulness).
+A pre-fix failing run follows the
 [porting order](#porting-order-source-comparison-before-runtime-acceptance).
 Archive-operation changes cover success, failure and cancellation, with
 Unicode/spaces and malicious paths where relevant; never use real user archives
 or live services. Build affected targets and run focused tests/direct consumers
 with `./scripts/build.sh dev <targets>` and
 `./scripts/ctest.sh --preset dev -R '<regex>' --output-on-failure`.
-Do not invoke CTest directly. Expand checks for shared changes or failures.
+Do not invoke CTest directly.
 
 Focused validation is the default, including before completing an iteration or
-commit. Select tests from the changed behavior, owners and direct consumers;
-build only their required targets. Explain the selected scope briefly. A local
+commit. Build only the required targets and explain the selected scope briefly. A local
 code, test or build-script change does not by itself require the full suite.
 Expand checks when failures or shared dependencies show a wider impact.
 Run `./scripts/check.sh` only for broad cross-component changes whose impact

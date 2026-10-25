@@ -208,7 +208,7 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                 output.write_text(content)
 
 
-def prepare_runtime_snapshot(data, snapshot, upstream):
+def prepare_runtime_snapshot(data, snapshot, upstream, build_rules=True):
     """Overlay only engine adaptations explicitly selected in the baseline."""
     paths = data.get("runtime_adapted", [])
     if not isinstance(paths, list) or paths != sorted(set(paths)) or set(paths) - set(data["adapted"]):
@@ -308,10 +308,11 @@ def prepare_runtime_snapshot(data, snapshot, upstream):
             raise ValueError("Runtime adaptation requires regular source files: " + path)
         hashes[path] = hashlib.sha256(destination.read_bytes()).hexdigest()
     (snapshot / "runtime-adaptations.json").write_text(json.dumps(hashes, indent=2) + "\n")
-    runtime_header_dependencies(snapshot, members, overlays,
-                                [dependency_paths[path] for path in dependencies
-                                 if path.endswith((".c", ".cpp")) and path not in format_sources],
-                                [dependency_paths[path] for path in format_sources])
+    if build_rules:
+        runtime_header_dependencies(snapshot, members, overlays,
+                                    [dependency_paths[path] for path in dependencies
+                                     if path.endswith((".c", ".cpp")) and path not in format_sources],
+                                    [dependency_paths[path] for path in format_sources])
 
 
 def verify(data, upstream):
@@ -448,6 +449,8 @@ def main():
     parser.add_argument("--snapshot", type=pathlib.Path)
     parser.add_argument("--original-only", action="store_true",
                         help="Prepare original sources without runtime overlays (SFX builds)")
+    parser.add_argument("--no-build-rules", action="store_true",
+                        help="With --original-only, retain byte-exact upstream build rules for a UI reference")
     parser.add_argument("--upstream", type=pathlib.Path)
     parser.add_argument("--manifest", type=pathlib.Path, default=MANIFEST)
     parser.add_argument("--new-revision", help="Proposed upstream commit for review")
@@ -475,10 +478,12 @@ def main():
         if args.command == "runtime-snapshot":
             if not args.snapshot or not args.upstream:
                 raise ValueError("Runtime snapshot and upstream directories are required")
+            if args.no_build_rules and not args.original_only:
+                raise ValueError("--no-build-rules requires --original-only")
             if args.original_only:
                 data = dict(data, runtime_adapted=[], runtime_dependencies=[],
                             runtime_format_sources=[], overrides={})
-            prepare_runtime_snapshot(data, args.snapshot, args.upstream)
+            prepare_runtime_snapshot(data, args.snapshot, args.upstream, not args.no_build_rules)
             return 0
         if args.command == "inventory":
             check_inventory(data)

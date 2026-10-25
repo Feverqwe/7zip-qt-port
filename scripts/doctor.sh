@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -u
 
+project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$project_root"
+
 failed=0
 check_command() {
   if command -v "$1" >/dev/null 2>&1; then
@@ -28,7 +31,7 @@ if command -v cmake >/dev/null 2>&1; then
   if [[ -n "${CMAKE_PREFIX_PATH:-}" ]]; then
     printf 'INFO Qt prefix    %s\n' "$CMAKE_PREFIX_PATH"
   elif [[ "$(uname -s)" == Darwin ]]; then
-    qt_prefix="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/build/qt/6.12.0/macos"
+    qt_prefix="$project_root/build/qt/6.12.0/macos"
     if [[ -f "$qt_prefix/lib/cmake/Qt6/Qt6Config.cmake" ]]; then
       printf 'INFO Qt prefix    %s\n' "$qt_prefix"
     else

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the pinned native Windows UI reference in a fresh disposable snapshot.
+# Build/reuse the pinned native Windows UI reference in the owned guest worktree.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 if [[ "$#" != 0 || "${OS:-}" != Windows_NT ]]; then

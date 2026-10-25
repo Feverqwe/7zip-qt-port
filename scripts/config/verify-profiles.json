@@ -42,8 +42,8 @@
     "interactive": true
   },
   "tooling": {
-    "description": "Verification selection, persistent runner sync and runtime cache regressions",
-    "tests": "^(ctest_selection|developer_workflow|hyperv_runner|runtime_cache|agent_output)$",
+    "description": "Verification, runner sync, source snapshots, runtime cache and agent setup",
+    "tests": "^(ctest_selection|developer_workflow|hyperv_runner|upstream_baseline|runtime_cache|agent_output|project_memory_setup|windows_reference_builder)$",
     "runtime": false,
     "interactive": false
   }

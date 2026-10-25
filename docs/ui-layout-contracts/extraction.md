@@ -49,7 +49,7 @@ copying or extracting readable entries. See the
 
 ## Redesign: Extract form
 
-The [approved redesign](../ui-redesign-plan.md) replaces the fixed columns with
+The [approved redesign](../archive/plans/ui-redesign-plan.md) replaces the fixed columns with
 one form: destination/history and browse, optional subfolder name, overwrite mode,
 optional password, then Advanced settings. Path mode and root-folder duplication
 remain effective when Advanced settings is collapsed. A short Modified indicator

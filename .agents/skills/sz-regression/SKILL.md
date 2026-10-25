@@ -9,6 +9,12 @@ Use [testing](../../../docs/testing.md) to select checks; search
 [the scenario matrix](../../../docs/regression-matrix.md) for the affected suite
 and inspect its current code/callers. Historical coverage is under
 `docs/archive/qt-port/testing/`.
+Use `python3 scripts/verify.py --list`, then `<profile> --plan` or
+`--tests '<regex>' --plan` to inspect the registered suites, targets and fixtures
+before building. Check platform conditions in `CMakeLists.txt` and `cmake/`.
+Local focused checks may run during editing. Batch remote checks for related
+minor edits with known follow-ups, and validate their combined result when ready.
+Use intermediate remote diagnostics only for a concrete platform blocker.
 Follow `AGENTS.md` for coverage, focused build/CTest
 wrappers, the full gate and reporting platform limits.
 

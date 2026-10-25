@@ -6,7 +6,7 @@
 
 ## Redesign: Add form
 
-The [approved redesign](../ui-redesign-plan.md) supersedes the older two-column
+The [approved redesign](../archive/plans/ui-redesign-plan.md) supersedes the older two-column
 presentation requirements below for the Add form. Archive name/destination remain
 visible above the scrolling form as separate editable rows with leading labels.
 Destination edits use the existing source path resolver. Browse selects a folder

@@ -22,7 +22,7 @@ python3 scripts/verify.py <profile> --platform all
 Ищите реализацию проверки по имени suite и наблюдаемому результату:
 
 ```sh
-rg -n -F 'archive_transfer' tests/ cmake/ docs/regression-matrix.md
+rg -n -F 'archive_transfer' tests/ CMakeLists.txt cmake/ docs/regression-matrix.md
 ```
 
 Проверяйте текущую регистрацию и тела tests, включая fixtures, платформенные

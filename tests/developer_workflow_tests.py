@@ -17,7 +17,8 @@ class WorkflowTests(unittest.TestCase):
     def fixture(self, root):
         (root / "scripts/config").mkdir(parents=True)
         (root / "cmake").mkdir()
-        for name in ("build.sh", "ctest.sh", "verify.py", "config/verify-profiles.json"):
+        (root / "scripts/lib").mkdir(parents=True, exist_ok=True)
+        for name in ("build.sh", "ctest.sh", "verify.py", "config/verify-profiles.json", "lib/runner_timing.py"):
             shutil.copy2(ROOT / "scripts" / name, root / "scripts" / name)
         shutil.copy2(ROOT / "cmake/DeveloperWorkflow.cmake", root / "cmake/DeveloperWorkflow.cmake")
         shutil.copy2(ROOT / "cmake/ReadCTestCommands.cmake", root / "cmake/ReadCTestCommands.cmake")
@@ -65,6 +66,36 @@ include(cmake/DeveloperWorkflow.cmake)
                 self.run_verify(root, "^does_not_exist$", succeeds=False)
                 self.assertEqual(json.loads(report.read_text())["status"], "failed")
                 self.run_verify(root, "^long$", succeeds=False)
+
+    def test_runner_identity_change_refreshes_native_test_availability(self):
+        with tempfile.TemporaryDirectory(prefix="runner selection ") as temporary:
+            root = Path(temporary)
+            self.fixture(root)
+            with (root / "CMakeLists.txt").open("a") as stream:
+                stream.write('''
+if(NOT "$ENV{SEVENZIP_WINDOWS_RUNNER_HOST}" STREQUAL "" AND
+   "$ENV{SEVENZIP_WINDOWS_RUNNER_HOST}" STREQUAL "$ENV{COMPUTERNAME}")
+    add_test(NAME configured_native COMMAND subject)
+endif()
+''')
+            with patch.dict(os.environ, {"SEVENZIP_WINDOWS_RUNNER_HOST": "fixture-A",
+                                         "COMPUTERNAME": "fixture-A"}):
+                self.run_verify(root, "^configured_native$", plan=True)
+                os.environ["SEVENZIP_WINDOWS_RUNNER_HOST"] = "fixture-B"
+                # A stale configure would still select a test for the wrong host.
+                self.run_verify(root, "^configured_native$", plan=True, succeeds=False)
+
+    def test_unwritable_optional_timing_does_not_fail_verification(self):
+        with tempfile.TemporaryDirectory(prefix="optional timing ") as temporary:
+            root = Path(temporary)
+            self.fixture(root)
+            (root / "runner-tmp").write_text("An unavailable timing directory")
+            with patch.dict(os.environ, {
+                    "SEVENZIP_RUNNER_TIMING": str(root / "runner-tmp/timing.jsonl"),
+                    "SEVENZIP_RUN_TOKEN": "fixture", "SEVENZIP_RUNNER_PYTHON": sys.executable}):
+                self.run_verify(root, "^scenario$")
+            result = json.loads((root / "build/dev/verify-result.json").read_text())
+            self.assertEqual(result["status"], "passed")
 
     def run_verify(self, root, selection, plan=False, succeeds=True):
         command = [sys.executable, str(root / "scripts/verify.py"), "--tests", selection, "--skip-runtime"]

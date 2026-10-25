@@ -1,4 +1,4 @@
 interface:
   display_name: 'Sevenzip code navigation'
   short_description: 'Trace Qt, backend, and upstream C++'
-  default_prompt: 'Use $sz-navigation to locate the upstream implementation and dependencies to copy, and map the necessary Qt and platform adaptations.'
+  default_prompt: 'Use $sz-navigation to locate current owners, trace callers and dependencies, and compare the affected code with its recorded upstream source.'

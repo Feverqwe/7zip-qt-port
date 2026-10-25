@@ -16,8 +16,12 @@ class PrivateClassRegistration {
     bool create(const wchar_t *library) {
         // Registration fixtures run only on the authorized disposable guest.
         wchar_t machine[MAX_COMPUTERNAME_LENGTH + 1]{};
+        wchar_t expected[MAX_COMPUTERNAME_LENGTH + 1]{};
         DWORD length = MAX_COMPUTERNAME_LENGTH + 1;
-        if (!GetComputerNameW(machine, &length) || _wcsicmp(machine, L"RUNNER-WINDOWS") != 0)
+        const DWORD expectedLength = GetEnvironmentVariableW(L"SEVENZIP_WINDOWS_RUNNER_HOST",
+                                                             expected, MAX_COMPUTERNAME_LENGTH + 1);
+        if (!expectedLength || expectedLength > MAX_COMPUTERNAME_LENGTH ||
+            !GetComputerNameW(machine, &length) || _wcsicmp(machine, expected) != 0)
             return false;
         HKEY key = nullptr;
         DWORD disposition = 0;

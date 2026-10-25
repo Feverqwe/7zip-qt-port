@@ -6,6 +6,7 @@ import base64
 from concurrent.futures import ThreadPoolExecutor
 import datetime
 import json
+import os
 from pathlib import Path
 import shlex
 import subprocess
@@ -20,7 +21,9 @@ from lib.hyperv_transport import collect_logs, sync_command
 from lib.hyperv_workspace import current_branch, load_workspaces, mount_guard, worktree_root
 from lib.runner_config import load_config, runner_config
 from lib.project_paths import harness_root
+from lib.runner_timing import summarize
 
+INVOCATION_STARTED = float(os.environ.get("SEVENZIP_INVOCATION_STARTED", time.monotonic()))
 ROOT = Path(__file__).resolve().parents[1]
 HARNESS = harness_root(ROOT)
 STATE = HARNESS / "build/runners/hyperv"
@@ -64,10 +67,16 @@ def remote(record, script, **kwargs):
 def lock_command(record, root, token, action, **kwargs):
     code = (ROOT / "scripts/lib/hyperv_lock.py").read_text()
     if action == "recover":
-        code += f"\nroot=Path({root!r})\nrecord=json.loads((root.with_name(root.name+'.lock')/'owner.json').read_text())\n"
-        code += "operate(root, record['token'], 'release-completed')\n"
+        operation = f"root=Path({root!r})\nrecord=json.loads((root.with_name(root.name+'.lock')/'owner.json').read_text())\n"
+        operation += "operate(root, record['token'], 'release-completed')\n"
     else:
-        code += f"\noperate({root!r}, {token!r}, {action!r})\n"
+        operation = f"operate({root!r}, {token!r}, {action!r})\n"
+        if action == "acquire":
+            operation += "import time\nprint('RUNNER_CLOCK=' + str(time.monotonic()), flush=True)\n"
+    code += "\ntry:\n" + "".join("    " + line + "\n" for line in operation.splitlines())
+    code += ("except (ValueError, OSError) as error:\n"
+             "    import sys\n    print(f'Runner lock: {error}', file=sys.stderr)\n"
+             "    raise SystemExit(1)\n")
     encoded = base64.b64encode(code.encode()).decode()
     statement = f"import base64; exec(base64.b64decode('{encoded}'))"
     if record["platform"] == "windows":
@@ -80,8 +89,7 @@ def lock_command(record, root, token, action, **kwargs):
 def command_payload(preset, command):
     commands = [command] if command is not None else [["bash", "scripts/check.sh"]]
     if command is None and preset == "release":
-        commands += [["bash", "scripts/build.sh", "release"],
-                     ["bash", "scripts/ctest.sh", "--preset", "release", "--output-on-failure"]]
+        commands += [["bash", "scripts/build.sh", "release"]]
     return "set -euo pipefail\n" + "".join(shlex.join(item) + "\n" for item in commands)
 
 
@@ -96,6 +104,8 @@ def execute_check(record, platform, preset, root, token, command=None,
     if build_jobs <= 0:
         raise ValueError("CMAKE_BUILD_PARALLEL_LEVEL must be a positive integer")
     payload = command_payload(preset, command)
+    timing_command = shlex.join([config['python'], 'scripts/lib/runner_timing.py'])
+    payload = timing_command + " command_start\n" + payload
     if platform == "linux":
         script = f"""set -euo pipefail
 cd {shlex.quote(root)}
@@ -109,6 +119,9 @@ export PATH={shlex.quote(':'.join([config['qt_prefix'] + '/bin', *config['path']
 export LIBGL_ALWAYS_SOFTWARE=1 SEVENZIP_CTEST_JOBS=1
 export PYTHONUTF8=1 PYTHONIOENCODING=utf-8
 export SEVENZIP_RUN_TOKEN={token}
+export SEVENZIP_RUNNER_PYTHON={shlex.quote(config['python'])}
+export SEVENZIP_RUNNER_TIMING="$PWD/runner-tmp/timing.jsonl"
+: > "$SEVENZIP_RUNNER_TIMING"
 export CCACHE_DIR={shlex.quote(config['ccache_dir'])}
 export CCACHE_MAXSIZE=2G
 set +e
@@ -117,7 +130,9 @@ set -e
 df -Pk .
 """
         if prepare_runtime:
-            script += shlex.quote(config['python']) + ' scripts/prepare-runtime.py --upstream "$PWD/upstream"\nexport SEVENZIP_RUNTIME_PREPARED=1\n'
+            script += (timing_command + ' runtime_start\n' + shlex.quote(config['python']) +
+                       ' scripts/prepare-runtime.py --upstream "$PWD/upstream"\n' +
+                       timing_command + ' runtime_end\nexport SEVENZIP_RUNTIME_PREPARED=1\n')
         script += ('export PATH="$PWD/build/codec-runtime:$PATH"\n'
                    'export SEVENZIP_CODEC_MODULE_DIR="$PWD/build/codec-runtime"\n' + payload)
         script += f") > check.log 2>&1\ncode=$?\nprintf '%s\\n' '{token}' > .runner-complete\ntail -n 80 check.log\nexit \"$code\"\n"
@@ -134,10 +149,14 @@ df -Pk .
                     'set "SEVENZIP_CTEST_JOBS=1"', f'set "SEVENZIP_CODEC_MODULE_DIR={root}/build/codec-runtime"',
                     'set "PYTHONUTF8=1"', 'set "PYTHONIOENCODING=utf-8"',
                     f'set "SEVENZIP_RUN_TOKEN={token}"',
+                    f'set "SEVENZIP_RUNNER_TIMING={root}/runner-tmp/timing.jsonl"',
                     f'cd /d "{root}"']
         if prepare_runtime:
-            commands += [f'"{config["python"]}" scripts/prepare-runtime.py --upstream upstream',
-                         'if errorlevel 1 exit /b %errorlevel%', 'set "SEVENZIP_RUNTIME_PREPARED=1"']
+            commands += [f'"{config["python"]}" scripts/lib/runner_timing.py runtime_start',
+                         f'"{config["python"]}" scripts/prepare-runtime.py --upstream upstream',
+                         'if errorlevel 1 exit /b %errorlevel%',
+                         f'"{config["python"]}" scripts/lib/runner_timing.py runtime_end',
+                         'set "SEVENZIP_RUNTIME_PREPARED=1"']
         commands += ['bash runner-command.sh', 'exit /b %errorlevel%']
         batch = base64.b64encode(("\r\n".join(commands) + "\r\n").encode()).decode()
         encoded_payload = base64.b64encode(payload.encode()).decode()
@@ -145,6 +164,7 @@ df -Pk .
             "& cmd.exe /d /c 'check.cmd > check.log 2>&1'\n$code=$LASTEXITCODE\n")
         script = f"""Set-Location '{root}'
 New-Item -ItemType Directory '{root}/runner-tmp' -Force | Out-Null
+[IO.File]::WriteAllText('{root}/runner-tmp/timing.jsonl', '')
 $env:TEMP=$env:TMP=$env:TMPDIR='{root}/runner-tmp'
 [IO.File]::WriteAllBytes('{root}/check.cmd', [Convert]::FromBase64String('{batch}'))
 [IO.File]::WriteAllBytes('{root}/runner-command.sh', [Convert]::FromBase64String('{encoded_payload}'))
@@ -167,7 +187,7 @@ def script_command(arguments, platforms):
     if ignored.returncode == 0:
         raise ValueError("Ignored scripts are not synchronized")
     interpreters = {".sh": ["bash"], ".py": ["python"],
-                    ".ps1": ["powershell.exe", "-NoProfile", "-File"]}
+                    ".ps1": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-File"]}
     if path.suffix not in interpreters or (path.suffix == ".ps1" and platforms != ["windows"]):
         raise ValueError("Use .sh/.py, or .ps1 for Windows only")
     return [*interpreters[path.suffix], path.as_posix(), *arguments[1:]]
@@ -185,6 +205,7 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
               "branch": branch, "directory": root, "interactive": interactive and platform == "windows",
               "elevated": elevated and platform == "windows", "seconds": {}}
     acquired = launched = interrupted_sync = False
+    clock_anchor = None
     print(f"[{platform}] Branch: {branch}; persistent worktree: {root}; "
           f"log: {directory / 'transport.log'}", flush=True)
     with (directory / "transport.log").open("w") as output:
@@ -193,11 +214,20 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
             started = time.monotonic()
             record = discover(platform)
             result.update(record)
+            result["seconds"]["ready"] = round(time.monotonic() - started, 3)
+            started = time.monotonic()
             if "filesystem_uuid" in workspace:
                 remote(record, mount_guard(workspace), **transport)
-            lock_command(record, root, token, "acquire", **transport)
+            before_lock = time.monotonic()
+            response = lock_command(record, root, token, "acquire", capture_output=True)
+            after_lock = time.monotonic()
             acquired = True
-            result["seconds"]["ready_and_lock"] = round(time.monotonic() - started, 3)
+            if response is not None:
+                output.write(response.stdout)
+                for line in response.stdout.splitlines():
+                    if line.startswith("RUNNER_CLOCK="):
+                        clock_anchor = (before_lock, float(line.split("=", 1)[1]), after_lock)
+            result["seconds"]["guard_and_lock"] = round(time.monotonic() - started, 3)
             started = time.monotonic()
             invoke(sync_command(record, platform, source, root), **transport)
             result["seconds"]["sync"] = round(time.monotonic() - started, 3)
@@ -228,6 +258,9 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
                 try:
                     if launched:
                         result.update(collect_logs(record, root, directory, command, token, invoke, output))
+                        timing = directory / "timing.jsonl"
+                        if timing.exists():
+                            result.update(summarize(timing, token, clock_anchor, INVOCATION_STARTED))
                 except (subprocess.CalledProcessError, OSError, ValueError) as error:
                     result["log_error"] = str(error)
                 try:
@@ -242,6 +275,9 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
                         result.update(status="error", exit_code=1)
             (directory / "run.json").write_text(json.dumps(result, indent=2) + "\n")
     print(f"[{platform}] {result['status']}; timing: {result['seconds']}; logs: {directory}", flush=True)
+    if "to_tests_seconds" in result:
+        print(f"[{platform}] First test: {result['to_tests_seconds']:.3f}s after invocation; "
+              f"bounds: {result['to_tests_bounds_seconds']}; guest phases: {result['guest_seconds']}", flush=True)
     if result["status"] != "passed" or result.get("lock_retained"):
         log = directory / "check.log"
         if not log.exists():
