@@ -7,8 +7,9 @@
 #include <string>
 #include <vector>
 
-#include "Common/MyException.h"
+#ifdef SEVENZIP_TEST_OPENSSL
 #include <openssl/evp.h>
+#endif
 
 namespace {
 std::string hex(const std::vector<Byte> &bytes) {
@@ -32,8 +33,8 @@ bool check(const std::string &password, const std::string &salt, UInt32 iteratio
         std::fputs("PBKDF2 produced incorrect key bytes\n", stderr);
         return false;
     }
-    if (require_provider && (!sevenzip_pbkdf2_sha1(p, password.size(), s, salt.size(), iterations,
-                                                   result.data(), result.size()) ||
+    if (require_provider && (!sevenzip_try_pbkdf2_sha1(p, password.size(), s, salt.size(),
+                                                       iterations, result.data(), result.size()) ||
                              hex(result) != expected)) {
         std::fputs("Library provider could not derive a supported legacy key\n", stderr);
         return false;
@@ -68,17 +69,19 @@ bool vectors(bool require_provider) {
 } // namespace
 
 int main() {
+#ifdef SEVENZIP_TEST_OPENSSL
     if (!vectors(true))
         return 1;
+    // Model an unavailable algorithm in a system provider configuration. The
+    // archive consumer must still produce the complete original key.
     if (EVP_set_default_properties(nullptr, "provider=sevenzip_missing") != 1)
         return 1;
-    bool failed = false;
-    try {
-        vectors(false);
-    } catch (const CSystemException &error) {
-        failed = error.ErrorCode == E_FAIL;
-    }
-    if (EVP_set_default_properties(nullptr, nullptr) != 1 || !failed)
+    const bool fallback_ok = vectors(false);
+    if (EVP_set_default_properties(nullptr, nullptr) != 1 || !fallback_ok)
         return 1;
+#else
+    if (!vectors(false))
+        return 1;
+#endif
     return 0;
 }

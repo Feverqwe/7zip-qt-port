@@ -6,10 +6,12 @@
 #include <cstddef>
 #include <cstdint>
 
-// False is a derivation failure; the enclosing archive operation must fail.
-bool SEVENZIP_CRYPTO_CALL sevenzip_pbkdf2_sha1(const unsigned char *password,
-                                               std::size_t password_size, const unsigned char *salt,
-                                               std::size_t salt_size, std::uint32_t iterations,
-                                               unsigned char *key, std::size_t key_size);
+// False asks the caller to use its original provider, including when a system
+// OpenSSL provider does not support the legacy archive parameters.
+bool SEVENZIP_CRYPTO_CALL sevenzip_try_pbkdf2_sha1(const unsigned char *password,
+                                                   std::size_t password_size,
+                                                   const unsigned char *salt, std::size_t salt_size,
+                                                   std::uint32_t iterations, unsigned char *key,
+                                                   std::size_t key_size);
 
 #endif

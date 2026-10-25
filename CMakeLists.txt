@@ -21,7 +21,7 @@ include(CTest)
 # Relocated source headers must also resolve from unchanged upstream headers
 # spelling MyVector.h, ../Common/MyVector.h or ../../Common/MyVector.h.
 include_directories(src/CPP src/CPP/Common src/CPP/Windows src/CPP/7zip/Common src/CPP/7zip/UI/Common
-    src/CPP/7zip/Crypto third_party/7zip/CPP/7zip/Crypto third_party/7zip/C)
+    src/CPP/7zip/Crypto third_party/7zip/CPP/7zip/Crypto)
 set_source_files_properties(src/CPP/7zip/Common/LimitedStreams.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Common")
 
@@ -139,9 +139,9 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     src/qtdiagnostictext.cpp src/qtdiagnostictext.h
     src/qttranslationcatalog.cpp src/qttranslationcatalog.h
     third_party/7zip/C/7zCrc.c third_party/7zip/C/7zCrcOpt.c third_party/7zip/C/CpuArch.c
-    src/C/Sha1.c
-    src/C/Sha256.c
-    src/C/Sha512.c third_party/7zip/C/Sha3.c
+    src/C/Sha1.c third_party/7zip/C/Sha1Opt.c
+    src/C/Sha256.c third_party/7zip/C/Sha256Opt.c
+    src/C/Sha512.c third_party/7zip/C/Sha512Opt.c third_party/7zip/C/Sha3.c
     src/C/Md5.c third_party/7zip/C/XzCrc64.c third_party/7zip/C/XzCrc64Opt.c
     src/C/Xxh64.c third_party/7zip/CPP/7zip/Compress/BZip2Crc.cpp
     third_party/7zip/C/Blake2s.c

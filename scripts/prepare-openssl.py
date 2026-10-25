@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the pinned required static libcrypto in the existing dependency tree."""
+"""Build the pinned optional static libcrypto in the existing dependency tree."""
 
 import argparse
 import json
@@ -82,9 +82,7 @@ def prepare(args):
         run(["make", "-j" + str(args.jobs), "build_generated", "libcrypto.a"], source, env=environment)
     print("Static libcrypto: " + str(library), flush=True)
     if args.configure_app:
-        app_options = ["-DCMAKE_OSX_DEPLOYMENT_TARGET=14.4"] if system == "Darwin" else []
-        run(["cmake", "--preset", args.preset,
-             *app_options,
+        run(["cmake", "--preset", args.preset, "-DSEVENZIP_CRYPTO_PROVIDER=OPENSSL",
              "-DOPENSSL_USE_STATIC_LIBS=TRUE", "-DOPENSSL_ROOT_DIR=" + str(source),
              "-DOPENSSL_INCLUDE_DIR=" + str(source / "include"),
              "-DOPENSSL_CRYPTO_LIBRARY=" + str(library)], ROOT)

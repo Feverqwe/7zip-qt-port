@@ -117,7 +117,6 @@ set -e
 df -Pk .
 """
         if prepare_runtime:
-            script += 'bash scripts/build.sh ' + shlex.quote(preset) + ' --configure-only\n'
             script += shlex.quote(config['python']) + ' scripts/prepare-runtime.py --upstream "$PWD/upstream"\nexport SEVENZIP_RUNTIME_PREPARED=1\n'
         script += ('export PATH="$PWD/build/codec-runtime:$PATH"\n'
                    'export SEVENZIP_CODEC_MODULE_DIR="$PWD/build/codec-runtime"\n' + payload)
@@ -137,9 +136,7 @@ df -Pk .
                     f'set "SEVENZIP_RUN_TOKEN={token}"',
                     f'cd /d "{root}"']
         if prepare_runtime:
-            commands += [f'bash scripts/build.sh {preset} --configure-only',
-                         'if errorlevel 1 exit /b %errorlevel%',
-                         f'"{config["python"]}" scripts/prepare-runtime.py --upstream upstream',
+            commands += [f'"{config["python"]}" scripts/prepare-runtime.py --upstream upstream',
                          'if errorlevel 1 exit /b %errorlevel%', 'set "SEVENZIP_RUNTIME_PREPARED=1"']
         commands += ['bash runner-command.sh', 'exit /b %errorlevel%']
         batch = base64.b64encode(("\r\n".join(commands) + "\r\n").encode()).decode()

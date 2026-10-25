@@ -26,7 +26,7 @@
   },
   "scope": {
     "LICENSE.txt": "Unchanged redistribution notice; mapped for baseline comparison.",
-    "api_and_algorithm_units": "Reference for the required external dependency public API, PBKDF2, AES-CBC/ECB and SHA/MD5 block-state contracts only; no algorithm bodies copied.",
-    "local_integration": "src/crypto/opensslkdf.cpp, opensslaes.cpp, opensslblock.c and opensslhash.c; sevenzip_crypto_provider CMake target. The library source is not vendored."
+    "api_and_algorithm_units": "Reference for the external dependency public API, PBKDF2, AES-CBC and SHA/MD5 block-state contracts only; no algorithm bodies copied.",
+    "local_integration": "src/crypto/opensslkdf.cpp, opensslaes.cpp and opensslhash.c; sevenzip_crypto_provider CMake target. The library source is not vendored."
   }
 }

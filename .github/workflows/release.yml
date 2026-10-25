@@ -68,7 +68,7 @@ jobs:
             libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
             libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 \
             libwayland-client0 libwayland-cursor0 libwayland-egl1 \
-            libglib2.0-dev patchelf ccache
+            libglib2.0-dev patchelf
       - name: Configure Windows toolchain
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
@@ -76,11 +76,7 @@ jobs:
           arch: x64
       - name: Install macOS build tools
         if: runner.os == 'macOS'
-        run: brew install ninja ccache
-      - name: Install Windows crypto build tools
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: choco install strawberryperl ccache nasm --no-progress -y
+        run: brew install ninja
       - name: Install official Qt kit
         if: runner.os != 'Windows'
         uses: jurplel/install-qt-action@v4
@@ -120,23 +116,11 @@ jobs:
           subprocess.run(['git', '-C', upstream, 'fetch', '--depth=1',
                           baseline['repository'], baseline['revision']], check=True)
           PY
-      - name: Prepare required static OpenSSL (Unix)
-        if: runner.os != 'Windows'
-        run: python3 scripts/prepare-openssl.py --configure-app --preset release
-      - name: Prepare required static OpenSSL (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $env:PATH += ';' + [Environment]::GetEnvironmentVariable('Path', 'Machine')
-          $nativePerl = Get-Command perl.exe -All | Where-Object { (& $_.Source -e 'print $^O') -eq 'MSWin32' } | Select-Object -First 1
-          if (!$nativePerl) { throw 'Native Windows Perl is required' }
-          python scripts/prepare-openssl.py --configure-app --preset release --perl $nativePerl.Source
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build official engine and SFX
         run: python3 scripts/prepare-runtime.py --upstream build/release-upstream
       - name: Build Release
         run: |
-          cmake --preset release ${{ matrix.cmake-args }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake --preset release ${{ matrix.cmake-args }}
           cmake --build --preset release --target ${{ matrix.targets }}
       - name: Package Unix runtime
         if: runner.os != 'Windows'

@@ -2,10 +2,8 @@
 #include "7zip/Archive/Zip/ZipHandler.h"
 #include "native_archive_fixture.h"
 #include <QProcess>
-#include <QProcessEnvironment>
 #include <QTemporaryDir>
 #include <QtTest>
-#include <openssl/evp.h>
 
 class CryptoZipTests final : public QObject {
     Q_OBJECT
@@ -17,53 +15,6 @@ class CryptoZipTests final : public QObject {
 
   private slots:
     void initTestCase() { CrcGenerateTable(); }
-    void native_runtime_rejects_unavailable_crypto() {
-        QTemporaryDir fixture;
-        QVERIFY(fixture.isValid());
-        QFile config(fixture.filePath("openssl.cnf"));
-        QVERIFY(config.open(QIODevice::WriteOnly));
-        config.write("openssl_conf = init\n[init]\nalg_section = algorithms\n"
-                     "[algorithms]\ndefault_properties = provider=sevenzip_missing\n");
-        config.close();
-        QFile input(fixture.filePath(QStringLiteral("данные with spaces.bin")));
-        QVERIFY(input.open(QIODevice::WriteOnly));
-        input.write("private payload");
-        input.close();
-        auto environment = QProcessEnvironment::systemEnvironment();
-        environment.insert("OPENSSL_CONF", config.fileName());
-        for (const QString &format : {QString("zip"), QString("7z")}) {
-            QProcess process;
-            process.setProcessEnvironment(environment);
-            process.setWorkingDirectory(fixture.path());
-            QStringList arguments = {"a", "-t" + format, "-psecret", "-mx=0"};
-            if (format == "zip")
-                arguments << "-mem=AES256";
-            arguments << "--" << fixture.filePath("failed." + format) << input.fileName();
-            process.start(QString::fromUtf8(SEVENZIP_CRYPTO_REFERENCE_7Z), arguments);
-            QVERIFY(process.waitForFinished(10000));
-            QCOMPARE(process.exitStatus(), QProcess::NormalExit);
-            QVERIFY2(process.exitCode() != 0, process.readAllStandardOutput().constData());
-        }
-    }
-    void unavailable_derivation_aborts_archive() {
-        QTemporaryDir fixture;
-        QVERIFY(fixture.isValid());
-        CMyComPtr2_Create<IOutArchive, NArchive::NZip::CHandler> writer;
-        CMyComPtr<ISetProperties> properties;
-        QCOMPARE(writer.Interface()->QueryInterface(IID_ISetProperties, (void **)&properties),
-                 S_OK);
-        const wchar_t *names[] = {L"em"};
-        NWindows::NCOM::CPropVariant value(L"AES256");
-        QCOMPARE(properties->SetProperties(names, &value, 1), S_OK);
-        CMyComPtr2_Create<IOutStream, COutFileStream> output;
-        QVERIFY(output->Create_NEW(us2fs(fixture.filePath("failed.zip").toStdWString().c_str())));
-        CMyComPtr<IArchiveUpdateCallback> callback = new NativeArchiveFixture::CWriter(
-            {{QStringLiteral("данные with spaces.bin"), QByteArray("secret")}}, "password");
-        QCOMPARE(EVP_set_default_properties(nullptr, "provider=sevenzip_missing"), 1);
-        const HRESULT status = writer.Interface()->UpdateItems(output, 1, callback);
-        QCOMPARE(EVP_set_default_properties(nullptr, nullptr), 1);
-        QCOMPARE(status, E_FAIL);
-    }
     void officialReaderAcceptsNativeAes_data() {
         QTest::addColumn<QString>("method");
         for (const char *method : {"AES128", "AES192", "AES256"})

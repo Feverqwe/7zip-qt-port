@@ -10,7 +10,6 @@ This code is based on public domain code from Wei Dai's Crypto++ library. */
 #include "RotateDefs.h"
 #include "CpuArch.h"
 
-#ifndef SEVENZIP_OPENSSL_HASHES
 #ifdef MY_CPU_X86_OR_AMD64
   #if   defined(Z7_LLVM_CLANG_VERSION)  && (Z7_LLVM_CLANG_VERSION  >= 30800) \
      || defined(Z7_APPLE_CLANG_VERSION) && (Z7_APPLE_CLANG_VERSION >= 50100) \
@@ -45,8 +44,6 @@ This code is based on public domain code from Wei Dai's Crypto++ library. */
   #endif
 #endif
 
-#endif
-
 void Z7_FASTCALL Sha256_UpdateBlocks(UInt32 state[8], const Byte *data, size_t numBlocks);
 
 #ifdef Z7_COMPILER_SHA256_SUPPORTED
@@ -67,9 +64,7 @@ static void Z7_FASTCALL Sha256_UpdateBlocks_OpenSSL(UInt32 state[8], const Byte 
 #if defined(Z7_COMPILER_SHA256_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
 
   static SHA256_FUNC_UPDATE_BLOCKS g_SHA256_FUNC_UPDATE_BLOCKS = SHA256_DEFAULT_UPDATE_BLOCKS;
-#ifndef SEVENZIP_OPENSSL_HASHES
   static SHA256_FUNC_UPDATE_BLOCKS g_SHA256_FUNC_UPDATE_BLOCKS_HW;
-#endif
 
   #define SHA256_UPDATE_BLOCKS(p) p->v.vars.func_UpdateBlocks
 #else
@@ -79,11 +74,6 @@ static void Z7_FASTCALL Sha256_UpdateBlocks_OpenSSL(UInt32 state[8], const Byte 
 
 BoolInt Sha256_SetFunction(CSha256 *p, unsigned algo)
 {
-#ifdef SEVENZIP_OPENSSL_HASHES
-  if (algo != SHA256_ALGO_DEFAULT) return False;
-  p->v.vars.func_UpdateBlocks = Sha256_UpdateBlocks_OpenSSL;
-  return True;
-#else
   SHA256_FUNC_UPDATE_BLOCKS func = Sha256_UpdateBlocks;
   
   #if defined(Z7_COMPILER_SHA256_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
@@ -107,7 +97,6 @@ BoolInt Sha256_SetFunction(CSha256 *p, unsigned algo)
 
   p->v.vars.func_UpdateBlocks = func;
   return True;
-#endif
 }
 
 
@@ -161,7 +150,6 @@ void Sha256_Init(CSha256 *p)
   Sha256_InitState(p);
 }
 
-#ifndef SEVENZIP_OPENSSL_HASHES
 #define S0(x) (rotrFixed(x, 2) ^ rotrFixed(x,13) ^ rotrFixed(x,22))
 #define S1(x) (rotrFixed(x, 6) ^ rotrFixed(x,11) ^ rotrFixed(x,25))
 #define s0(x) (rotrFixed(x, 7) ^ rotrFixed(x,18) ^ (x >> 3))
@@ -386,8 +374,6 @@ void Z7_FASTCALL Sha256_UpdateBlocks(UInt32 state[8], const Byte *data, size_t n
   while (--numBlocks);
 }
 
-
-#endif
 
 #define Sha256_UpdateBlock(p) SHA256_UPDATE_BLOCKS(p)(p->state, p->buffer, 1)
 

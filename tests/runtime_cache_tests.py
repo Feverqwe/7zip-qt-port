@@ -24,15 +24,6 @@ class RuntimeCacheTests(unittest.TestCase):
             probe.start()
             self.addCleanup(probe.stop)
 
-    def configure_crypto(self, root):
-        (root / "build").mkdir(exist_ok=True)
-        library = root / "fixture-libcrypto.a"
-        library.write_bytes(b"external crypto fixture")
-        (root / "build/crypto-provider.json").write_text(json.dumps({
-            "schema": 1, "provider": "OPENSSL", "version": "fixture",
-            "system": runtime.platform.system(), "deployment_target": "",
-            "definitions": [], "includes": [], "libraries": [str(library)]}))
-
     def test_changed_crypto_library_rebuilds_engine_without_port_source_changes(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -221,7 +212,6 @@ class RuntimeCacheTests(unittest.TestCase):
             (root / "docs/upstream-baseline.json").write_text('{"revision":"one"}')
             for name in runtime.BUILDERS:
                 (root / "scripts" / name).write_text("original")
-            self.configure_crypto(root)
             probe = subprocess.CompletedProcess("compiler", 0, b"compiler1", b"")
             with patch.object(runtime.subprocess, "run", return_value=probe):
                 original = runtime.fingerprint(root)
@@ -247,7 +237,6 @@ class RuntimeCacheTests(unittest.TestCase):
             path.write_text(json.dumps(manifest))
             for name in runtime.BUILDERS:
                 (root / "scripts" / name).write_text("builder")
-            self.configure_crypto(root)
             with patch.object(runtime.subprocess, "run", return_value=
                               subprocess.CompletedProcess("compiler", 0, b"compiler", b"")):
                 before = runtime.fingerprint(root)

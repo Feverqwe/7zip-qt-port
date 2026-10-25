@@ -47,34 +47,48 @@ private:
 
 protected:
   bool _keyIsSet;
-  bool _encodeMode;
+  // bool _encodeMode;
   bool _ctrMode;
-  SevenzipOpenSslAes _opensslCipher;
+  bool _useLibrary;
+  SevenzipOpenSslAesCbc _opensslCipher;
+  // unsigned _offset;
   unsigned _keySize;
   unsigned _ctrPos; // we need _ctrPos here for Init() / SetInitVector()
+  AES_CODE_FUNC _codeFunc;
+  AES_SET_KEY_FUNC _setKeyFunc;
 private:
+  // UInt32 _aes[AES_NUM_IVMRK_WORDS + 3];
   CAlignedBuffer1 _aes;
 
   Byte _iv[AES_BLOCK_SIZE];
 
+  // UInt32 *Aes() { return _aes + _offset; }
 protected:
   UInt32 *Aes() { return (UInt32 *)(void *)(Byte *)_aes; }
   void Code(Byte *data, size_t numBlocks);
-  void CodeCtr(Byte *data, size_t numBlocks);
 
-  Z7_IFACE_PURE(IAesCoderSetFunctions)
+ Z7_IFACE_PURE(IAesCoderSetFunctions)
 
 public:
-  CAesCoder(unsigned keySize, bool encodeMode = false, bool ctrMode = false);
-  virtual ~CAesCoder() {} // we need virtual destructor for derived classes
+  CAesCoder(
+      // bool encodeMode,
+      unsigned keySize
+      // , bool ctrMode
+      );
+  virtual ~CAesCoder() {}   // we need virtual destructor for derived classes
   void SetKeySize(unsigned size) { _keySize = size; }
 };
 
 
 #ifndef Z7_EXTRACT_ONLY
-struct CAesCbcEncoder : public CAesCoder {
-    CAesCbcEncoder(unsigned keySize = 0) : CAesCoder(keySize, true) {}
-    Z7_IFACE_IMP(IAesCoderSetFunctions)
+struct CAesCbcEncoder: public CAesCoder
+{
+  CAesCbcEncoder(unsigned keySize = 0): CAesCoder(keySize)
+  {
+    _setKeyFunc = Aes_SetKey_Enc;
+    _codeFunc = g_AesCbc_Encode;
+  }
+  Z7_IFACE_IMP(IAesCoderSetFunctions)
 };
 #endif
 
@@ -82,6 +96,8 @@ struct CAesCbcDecoder: public CAesCoder
 {
   CAesCbcDecoder(unsigned keySize = 0): CAesCoder(keySize)
   {
+    _setKeyFunc = Aes_SetKey_Dec;
+    _codeFunc = g_AesCbc_Decode;
   }
   Z7_IFACE_IMP(IAesCoderSetFunctions)
 };
@@ -90,9 +106,18 @@ struct CAesCbcDecoder: public CAesCoder
 struct CAesCtrCoder: public CAesCoder
 {
 private:
+  // unsigned _ctrPos;
+  // Z7_IFACE_COM7_IMP(ICompressFilter)
+  // Z7_COM7F_IMP(Init())
   Z7_COM7F_IMP2(UInt32, Filter(Byte *data, UInt32 size))
 public:
-  CAesCtrCoder(unsigned keySize = 0) : CAesCoder(keySize, true, true) { _ctrPos = 0; }
+  CAesCtrCoder(unsigned keySize = 0): CAesCoder(keySize)
+  {
+    _ctrMode = true;
+    _ctrPos = 0;
+    _setKeyFunc = Aes_SetKey_Enc;
+    _codeFunc = g_AesCtr_Code;
+  }
   Z7_IFACE_IMP(IAesCoderSetFunctions)
 };
 #endif

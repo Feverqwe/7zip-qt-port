@@ -310,6 +310,7 @@ C_OBJS = \
   $O/7zCrcOpt.o \
   $O/7zStream.o \
   $O/Aes.o \
+  $O/AesOpt.o \
   $O/Alloc.o \
   $O/Bcj2.o \
   $O/Bcj2Enc.o \
@@ -338,9 +339,12 @@ C_OBJS = \
   $O/Ppmd8Dec.o \
   $O/Ppmd8Enc.o \
   $O/Sha1.o \
+  $O/Sha1Opt.o \
   $O/Sha256.o \
+  $O/Sha256Opt.o \
   $O/Sha3.o \
   $O/Sha512.o \
+  $O/Sha512Opt.o \
   $O/Sort.o \
   $O/SwapBytes.o \
   $O/Xxh64.o \

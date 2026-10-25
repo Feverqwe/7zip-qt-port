@@ -1,4 +1,5 @@
 // Expected abc digests independently computed with OpenSSL's reference CLI.
+#include "7zip/Crypto/Pbkdf2HmacSha1.h"
 #include "Md5.h"
 #include "Sha1.h"
 #include "Sha256.h"
@@ -7,7 +8,9 @@
 #include <string>
 #include <vector>
 
+#ifdef SEVENZIP_TEST_OPENSSL
 #include <openssl/evp.h>
+#endif
 
 namespace {
 template <class Context, auto Init, auto Update, auto Final, auto Select> struct Hash {
@@ -53,24 +56,19 @@ std::string hex(const std::vector<Byte> &bytes) {
     return result;
 }
 
-template <class H> bool exercise(const char *algorithm, unsigned size, const char *abc_digest) {
+template <class H> bool exercise(unsigned size, const char *abc_digest) {
     std::vector<Byte> payload(8193);
     for (std::size_t i = 0; i < payload.size(); ++i)
         payload[i] = Byte(i * 7 + i / 13);
     // Padding boundaries, aligned blocks and a large unaligned request.
     for (std::size_t length : {0U, 1U, 55U, 56U, 63U, 64U, 111U, 112U, 127U, 128U, 8193U}) {
-        H selected(size, 0);
+        H selected(size, 0), source(size, 1);
         selected.update(nullptr, 0);
-        std::vector<Byte> reference(EVP_MAX_MD_SIZE);
-        std::size_t reference_size = 0;
-        if (EVP_Q_digest(nullptr, algorithm, nullptr, payload.data(), length, reference.data(),
-                         &reference_size) != 1)
-            return false;
-        reference.resize(reference_size);
+        source.update(payload.data(), length);
         const std::size_t first = length > 13 ? 13 : length;
         selected.update(payload.data(), first);
         selected.update(payload.data() + first, length - first);
-        if (selected.final() != reference)
+        if (selected.final() != source.final())
             return false;
         // Final() resets the upstream state while preserving its selected implementation.
         selected.update(reinterpret_cast<const Byte *>("abc"), 3);
@@ -80,14 +78,14 @@ template <class H> bool exercise(const char *algorithm, unsigned size, const cha
     H left(size, 0);
     left.update(payload.data(), 77);
     H right = left; // HMAC and archive derivation rely on copyable partial state.
-    if (left.select(1))
+    if (!left.select(1))
         return false;
     left.update(payload.data() + 77, 311);
     if (!left.select(0))
         return false;
     left.update(payload.data() + 388, 12);
     right.update(payload.data() + 77, 140);
-    H reference_left(size, 0), reference_right(size, 0);
+    H reference_left(size, 1), reference_right(size, 1);
     reference_left.update(payload.data(), 400);
     reference_right.update(payload.data(), 217);
     return left.final() == reference_left.final() && right.final() == reference_right.final();
@@ -120,6 +118,13 @@ bool md5_streaming_and_clone() {
     return hex(digest) == "b44f8dd2846d9684f0a5a680ee52d173";
 }
 
+bool original_kdf_with_library_blocks() {
+    std::vector<Byte> key(25);
+    NCrypto::NSha1::Pbkdf2Hmac(reinterpret_cast<const Byte *>("password"), 8,
+                               reinterpret_cast<const Byte *>("salt"), 4, 4096, key.data(),
+                               key.size());
+    return hex(key) == "4b007901b765489abead49d926f721d065a429c12e463f6c4c";
+}
 } // namespace
 
 int main() {
@@ -127,21 +132,30 @@ int main() {
     Sha256Prepare();
     Sha512Prepare();
     if (!md5_streaming_and_clone() ||
-        !exercise<Hash1>("SHA1", 20, "a9993e364706816aba3e25717850c26c9cd0d89d") ||
-        !exercise<Hash256>("SHA256", 32,
+        !exercise<Hash1>(20, "a9993e364706816aba3e25717850c26c9cd0d89d") ||
+        !exercise<Hash256>(32,
                            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad") ||
-        !exercise<Hash512>("SHA512-224", 28,
-                           "4634270f707b6a54daae7530460842e20e37ed265ceee9a43e8924aa") ||
-        !exercise<Hash512>("SHA512-256", 32,
+        !exercise<Hash512>(28, "4634270f707b6a54daae7530460842e20e37ed265ceee9a43e8924aa") ||
+        !exercise<Hash512>(32,
                            "53048e2681941ef99b2e29b76b4c7dabe4c2d0c634fc6d46e0e2f13107e7af23") ||
-        !exercise<Hash512>("SHA384", 48,
-                           "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8"
-                           "086072ba1e7cc2358baeca134c825a7") ||
-        !exercise<Hash512>("SHA512", 64,
-                           "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2"
-                           "192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f")) {
+        !exercise<Hash512>(48, "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8"
+                               "086072ba1e7cc2358baeca134c825a7") ||
+        !exercise<Hash512>(64, "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2"
+                               "192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f")) {
         std::fputs("SHA state, streaming or finalization behavior differs\n", stderr);
         return 1;
     }
+#ifdef SEVENZIP_TEST_OPENSSL
+    // Disable EVP KDF lookup so the original HMAC copy/GetBlockDigest loop
+    // exercises the state-compatible library block adapter as a real consumer.
+    if (EVP_set_default_properties(nullptr, "provider=sevenzip_missing") != 1)
+        return 1;
+    const bool kdf_ok = original_kdf_with_library_blocks();
+    if (EVP_set_default_properties(nullptr, nullptr) != 1 || !kdf_ok)
+        return 1;
+#else
+    if (!original_kdf_with_library_blocks())
+        return 1;
+#endif
     return 0;
 }

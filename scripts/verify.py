@@ -70,13 +70,11 @@ def verify(root, args, profile):
               "run_token": os.environ.get("SEVENZIP_RUN_TOKEN")}
     before_cache = cache_stats()
     try:
-        run(["bash", str(root / "scripts/build.sh"), args.preset, "--configure-only"],
-            root, timings, "configure")
         if not args.plan and not args.skip_runtime and profile.get("runtime", True) and \
                 os.environ.get("SEVENZIP_RUNTIME_PREPARED") != "1":
             run([sys.executable, str(root / "scripts/prepare-runtime.py")], root, timings, "runtime")
-            run(["bash", str(root / "scripts/build.sh"), args.preset, "--configure-only"],
-                root, timings, "connect-runtime")
+        run(["bash", str(root / "scripts/build.sh"), args.preset, "--configure-only"],
+            root, timings, "configure")
         run(["cmake", f"-DSEVENZIP_TEST_DIR={build}", "-P",
              str(root / "cmake/ReadCTestCommands.cmake")], root, timings, "targets")
         result["compiler_launchers"] = {
