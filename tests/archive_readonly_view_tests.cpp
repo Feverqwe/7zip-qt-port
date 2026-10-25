@@ -1,5 +1,6 @@
 #include "archivenativeopen.h"
 #include "archivereadonlyview.h"
+#include "dot_path_cpio_fixture.h"
 #include "native_archive_fixture.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivereadoperation.h"
@@ -51,6 +52,44 @@ class ArchiveReadOnlyViewTests final : public QObject {
         QTest::addColumn<QString>("format");
         QTest::newRow("direct tar stream") << QStringLiteral("tar");
         QTest::newRow("decoded zip cache") << QStringLiteral("zip");
+    }
+    void currentDirectoryEntries_data() {
+        QTest::addColumn<QByteArray>("root");
+        QTest::newRow("current directory") << QByteArray(".");
+        QTest::newRow("repeated current directory") << QByteArray("./.");
+    }
+    void currentDirectoryEntries() {
+        QFETCH(QByteArray, root);
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath("Payload.cpio");
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        const auto bytes = DotPathCpioFixture(root);
+        QCOMPARE(file.write(bytes), qint64(bytes.size()));
+        file.close();
+        CMyComPtr<IUnknown> resource;
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QCOMPARE(Worker([&] { return Open(path, "cpio", resource, reader); }), S_OK);
+        std::shared_ptr<ArchiveReadOnlyView> view;
+        QString error;
+        QCOMPARE(Worker([&] {
+                     return ArchiveBackend::createReadOnlyView(resource, 4096, {}, view, error);
+                 }),
+                 S_OK);
+        QCOMPARE(view->entries().size(), 4);
+        const auto id = FileId(view, QStringLiteral("имя 空.txt"));
+        QVERIFY(id);
+        const auto &entry = view->entries().at(qsizetype(id - 1));
+        const auto &parent = view->entries().at(qsizetype(entry.Parent - 1));
+        QCOMPARE(parent.Name, QStringLiteral("ProxyBridge.app"));
+        QCOMPARE(parent.Parent, quint64(1));
+        const auto result = Worker([&] { return view->read(id, 0, 1024); });
+        QCOMPARE(result.Result, S_OK);
+        QCOMPARE(result.Data, QByteArray("payload bytes"));
+        const auto sidecar =
+            Worker([&] { return view->read(FileId(view, "._ProxyBridge.app"), 0, 1024); });
+        QCOMPARE(sidecar.Result, S_OK);
+        QCOMPARE(sidecar.Data, QByteArray("sidecar bytes"));
     }
     void retainedRanges() {
         QFETCH(QString, format);
@@ -336,6 +375,9 @@ class ArchiveReadOnlyViewTests final : public QObject {
     void rejectsUnsafeOrAmbiguousNamespace_data() {
         QTest::addColumn<QStringList>("names");
         QTest::newRow("parent traversal") << QStringList{"../outside.bin"};
+        QTest::newRow("parent after current directory") << QStringList{"./../outside.bin"};
+        QTest::newRow("current directory collision") << QStringList{"a/./data.bin", "a/data.bin"};
+        QTest::newRow("absolute current directory") << QStringList{"/./outside.bin"};
         QTest::newRow("case collision") << QStringList{"DATA.bin", "data.bin"};
         QTest::newRow("stream syntax") << QStringList{"data:stream.bin"};
     }

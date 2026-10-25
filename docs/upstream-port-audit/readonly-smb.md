@@ -166,6 +166,17 @@ Physical-device authorization/removal through a native mounted path is unverifie
 
 ## Runtime evidence
 
+### CPIO current-directory entries
+
+The mount namespace accepts explicit current-directory records and `./` path
+components, as found in installer Payload CPIO archives. They refer to the mount
+root and ordinary descendants. Parent traversal, absolute paths and conflicting
+names remain rejected. This is local SMB namespace integration; the upstream
+extraction path correction also handles dot components, but additionally changes
+unsafe names, which is unsuitable for a faithful mounted namespace. No reader or
+external source was imported for this correction. Synthetic CPIO regressions
+reuse the nested-copy fixture and check both retained reads and signed SMB reads.
+
 2026-10-25, macOS 27.0.1 arm64, native `/sbin/mount_smbfs`, synthetic fixture only.
 
 Before the compound fix, the server issued handle `1`, then received the related

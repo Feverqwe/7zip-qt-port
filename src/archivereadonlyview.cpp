@@ -280,7 +280,14 @@ HRESULT ArchiveReadOnlyView::initialize(QString &error) {
         path.replace(u'\\', u'/');
         if (native.IsDir && path.endsWith(u'/'))
             path.chop(1);
-        const auto parts = path.split(u'/');
+        auto parts = path.split(u'/');
+        // CPIO/TAR can explicitly describe the root and prefix entries with ./.
+        // Remove only current-directory components; retain parent traversal for validation.
+        parts.removeAll(QStringLiteral("."));
+        if (parts.isEmpty() && native.IsDir && path.size() <= 32767) {
+            state.Entries[0].Modified = modified;
+            continue;
+        }
         if (parts.isEmpty() || path.size() > 32767 ||
             std::any_of(parts.cbegin(), parts.cend(),
                         [](const QString &part) { return !SafeComponent(part); })) {

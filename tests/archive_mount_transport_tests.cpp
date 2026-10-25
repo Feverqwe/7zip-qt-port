@@ -1,4 +1,5 @@
 #include "archivenativeopen.h"
+#include "dot_path_cpio_fixture.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "native_archive_fixture.h"
@@ -210,6 +211,34 @@ class ArchiveMountTransportTests final : public QObject {
         smb2_set_password(client.Context, "wrong fixture password");
         QVERIFY(ClientWork([&] { return client.connect(host.Port); }) < 0);
         QCOMPARE(host.Confirmations, 0);
+    }
+    void cpioCurrentDirectoryAcrossChild() {
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath("Payload.cpio");
+        QFile archive(path);
+        QVERIFY(archive.open(QIODevice::WriteOnly));
+        const auto payload = DotPathCpioFixture();
+        QCOMPARE(archive.write(payload), qint64(payload.size()));
+        archive.close();
+        Host host;
+        QVERIFY(host.start(path, "cpio"));
+        QTRY_VERIFY_WITH_TIMEOUT(host.Port || !host.Error.isEmpty(), 15000);
+        QVERIFY2(host.Port, qPrintable(host.Error));
+        Client client;
+        QCOMPARE(ClientWork([&] { return client.connect(host.Port); }), 0);
+        const auto name = QStringLiteral("ProxyBridge.app/имя 空.txt").toUtf8();
+        auto *file =
+            ClientWork([&] { return smb2_open(client.Context, name.constData(), O_RDONLY); });
+        QVERIFY2(file, smb2_get_error(client.Context));
+        QByteArray bytes(64, '\0');
+        const int count = ClientWork([&] {
+            return smb2_pread(client.Context, file, reinterpret_cast<uint8_t *>(bytes.data()),
+                              bytes.size(), 0);
+        });
+        QCOMPARE(count, 13);
+        QCOMPARE(bytes.left(count), QByteArray("payload bytes"));
+        QCOMPARE(host.Confirmations, 0);
+        QCOMPARE(ClientWork([&] { return smb2_close(client.Context, file); }), 0);
     }
     void cancellingWhileWaitingForExtractionConsent() {
         QTemporaryDir fixture;
