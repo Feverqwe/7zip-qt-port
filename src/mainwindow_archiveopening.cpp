@@ -162,7 +162,6 @@ HRESULT MainWindow::renderBoundFolder(bool updateAddress) {
     if (!resource)
         return E_NOTIMPL;
     archive_ = resource->EnginePath;
-    info_ = resource->Info;
     const auto &parents = panel.GetParentFolders();
     archivePassword_ = parents.IsEmpty() ? QString() : ToQString(parents.Back().Password);
     archiveFolder_ = QDir::fromNativeSeparators(ToQString(GetFolderPath(folder)));
@@ -171,10 +170,6 @@ HRESULT MainWindow::renderBoundFolder(bool updateAddress) {
     displayArchive_ = QDir::fromNativeSeparators(ToQString(panel.GetCurrentFolderPrefix()));
     displayArchive_.chop(archiveFolder_.size() +
                          (archiveFolder_.isEmpty() || archiveFolder_.endsWith(':') ? 1 : 2));
-    {
-        QSignalBlocker block(flatView_);
-        flatView_->setChecked(flatArchive_);
-    }
     // Keep operation guards until rows and native selection agree. The enum
     // here selects Qt presentation; the app owner still blocks commands.
     state_ = State::Viewing;

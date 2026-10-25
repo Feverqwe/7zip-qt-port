@@ -37,8 +37,6 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     std::function<HRESULT(ISequentialOutStream *, IInArchive *, UInt32, IArchiveUpdateCallback *)>
         _update;
     CProgressSync *_sync = nullptr;
-    qint64 _physicalSize = -1;
-    qint64 _offset = 0;
     std::function<HRESULT(IFolderFolder **, IArchiveOpenCallback *)> _reopen;
     std::function<HRESULT(IInArchive *, const UInt32 *, UInt32, Int32, IArchiveExtractCallback *)>
         _extract;
@@ -96,10 +94,6 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     bool HasNativeItemStreamService() const;
     HRESULT Spool(IInStream *stream, IProgress *progress);
     HRESULT SpoolToOwnedFile(IInStream *stream, const QString &path, IProgress *progress);
-    void SetArchiveMetadata(qint64 physicalSize, qint64 offset) {
-        _physicalSize = physicalSize;
-        _offset = offset;
-    }
     HRESULT GetArchiveProperty(PROPID id, PROPVARIANT *value) const;
     HRESULT GetNumberOfArchiveProperties(UInt32 *count) const;
     HRESULT GetArchivePropertyInfo(UInt32 index, BSTR *name, PROPID *id, VARTYPE *type) const;

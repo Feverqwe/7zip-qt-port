@@ -175,14 +175,10 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
         timeMenu->setTitle(QCoreApplication::translate("CommandMenus", "Time format"));
     });
     viewMenu->addSeparator();
-    QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
     fileListSettings_.Load(toolbarSettingsPath());
-    flatDisk_ = settings.value("view/flatDisk", false).toBool();
-    flatArchive_ = settings.value("view/flatArchive", false).toBool();
     flatView_ = viewMenu->addAction("Flat View");
     flatView_->setObjectName("flatViewAction");
     flatView_->setCheckable(true);
-    flatView_->setChecked(flatDisk_);
     twoPanelsAction_ = viewMenu->addAction(QStringLiteral("Two Panels"));
     twoPanelsAction_->setObjectName("twoPanelsAction");
     twoPanelsAction_->setProperty("nativeCommandID", IDM_VIEW_TWO_PANELS);
@@ -216,10 +212,8 @@ void MainWindow::applyFlatView(bool enabled) {
         flatView_->setChecked(enabled);
     }
     if (!app_.GetFocusedPanel().GetParentFolders().IsEmpty()) {
-        flatArchive_ = enabled;
         SaveFlatView(app_.GetFocusedPanelIndex(), enabled, toolbarSettingsPath());
     } else {
-        flatDisk_ = enabled;
         settings.setValue("view/flatDisk", enabled);
     }
 }

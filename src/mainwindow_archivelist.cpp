@@ -30,7 +30,7 @@ HRESULT MainWindow::renderArchiveFolder(bool updateAddress) {
     if (!folderOwner)
         return S_OK;
     auto *archiveFolder = static_cast<CAgentFolder *>((IFolderFolder *)folderOwner);
-    const bool flat = flatView_->isChecked();
+    const bool flat = panel.GetFlatMode();
     const HRESULT loaded = panel.LoadListItems();
     if (loaded != S_OK)
         return loaded;

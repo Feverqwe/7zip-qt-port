@@ -2,9 +2,11 @@
 #include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/Common/HashCalc.h"
+#include "CPP/7zip/UI/FileManager/MyLoadMenu.h"
 #include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
 #include "archivecodeccatalog.h"
 #include "mainwindow.h"
+#include "qtarchivefileresource.h"
 #include "qtdialogscreenservices.h"
 #include "qtfilemenuprojection.h"
 #include "qtprogramfilemenu.h"
@@ -227,7 +229,10 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     c.archive = panel.GetFolder() && panel.IsArcFolder();
     c.nested = w.isNestedArchive();
     c.mutationWritable = c.archive && !panel.IsThereReadOnlyFolder();
-    c.writable = c.mutationWritable && !w.info_.encrypted;
+    const auto *agent = dynamic_cast<CAgentFolder *>(panel.GetFolder());
+    const auto *resource =
+        agent ? dynamic_cast<QtArchiveFileResource *>(agent->GetEngineResource()) : nullptr;
+    c.writable = c.mutationWritable && !(resource && resource->Info.encrypted);
     c.rows = w.table_->rowCount() > 0;
     UStringVector history;
     w.app_.AppState.FolderHistory.GetList(history);
@@ -401,12 +406,23 @@ void QtFileManagerCommands::RefreshActions() {
                     action->setText(ToQString(item.source.StringValue));
         }
     }
+    RefreshViewActions();
+}
+
+void QtFileManagerCommands::RefreshViewActions() {
+    const auto &panel = window_.app_.GetFocusedPanel();
+    {
+        const QSignalBlocker block(window_.flatView_);
+        window_.flatView_->setChecked(panel.GetFlatMode());
+    }
     for (unsigned i = 0; i < 4; ++i) {
         const QSignalBlocker block(window_.viewActions_[i]);
-        window_.viewActions_[i]->setChecked(i == window_.app_.GetFocusedPanel().GetListViewMode());
+        window_.viewActions_[i]->setChecked(i == panel.GetListViewMode());
     }
     for (unsigned i = 0; i < 5; ++i) {
         const QSignalBlocker block(window_.sortActions_[i]);
-        window_.sortActions_[i]->setChecked(i == static_cast<unsigned>(window_.sortMode_));
+        window_.sortActions_[i]->setChecked(
+            window_.sortActions_[i]->property("nativeCommandID").toUInt() ==
+            GetSortControlID(panel.GetSortID()));
     }
 }

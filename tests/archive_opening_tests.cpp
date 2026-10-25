@@ -172,7 +172,7 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
             new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
         auto *resourceSpec = new QtArchiveFileResource(path);
         CMyComPtr<IUnknown> resource = resourceSpec;
-        resourceSpec->SetArchiveMetadata(32, 0);
+        resourceSpec->Info.physicalSize = 32;
         CMyComPtr2_Create<IFolderArcProps, CAgent> agent;
         QCOMPARE(agent->Init(metadata, UString("zip"), resource), S_OK);
         const CArc &arc = agent->GetArc();
@@ -181,7 +181,8 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
         QVERIFY(arc.ErrorInfo.ThereIsTail);
         QCOMPARE(arc.ErrorInfo.TailSize, UInt64(32));
         QVERIFY(!agent->CanUpdate());
-        resourceSpec->SetArchiveMetadata(48, 16);
+        resourceSpec->Info.physicalSize = 48;
+        resourceSpec->Info.offset = 16;
         CArc offsetArc;
         QCOMPARE(CreateArchivePropertyTransport(metadata, &offsetArc.Archive, resource), S_OK);
         QCOMPARE(resourceSpec->ConfigureArc(offsetArc), S_OK);
@@ -189,7 +190,8 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
         QCOMPARE(offsetArc.AvailPhySize, UInt64(48));
         QVERIFY(!offsetArc.ErrorInfo.ThereIsTail);
         QVERIFY(!offsetArc.ErrorInfo.UnexpecedEnd);
-        resourceSpec->SetArchiveMetadata(128, 0);
+        resourceSpec->Info.physicalSize = 128;
+        resourceSpec->Info.offset = 0;
         QCOMPARE(resourceSpec->ConfigureArc(offsetArc), S_OK);
         QVERIFY(offsetArc.ErrorInfo.UnexpecedEnd);
         QVERIFY(!offsetArc.ErrorInfo.ThereIsTail);

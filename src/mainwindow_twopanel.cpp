@@ -22,14 +22,7 @@ void MainWindow::storePanelUi(unsigned index) {
     ui.archivePassword = archivePassword_;
     ui.archiveFolder = archiveFolder_;
     ui.history = history_;
-    ui.info = info_;
     ui.state = state_;
-    ui.sortMode = sortMode_;
-    ui.sortColumn = sortColumn_;
-    ui.sortOrder = sortOrder_;
-    ui.viewMode = viewMode_;
-    ui.flatDisk = flatDisk_;
-    ui.flatArchive = flatArchive_;
     ui.scanningDisk = scanningDisk_;
     ui.scanningArchive = scanningArchive_;
     ui.filesystemScanner = filesystemScanner_;
@@ -57,14 +50,7 @@ void MainWindow::restorePanelUi(unsigned index) {
     archivePassword_ = ui.archivePassword;
     archiveFolder_ = ui.archiveFolder;
     history_ = ui.history;
-    info_ = ui.info;
     state_ = ui.state;
-    sortMode_ = ui.sortMode;
-    sortColumn_ = ui.sortColumn;
-    sortOrder_ = ui.sortOrder;
-    viewMode_ = ui.viewMode;
-    flatDisk_ = ui.flatDisk;
-    flatArchive_ = ui.flatArchive;
     scanningDisk_ = ui.scanningDisk;
     scanningArchive_ = ui.scanningArchive;
     filesystemScanner_ = ui.filesystemScanner;
@@ -93,9 +79,6 @@ void MainWindow::activatePanelUi(unsigned index) {
         restorePanelUi(index);
         projectedPanel_ = index;
         app_.SetFocusedPanel(index);
-        viewActions_[viewMode_]->setChecked(true);
-        flatView_->setChecked(state_ == State::Viewing ? flatArchive_ : flatDisk_);
-        sortActions_[static_cast<int>(sortMode_)]->setChecked(true);
         setState(state_);
     }
     refreshActions();
@@ -136,8 +119,6 @@ void MainWindow::withPanelProjection(unsigned index, const std::function<void()>
         projectedPanel_ = original;
         app_.SetFocusedPanel(original);
         --panelProjectionDepth_;
-        const QSignalBlocker flatBlock(flatView_);
-        flatView_->setChecked(state_ == State::Viewing ? flatArchive_ : flatDisk_);
         if (!app_.QtOperations().closed()) {
             refreshActions();
             statusBar()->showMessage(status);

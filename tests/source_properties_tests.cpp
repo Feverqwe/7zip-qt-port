@@ -50,7 +50,7 @@ class SourcePropertiesTests final : public QObject {
         CMyComPtr<IUnknown> owner = resource;
         resource->Info.format = "7z";
         resource->Info.properties.insert("Comment", fullValue());
-        resource->SetArchiveMetadata(17, 0);
+        resource->Info.physicalSize = 17;
         ArchiveEntry huge;
         huge.path = "huge.txt";
         huge.sizeValue = UInt64(-1);
@@ -179,7 +179,7 @@ class SourcePropertiesTests final : public QObject {
         CMyComPtr<IUnknown> retain = resource;
         resource->Info.format = "7z";
         resource->Info.properties.insert("Comment", full);
-        resource->SetArchiveMetadata(17, 0);
+        resource->Info.physicalSize = 17;
         CMyComPtr<IFolderFolder> folder;
         QCOMPARE(CreateArchiveFolder({ArchiveEntry{"inside/file", 0, 0}}, UString("7z"), &folder,
                                      retain),

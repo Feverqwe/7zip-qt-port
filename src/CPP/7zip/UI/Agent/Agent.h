@@ -10,7 +10,6 @@
 #include "Common/MyString.h"
 #include "Common/MyVector.h"
 #include "IFolderArchive.h"
-#include "archivebackend.h"
 #include "archivelayercontext.h"
 #include "archivereadstream.h"
 #include "qtfolderpropertycapabilities.h"

@@ -17,6 +17,7 @@ class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
     explicit QtFileManagerCommands(MainWindow &window);
     void AttachActions();
     void RefreshActions();
+    void RefreshViewActions();
     void ActivateItems(Qt::KeyboardModifiers modifiers);
     bool CanExecuteCommand(unsigned id) override;
     bool IsShiftDown() const override;

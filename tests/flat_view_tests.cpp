@@ -59,6 +59,42 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
     }
 
   private slots:
+    void savedDiskFlatViewRestoresDescendants() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QVERIFY(QDir(fixture.path()).mkdir(QStringLiteral("nested папка")));
+        const QString path = fixture.filePath(QStringLiteral("nested папка/inside δ.txt"));
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("retained flat view"), qint64(18));
+        file.close();
+        for (bool reopen : {false, true}) {
+            ControlledBackend backend;
+            MainWindow window(&backend);
+            auto *address = window.findChild<QLineEdit *>("archivePath");
+            address->setText(fixture.path());
+            QTest::keyClick(address, Qt::Key_Return);
+            auto *flat = action(window, "flatViewAction");
+            QCOMPARE(flat->isChecked(), reopen);
+            if (!reopen)
+                flat->trigger();
+            const auto descendantVisible = [&] {
+                auto *view = table(window);
+                for (int row = 0; row < view->rowCount(); ++row)
+                    if (view->model()->index(row, 1).data().toString() == path)
+                        return true;
+                return false;
+            };
+            QTRY_VERIFY(descendantVisible());
+            if (reopen) {
+                flat->trigger();
+                QTRY_VERIFY(!descendantVisible());
+            }
+        }
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), QByteArray("retained flat view"));
+    }
+
     void drivesToggleCarriesSourceFlatModeIntoFilesystem_data() {
         QTest::addColumn<unsigned>("pane");
         QTest::addColumn<QString>("language");

@@ -57,6 +57,11 @@ class CommandPolicyRuntimeTests : public QObject, protected MainWindowTestSuppor
             backend.completeList({ArchiveEntry{"file.txt", 1, 1}});
         });
         window.openArchive(archive);
+        // A later backend result must not replace the bound folder's policy.
+        ArchiveInfo unrelated;
+        unrelated.format = format;
+        unrelated.encrypted = !encrypted;
+        backend.infoReady(unrelated);
         table(window)->selectRow(0);
         QVERIFY(action(window, "editFileAction")->isEnabled());
         for (const char *name : {"moveAction"}) {

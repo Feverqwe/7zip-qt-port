@@ -76,10 +76,12 @@ void MainWindow::configureColumns(bool initialized) {
             table_->horizontalHeader()->moveSection(table_->horizontalHeader()->visualIndex(column),
                                                     int(i));
     }
-    sortColumn_ = fileTable->columnForProperty(panel._sortID);
-    if (sortColumn_ < 0 || table_->isColumnHidden(sortColumn_))
-        sortColumn_ = panel._sortID == kpidNoProperty ? 6 : 0;
-    sortOrder_ = panel._ascending ? Qt::AscendingOrder : Qt::DescendingOrder;
+    const int sortColumn = fileTable->columnForProperty(panel.GetSortID());
+    if (sortColumn < 0 || table_->isColumnHidden(sortColumn)) {
+        const int fallback = panel.GetSortID() == kpidNoProperty ? 6 : 0;
+        panel._sortID = fileTable->propertyId(fallback);
+        panel.SetSortRawStatus();
+    }
     configuringColumns_ = false;
 }
 
@@ -145,11 +147,12 @@ void MainWindow::showColumnsMenu(const QPoint &pos) {
                     view->removeSourceColumn(unsigned(removed));
             }
             updateIconColumn();
-            sortColumn_ = static_cast<FileTable *>(table_)->columnForProperty(source._sortID);
-            sortOrder_ = source._ascending ? Qt::AscendingOrder : Qt::DescendingOrder;
+            const int column = static_cast<FileTable *>(table_)->columnForProperty(source._sortID);
+            const Qt::SortOrder order =
+                source._ascending ? Qt::AscendingOrder : Qt::DescendingOrder;
             {
                 const QSignalBlocker blocker(table_->horizontalHeader());
-                table_->horizontalHeader()->setSortIndicator(sortColumn_, sortOrder_);
+                table_->horizontalHeader()->setSortIndicator(column, order);
             }
             saveColumns();
         });

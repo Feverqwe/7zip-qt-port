@@ -218,8 +218,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 - [Состояние нового архивного запроса](upstream-port-audit/qt-request-state.md)
   — независимый результат отказа и повторное извлечение после отмены.
 
-- [FileManager / Agent / Qt: лишняя проекция записей](upstream-port-audit/fm-agent-qt-state.md)
-  — единый источник metadata и удаление повторного списка панели.
+- [FileManager / Agent / Qt: единый источник состояния](upstream-port-audit/fm-agent-qt-state.md)
+  — metadata, режимы панели и shared mapping сортировки без параллельных Qt-копий.
 
 - [Отложенные события файлового списка](upstream-port-audit/qt-list-events.md)
   — отмена hover при блокировке и завершение Shift-выделения до следующего нажатия.

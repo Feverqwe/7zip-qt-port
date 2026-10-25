@@ -393,7 +393,6 @@ class CPanel : public QObject {
     void SetListViewMode(UInt32 index);
     void ChangeFlatMode();
     PROPID GetSortID() const { return _sortID; }
-    bool GetFlatModeForArc() const { return _flatModeForArc; }
     bool GetFlatMode() const { return _flatMode; }
     void SetFlatModeForDisk(bool enabled) {
         _flatModeForDisk = enabled;

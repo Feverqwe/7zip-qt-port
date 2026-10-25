@@ -189,7 +189,6 @@ void QtArchiveFileResource::AttachReopenService(ArchiveBackend &backend, const Q
         SetFilesystemReadLimitations(
             request->Info.readLimitations.isEmpty() ? limitations : request->Info.readLimitations);
         AttachNativeOpen(std::move(nativeOpen));
-        SetArchiveMetadata(request->Info.physicalSize, request->Info.offset);
         return S_OK;
         COM_TRY_END
     };
