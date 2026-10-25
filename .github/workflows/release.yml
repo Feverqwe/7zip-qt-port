@@ -68,7 +68,7 @@ jobs:
             libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
             libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 \
             libwayland-client0 libwayland-cursor0 libwayland-egl1 \
-            libglib2.0-dev patchelf
+            libglib2.0-dev patchelf ccache
       - name: Configure Windows toolchain
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
@@ -76,7 +76,11 @@ jobs:
           arch: x64
       - name: Install macOS build tools
         if: runner.os == 'macOS'
-        run: brew install ninja
+        run: brew install ninja ccache
+      - name: Install Windows compiler cache
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install ccache --no-progress -y
       - name: Install official Qt kit
         if: runner.os != 'Windows'
         uses: jurplel/install-qt-action@v4
@@ -120,7 +124,7 @@ jobs:
         run: python3 scripts/prepare-runtime.py --upstream build/release-upstream
       - name: Build Release
         run: |
-          cmake --preset release ${{ matrix.cmake-args }}
+          cmake --preset release ${{ matrix.cmake-args }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build --preset release --target ${{ matrix.targets }}
       - name: Package Unix runtime
         if: runner.os != 'Windows'

@@ -93,6 +93,14 @@ def check_inventory(data):
 
 def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_sources=()):
     """Supplement upstream rules for adapted headers and module-version consumers."""
+    # Native NMake rules pass all prerequisites to the compiler. Added header
+    # dependencies must not become translation units; retain source batching.
+    native_rules = snapshot / "CPP/Build.mak"
+    if native_rules.is_file():
+        original = native_rules.read_bytes()
+        adapted = original.replace(b"$**", b"$(SEVENZIP_RUNTIME_SOURCES)")
+        if adapted != original:
+            native_rules.write_bytes(adapted)
     sources = {name for name in members if pathlib.PurePosixPath(name).suffix in
                (".c", ".cpp", ".h", ".hpp", ".inl")}
     headers = {name for name in overlays if pathlib.PurePosixPath(name).suffix in
@@ -138,7 +146,15 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
             # Nmake expands the upstream link command while reading its include;
             # supply additional objects through Build.mak's supported LIBS input.
             lines = (["LIBS = $(LIBS) " + " ".join(extra_objects)] if extra_objects else [])
+            if windows:
+                lines += ["SEVENZIP_RUNTIME_SOURCES = $(filteri %.c %.cpp %.asm %.s %.rc,$**)",
+                          "CFLAGS = $(CFLAGS) -I../../../.."]
             lines.append(f'!include "{original}"' if windows else f'include {original}')
+            if not windows:
+                lines.append("LOCAL_FLAGS += -I../../../..")
+                if sys.platform == "darwin":
+                    lines += ["LOCAL_FLAGS += -mmacosx-version-min=14.4",
+                              "MY_LIBS += -mmacosx-version-min=14.4"]
             for stem, needed in sorted(dependencies.items()):
                 relative = sorted(posixpath.relpath(name, directory) for name in needed)
                 target = "$(O)\\" + stem + ".obj" if windows else "$(O)/" + stem + ".o"
@@ -172,6 +188,8 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                 lines.append("$(PROGPATH): " + " ".join(extra_objects))
                 if not windows:
                     lines.append("$(PROGPATH_STATIC): " + " ".join(extra_objects))
+            if not windows and sys.platform == "darwin":
+                lines.append("$(OBJS): sevenzip-runtime.gcc.mak")
             content = "\n".join(lines) + "\n"
             output = bundle / generated
             if output.is_symlink():

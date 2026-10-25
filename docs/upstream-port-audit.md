@@ -57,6 +57,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Возврат upstream crypto и оценка библиотек](upstream-port-audit/crypto-backend-assessment.md)
+  — отдельная сборка без OpenSSL, совместимость и границы выбора альтернатив.
+
 - [Общие XXHash и Adler32](upstream-port-audit/shared-checksums.md)
   — повторное использование libzstd xxHash и zlib с сохранением контрактов SDK.
 

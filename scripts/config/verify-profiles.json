@@ -1,4 +1,10 @@
 {
+  "crypto": {
+    "description": "Upstream crypto primitives, encrypted archives, failure/cancellation and filesystem consumers",
+    "tests": "^(crypto_aes|crypto_hash|crypto_pbkdf2|crypto_zip|runtime_cache|fscrypt_crypto|fsverity_signature|archive_qcow_crypto|native_hash_bundle|native_rar_memory|native_source_extract|source_update_backend|shared_checksum)$",
+    "runtime": true,
+    "interactive": false
+  },
   "localization": {
     "description": "Qt catalogs, live language changes, localized diagnostics and direct UI consumers",
     "tests": "^(language|language_.*|native_language_host|native_shell_com|native_services|gui_error_policy|panel_cell_text|update_callback|compression_resources|benchmark_lifecycle|native_benchmark|source_properties|archive_error_properties|format_utils|native_extract_callback)$",

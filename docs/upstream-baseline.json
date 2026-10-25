@@ -440,6 +440,7 @@
     "third_party/7zip/CPP/7zip/UI/GUI/ExtractRes.h",
     "third_party/7zip/CPP/7zip/UI/GUI/resource3.h",
     "third_party/7zip/CPP/7zip/UI/GUI/resource3.rc",
+    "third_party/7zip/CPP/Build.mak",
     "third_party/7zip/CPP/Common/AutoPtr.h",
     "third_party/7zip/CPP/Common/CRC.cpp",
     "third_party/7zip/CPP/Common/C_FileIO.h",
@@ -849,7 +850,8 @@
     "src/gpl/CPP/7zip/Archive/HfsHandler.cpp": "b2623be823291c398136030722dcf566c663106445f13bf55ed693a0e926a50f",
     "src/gpl/CPP/7zip/Archive/MbrHandler.cpp": "e87756d0ce49cc49ee51df22c62e1453dd83c1c401d49812bfb982032490528d",
     "src/C/Xxh64.c": "f7f7681eeb0155cd25b65c871d1d6d2497ef8076ae03b957953ac6c47c4a1d2b",
-    "src/CPP/7zip/Compress/ZlibDecoder.cpp": "366f098d2c90e66ca333519ac4920890585a6dd66e4187f0aa593f1ce3a23e63"
+    "src/CPP/7zip/Compress/ZlibDecoder.cpp": "366f098d2c90e66ca333519ac4920890585a6dd66e4187f0aa593f1ce3a23e63",
+    "third_party/7zip/CPP/Build.mak": "2fa73421ef3236655890cf479d6e5c8f0083667173248cea801e46fd698374df"
   },
   "runtime_format_sources": [
     "src/CPP/7zip/Archive/ExtHeader.cpp",

@@ -93,6 +93,21 @@ set_source_files_properties(src/CPP/7zip/Archive/Zip/ZipAddCommon.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Archive/Zip")
 
 if(BUILD_TESTING)
+    foreach(primitive hash aes pbkdf2)
+        add_executable(crypto_${primitive}_tests tests/crypto_${primitive}_tests.cpp)
+        set_target_properties(crypto_${primitive}_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+        target_link_libraries(crypto_${primitive}_tests PRIVATE sevenzip_zip)
+        add_test(NAME crypto_${primitive} COMMAND crypto_${primitive}_tests)
+        set_tests_properties(crypto_${primitive} PROPERTIES TIMEOUT 15)
+    endforeach()
+    qt_add_executable(crypto_zip_tests tests/crypto_zip_tests.cpp)
+    set_target_properties(crypto_zip_tests PROPERTIES AUTOMOC ON AUTOUIC OFF)
+    target_include_directories(crypto_zip_tests PRIVATE tests)
+    target_link_libraries(crypto_zip_tests PRIVATE sevenzip_zip Qt6::Test)
+    target_compile_definitions(crypto_zip_tests PRIVATE
+        "SEVENZIP_CRYPTO_REFERENCE_7Z=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z${CMAKE_EXECUTABLE_SUFFIX}\"")
+    add_test(NAME crypto_zip COMMAND crypto_zip_tests -silent)
+    set_tests_properties(crypto_zip PROPERTIES TIMEOUT 45)
     qt_add_executable(shared_checksum_tests tests/shared_checksum_tests.cpp src/lib/xxhash.c
         src/CPP/7zip/Compress/ZlibDecoder.cpp
         third_party/7zip/CPP/7zip/Compress/DeflateDecoder.cpp
