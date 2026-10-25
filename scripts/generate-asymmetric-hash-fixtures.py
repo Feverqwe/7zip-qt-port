@@ -36,12 +36,28 @@ def native():
     return {"oracle": "Linux AF_ALG", "kernel": platform.release(), "vectors": vectors}
 
 
+def shake_vectors():
+    lines = ["/* SPDX-License-Identifier: CC0-1.0 */",
+             "/* Python hashlib SHAKE answers; input byte i is (i * 37 + 11) modulo 256. */"]
+    for bits in (128, 256):
+        for size in (0, 257):
+            digest = getattr(hashlib, "shake_" + str(bits))(payload(size)).hexdigest(400)
+            lines.append("{%d, %d," % (bits, size))
+            lines.extend(' "' + digest[i:i + 80] + '"' for i in range(0, len(digest), 80))
+            lines.append("},")
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--native", action="store_true")
     mode.add_argument("--native-input", type=Path)
+    mode.add_argument("--shake", action="store_true", help="emit SHAKE continuation answers via hashlib")
     args = parser.parse_args()
+    if args.shake:
+        print(shake_vectors())
+        return
     if args.native:
         print(json.dumps(native(), indent=2))
         return

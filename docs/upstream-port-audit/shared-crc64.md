@@ -34,7 +34,7 @@ The API, common definitions and portable integer helpers reuse their existing
 inventory. No library revision is advanced. Sources retain 0BSD author notices;
 the SDK units retain Igor Pavlov's public-domain notice.
 
-The shared C11 target builds only the portable slice-by-four CRC64 path, with
+The shared C11 target builds the portable slice-by-four CRC64 path, with
 no mutable lazy CPU dispatch, threading or assembly. Existing EROFS decoding
 stays in its separate target. Native Console/Format7zF use the same unchanged
 source/header closure through the runtime manifest; their original makefiles
@@ -44,6 +44,9 @@ select the builder's byte order. The supported native macOS/Windows/Linux
 arm64/x64 builders are little-endian; big-endian execution is not validated.
 The library's 0BSD notice is installed at the shared runtime license root in
 addition to its existing EROFS location. This change makes no speed claim.
+
+The [later shared-primitives continuation](shared-checksums.md#crc32-and-gpl-hash-library-consolidation-2026-10-25)
+also adds CRC32 to this CMake library; its native runtime closure remains CRC64-only.
 
 ## Verification and update review
 

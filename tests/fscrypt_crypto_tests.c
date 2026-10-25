@@ -6,6 +6,7 @@
 #include <crypto/aes-xts.h>
 #include "../src/fs/crypto/fscrypt_private.h"
 #include "../src/crypto/skciphercompat.h"
+#include "../third_party/7zip/C/Aes.h"
 #include <stdio.h>
 int fscrypt_support_tests(void);
 int fscrypt_modes_tests(void);
@@ -175,7 +176,7 @@ static int check_vector(const struct vector *v, bool in_place, unsigned offset,
 	return err;
 }
 
-int main(void)
+static int check_aes_vectors(void)
 {
 	for (size_t i = 0; i < sizeof(vectors) / sizeof(vectors[0]); ++i) {
 		const struct vector *v = &vectors[i];
@@ -190,6 +191,23 @@ int main(void)
 							(flags >> 1) & 1, (flags & 4) != 0))
 				return 1;
 		}
+	}
+	return 0;
+}
+
+int main(void)
+{
+	if (check_aes_vectors()) return 1;
+	/* Check the supported software fallback even when normal SDK dispatch uses
+	 * CPU instructions. The vectors still exercise Linux's public mode APIs. */
+	AES_CODE_FUNC encode = g_AesCbc_Encode, decode = g_AesCbc_Decode;
+	if (encode != AesCbc_Encode || decode != AesCbc_Decode) {
+		g_AesCbc_Encode = AesCbc_Encode;
+		g_AesCbc_Decode = AesCbc_Decode;
+		int result = check_aes_vectors();
+		g_AesCbc_Encode = encode;
+		g_AesCbc_Decode = decode;
+		if (result) return 1;
 	}
 	return check_hashes() || fscrypt_support_tests() || fscrypt_modes_tests() || fscrypt_policy_tests() ||
 		fscrypt_reader_tests();

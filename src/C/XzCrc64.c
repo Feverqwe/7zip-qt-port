@@ -5,7 +5,9 @@
 #include "XzCrc64.h"
 #include "Precomp.h"
 
+#ifndef LZMA_API_STATIC
 #define LZMA_API_STATIC
+#endif
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4668) // Unchanged liblzma API checks optional feature macros.

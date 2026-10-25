@@ -2,6 +2,7 @@
 add_library(sevenzip_xfs_core STATIC src/grub/fs/xfs.c src/grub/fs/fshelp.c
     src/xfsreader.c src/xfschecksum.cpp)
 target_include_directories(sevenzip_xfs_core PUBLIC src)
+target_link_libraries(sevenzip_xfs_core PUBLIC sevenzip_crc32c)
 set_target_properties(sevenzip_xfs_core PROPERTIES AUTOMOC OFF AUTOUIC OFF
     POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
 add_library(sevenzip_xfs MODULE src/xfshandler.cpp src/xfsarchivereader.cpp src/exfatmodule.cpp

@@ -484,5 +484,65 @@
     "lib/crypto/mpi/longlong.h",
     "lib/crypto/mpi/mpi-inline.h",
     "lib/crypto/tests/mldsa-testvecs.h"
-  ]
+  ],
+  "library_adapters": {
+    "lib/crypto/sha512.c": {
+      "symbols": [
+        "sha512_blocks_generic"
+      ],
+      "provider_manifest": "upstream-baseline.json",
+      "provider_symbols": [
+        "CSha512",
+        "Sha512_Init",
+        "Sha512_Update"
+      ],
+      "local": [
+        "src/lib/crypto/sha512.c",
+        "src/lib/crypto/sdkhashblocks.c",
+        "src/lib/crypto/sdkhashblocks.h"
+      ],
+      "retained_scope": "Linux SHA-384/SHA-512 stream state, 128-bit length accounting, padding, HMAC and state-copy helpers"
+    },
+    "lib/crypto/sha3.c": {
+      "symbols": [
+        "sha3_keccakf_generic"
+      ],
+      "provider_manifest": "upstream-baseline.json",
+      "provider_symbols": [
+        "CSha3",
+        "Sha3_Init",
+        "Sha3_Update"
+      ],
+      "local": [
+        "src/lib/crypto/sha3.c",
+        "src/lib/crypto/sdkhashblocks.c",
+        "src/lib/crypto/sdkhashblocks.h"
+      ],
+      "retained_scope": "Linux endian conversion, absorb buffering, domain separation, SHA3/HMAC/SHAKE finalization and incremental XOF squeeze"
+    },
+    "lib/crypto/aes.c": {
+      "symbols": [
+        "aes_expandkey_generic",
+        "aes_encrypt_generic",
+        "aes_decrypt_generic"
+      ],
+      "provider_manifest": "upstream-baseline.json",
+      "provider_symbols": [
+        "AesGenTables",
+        "Aes_SetKey_Enc",
+        "Aes_SetKey_Dec",
+        "g_AesCbc_Encode",
+        "g_AesCbc_Decode"
+      ],
+      "local": [
+        "src/lib/crypto/aes.c",
+        "src/include/crypto/aes.h",
+        "src/lib/crypto/sdkaesblocks.c",
+        "src/lib/crypto/sdkaesblocks.h",
+        "src/lib/crypto/sdkaesinit.cpp"
+      ],
+      "retained_scope": "Linux prepared-key layout, validation, modes, IV/counter/tweak state and existing temporary-state erasure",
+      "omitted_scope": "Linux duplicate AES tables/key expansion/block rounds; cache-table prefetch intentionally omitted following user instruction in this continuation"
+    }
+  }
 }

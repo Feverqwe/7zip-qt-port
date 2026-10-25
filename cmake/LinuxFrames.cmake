@@ -4,7 +4,8 @@ add_library(sevenzip_linux_frames_core STATIC
     src/lib/lzo/lzo1x_decompress_safe.c
     src/lib/crc/crc32-main.c)
 target_include_directories(sevenzip_linux_frames_core PRIVATE src third_party/linux/include)
-target_link_libraries(sevenzip_linux_frames_core PUBLIC sevenzip_lz4 sevenzip_zisofs_zlib)
+target_link_libraries(sevenzip_linux_frames_core PUBLIC sevenzip_lz4 sevenzip_zisofs_zlib
+    sevenzip_liblzma_crc sevenzip_crc32c)
 set_target_properties(sevenzip_linux_frames_core PROPERTIES AUTOMOC OFF AUTOUIC OFF
     POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
 add_library(sevenzip_linux_frames MODULE
@@ -56,7 +57,7 @@ set_source_files_properties(src/CPP/7zip/Archive/GzHandler.cpp
     src/CPP/7zip/Archive/LzmaHandler.cpp PROPERTIES
     COMPILE_DEFINITIONS SEVENZIP_INITRAMFS_FRAME_ONLY)
 target_link_libraries(sevenzip_linux_frames PRIVATE sevenzip_linux_frames_core sevenzip_zstd
-    sevenzip_liblzma_crc64)
+    sevenzip_liblzma_crc)
 set_target_properties(sevenzip_linux_frames PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX "")
 if(UNIX AND NOT APPLE)
     target_link_options(sevenzip_linux_frames PRIVATE "-Wl,-Bsymbolic")

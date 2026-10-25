@@ -27,7 +27,7 @@ add_library(sevenzip_erofs_core STATIC
     third_party/7zip/C/Alloc.c third_party/7zip/C/CpuArch.c)
 target_include_directories(sevenzip_erofs_core PRIVATE src)
 target_link_libraries(sevenzip_erofs_core PUBLIC sevenzip_lz4 sevenzip_zstd
-    sevenzip_erofs_liblzma sevenzip_zisofs_zlib)
+    sevenzip_erofs_liblzma sevenzip_zisofs_zlib sevenzip_liblzma_crc sevenzip_crc32c)
 set_target_properties(sevenzip_erofs_core PROPERTIES AUTOMOC OFF AUTOUIC OFF
     POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
 

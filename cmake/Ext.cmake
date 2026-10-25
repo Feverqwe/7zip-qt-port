@@ -9,6 +9,13 @@ endif()
 set_target_properties(linux_asn1_compiler PROPERTIES AUTOMOC OFF AUTOUIC OFF
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
 add_library(sevenzip_fscrypt_crypto STATIC EXCLUDE_FROM_ALL
+    src/lib/crypto/sdkaesblocks.c src/lib/crypto/sdkaesinit.cpp
+    third_party/7zip/C/Aes.c third_party/7zip/C/AesOpt.c
+    src/lib/crypto/sdkhashblocks.c
+    third_party/7zip/C/Sha256.c third_party/7zip/C/Sha512.c
+    third_party/7zip/C/Sha256Opt.c third_party/7zip/C/Sha512Opt.c
+    third_party/7zip/C/Sha3.c
+    third_party/7zip/C/CpuArch.c
     src/lib/asn1_decoder.c src/lib/oid_registry.c
     src/crypto/asymmetric_keys/asymmetric_type.c
     src/crypto/asymmetric_keys/public_key.c src/crypto/asymmetric_keys/signature.c
@@ -105,10 +112,7 @@ if(BUILD_TESTING)
     add_test(NAME asymmetric_certificate COMMAND asymmetric_certificate_tests)
     set_tests_properties(asymmetric_certificate PROPERTIES TIMEOUT 15)
     add_executable(fsverity_signature_tests tests/fsverity_signature_tests.c
-        src/fs/verity/signature.c src/fs/verity/hash_algs.c
-        third_party/7zip/C/CpuArch.c third_party/7zip/C/Sha256.c
-        third_party/7zip/C/Sha256Opt.c third_party/7zip/C/Sha512.c
-        third_party/7zip/C/Sha512Opt.c)
+        src/fs/verity/signature.c src/fs/verity/hash_algs.c)
     target_link_libraries(fsverity_signature_tests PRIVATE sevenzip_fscrypt_crypto)
     set_target_properties(fsverity_signature_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF
         C_STANDARD 11 C_STANDARD_REQUIRED ON)
@@ -175,12 +179,11 @@ add_library(sevenzip_ext MODULE
     third_party/7zip/CPP/Common/StringToInt.cpp
     third_party/7zip/CPP/Common/StringConvert.cpp
     third_party/7zip/CPP/Common/UTFConvert.cpp
-    third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c
-    third_party/7zip/C/Sha256.c third_party/7zip/C/Sha256Opt.c
-    third_party/7zip/C/Sha512.c third_party/7zip/C/Sha512Opt.c)
+    third_party/7zip/C/Alloc.c)
 target_include_directories(sevenzip_ext PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
-target_link_libraries(sevenzip_ext PRIVATE Threads::Threads sevenzip_fscrypt_crypto)
+target_link_libraries(sevenzip_ext PRIVATE Threads::Threads sevenzip_fscrypt_crypto
+    sevenzip_liblzma_crc sevenzip_crc32c)
 set_target_properties(sevenzip_ext PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
 if(UNIX AND NOT APPLE)
