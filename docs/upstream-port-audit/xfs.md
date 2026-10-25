@@ -35,15 +35,17 @@ rejects META_UUID, among other flags; it is not imported. Search snippets
 describing older libfsxfs releases were not used as the feature contract.
 
 CRC32C reuses 7-Zip C++ bodies from `CPP/7zip/Archive/VhdxHandler.cpp`,
-commit `9128b80e3a471108678e2b3ec3c985861c8d7b0f`, repository
+commit `b88c6bc09339de32f7d18bbab900686b244f42ba`, repository
 `https://github.com/ip7z/7zip.git`, under LGPL-2.1-or-later.
 [Its separate manifest](../xfs-sevenzip-baseline.json) pins the complete
 original file and maps selected `Crc32c_GenerateTable` and
-`CrcUpdateT1_vhdx` bodies to `src/xfschecksum.cpp`. The generated table is
-immutable and initialized at compile time; the XFS wrapper temporarily zeros
-and restores a caller-owned checksum field. The rest of VHDX is omitted.
-This reuse is explicitly a mixed revision with the engine's own baseline;
-no engine provenance is advanced by the checksum import.
+`CrcUpdateT1_vhdx` bodies to the shared `VhdxCrc.cpp` extraction. The complete
+original VHDX unit and license are byte-identical to the former
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f` baseline. The immutable table now has
+synchronized first-use initialization. The XFS wrapper still temporarily zeros
+and restores its caller-owned checksum field. It does not link the VHDX reader
+or Linux GPLv2 code. The [shared checksum audit](shared-checksums.md#shared-crc32c-service)
+records the common native/GPL provider, source mapping and validation.
 
 ## Transferred scope, dependencies and adaptations
 

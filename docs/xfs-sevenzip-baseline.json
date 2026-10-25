@@ -1,12 +1,12 @@
 {
   "repository": "https://github.com/ip7z/7zip.git",
-  "revision": "9128b80e3a471108678e2b3ec3c985861c8d7b0f",
+  "revision": "b88c6bc09339de32f7d18bbab900686b244f42ba",
   "files": {
     "CPP/7zip/Archive/VhdxHandler.cpp": "2956f3c02e39b94db8a47e6321f1dde1244446022ba5c02e79733c35af736fe6",
     "DOC/copying.txt": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"
   },
   "adapted": {
-    "CPP/7zip/Archive/VhdxHandler.cpp": "src/xfschecksum.cpp"
+    "CPP/7zip/Archive/VhdxHandler.cpp": "src/CPP/7zip/Archive/VhdxCrc.cpp"
   },
   "unchanged": {
     "DOC/copying.txt": "third_party/7zip/DOC/copying.txt"
@@ -16,5 +16,8 @@
       "Crc32c_GenerateTable",
       "CrcUpdateT1_vhdx"
     ]
-  }
+  },
+  "local_integration": [
+    "src/xfschecksum.cpp"
+  ]
 }

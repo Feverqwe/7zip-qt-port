@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <lzma.h>
+#include "../../CPP/7zip/Archive/VhdxCrc.h"
 typedef uint8_t u8;
 typedef uint32_t u32;
 #define __maybe_unused
@@ -45,14 +46,6 @@ crc32_be_base(u32 crc, const u8 *p, size_t len)
 	return crc;
 }
 
-static inline u32 __maybe_unused
-crc32c_base(u32 crc, const u8 *p, size_t len)
-{
-	while (len--)
-		crc = (crc >> 8) ^ crc32ctable_le[(crc & 255) ^ *p++];
-	return crc;
-}
-
 #ifdef CONFIG_CRC32_ARCH
 #include "crc32.h" /* $(SRCARCH)/crc32.h */
 
@@ -63,7 +56,6 @@ u32 crc32_optimizations(void)
 EXPORT_SYMBOL(crc32_optimizations);
 #else
 #define crc32_be_arch crc32_be_base
-#define crc32c_arch crc32c_base
 #endif
 
 u32 crc32_le(u32 crc, const void *p, size_t len)
@@ -81,7 +73,7 @@ EXPORT_SYMBOL(crc32_be);
 
 u32 crc32c(u32 crc, const void *p, size_t len)
 {
-	return crc32c_arch(crc, p, len);
+	return sevenzip_crc32c_update(crc, p, len);
 }
 EXPORT_SYMBOL(crc32c);
 

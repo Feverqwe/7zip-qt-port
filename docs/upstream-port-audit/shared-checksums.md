@@ -165,9 +165,9 @@ this continuation introduces no OpenSSL dependency or backend selection.
 | --- | --- |
 | Linux SHA-1 and SHA-224/SHA-256 versus SDK | Linux explicitly erases its round workspaces. SDK public update APIs do not expose private workspaces for erasure. Prototypes matched digests but could not retain that property through the public API. Original Linux bodies remain; they are not counted as completed consolidation. |
 | SDK CRC32 (`7zCrc.h`, `CrcReg.cpp`) | The seeded API includes byte updates via `g_CrcTable` and explicit SW/HW hash selectors through `z7_GetFunc_CrcUpdate`. A generic library call would not preserve all those controls. Keep the existing SDK implementation for these consumers. |
-| CRC32C in filesystems/VHDX/XFS | zlib/liblzma CRC32 uses a different polynomial. Linux CRC32C is already shared by its GPLv2 consumers. XFS uses an LGPL-derived primitive rather than linking GPLv2-only Linux code into its GPLv3 module. A cross-license common provider needs a separately reviewed SDK extraction/API, absent from the current library interfaces. |
+| CRC32C in filesystems/VHDX/XFS | zlib/liblzma CRC32 uses a different polynomial. A subsequent review completed the common LGPL VHDX extraction described [below](#shared-crc32c-service), preserving GPL module separation. |
 | Commented CRC32C in `ExtHandler.cpp` | The body and former caller are disabled history. Live metadata checking belongs to Linux; no functional duplicate was removed or claimed here. |
-| Linux and SDK AES | Linux block/ECB/CBC/XTS/CTR/XCTR APIs support existing CTS/HCTR2/Adiantum consumers. SDK uses aligned prepared-key CBC/CTR contexts. Sharing blocks requires a key-state/mode adapter and a separate compatibility/erasure review. It is not a direct replacement of the current Linux API. |
+| Linux and SDK AES | Linux modes now use the SDK key/block adapter [below](#shared-aes-blocks-with-linux-modes), retaining state/erasure contracts and the explicitly accepted omission of Linux table prefetch. |
 | SDK raw LZMA/XZ and liblzma | liblzma restricts `lc + lp` to four; SDK supports the broader legacy property range. Random XZ blocks, consumed-input accounting, recovery prefixes and cancellation are further contracts. The completed MicroLZMA migration does not establish general replacement. |
 | SDK DEFLATE and zlib | Filesystem DEFLATE already uses zlib. SDK also serves Deflate64 and NSIS, and its zlib wrapper supports optional absent Adler trailers. Removing it would lose contracts or require further adaptation. |
 | BLAKE2 | Linux BLAKE2b and SDK BLAKE2sp are different algorithms. Sequential BLAKE2s does not replace the tree hash; current production dependencies offer no matching replacement API. |
@@ -175,8 +175,8 @@ this continuation introduces no OpenSSL dependency or backend selection.
 | Pinned dependency internals | Private CRC/LZMA helpers inside lzlib and other unchanged libraries have no public primitive-delegation API. Replacing them would create a dependency fork. Existing archive/filesystem library assessments retain their format/recovery compatibility limits. |
 
 These are dispositions for the reviewed scope, not a claim that future
-compatible consolidation is impossible. In particular, AES and a common CRC32C
-service remain possible separate adaptation work; they are not reported as fixed.
+compatible consolidation is impossible. The common CRC32C service and AES
+key/block adapter are completed below with their adaptation boundaries.
 
 ### Verification
 
@@ -231,3 +231,183 @@ cache. Build trees, toolchains and caches were retained.
 No full/slow gate, release installation, UI, performance or big-endian runtime
 acceptance is included. Source consolidation covers the selected primitives;
 Linux streaming/finalization remains an intentional adaptation boundary.
+
+
+## Shared CRC32C service
+
+The next continuation extracts the existing 7-Zip VHDX CRC32C implementation into
+`src/CPP/7zip/Archive/VhdxCrc.cpp`, with a C ABI in `VhdxCrc.h`. The complete original
+`CPP/7zip/Archive/VhdxHandler.cpp` is pinned in the existing SDK manifest at
+`b88c6bc09339de32f7d18bbab900686b244f42ba`, repository
+<https://github.com/ip7z/7zip.git>, LGPL-2.1-or-later. Its SHA256 is
+`2956f3c02e39b94db8a47e6321f1dde1244446022ba5c02e79733c35af736fe6`.
+The original handler and `DOC/copying.txt` are byte-identical to the former XFS
+checksum baseline `9128b80e3a471108678e2b3ec3c985861c8d7b0f`; comparison retained
+both complete inventory units before aligning that manifest with the engine.
+
+### Source ownership and retained consumers
+
+- `Crc32c_GenerateTable` and `CrcUpdateT1_vhdx` retain the original Castagnoli
+  polynomial, table entries and byte-update loop. A function-local const table
+  replaces the global table/initializer pair so concurrent first calls are
+  synchronized and subsequent access is read-only. Empty/null updates return
+  the incoming raw state before pointer arithmetic. The C ABI explicitly uses
+  cdecl on MSVC because native nmake compiles with a different default convention.
+- `src/CPP/7zip/Archive/VhdxHandler.cpp` retains the complete original reader;
+  only checksum implementation/initialization moves. `Crc32c_Calc` still applies
+  the original initial/final complements. All header, region and log callers,
+  checksum-field handling, parsing, extent/BAT, parent and stream behavior remain.
+  The newly owned full reader is formatted to repository style; comparison with
+  the equivalently formatted original keeps this separate from the extraction.
+  The disabled log replay branch remains disabled. No new VHDX recovery behavior
+  or source writes are introduced.
+- `src/xfschecksum.cpp` retains the bounds check and temporary zero/restore of
+  its caller-owned metadata checksum. Its duplicate table and loop are removed.
+- Linux `crc32c` preserves its raw seeded C API around the same service. Its
+  duplicate Castagnoli table/loop and generator branch are removed; IEEE CRC32
+  still uses liblzma, and the BE CRC32 body remains. The existing Linux manifest
+  retains original complete-unit hashes and records the adapter/generated output.
+- CMake compiles the extracted implementation once into `sevenzip_crc32c` for
+  the direct Linux/XFS consumers. The native Format7zF closure compiles the same
+  C++ owner through the existing runtime dependency tooling. The console/SFX
+  closures do not gain a VHDX dependency. Linux and XFS readers remain in their
+  separate GPLv2/GPLv3 modules; neither acquires the other's code or license.
+
+The SDK `extracted`, runtime selection and complete-original hashes, the existing
+XFS reference mapping, and the Linux library-adapter records describe this scope.
+Use the existing `verify/review` and `reference-verify/reference-review` commands
+for proposed revisions; compare the full original reader and the extracted owner
+together. The new header and raw-state wrapper are local integration; there is no
+new checksum algorithm, production dependency or upstream revision update.
+
+### AES review disposition
+
+The review covers Linux `lib/crypto/aes.c`, its key/state and mode headers,
+`aesprovider.c` callers, and SDK `C/Aes.c`, `C/Aes.h`, its table/key/block bodies,
+CBC/CTR callers and hardware fallback dispatch. Complete original Linux and SDK
+units remain pinned in their existing manifests. Linux's mode bodies are kept;
+the key/block adapter below replaces its generic primitives.
+
+The SDK prepared-key prefix, forward decryption key order, aligned CBC state and
+in-place blocks differ from Linux's reversed inverse keys and unaligned block API.
+Those differences can be adapted: for example, one CBC block with a zero IV can
+provide a block operation while Linux keeps its mode semantics. They alone are
+not grounds to declare sharing impossible. SDK CTR itself cannot replace Linux
+CTR/XCTR: counter byte order, increment timing and partial-block handling differ.
+Linux CTS/XTS/HCTR2/Adiantum consumers also require their current mode boundaries,
+state copying and temporary-state erasure.
+
+The compatibility review identified Linux's
+`aes_prefetch` before table-based encryption/decryption. It performs volatile
+reads and a compiler barrier as basic cache hardening; it does not claim full
+constant-time AES. SDK software `Aes_Encode`/`Aes_Decode` have no equivalent step,
+and their T/D tables are private. The user explicitly accepted omitting this
+table-prefetch measure for this application on 2026-10-25. With that scoped
+decision, the adapter can reuse the unchanged public SDK API. State and temporary
+memory erasure remain part of the retained contract.
+
+### Focused behavior checks
+
+`linux_checksum` extends the frozen pre-change Linux answers to arbitrary CRC32C
+seeds, unaligned input, split updates and empty/null calls. Existing filesystem
+suites check valid metadata and rejection of corrupted checksums. The native VHDX
+fixture reads a small allocated disk through the prepared core and independently
+checks rejection of damaged primary/secondary header and region-table CRCs. It
+protects the checksum caller/closure, rather than source structure or symbol names.
+No log-replay/recovery acceptance follows from this fixture.
+
+macOS CRC selection passed 13/13; explicit SDK-header and formatting follow-ups
+passed their direct consumers. Linux passed 13/13 (28.40 s), receipt
+`20261025T060330Z-a6671dea`, then the include follow-up passed 3/3. Windows caught
+the missing explicit SDK types include during native compilation; adding it
+preserved provider bodies and fixed the build. Final combined acceptance is below.
+
+## Shared AES blocks with Linux modes
+
+Linux's duplicate AES S-box/round tables, key expansion and generic encryption/
+decryption rounds are replaced by SDK primitives already present in the build.
+The complete original Linux `lib/crypto/aes.c` and `include/crypto/aes.h` remain
+pinned in the ext manifest at `58161ead29e50d70a317ea26b472e0c7508e69da`.
+The existing SDK manifest pins complete `C/Aes.c`, `C/Aes.h`, and `C/AesOpt.c`
+at `b88c6bc09339de32f7d18bbab900686b244f42ba`; these providers remain byte-exact
+public-domain code from Igor Pavlov. `CpuArch.c` is the existing dispatch
+dependency. No SDK backend, revision or production library is added.
+
+`sdkaesblocks.c/.h` is narrow local GPL integration. It calls `Aes_SetKey_Enc`/
+`Aes_SetKey_Dec`, snapshotting the input key before writing prepared output,
+keeping Linux's native-word round-key layout and reversing the
+SDK inverse-key sequence for Linux's prepared decryption state. For one block,
+it reconstructs an aligned SDK context with a zero IV and invokes
+`g_AesCbc_Encode`/`g_AesCbc_Decode`. One zero-IV CBC block supplies the block
+operation; SDK CTR semantics do not replace Linux's CTR/XCTR. Input is copied
+before output so unaligned and overlapping buffers retain their behavior.
+Temporary prepared keys, SDK contexts and block buffers are explicitly erased
+with the existing Linux `memzero_explicit`.
+
+`sdkaesinit.cpp` owns synchronized first-use `AesGenTables` initialization for
+the GPL library's SDK instance. It is local C++ integration because C++ provides
+portable thread-safe initialization across the existing toolchains. Linux AES,
+the bridge and SDK providers retain C compilation. Original Linux table prefetch
+is intentionally omitted as accepted above; SDK normal dispatch and its software
+fallback supply their existing behavior. SDK algorithm bodies are not adapted.
+
+Linux `aes_expandkey`, prepare-key and block APIs retain validation, key lengths
+and prepared-state structure. Existing ECB/CBC/CTS/XTS/CTR/XCTR bodies, IV/counter/
+tweak updates, partial-block behavior, weak-key checks and temporary erasure are
+unchanged. Existing ESSIV/HCTR2/Adiantum/fscrypt consumers keep those mode APIs.
+Unused declarations of the removed private round tables are removed from the local header;
+there are no transferred consumers of those tables. The ext manifest maps
+selected replaced symbols, retained scope and all local owners to the provider.
+
+The existing `sevenzip_fscrypt_crypto` target compiles the same SDK C owners used
+elsewhere, together with the local adapter; GPL modules do not acquire core/unRAR
+code, and the native core does not acquire Linux GPL code. No reader/write policy,
+password requirement, extraction path validation or UI contract changes.
+
+Existing independent AES-128/192/256 vectors exercise Linux public block/mode
+APIs with unaligned keys/buffers, in-place processing, encryption/decryption,
+IV results and stream continuation. The suite now also selects the SDK's public
+software CBC dispatch functions and repeats those behavior vectors, restoring
+normal dispatch afterwards. This detects fallback-specific adapter mistakes
+even on machines whose normal SDK dispatch uses CPU instructions. Existing
+invalid-key, mode, policy and encrypted filesystem fixtures remain in use.
+No test pins key-array bytes, private symbols or source structure.
+
+macOS AES selection passed 11/11 (5.79 s); normal/software dispatch vectors also
+passed separately. The final combined 21-suite selection covers CRC, native VHDX,
+XFS/Btrfs/EROFS modules/readers, frames, ext streams/recovery/xattrs/fscrypt and
+asymmetric/hash/fs-verity consumers. macOS arm64 passed 21/21 (6.39 s), and Linux
+x64 passed 21/21 (36.69 s), receipt `20261025T062924Z-b5fa91bb`.
+
+Windows x64/MSVC built the native runtime and affected targets. Its combined run
+passed 20/21 (154.55 s), same receipt; `xfs_module` exceeded its unchanged 45-second
+limit. An isolated verbose repeat passed every XFS case (2.043 s of QTest work),
+receipt `20261025T064133Z-1e5ce139`, and a subsequent ordinary CTest repeat passed,
+receipt `20261025T064933Z-3f6fbb1d`. Earlier codec-discovery timeouts did not recur
+in the combined run. Their cause is unconfirmed; reliable cold catalog startup
+is not established by successful repeats. No timeout or compiler-cache policy
+was changed. Thus all selected Windows scenarios passed across these runs.
+
+Final review also compared preparation with input key material overlapping its
+prepared-key storage. The previous Linux implementation passed that control;
+the initial adapter reread overwritten input for decryption-key expansion.
+Snapshotting and subsequently erasing the raw input key fixed it. The control
+then passed; its representation-specific placement remains a disposable manual
+diagnostic rather than a permanent test tied to key internals. After this local
+follow-up, all 11 AES/crypto consumer suites passed on macOS (6.79 s), Linux
+(13.82 s) and Windows (22.66 s), receipt `20261025T070316Z-0fc73b6e`.
+
+SDK baseline verification passed 408 exact, 262 adapted and 23 local owners.
+XFS original units and the selected complete Linux AES unit verified; existing
+review tooling compared their original baselines/providers/adaptations. The
+remaining BE table regenerated exactly. Full original VHDX reader comparison
+after equivalent formatting confirmed retained bodies/callers unchanged, and
+Linux mode/state/erasure bodies remained byte-identical after the replaced
+generic primitives. Source completeness and runtime evidence are separate:
+only the recorded primitive scope is consolidated, with the accepted prefetch
+omission and the retained mode/reader boundaries above.
+
+No full/slow gate, release installation, UI/pixel, performance or big-endian
+runtime acceptance is included. Disposable controls/generators/drivers and
+completed timeout fixtures are removed; small review evidence, incremental
+build trees and compiler caches are retained.

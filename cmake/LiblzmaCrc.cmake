@@ -1,4 +1,9 @@
-# Share the pinned liblzma CRC APIs with SDK and Linux checksum consumers.
+# Shared checksum providers for native and filesystem consumers.
+add_library(sevenzip_crc32c STATIC src/CPP/7zip/Archive/VhdxCrc.cpp)
+target_include_directories(sevenzip_crc32c PRIVATE third_party/7zip/CPP
+    third_party/7zip/CPP/7zip/Archive)
+set_target_properties(sevenzip_crc32c PROPERTIES AUTOMOC OFF AUTOUIC OFF
+    POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden)
 # Portable slicing paths have immutable tables and no lazy dispatch.
 add_library(sevenzip_liblzma_crc STATIC
     third_party/xz/src/liblzma/check/crc64_fast.c
@@ -19,9 +24,13 @@ set_source_files_properties(src/C/XzCrc64.c PROPERTIES
 target_link_libraries(sevenzip_common PUBLIC sevenzip_liblzma_crc)
 if(BUILD_TESTING)
     add_executable(linux_checksum_tests tests/linux_checksum_tests.c src/lib/crc/crc32-main.c)
-    target_link_libraries(linux_checksum_tests PRIVATE sevenzip_liblzma_crc)
+    target_link_libraries(linux_checksum_tests PRIVATE sevenzip_liblzma_crc sevenzip_crc32c)
     set_target_properties(linux_checksum_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF
         C_STANDARD 11 C_STANDARD_REQUIRED ON)
     add_test(NAME linux_checksum COMMAND linux_checksum_tests)
     set_tests_properties(linux_checksum PROPERTIES TIMEOUT 15)
+    add_test(NAME native_vhdx_crc COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/native_vhdx_crc_tests.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime")
+    set_tests_properties(native_vhdx_crc PROPERTIES TIMEOUT 45)
 endif()

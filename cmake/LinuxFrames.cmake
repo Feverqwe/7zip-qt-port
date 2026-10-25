@@ -5,7 +5,7 @@ add_library(sevenzip_linux_frames_core STATIC
     src/lib/crc/crc32-main.c)
 target_include_directories(sevenzip_linux_frames_core PRIVATE src third_party/linux/include)
 target_link_libraries(sevenzip_linux_frames_core PUBLIC sevenzip_lz4 sevenzip_zisofs_zlib
-    sevenzip_liblzma_crc)
+    sevenzip_liblzma_crc sevenzip_crc32c)
 set_target_properties(sevenzip_linux_frames_core PROPERTIES AUTOMOC OFF AUTOUIC OFF
     POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
 add_library(sevenzip_linux_frames MODULE

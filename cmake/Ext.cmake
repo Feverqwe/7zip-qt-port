@@ -9,6 +9,8 @@ endif()
 set_target_properties(linux_asn1_compiler PROPERTIES AUTOMOC OFF AUTOUIC OFF
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
 add_library(sevenzip_fscrypt_crypto STATIC EXCLUDE_FROM_ALL
+    src/lib/crypto/sdkaesblocks.c src/lib/crypto/sdkaesinit.cpp
+    third_party/7zip/C/Aes.c third_party/7zip/C/AesOpt.c
     src/lib/crypto/sdkhashblocks.c
     third_party/7zip/C/Sha256.c third_party/7zip/C/Sha512.c
     third_party/7zip/C/Sha256Opt.c third_party/7zip/C/Sha512Opt.c
@@ -181,7 +183,7 @@ add_library(sevenzip_ext MODULE
 target_include_directories(sevenzip_ext PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
 target_link_libraries(sevenzip_ext PRIVATE Threads::Threads sevenzip_fscrypt_crypto
-    sevenzip_liblzma_crc)
+    sevenzip_liblzma_crc sevenzip_crc32c)
 set_target_properties(sevenzip_ext PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
 if(UNIX AND NOT APPLE)

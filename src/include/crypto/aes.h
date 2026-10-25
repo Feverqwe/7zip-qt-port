@@ -388,8 +388,6 @@ void aes_decrypt(const struct aes_key *key, u8 out[at_least AES_BLOCK_SIZE],
 
 extern const u8 crypto_aes_sbox[];
 extern const u8 crypto_aes_inv_sbox[];
-extern const u32 aes_enc_tab[256];
-extern const u32 aes_dec_tab[256];
 
 void aescfb_encrypt(const struct aes_enckey *key, u8 *dst, const u8 *src,
 		    int len, const u8 iv[AES_BLOCK_SIZE]);

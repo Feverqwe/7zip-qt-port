@@ -96,7 +96,7 @@
   "generated": {
     "lib/crc/crc32table.h": {
       "generator": "src/lib/crc/gen_crc32table.c",
-      "sha256": "36476b01270182ccb4ac1569b16ae094f96c1cca53ac8f75cf4b5aec03cbb34f"
+      "sha256": "bfdb0c425e2381003f5928ce7810a3ce2e4d96ffbfce790446a56068038679e5"
     }
   },
   "replaced_dependencies": {
@@ -119,9 +119,13 @@
         "lzma_crc32"
       ],
       "retained_symbols": [
-        "crc32_be",
-        "crc32c"
-      ]
+        "crc32_be"
+      ],
+      "crc32c": {
+        "provider_manifest": "upstream-baseline.json",
+        "provider_symbol": "sevenzip_crc32c_update",
+        "local": "src/CPP/7zip/Archive/VhdxCrc.cpp"
+      }
     }
   }
 }
