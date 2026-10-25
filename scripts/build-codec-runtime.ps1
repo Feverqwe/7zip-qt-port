@@ -66,8 +66,6 @@ $snapshot = Join-Path $output '.build-runtime'
 & {
     Invoke-Checked 'python' @((Join-Path $scriptDirectory 'upstream_baseline.py'),
         'runtime-snapshot', '--snapshot', $snapshot, '--upstream', $upstream)
-    Invoke-Checked 'python' @((Join-Path $scriptDirectory 'crypto_provider.py'),
-        'stage', '--snapshot', $snapshot)
     $files = [ordered]@{}
     foreach ($name in $artifacts.Keys) {
         $bundle = Join-Path $snapshot $artifacts[$name]
@@ -101,9 +99,6 @@ $snapshot = Join-Path $output '.build-runtime'
         version = ([int]$major.Groups[1].Value -shl 16) -bor [int]$minor.Groups[1].Value
         files = $files
     }
-    $cryptoRecord = & python (Join-Path $scriptDirectory 'crypto_provider.py') record
-    if ($LASTEXITCODE -ne 0) { throw 'Unable to record crypto dependency.' }
-    $record['crypto_provider'] = $cryptoRecord | ConvertFrom-Json
     $retired = @()
     if ($owner) {
         foreach ($property in $owner.files.PSObject.Properties) {

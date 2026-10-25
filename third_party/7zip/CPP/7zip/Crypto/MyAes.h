@@ -9,7 +9,6 @@
 #include "../../Common/MyCom.h"
 
 #include "../ICoder.h"
-#include "crypto/opensslaes.h"
 
 namespace NCrypto {
 
@@ -48,9 +47,7 @@ private:
 protected:
   bool _keyIsSet;
   // bool _encodeMode;
-  bool _ctrMode;
-  bool _useLibrary;
-  SevenzipOpenSslAesCbc _opensslCipher;
+  // bool _ctrMode;
   // unsigned _offset;
   unsigned _keySize;
   unsigned _ctrPos; // we need _ctrPos here for Init() / SetInitVector()
@@ -65,7 +62,6 @@ private:
   // UInt32 *Aes() { return _aes + _offset; }
 protected:
   UInt32 *Aes() { return (UInt32 *)(void *)(Byte *)_aes; }
-  void Code(Byte *data, size_t numBlocks);
 
  Z7_IFACE_PURE(IAesCoderSetFunctions)
 
@@ -113,7 +109,6 @@ private:
 public:
   CAesCtrCoder(unsigned keySize = 0): CAesCoder(keySize)
   {
-    _ctrMode = true;
     _ctrPos = 0;
     _setKeyFunc = Aes_SetKey_Enc;
     _codeFunc = g_AesCtr_Code;

@@ -61,8 +61,8 @@ add_library(sevenzip_zip STATIC
     src/CPP/7zip/Compress/ZstdDecoder.cpp
     src/CPP/7zip/Compress/ZstdEncoder.cpp
     third_party/7zip/CPP/7zip/Crypto/HmacSha1.cpp
-    src/CPP/7zip/Crypto/MyAes.cpp
-    src/CPP/7zip/Crypto/Pbkdf2HmacSha1.cpp
+    third_party/7zip/CPP/7zip/Crypto/MyAes.cpp
+    third_party/7zip/CPP/7zip/Crypto/Pbkdf2HmacSha1.cpp
     third_party/7zip/CPP/7zip/Crypto/RandGen.cpp
     third_party/7zip/CPP/7zip/Crypto/WzAes.cpp
     third_party/7zip/CPP/7zip/Crypto/ZipCrypto.cpp
@@ -75,7 +75,6 @@ add_library(sevenzip_zip STATIC
 )
 set_target_properties(sevenzip_zip PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_include_directories(sevenzip_zip PUBLIC src src/C third_party/7zip/C third_party/7zip/CPP
-    third_party/7zip/CPP/7zip/Crypto
     src/CPP/7zip/Archive/Common src/CPP/7zip/Archive/Zip
     third_party/7zip/CPP/7zip/Archive/Zip third_party/7zip/CPP/7zip/Compress)
 set_source_files_properties(src/CPP/7zip/Compress/LzmaDecoder.cpp PROPERTIES
@@ -86,7 +85,12 @@ set_source_files_properties(src/CPP/7zip/Compress/ZstdDecoder.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Compress")
 set_source_files_properties(src/C/XzIn.c src/C/XzDec.c PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/C")
-target_link_libraries(sevenzip_zip PUBLIC sevenzip_common sevenzip_zstd PRIVATE sevenzip_crypto_provider)
+target_link_libraries(sevenzip_zip PUBLIC sevenzip_common sevenzip_zstd)
+
+set_source_files_properties(src/CPP/7zip/Compress/ZstdEncoder.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Compress")
+set_source_files_properties(src/CPP/7zip/Archive/Zip/ZipAddCommon.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Archive/Zip")
 
 if(BUILD_TESTING)
     qt_add_executable(shared_checksum_tests tests/shared_checksum_tests.cpp src/lib/xxhash.c
@@ -98,35 +102,4 @@ if(BUILD_TESTING)
     target_link_libraries(shared_checksum_tests PRIVATE sevenzip_zip sevenzip_zisofs_zlib Qt6::Test)
     add_test(NAME shared_checksum COMMAND shared_checksum_tests -silent)
     set_tests_properties(shared_checksum PROPERTIES TIMEOUT 30)
-    add_executable(crypto_hash_tests tests/crypto_hash_tests.cpp)
-    set_target_properties(crypto_hash_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF)
-    target_link_libraries(crypto_hash_tests PRIVATE sevenzip_zip)
-    if(sevenzip_openssl_usable)
-        target_link_libraries(crypto_hash_tests PRIVATE OpenSSL::Crypto)
-        target_compile_definitions(crypto_hash_tests PRIVATE SEVENZIP_TEST_OPENSSL)
-    endif()
-    add_test(NAME crypto_hash COMMAND crypto_hash_tests)
-    set_tests_properties(crypto_hash PROPERTIES TIMEOUT 15)
-    add_executable(crypto_aes_tests tests/crypto_aes_tests.cpp)
-    set_target_properties(crypto_aes_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF)
-    target_link_libraries(crypto_aes_tests PRIVATE sevenzip_zip)
-    if(sevenzip_openssl_usable)
-        target_link_libraries(crypto_aes_tests PRIVATE OpenSSL::Crypto)
-        target_compile_definitions(crypto_aes_tests PRIVATE SEVENZIP_TEST_OPENSSL)
-    endif()
-    add_test(NAME crypto_aes COMMAND crypto_aes_tests)
-    set_tests_properties(crypto_aes PROPERTIES TIMEOUT 15)
-    qt_add_executable(crypto_zip_tests tests/crypto_zip_tests.cpp)
-    set_target_properties(crypto_zip_tests PROPERTIES AUTOMOC ON AUTOUIC OFF)
-    target_include_directories(crypto_zip_tests PRIVATE tests)
-    target_link_libraries(crypto_zip_tests PRIVATE sevenzip_zip Qt6::Test)
-    target_compile_definitions(crypto_zip_tests PRIVATE
-        "SEVENZIP_CRYPTO_REFERENCE_7Z=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z${CMAKE_EXECUTABLE_SUFFIX}\"")
-    add_test(NAME crypto_zip COMMAND crypto_zip_tests -silent)
-    set_tests_properties(crypto_zip PROPERTIES TIMEOUT 45)
 endif()
-
-set_source_files_properties(src/CPP/7zip/Compress/ZstdEncoder.cpp PROPERTIES
-    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Compress")
-set_source_files_properties(src/CPP/7zip/Archive/Zip/ZipAddCommon.cpp PROPERTIES
-    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Archive/Zip")

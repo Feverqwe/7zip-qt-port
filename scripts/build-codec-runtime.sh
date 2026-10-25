@@ -29,7 +29,6 @@ PY
 snapshot="$artifact_dir/.build-runtime"
 python3 "$project_root/scripts/upstream_baseline.py" runtime-snapshot \
   --snapshot "$snapshot" --upstream "$upstream_checkout"
-python3 "$project_root/scripts/crypto_provider.py" stage --snapshot "$snapshot"
 if [[ "$(uname -s)" == Darwin ]]; then
   if ! printf '#include <type_traits>\n' | c++ -x c++ -std=c++17 -fsyntax-only - >/dev/null 2>&1; then
     task_codec_sdk="$(xcrun --show-sdk-path)"
@@ -51,8 +50,6 @@ for source in CPP/7zip/UI/Console CPP/7zip/Bundles/Format7zF; do
 done
 python3 - "$project_root/docs/upstream-baseline.json" "$snapshot" "$artifact_dir" <<'PY'
 import hashlib, json, pathlib, platform, re, shutil, sys
-sys.path.insert(0, str(pathlib.Path(sys.argv[1]).resolve().parent.parent / "scripts"))
-from crypto_provider import public_record
 baseline = json.loads(pathlib.Path(sys.argv[1]).read_text())
 snapshot, output = map(pathlib.Path, sys.argv[2:])
 sources = {"7z": "CPP/7zip/UI/Console/_o/7z",
@@ -67,7 +64,6 @@ manifest = {"schema": 1, "producer": "sevenzip-desktop/build-codec-runtime",
             "system": platform.system(), "architecture": platform.machine(),
             "adapted_sources": json.loads((snapshot / "runtime-adaptations.json").read_text()),
             "version": (major << 16) | minor, "files": files}
-manifest["crypto_provider"] = public_record(pathlib.Path(sys.argv[1]).resolve().parent.parent)
 previous = output / "runtime.json"
 retired = []
 if previous.is_file():

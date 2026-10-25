@@ -160,16 +160,11 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                 flags = '$(CFLAGS_O2:-Wall=-W3) -DZSTD_DISABLE_ASM' if name.startswith("zstd/") else '$(CFLAGS_O2)'
                 if name.startswith("zlib/"):
                     flags = '$(subst -Gr,-Gd,$(CFLAGS_O2:-Wall=-W3)) -DZ_PREFIX'
-                if name.startswith("crypto/openssl"):
-                    # OpenSSL declarations use the C ABI, rather than the
-                    # native x86 /Gr default; adapter declarations agree.
-                    flags = '$(subst -Gr,-Gd,$(CFLAGS_O2:-Wall=-W3)) ' + ('-std:c++17' if cpp else '-std:c11')
                 lines.append(('\t$(CC) ' + flags + ' ' + ('-TP' if cpp else '-TC') + ' -Fo"' + target + '" "' + source + '"')
                              if windows else ('\t$(CXX) $(CXXFLAGS) ' if cpp else
                                               '\t$(CC) $(CFLAGS) ' + ('-DZSTD_DISABLE_ASM ' if name.startswith("zstd/") else
                                                                       '-DZ_PREFIX ' if name.startswith("zlib/") else '')) +
-                             (('-std=c++17 ' if cpp else '-std=c11 ')
-                              if name.startswith("crypto/openssl") else '') + source)
+                             source)
                 extra_objects.append(target)
             if extra_objects:
                 if not windows:

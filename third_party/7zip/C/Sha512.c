@@ -48,22 +48,8 @@ void Z7_FASTCALL Sha512_UpdateBlocks(UInt64 state[8], const Byte *data, size_t n
 
 #ifdef Z7_COMPILER_SHA512_SUPPORTED
   void Z7_FASTCALL Sha512_UpdateBlocks_HW(UInt64 state[8], const Byte *data, size_t numBlocks);
-#endif
 
-#ifdef SEVENZIP_OPENSSL_HASHES
-#include "../crypto/opensslhash.h"
-static void Z7_FASTCALL Sha512_UpdateBlocks_OpenSSL(UInt64 state[8], const Byte *data, size_t numBlocks)
-{
-  sevenzip_sha512_blocks(state, data, numBlocks);
-}
-#define SHA512_DEFAULT_UPDATE_BLOCKS Sha512_UpdateBlocks_OpenSSL
-#else
-#define SHA512_DEFAULT_UPDATE_BLOCKS Sha512_UpdateBlocks
-#endif
-
-#if defined(Z7_COMPILER_SHA512_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
-
-  static SHA512_FUNC_UPDATE_BLOCKS g_SHA512_FUNC_UPDATE_BLOCKS = SHA512_DEFAULT_UPDATE_BLOCKS;
+  static SHA512_FUNC_UPDATE_BLOCKS g_SHA512_FUNC_UPDATE_BLOCKS = Sha512_UpdateBlocks;
   static SHA512_FUNC_UPDATE_BLOCKS g_SHA512_FUNC_UPDATE_BLOCKS_HW;
 
   #define SHA512_UPDATE_BLOCKS(p) p->v.vars.func_UpdateBlocks
@@ -76,7 +62,7 @@ BoolInt Sha512_SetFunction(CSha512 *p, unsigned algo)
 {
   SHA512_FUNC_UPDATE_BLOCKS func = Sha512_UpdateBlocks;
   
-  #if defined(Z7_COMPILER_SHA512_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
+  #ifdef Z7_COMPILER_SHA512_SUPPORTED
     if (algo != SHA512_ALGO_SW)
     {
       if (algo == SHA512_ALGO_DEFAULT)
@@ -142,7 +128,7 @@ void Sha512_InitState(CSha512 *p, unsigned digestSize)
 void Sha512_Init(CSha512 *p, unsigned digestSize)
 {
   p->v.vars.func_UpdateBlocks =
-  #if defined(Z7_COMPILER_SHA512_SUPPORTED) || defined(SEVENZIP_OPENSSL_HASHES)
+  #ifdef Z7_COMPILER_SHA512_SUPPORTED
       g_SHA512_FUNC_UPDATE_BLOCKS;
   #else
       NULL;
@@ -691,9 +677,6 @@ void Sha512Prepare(void)
 #elif defined(Z7_SHA512_PROBE_DEBUG)
   CPU_IsSupported_SHA512_Probe(); // for debug
 #endif
-#ifdef SEVENZIP_OPENSSL_HASHES
-  g_SHA512_FUNC_UPDATE_BLOCKS = Sha512_UpdateBlocks_OpenSSL;
-#endif
 }
 
 
@@ -726,5 +709,3 @@ void Sha512Prepare(void)
 #undef Z7_SHA512_BIG_W
 #undef Z7_SHA512_UNROLL
 #undef Z7_COMPILER_SHA512_SUPPORTED
-
-#undef SHA512_DEFAULT_UPDATE_BLOCKS

@@ -9,14 +9,11 @@ from pathlib import Path
 import platform
 import shlex
 import subprocess
-import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-from crypto_provider import fingerprint as crypto_fingerprint
 BUILDERS = ("build-codec-runtime.sh", "build-codec-runtime.ps1", "build-sfx.sh", "build-sfx.ps1",
-            "upstream_baseline.py", "crypto_provider.py")
+            "upstream_baseline.py")
 
 
 def sha(path):
@@ -41,7 +38,6 @@ def fingerprint(root):
                                 baseline.get("runtime_dependencies", [])},
             "builders": {name: sha(root / "scripts" / name) for name in BUILDERS},
             "cache_version": sha(Path(__file__)),
-            "crypto_provider": crypto_fingerprint(root),
             "system": platform.system(), "architecture": platform.machine(),
             "compiler": compiler, "compiler_version": hashlib.sha256(version).hexdigest(),
             "environment": {key: os.environ.get(key, "") for key in

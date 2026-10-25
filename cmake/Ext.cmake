@@ -106,8 +106,8 @@ if(BUILD_TESTING)
     set_tests_properties(asymmetric_certificate PROPERTIES TIMEOUT 15)
     add_executable(fsverity_signature_tests tests/fsverity_signature_tests.c
         src/fs/verity/signature.c src/fs/verity/hash_algs.c
-        third_party/7zip/C/CpuArch.c src/C/Sha256.c
-        third_party/7zip/C/Sha256Opt.c src/C/Sha512.c
+        third_party/7zip/C/CpuArch.c third_party/7zip/C/Sha256.c
+        third_party/7zip/C/Sha256Opt.c third_party/7zip/C/Sha512.c
         third_party/7zip/C/Sha512Opt.c)
     target_link_libraries(fsverity_signature_tests PRIVATE sevenzip_fscrypt_crypto)
     set_target_properties(fsverity_signature_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF
@@ -176,8 +176,8 @@ add_library(sevenzip_ext MODULE
     third_party/7zip/CPP/Common/StringConvert.cpp
     third_party/7zip/CPP/Common/UTFConvert.cpp
     third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c
-    src/C/Sha256.c third_party/7zip/C/Sha256Opt.c
-    src/C/Sha512.c third_party/7zip/C/Sha512Opt.c)
+    third_party/7zip/C/Sha256.c third_party/7zip/C/Sha256Opt.c
+    third_party/7zip/C/Sha512.c third_party/7zip/C/Sha512Opt.c)
 target_include_directories(sevenzip_ext PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
 target_link_libraries(sevenzip_ext PRIVATE Threads::Threads sevenzip_fscrypt_crypto)

@@ -17,14 +17,7 @@
     "src/crypto/block-qcow.c",
     "src/crypto/block-qcow.h",
     "src/crypto/block.c",
-    "src/crypto/cryptoabi.h",
     "src/crypto/ivgen-plain64.c",
-    "src/crypto/opensslaes.cpp",
-    "src/crypto/opensslaes.h",
-    "src/crypto/opensslhash.c",
-    "src/crypto/opensslhash.h",
-    "src/crypto/opensslkdf.cpp",
-    "src/crypto/opensslkdf.h",
     "src/zstd/lib/common/allocations.h",
     "src/zstd/lib/common/bits.h",
     "src/zstd/lib/common/bitstream.h",
@@ -97,10 +90,6 @@
   "revision": "b88c6bc09339de32f7d18bbab900686b244f42ba",
   "overrides": {},
   "runtime_adapted": [
-    "src/C/Md5.c",
-    "src/C/Sha1.c",
-    "src/C/Sha256.c",
-    "src/C/Sha512.c",
     "src/C/Xxh64.c",
     "src/C/Xz.h",
     "src/C/XzDec.c",
@@ -137,9 +126,6 @@
     "src/CPP/7zip/Compress/XzDecoder.cpp",
     "src/CPP/7zip/Compress/ZlibDecoder.cpp",
     "src/CPP/7zip/Compress/ZstdDecoder.cpp",
-    "src/CPP/7zip/Crypto/MyAes.cpp",
-    "src/CPP/7zip/Crypto/MyAes.h",
-    "src/CPP/7zip/Crypto/Pbkdf2HmacSha1.cpp",
     "src/CPP/7zip/UI/Common/OpenArchive.cpp",
     "src/CPP/7zip/UI/Common/OpenArchive.h",
     "src/CPP/Common/Wildcard.cpp",
@@ -187,6 +173,7 @@
     "third_party/7zip/C/LzmaDec.h",
     "third_party/7zip/C/LzmaEnc.c",
     "third_party/7zip/C/LzmaEnc.h",
+    "third_party/7zip/C/Md5.c",
     "third_party/7zip/C/Md5.h",
     "third_party/7zip/C/MtCoder.c",
     "third_party/7zip/C/MtCoder.h",
@@ -199,12 +186,15 @@
     "third_party/7zip/C/Ppmd8Enc.c",
     "third_party/7zip/C/Precomp.h",
     "third_party/7zip/C/RotateDefs.h",
+    "third_party/7zip/C/Sha1.c",
     "third_party/7zip/C/Sha1.h",
     "third_party/7zip/C/Sha1Opt.c",
+    "third_party/7zip/C/Sha256.c",
     "third_party/7zip/C/Sha256.h",
     "third_party/7zip/C/Sha256Opt.c",
     "third_party/7zip/C/Sha3.c",
     "third_party/7zip/C/Sha3.h",
+    "third_party/7zip/C/Sha512.c",
     "third_party/7zip/C/Sha512.h",
     "third_party/7zip/C/Sha512Opt.c",
     "third_party/7zip/C/Sort.c",
@@ -338,6 +328,9 @@
     "third_party/7zip/CPP/7zip/Crypto/HmacSha1.h",
     "third_party/7zip/CPP/7zip/Crypto/HmacSha256.cpp",
     "third_party/7zip/CPP/7zip/Crypto/HmacSha256.h",
+    "third_party/7zip/CPP/7zip/Crypto/MyAes.cpp",
+    "third_party/7zip/CPP/7zip/Crypto/MyAes.h",
+    "third_party/7zip/CPP/7zip/Crypto/Pbkdf2HmacSha1.cpp",
     "third_party/7zip/CPP/7zip/Crypto/Pbkdf2HmacSha1.h",
     "third_party/7zip/CPP/7zip/Crypto/RandGen.cpp",
     "third_party/7zip/CPP/7zip/Crypto/RandGen.h",
@@ -447,7 +440,6 @@
     "third_party/7zip/CPP/7zip/UI/GUI/ExtractRes.h",
     "third_party/7zip/CPP/7zip/UI/GUI/resource3.h",
     "third_party/7zip/CPP/7zip/UI/GUI/resource3.rc",
-    "third_party/7zip/CPP/Build.mak",
     "third_party/7zip/CPP/Common/AutoPtr.h",
     "third_party/7zip/CPP/Common/CRC.cpp",
     "third_party/7zip/CPP/Common/C_FileIO.h",
@@ -551,10 +543,6 @@
     "third_party/7zip/License.txt"
   ],
   "adapted": [
-    "src/C/Md5.c",
-    "src/C/Sha1.c",
-    "src/C/Sha256.c",
-    "src/C/Sha512.c",
     "src/C/Xxh64.c",
     "src/C/Xz.h",
     "src/C/XzDec.c",
@@ -599,9 +587,6 @@
     "src/CPP/7zip/Compress/XzDecoder.cpp",
     "src/CPP/7zip/Compress/ZlibDecoder.cpp",
     "src/CPP/7zip/Compress/ZstdDecoder.cpp",
-    "src/CPP/7zip/Crypto/MyAes.cpp",
-    "src/CPP/7zip/Crypto/MyAes.h",
-    "src/CPP/7zip/Crypto/Pbkdf2HmacSha1.cpp",
     "src/CPP/7zip/UI/Agent/Agent.cpp",
     "src/CPP/7zip/UI/Agent/Agent.h",
     "src/CPP/7zip/UI/Agent/AgentOut.cpp",
@@ -847,9 +832,6 @@
     "src/CPP/7zip/Archive/HandlerCont.h": "0dc3ecde43894bddb416ae8c47f6aa55ac66450fe8376a1b81c78b24ccafe40e",
     "src/CPP/7zip/Archive/Zip/ZipAddCommon.cpp": "78cf7d8b18a3e63d5a065ad56c8caa3e8be67d681bfb9e84c5768b14421c338a",
     "src/CPP/7zip/Archive/Zip/ZipHeader.h": "6f64d4d9db3e6ac3173da8d405ec4236e208553f0b5efa02c72d9de9f03b5a24",
-    "src/CPP/7zip/Crypto/MyAes.cpp": "8e2a1a469bd29dbb41c647b3cec4e463f37ea71b986a71fa659fa06285329ed2",
-    "src/CPP/7zip/Crypto/MyAes.h": "a3bec073e06f8e14e9dff449f9dd543a7ff02596ca85a7cd9000e3c50503bb14",
-    "src/CPP/7zip/Crypto/Pbkdf2HmacSha1.cpp": "6b463518a07ddf72530ddf01fc6a0b35a8c395ac1e74d5f297f39a41d4b9ad77",
     "src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp": "7af000033b8bba197e7d1b1d13e5e25b6b72358730b718d764b02e3640e851cb",
     "src/CPP/Common/MyVector.h": "cd5d792c8e2e4127c0353cf500bee63d45ced7e83d002e65e33c46f881212915",
     "src/gpl/CPP/7zip/Archive/NtfsHandler.cpp": "e6217266a6dc51208c1a8420ab25ce4731e0c78a9e1984891bd7404334736cf9",
@@ -866,10 +848,54 @@
     "src/gpl/CPP/7zip/Archive/FatHandler.cpp": "2c5dcfcd68eec2b56267f636e3c66e630ec2a3796668e30ee58952db8ae9fc87",
     "src/gpl/CPP/7zip/Archive/HfsHandler.cpp": "b2623be823291c398136030722dcf566c663106445f13bf55ed693a0e926a50f",
     "src/gpl/CPP/7zip/Archive/MbrHandler.cpp": "e87756d0ce49cc49ee51df22c62e1453dd83c1c401d49812bfb982032490528d",
-    "src/C/Md5.c": "0fc0a72915fd916f6a2863e619901239c12f739a11e3c0e10a93d0e384aef756",
-    "src/C/Sha1.c": "6c767a47face66a064dc0402f6e526bb3b9180d1a583f707d98101ef61398a03",
-    "src/C/Sha256.c": "4c7422ada8bb382f69eea7622951fc8391ca8bef97bb8a7ea9dedcaedd9e5039",
-    "src/C/Sha512.c": "4e4a7fe5517a87cac92a08ff5f96a2c62e69b3546ef778ead4edef6f566d123f",
-    "third_party/7zip/CPP/Build.mak": "2fa73421ef3236655890cf479d6e5c8f0083667173248cea801e46fd698374df",
     "src/C/Xxh64.c": "f7f7681eeb0155cd25b65c871d1d6d2497ef8076ae03b957953ac6c47c4a1d2b",
     "src/CPP/7zip/Compress/ZlibDecoder.cpp": "366f098d2c90e66ca333519ac4920890585a6dd66e4187f0aa593f1ce3a23e63"
+  },
+  "runtime_format_sources": [
+    "src/CPP/7zip/Archive/ExtHeader.cpp",
+    "src/CPP/7zip/Archive/FatHeader.cpp",
+    "src/CPP/7zip/Archive/HfsDecmpfs.cpp",
+    "src/CPP/7zip/Archive/MbrProbe.cpp"
+  ],
+  "extracted": {
+    "src/gpl/CPP/7zip/Archive/ExtHandler.cpp": {
+      "local": [
+        "src/CPP/7zip/Archive/ExtHeader.cpp",
+        "src/CPP/7zip/Archive/ExtHeader.h"
+      ],
+      "symbols": [
+        "NExt::CHeader",
+        "NExt::IsArc_Ext",
+        "NExt::IsArc_Ext_PhySize"
+      ]
+    },
+    "src/gpl/CPP/7zip/Archive/FatHandler.cpp": {
+      "local": [
+        "src/CPP/7zip/Archive/FatHeader.cpp",
+        "src/CPP/7zip/Archive/FatHeader.h"
+      ],
+      "symbols": [
+        "NFat::CHeader",
+        "NFat::IsArc_Fat"
+      ]
+    },
+    "src/gpl/CPP/7zip/Archive/HfsHandler.cpp": {
+      "local": [
+        "src/CPP/7zip/Archive/HfsDecmpfs.cpp"
+      ],
+      "symbols": [
+        "NHfs::CCompressHeader",
+        "NHfs::MethodsMaskToProp",
+        "NHfs::CDecoder"
+      ]
+    },
+    "src/gpl/CPP/7zip/Archive/MbrHandler.cpp": {
+      "local": [
+        "src/CPP/7zip/Archive/MbrProbe.cpp"
+      ],
+      "symbols": [
+        "NMbr::GetFileSystem"
+      ]
+    }
+  }
+}
