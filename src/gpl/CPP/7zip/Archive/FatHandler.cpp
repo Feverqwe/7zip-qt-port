@@ -1144,6 +1144,11 @@ Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallb
 {
     COM_TRY_BEGIN
     {
+        if (!fat_linux_charset_available())
+        {
+            Close();
+            return E_NOTIMPL;
+        }
         OpenCallback = callback;
         InStream = stream;
         RootUnavailable = false;

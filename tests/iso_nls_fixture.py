@@ -120,7 +120,5 @@ def volume(kind):
     files = {name: data for name, data in files.items() if name.isascii()}
     alpha = files.pop("alpha.bin")
     files = {name.replace("nested/", expected + "-dir/"): data for name, data in files.items()}
-    # The pinned ISO-8859-6 table has no ASCII digit mappings; conversion
-    # precedes Joliet version stripping, so ';1' becomes ';?'.
-    files[expected + (".bin;?" if case == "iso8859-6" else ".bin")] = alpha
+    files[expected + ".bin"] = alpha
     return bytes(image), files

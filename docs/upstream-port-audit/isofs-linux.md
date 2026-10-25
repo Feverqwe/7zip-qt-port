@@ -334,8 +334,9 @@ Directory iteration, VFS lookup/casefold operations и module registration
 Kernel 16-bit `wchar_t` использует существующий `fat_wchar_t`; перед shared
 UTF-16 helper делается aligned copy. Один cast устраняет host signedness warning.
 
-`fs/nls/nls_base.c` и `nls_cp437.c` переиспользуются из существующего FAT port,
-с теми же pinned source hashes и единственной реализацией. Сохранены UTF-16
+Unicode-часть `fs/nls/nls_base.c` переиспользуется из существующего FAT port,
+с тем же pinned source hash и единственной реализацией. CP437 теперь использует
+[системный charset service](#system-charset-services). Сохранены UTF-16
 surrogate handling, остановка на NUL, замена непредставимых NLS символов `?`,
 `;1` и trailing-period rules для каждого Joliet компонента. Полученный charset
 переводится обратно в UTF-8 для Unicode archive ABI. Plain ISO mappings
@@ -361,9 +362,14 @@ Acorn использует исходные ARCHIMEDES marker, mode и file-type
 исходное 7-Zip отображение, Joliet/RR используют исправленный path.
 Standalone `7zz` не получает GPL readers и этот interface extension.
 Прежняя [FAT/NLS dependency boundary](fat-linux.md) переиспользуется:
-общие C sources и CP437 остаются authoritative для обоих модулей.
+общие C sources и системный CP437 service authoritative для обоих модулей.
 
-## Полный выбор NLS для Joliet
+## Исторический перенос полного выбора NLS для Joliet
+
+Следующая запись описывает первоначальный перенос. Charset tables и их
+conversion bodies заменены [системными services](#system-charset-services)
+2026-10-25; их original inventory hashes сохранены для review, но это больше
+не заявление о текущей Linux NLS mapping parity.
 
 Сопоставлены полный `fs/nls/Makefile`, Kconfig, charset tables, conversion
 functions, alias fields, init/dependency branches и `nls_base.c:find_nls`.
@@ -401,6 +407,185 @@ ISO-8859-6 и неполную private-use поддержку CP932/EUC-JP. Vers
 уведомление об адаптации. Полный Unicode notice устанавливается рядом с
 GPL/LGPL/syscall/zlib notices на всех платформах. GPL code остаётся изолированным
 в ISO-модуле; standalone engine не получает NLS property extension.
+
+## System charset services
+
+2026-10-25: пользователь разрешил отличия ISO/Joliet от Linux mappings и
+выбрал системные API без поставки NLS tables или отдельной ICU. Изменение
+оставляет обычный UTF-8 Joliet path, Rock Ridge, filesystem parsing и чтение
+данных прежними. Legacy `iocharset` становится платформенной возможностью.
+
+### Source comparison and boundary
+
+Reference: Linux `58161ead29e50d70a317ea26b472e0c7508e69da`, repository and
+complete original-unit SHA256 values in [ISO baseline](../isofs-linux-baseline.json)
+and [FAT baseline](../fat-linux-baseline.json). Compared the complete charset
+functions/tables and aliases, EUC-JP/CP932 and KOI8-RU dependencies,
+`fs/isofs/joliet.c` and both directions in its local Unicode ABI adapter,
+`fs/fat/dir.c:fat_short2lower_uni`/`fat_parse_short`, FAT label/name callers,
+and the shared UTF-16 consumers in NTFS/UDF. The original 7-Zip FAT caller
+unit remains pinned by the existing 7-Zip baseline; no source revision advances.
+
+Removed the 50 charset C owners, including their large mapping/case arrays,
+and the default charset arrays in `nls_base.c`. Original hashes remain in the
+manifests as omitted reference inventory; they do not hash the new adapter.
+Retained `utf32_to_utf8`, `get_utf16`, `utf16s_to_utf8s`, and the existing
+bounded FAT long-name adapter with unchanged bodies. The small UTF-8 bit-mask
+descriptor is part of that retained algorithm, not a legacy charset mapping.
+Linux notices and the existing Unicode permission notice remain with retained
+code/distribution materials.
+
+New local integration, without external implementation imports:
+
+- `src/fs/nls/system.c`/`.h`: OS conversion/availability boundary and CP437
+  case conversion. macOS/Linux use `iconv`; Windows uses
+  `MultiByteToWideChar`/`WideCharToMultiByte` with explicit codepage IDs.
+  Linux NLS implements tables and kernel services; it has no portable native
+  userspace service adapter to reuse. This boundary replaces platform services,
+  not the retained filesystem algorithms.
+  API references: [iconv contract](https://www.gnu.org/software/libiconv/documentation/libiconv-1.7/iconv_open.3.html),
+  [Win32 conversion](https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar),
+  [Windows codepage identifiers](https://learn.microsoft.com/en-us/windows/win32/intl/code-page-identifiers).
+- `registry.c` and `charsets.inc`: preserve existing property identifiers/aliases
+  and the upstream callback shape. An unavailable converter returns
+  `E_INVALIDARG` from property setup, preserving prior settings. `default`
+  explicitly selects Latin-1, independent of host locale.
+- `fatnames.c`: existing local OEM-label integration moved out of the removed
+  CP437 unit. FAT short-name control flow remains upstream; the byte lowercase
+  service replaces its case-table access. If CP437 is unavailable, FAT open
+  returns `E_NOTIMPL` rather than publishing an empty or corrupted namespace.
+
+Converters belong to the OS. No ICU or GNU libiconv sources/data are added to
+the package. macOS links `/usr/lib/libiconv.2.dylib`; the checked Linux uses
+glibc's iconv; Windows uses the system conversion API. Linux installations
+need their OS's converter modules for the selected codepage. This change does
+not remove any ICU dependency independently required by a selected Qt kit.
+
+Encoding rejects substitution, multi-character approximation and mappings
+that fail an exact Unicode round trip. This matters because checked macOS
+iconv approximates some characters without an explicit transliteration request.
+The existing Joliet `?` fallback handles unrepresentable units. Each decode
+returns one character and a consumed-byte count; buffers remain bounded.
+Per-call conversion state is not shared between worker threads. CP437 case
+conversion uses an explicit UTF-8 locale on Unix or invariant Windows casing,
+then retains the original byte if its lowercase is not representable.
+
+### Measured losses
+
+[Machine-readable comparison](nls-system-comparison.json) records dated results
+against pre-change application commit
+`d89dfe1f` (the full commit is in the report). It is investigation evidence,
+not a new test baseline or an immutable system-codepage promise.
+
+Checked macOS 27.0.1 arm64, Ubuntu/glibc 2.39 x64 and Windows 11 build 26300 x64.
+Encoding covers all 63,487 BMP scalar values except NUL; decoding covers every
+one/two-byte buffer except leading NUL and every `0x8f`-prefixed two-byte suffix
+for EUC-JP, including malformed/truncated inputs. Counts for decoding include
+different buffer tails; they are not counts of distinct lost characters.
+Supplementary Unicode uses the retained default UTF-8 path and is outside
+these legacy single-unit callbacks.
+
+| Platform | Previously accepted identifiers unavailable in the checked OS |
+| --- | --- |
+| macOS | None of the 51 identifiers. |
+| Linux/glibc | `macceltic`, `maccroatian`, `macgaelic`, `macgreek`, `macinuit`, `macromanian`, `macturkish`. Mac Icelandic uses glibc's `MAC-IS` name. |
+| Windows | `macceltic`, `macgaelic`, `macinuit`, `iso8859-14`, `koi8-ru`. |
+
+Mappings also differ for available encodings. The following counts are BMP
+units encodable by the former NLS service that the native adapter now rejects:
+
+| Charset | macOS | Linux/glibc | Windows |
+| --- | ---: | ---: | ---: |
+| CP932 | 4 | 4 | 4 |
+| CP936 | 382 | 380 | 380 |
+| CP949 | 428 | 428 | 427 |
+| CP950 | 522 | 521 | 521 |
+| EUC-JP | 175 | 173 | 10 |
+
+This table is not the total namespace difference: OS services also accept
+additional characters, select different canonical bytes, or decode a sequence
+differently. The report includes these outcomes and concrete examples. For
+example CP932's added private-use mappings affect about 1,880 formerly
+unrepresentable BMP units. Windows CP950 and EUC-JP have large vendor mapping
+differences. The checked Windows provides codepage 20932 for EUC-JP; 51932
+is not available through the checked native API. No custom EUC-JP decoder is
+introduced to emulate the former Linux extensions.
+
+Other changes include CP1251's former asymmetric mappings, differing Hebrew
+CP1255 handling, and ISO-8859-6's ASCII-digit behavior; normal `;1` stripping
+now works with the OS converter. glibc's Mac Icelandic variant lacks the former
+`ð`/`Ð` mappings (its corresponding bytes map to `đ`/`Đ`); the exact-conversion
+adapter falls back to `?` for the unavailable letters. Some macOS Macintosh mappings reject DEL.
+Such names can differ between OS versions or installations. Basic Arabic,
+Cyrillic, Japanese, Chinese and Korean samples remain covered by ISO tests;
+legacy vendor-extension cases check that all payloads remain readable rather
+than pinning the former Linux spelling.
+
+CP437 is separate from the permitted ISO losses: the complete checked encode/
+decode domain and every byte's effective lowercase match the previous reader
+on all three OSes. FAT Unicode long names, NTFS and UDF continue to use the
+retained Unicode helpers.
+
+### Repeatability and validation
+
+`scripts/nls-system-assessment.py` builds the existing C owners from an explicit
+pre-change source snapshot with CMake and the existing ccache. For example,
+export the reference commit from the report with `git archive` into the task's
+existing review area, selecting `src/fs/nls`, `src/fs/fat/fat.h`, `src/fatreader.h`,
+`src/isonames.h` and `src/include/uapi/linux/msdos_fs.h`, then run:
+
+```sh
+python3 scripts/nls-system-assessment.py --reference-root <reference-snapshot> --backend adapter
+```
+
+The reference shared library remains in `build/review/nls-system/reference`;
+`--reuse-reference --backend adapter` reuses it for focused comparisons. The
+`iconv`, `windows` and optional macOS `cf` backends compare raw OS APIs and must
+not be confused with the adapter's stricter encoding results. `--charset`
+limits a diagnostic rerun. Original Linux provenance still uses the existing
+`upstream_baseline.py reference-verify/reference-review` workflow and manifests.
+The retained original snapshot's 83 ISO and 21 FAT inventory hashes were also
+checked against the unchanged manifests during this change.
+
+Source transfer scope is complete for this replacement: omitted Linux charset
+code is intentional, native services are connected to both consumers, and the
+retained Unicode dependency closure is unchanged. This is not Linux mapping
+parity. Runtime evidence is separate; no UI or pixel comparison is required
+for this service change.
+
+2026-10-25 validation of the final change:
+
+- macOS, Linux and Windows: `filesystem_charset`, `fat`, `fat_module`,
+  `fat_directory`, `fat_stream`, `fat_table`, `iso` PASS (7/7 on each platform).
+  These cover CP437 short names/case, exact/bounded conversion, malformed input,
+  archive bytes, failures/cancellation and CLI legacy charset availability.
+- Direct ISO checks (`linuxNlsNames`, property rollback, path escape) PASS 22/22
+  on each OS. Native optional codepages can be rejected; available vendor
+  variants retain all fixture payloads without pinning a Linux-specific spelling.
+- Direct NTFS name/stream/reparse checks PASS 72/72 and UDF namespace/symlink
+  checks PASS 30/30 on each OS. Their retained Unicode dependency has no body
+  changes. macOS also passed the complete `ntfs_stream` suite when run alone.
+- Broad initial `iso_stream`/`udf_stream`/`ntfs_stream` batches are not PASS:
+  Mac/Linux ISO backend emoji filename failure, UDF trailing-data/Unicode
+  extraction failures, and full NTFS/UDF timeouts remain explicit limitations.
+  macOS ISO/UDF controls with pre-change modules in both the direct and runtime
+  loading locations reproduced the corresponding errors. Windows' initial
+  ISO stream run had only the subsequently corrected vendor-fixture oracle
+  failures; its full NTFS/UDF runs timed out. No timeout was increased.
+- Existing 7-Zip baseline verification PASS. The retained cached Linux original
+  snapshot matches all 83 ISO and 21 FAT full-inventory hashes. `git diff --check`
+  PASS. No full/slow, private-install, physical-device or UI acceptance is claimed.
+
+Evidence remains in the task worktree's `build/review/nls-system/`, including
+the comparison reference, final JSON and baseline-control logs. Runner receipts:
+Linux mapping `20261025T043232Z-08488ec6`, CTest `20261025T043433Z-03bf45eb`,
+final consumers `20261025T043811Z-5ab73a86`; Windows mapping
+`20261025T043529Z-e219a26f` and final suites/consumers
+`20261025T043837Z-2c489d2c`. The earlier broad failures are retained in
+`20261025T042119Z-684a9fbc`. Compiler caches and branch build trees were reused.
+Dependency inspection and obsolete generated-fixture cleanup are in
+`20261025T044507Z-e0c30a9f`: ISO/FAT modules have no ICU dependency on either
+guest; macOS `otool` likewise shows only system iconv/C++/system libraries.
 
 ## Глубокие каталоги и lifetime дерева
 

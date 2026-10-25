@@ -57,6 +57,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Системные charset services](upstream-port-audit/isofs-linux.md#system-charset-services)
+  — удаление Linux NLS tables, платформенные различия и сохранение FAT CP437.
+
 - [Возврат upstream crypto и оценка библиотек](upstream-port-audit/crypto-backend-assessment.md)
   — отдельная сборка без OpenSSL, совместимость и границы выбора альтернатив.
 

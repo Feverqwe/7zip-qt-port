@@ -3,7 +3,7 @@ add_library(sevenzip_fat MODULE
     src/CPP/7zip/Archive/FatHeader.cpp
     src/gpl/CPP/7zip/Archive/FatHandler.cpp src/exfatmodule.cpp
     src/fs/fat/inode.c src/fs/fat/misc.c src/fs/fat/dir.c
-    src/fs/nls/nls_cp437.c src/fs/nls/nls_base.c
+    src/fs/nls/nls_base.c src/fs/nls/fatnames.c
     third_party/7zip/CPP/7zip/Archive/Common/ItemNameUtils.cpp
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
@@ -24,7 +24,7 @@ add_library(sevenzip_fat MODULE
     third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c)
 target_include_directories(sevenzip_fat PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
-target_link_libraries(sevenzip_fat PRIVATE Threads::Threads)
+target_link_libraries(sevenzip_fat PRIVATE Threads::Threads sevenzip_nls_system)
 set_target_properties(sevenzip_fat PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
 if(UNIX AND NOT APPLE)

@@ -3,6 +3,7 @@
 #include "Windows/PropVariant.h"
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
+#include "isonames.h"
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -621,9 +622,10 @@ class IsoStreamTests final : public QObject {
     }
     void linuxNlsNames_data() {
         QTest::addColumn<QString>("codec");
-        for (const char *codec : {"ascii", "default", "cp866", "cp1251", "koi8-r", "koi8-ru",
-                                  "iso8859-15", "macinuit", "cp932", "cp936", "cp949", "cp950",
-                                  "euc-jp", "euc-jp-extended", "euc-jp-long", "sjis", "big5"})
+        for (const char *codec :
+             {"ascii", "default", "cp866", "cp1251", "koi8-r", "koi8-ru", "iso8859-15", "macinuit",
+              "maciceland", "cp932", "cp936", "cp949", "cp950", "euc-jp", "euc-jp-extended",
+              "euc-jp-long", "sjis", "big5"})
             QTest::newRow(codec) << QString::fromLatin1(codec);
     }
     void linuxNlsNames() {
@@ -632,11 +634,56 @@ class IsoStreamTests final : public QObject {
                               : codec == "sjis"           ? QString("SJIS")
                                                           : codec)
                                  .toStdWString();
+        if (sevenzip_iso_charset(QString::fromStdWString(charset).toLower().toUtf8()) < 0) {
+            CMyComPtr<ISetProperties> properties;
+            QCOMPARE(archive_->QueryInterface(IID_ISetProperties,
+                                              reinterpret_cast<void **>(&properties)),
+                     S_OK);
+            const wchar_t *key = L"iocharset";
+            NWindows::NCOM::CPropVariant value(charset.c_str());
+            QCOMPARE(properties->SetProperties(&key, &value, 1), E_INVALIDARG);
+            return;
+        }
         names(nullptr, charset.c_str());
         loadFixture("names-joliet-nls-" + codec);
         CMyComPtr<IInStream> input = new Input(bytes_);
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         const auto files = record_["files"].toObject();
+        if (codec == "euc-jp-extended" || codec == "euc-jp-long" || codec == "maciceland") {
+            QList<QByteArray> expected;
+            for (const auto &value : files)
+                expected.append(QByteArray::fromBase64(value.toString().toLatin1()));
+            UInt32 count = 0;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            for (UInt32 i = 0; i < count; ++i) {
+                NWindows::NCOM::CPropVariant directory, path;
+                QCOMPARE(archive_->GetProperty(i, kpidIsDir, &directory), S_OK);
+                if (directory.vt == VT_BOOL && directory.boolVal)
+                    continue;
+                QCOMPARE(archive_->GetProperty(i, kpidPath, &path), S_OK);
+                QCOMPARE(path.vt, VARTYPE(VT_BSTR));
+                const QString actualName = QString::fromWCharArray(path.bstrVal).replace('\\', '/');
+                // The fixture generator owns the boot catalog; it is not a payload oracle.
+                if (actualName == "boot.cat")
+                    continue;
+                auto input = stream(actualName);
+                QVERIFY(input);
+                QByteArray bytes;
+                for (;;) {
+                    char chunk[1024];
+                    UInt32 read = 0;
+                    QCOMPARE(input->Read(chunk, sizeof(chunk), &read), S_OK);
+                    if (!read)
+                        break;
+                    bytes.append(chunk, read);
+                    QVERIFY(bytes.size() <= 1024 * 1024);
+                }
+                QVERIFY2(expected.removeOne(bytes),
+                         qPrintable(actualName + " (" + QString::number(bytes.size()) + " bytes)"));
+            }
+            QVERIFY(expected.isEmpty());
+            return;
+        }
         for (auto entry = files.begin(); entry != files.end(); ++entry) {
             QVERIFY2(index(entry.key()) != UInt32(-1), qPrintable(entry.key()));
             check(stream(entry.key()), entry.key(), 0,

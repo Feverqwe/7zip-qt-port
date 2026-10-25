@@ -25,7 +25,7 @@ runtime evidence и его ограничения приведены отдел�
 | `fs/fat/fatent.c`, `cache.c`, `fat.h` | FAT12 entries через границу сектора, FAT16/28-bit FAT32, FREE/BAD/EOF, cluster mapping, file-size bounds и подсчёт свободных кластеров сопоставлены с исходным SDK reader. Kernel buffer/LRU/locking services заменены существующими SDK table/stream helpers; allocation, mirroring, discard и изменение цепочек исключены как запись. |
 | `fs/fat/dir.c`, `namei_msdos.c`, `namei_vfat.c` | Directory traversal, end markers, deleted/volume/dot records, LFN restart/order/checksum, aliases и short-name flags учтены. Enumeration и archive item properties подключены; dentry revalidation, lookup/hash/casefold и mount-selected MSDOS presentation относятся к VFS, создание/rename/unlink — к записи. |
 | `fs/fat/file.c`, `misc.c`, `nfs.c` | Stored attributes, file size, creation/access/modification times и file reads подключены. UID/GID/mode masks, NFS handles/generations, mmap и generic VFS file operations не добавляют дискового декодера. Timestamp encoding/update, ioctl setters, truncate и fsync исключены как изменение источника или kernel services. |
-| `fs/nls/nls_base.c`, `nls_cp437.c`, `include/linux/nls.h`, `fs/nls/Kconfig` | CP437 conversion/case tables, UTF-16 surrogate handling и UTF-8 output перенесены вместе с используемыми зависимостями. Kernel module registration и выбор mount codepage/iocharset заменены описанной archive policy; произвольные пользовательские mount-настройки не заявляются. |
+| `fs/nls/nls_base.c`, `nls_cp437.c`, `include/linux/nls.h`, `fs/nls/Kconfig` | Unicode helpers сохранены; CP437 conversion/case tables с 2026-10-25 заменены [системными services](isofs-linux.md#system-charset-services), original hashes остаются в baseline. Kernel module registration и выбор mount codepage/iocharset заменены описанной archive policy; произвольные пользовательские mount-настройки не заявляются. |
 | `fs/fat/Kconfig`, `Makefile`, `.kunitconfig`, `fat_test.c`, `LICENSES/exceptions/Linux-syscall-note` | Проверены состав kernel modules, defaults, checksum/cluster-address helpers и read timestamp cases. Kernel build/KUnit harness и write timestamp cases не переносятся; source notices и syscall exception сохранены. |
 
 Повторное сравнение 17 перенесённых функций подтвердило 15 неизменённых тел
@@ -288,8 +288,10 @@ with full original bodies and required tables retained under their original path
 - `fs/fat/misc.c`: `fat_time_fat2unix`, epoch/leap-year tables and timezone
   calculation. Local wall-clock output passes through the existing 7-Zip host
   FILETIME adapter; no kernel timezone or mount state is recreated.
-- `fs/nls/nls_cp437.c`: the complete conversion/case tables and conversion
-  functions. `fs/nls/nls_base.c` retains the UTF-8 encoding table,
+- `fs/nls/nls_cp437.c`: conversion/case tables were initially transferred;
+  now omitted in favor of native OS services, with the original hash retained.
+  The existing local OEM-name adapter moved to `src/fs/nls/fatnames.c`.
+  `fs/nls/nls_base.c` retains the UTF-8 encoding table,
   `utf32_to_utf8`, `get_utf16` and `utf16s_to_utf8s` dependency closure.
 - `include/uapi/linux/msdos_fs.h`: disk structures and constants, with only
   host-header imports replaced. Layout assertions check the on-disk ABI.

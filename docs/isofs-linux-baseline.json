@@ -94,58 +94,8 @@
     "fs/isofs/rock.c": "src/fs/isofs/rock.c",
     "fs/isofs/util.c": "src/fs/isofs/util.c",
     "fs/nls/nls_base.c": "src/fs/nls/nls_base.c",
-    "fs/nls/nls_cp437.c": "src/fs/nls/nls_cp437.c",
     "include/uapi/linux/iso_fs.h": "src/include/uapi/linux/iso_fs.h",
     "kernel/time/time.c": "src/kernel/time/time.c",
-    "fs/nls/mac-celtic.c": "src/fs/nls/mac-celtic.c",
-    "fs/nls/mac-centeuro.c": "src/fs/nls/mac-centeuro.c",
-    "fs/nls/mac-croatian.c": "src/fs/nls/mac-croatian.c",
-    "fs/nls/mac-cyrillic.c": "src/fs/nls/mac-cyrillic.c",
-    "fs/nls/mac-gaelic.c": "src/fs/nls/mac-gaelic.c",
-    "fs/nls/mac-greek.c": "src/fs/nls/mac-greek.c",
-    "fs/nls/mac-iceland.c": "src/fs/nls/mac-iceland.c",
-    "fs/nls/mac-inuit.c": "src/fs/nls/mac-inuit.c",
-    "fs/nls/mac-roman.c": "src/fs/nls/mac-roman.c",
-    "fs/nls/mac-romanian.c": "src/fs/nls/mac-romanian.c",
-    "fs/nls/mac-turkish.c": "src/fs/nls/mac-turkish.c",
-    "fs/nls/nls_ascii.c": "src/fs/nls/nls_ascii.c",
-    "fs/nls/nls_cp1250.c": "src/fs/nls/nls_cp1250.c",
-    "fs/nls/nls_cp1251.c": "src/fs/nls/nls_cp1251.c",
-    "fs/nls/nls_cp1255.c": "src/fs/nls/nls_cp1255.c",
-    "fs/nls/nls_cp737.c": "src/fs/nls/nls_cp737.c",
-    "fs/nls/nls_cp775.c": "src/fs/nls/nls_cp775.c",
-    "fs/nls/nls_cp850.c": "src/fs/nls/nls_cp850.c",
-    "fs/nls/nls_cp852.c": "src/fs/nls/nls_cp852.c",
-    "fs/nls/nls_cp855.c": "src/fs/nls/nls_cp855.c",
-    "fs/nls/nls_cp857.c": "src/fs/nls/nls_cp857.c",
-    "fs/nls/nls_cp860.c": "src/fs/nls/nls_cp860.c",
-    "fs/nls/nls_cp861.c": "src/fs/nls/nls_cp861.c",
-    "fs/nls/nls_cp862.c": "src/fs/nls/nls_cp862.c",
-    "fs/nls/nls_cp863.c": "src/fs/nls/nls_cp863.c",
-    "fs/nls/nls_cp864.c": "src/fs/nls/nls_cp864.c",
-    "fs/nls/nls_cp865.c": "src/fs/nls/nls_cp865.c",
-    "fs/nls/nls_cp866.c": "src/fs/nls/nls_cp866.c",
-    "fs/nls/nls_cp869.c": "src/fs/nls/nls_cp869.c",
-    "fs/nls/nls_cp874.c": "src/fs/nls/nls_cp874.c",
-    "fs/nls/nls_cp932.c": "src/fs/nls/nls_cp932.c",
-    "fs/nls/nls_cp936.c": "src/fs/nls/nls_cp936.c",
-    "fs/nls/nls_cp949.c": "src/fs/nls/nls_cp949.c",
-    "fs/nls/nls_cp950.c": "src/fs/nls/nls_cp950.c",
-    "fs/nls/nls_euc-jp.c": "src/fs/nls/nls_euc-jp.c",
-    "fs/nls/nls_iso8859-1.c": "src/fs/nls/nls_iso8859-1.c",
-    "fs/nls/nls_iso8859-13.c": "src/fs/nls/nls_iso8859-13.c",
-    "fs/nls/nls_iso8859-14.c": "src/fs/nls/nls_iso8859-14.c",
-    "fs/nls/nls_iso8859-15.c": "src/fs/nls/nls_iso8859-15.c",
-    "fs/nls/nls_iso8859-2.c": "src/fs/nls/nls_iso8859-2.c",
-    "fs/nls/nls_iso8859-3.c": "src/fs/nls/nls_iso8859-3.c",
-    "fs/nls/nls_iso8859-4.c": "src/fs/nls/nls_iso8859-4.c",
-    "fs/nls/nls_iso8859-5.c": "src/fs/nls/nls_iso8859-5.c",
-    "fs/nls/nls_iso8859-6.c": "src/fs/nls/nls_iso8859-6.c",
-    "fs/nls/nls_iso8859-7.c": "src/fs/nls/nls_iso8859-7.c",
-    "fs/nls/nls_iso8859-9.c": "src/fs/nls/nls_iso8859-9.c",
-    "fs/nls/nls_koi8-r.c": "src/fs/nls/nls_koi8-r.c",
-    "fs/nls/nls_koi8-ru.c": "src/fs/nls/nls_koi8-ru.c",
-    "fs/nls/nls_koi8-u.c": "src/fs/nls/nls_koi8-u.c",
     "include/linux/zlib.h": "src/fs/isofs/zisofscompat.h"
   },
   "exact": [
@@ -158,6 +108,27 @@
         "deflateBound"
       ],
       "scope": "Retained packed-size bound only, renamed zisofs_deflate_bound; all decoding uses official zlib API."
+    },
+    "src/fs/nls/system.c": {
+      "scope": "Local OS-service adapter: iconv on macOS/Linux; Win32 conversion API on Windows. No imported charset mappings."
+    },
+    "src/fs/nls/registry.c": {
+      "scope": "Local stable charset/alias registration; native converter availability replaces Linux module lifetime."
+    },
+    "src/fs/nls/charsets.inc": {
+      "scope": "Local OS API identifiers only; no copied charset mappings."
+    },
+    "src/fs/nls/fatnames.c": {
+      "scope": "Existing local FAT OEM-name adapter moved from the removed CP437 owner; decodes through the shared native service."
+    },
+    "src/fs/nls/nls_base.c": {
+      "reference": "fs/nls/nls_base.c",
+      "symbols": [
+        "utf32_to_utf8",
+        "get_utf16",
+        "utf16s_to_utf8s"
+      ],
+      "scope": "Retained Unicode dependency closure and existing local fat_linux_long_name wrapper; default charset arrays and registry omitted."
     }
   },
   "omitted_kernel_zlib": {
@@ -174,5 +145,60 @@
       "lib/zlib_inflate/infutil.h"
     ],
     "reason": "Replaced by official zlib 1.3.2 library API, pinned in zisofs-zlib-baseline.json. Original hashes retained for historical review."
+  },
+  "omitted_nls_charsets": {
+    "paths": [
+      "fs/nls/mac-celtic.c",
+      "fs/nls/mac-centeuro.c",
+      "fs/nls/mac-croatian.c",
+      "fs/nls/mac-cyrillic.c",
+      "fs/nls/mac-gaelic.c",
+      "fs/nls/mac-greek.c",
+      "fs/nls/mac-iceland.c",
+      "fs/nls/mac-inuit.c",
+      "fs/nls/mac-roman.c",
+      "fs/nls/mac-romanian.c",
+      "fs/nls/mac-turkish.c",
+      "fs/nls/nls_ascii.c",
+      "fs/nls/nls_cp1250.c",
+      "fs/nls/nls_cp1251.c",
+      "fs/nls/nls_cp1255.c",
+      "fs/nls/nls_cp437.c",
+      "fs/nls/nls_cp737.c",
+      "fs/nls/nls_cp775.c",
+      "fs/nls/nls_cp850.c",
+      "fs/nls/nls_cp852.c",
+      "fs/nls/nls_cp855.c",
+      "fs/nls/nls_cp857.c",
+      "fs/nls/nls_cp860.c",
+      "fs/nls/nls_cp861.c",
+      "fs/nls/nls_cp862.c",
+      "fs/nls/nls_cp863.c",
+      "fs/nls/nls_cp864.c",
+      "fs/nls/nls_cp865.c",
+      "fs/nls/nls_cp866.c",
+      "fs/nls/nls_cp869.c",
+      "fs/nls/nls_cp874.c",
+      "fs/nls/nls_cp932.c",
+      "fs/nls/nls_cp936.c",
+      "fs/nls/nls_cp949.c",
+      "fs/nls/nls_cp950.c",
+      "fs/nls/nls_euc-jp.c",
+      "fs/nls/nls_iso8859-1.c",
+      "fs/nls/nls_iso8859-13.c",
+      "fs/nls/nls_iso8859-14.c",
+      "fs/nls/nls_iso8859-15.c",
+      "fs/nls/nls_iso8859-2.c",
+      "fs/nls/nls_iso8859-3.c",
+      "fs/nls/nls_iso8859-4.c",
+      "fs/nls/nls_iso8859-5.c",
+      "fs/nls/nls_iso8859-6.c",
+      "fs/nls/nls_iso8859-7.c",
+      "fs/nls/nls_iso8859-9.c",
+      "fs/nls/nls_koi8-r.c",
+      "fs/nls/nls_koi8-ru.c",
+      "fs/nls/nls_koi8-u.c"
+    ],
+    "reason": "Charset tables replaced by native OS services; original hashes retained for source review. See isofs-linux.md, System charset services."
   }
 }

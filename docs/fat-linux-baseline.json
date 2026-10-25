@@ -32,7 +32,12 @@
     "fs/fat/inode.c",
     "fs/fat/misc.c",
     "fs/nls/nls_base.c",
-    "fs/nls/nls_cp437.c",
     "include/uapi/linux/msdos_fs.h"
-  ]
+  ],
+  "omitted_nls_charsets": {
+    "paths": [
+      "fs/nls/nls_cp437.c"
+    ],
+    "reason": "CP437 conversion and short-name case adaptation use native OS services; original hash retained."
+  }
 }

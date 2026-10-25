@@ -15,6 +15,7 @@
  */
 
 #include "fat.h"
+#include "../nls/system.h"
 
 /*
  * Maximum buffer size of short name.
@@ -110,7 +111,7 @@ fat_short2lower_uni(struct nls_table *t, unsigned char *c,
 		*uni = 0x003f;	/* a question mark */
 		charlen = 1;
 	} else if (charlen <= 1) {
-		unsigned char nc = t->charset2lower[*c];
+		unsigned char nc = fat_cp437_lower(*c);
 
 		if (!nc)
 			nc = *c;
@@ -267,6 +268,8 @@ int fat_linux_short_name(const unsigned char alias[11], unsigned char flags, cha
 	sbi.options.utf8 = 1;
 	sbi.options.shortname = VFAT_SFN_DISPLAY_WINNT;
 	sbi.nls_disk = fat_cp437_table();
+	if (!sbi.nls_disk)
+		return -EINVAL;
 	sb.s_fs_info = &sbi;
 	memcpy(de.name, alias, MSDOS_NAME);
 	de.lcase = flags;

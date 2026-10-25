@@ -9,6 +9,7 @@ extern "C" {
 #endif
 int fat_linux_legacy_header(const void *boot, uint64_t size, void *normalized);
 int fat_linux_volume_state(const void *boot, size_t size, int *dirty);
+int fat_linux_charset_available(void);
 int fat_linux_short_name(const unsigned char alias[11], unsigned char flags, char output[73]);
 int fat_linux_oem_name(const unsigned char *bytes, unsigned int length, char *output, int capacity);
 int fat_linux_long_name(const void *utf16le, unsigned int units, char *output, unsigned int capacity);

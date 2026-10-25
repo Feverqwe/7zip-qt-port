@@ -27,6 +27,7 @@ set_source_files_properties(src/CPP/7zip/Common/LimitedStreams.cpp PROPERTIES
 find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools Network RemoteObjects)
 find_package(Threads REQUIRED)
 include(cmake/Zstd.cmake)
+include(cmake/Nls.cmake)
 include(cmake/Exfat.cmake)
 include(cmake/Xfs.cmake)
 include(cmake/Fat.cmake)
@@ -1255,11 +1256,12 @@ if(BUILD_TESTING)
     set_tests_properties(udf_stream PROPERTIES TIMEOUT 45)
     add_test(NAME iso COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/iso_tests.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_iso>")
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_iso>"
+        "$<TARGET_FILE:filesystem_charset_tests>")
     set_tests_properties(iso PROPERTIES TIMEOUT 60)
     qt_add_executable(iso_stream_tests tests/iso_stream_tests.cpp)
     target_include_directories(iso_stream_tests PRIVATE src third_party/7zip/CPP)
-    target_link_libraries(iso_stream_tests PRIVATE sevenzip_panel Qt6::Test)
+    target_link_libraries(iso_stream_tests PRIVATE sevenzip_panel Qt6::Test sevenzip_nls_system)
     if(WIN32)
         target_link_libraries(iso_stream_tests PRIVATE oleaut32)
     endif()

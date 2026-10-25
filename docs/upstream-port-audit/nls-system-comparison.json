@@ -1,0 +1,2910 @@
+{
+  "date": "2026-10-25",
+  "reference": {
+    "commit": "d89dfe1f190ae45948d17c100a3c5f401c9b62b8",
+    "scope": "Current transferred NLS behavior before removal; original Linux source provenance remains in isofs-linux-baseline.json and fat-linux-baseline.json."
+  },
+  "domain": {
+    "encode": "BMP scalar values excluding NUL/surrogates (63487 units per available charset)",
+    "decode": "All one/two-byte inputs excluding leading NUL; EUC-JP additionally all 0x8f-prefixed two-byte suffixes. Compares one-character result and consumed count, not buffer text.",
+    "joliet_changed": "Number of input BMP units with different resulting Unicode after encode/fallback/decode; may include newly representable characters.",
+    "lower": "All 256 CP437 byte lowercasing outcomes; zero Linux case entries mean retain original byte."
+  },
+  "platforms": {
+    "macos": {
+      "system": "macOS-27.0.1-arm64-arm-64bit",
+      "libc": [
+        "",
+        ""
+      ],
+      "cp437_lower_differences": [],
+      "charsets": {
+        "cp437": {
+          "available": true,
+          "counts": {}
+        },
+        "macceltic": {
+          "available": true,
+          "counts": {
+            "encode_lost": 1,
+            "joliet_changed": 1,
+            "decode_lost": 257
+          }
+        },
+        "maccenteuro": {
+          "available": true,
+          "counts": {}
+        },
+        "maccroatian": {
+          "available": true,
+          "counts": {
+            "encode_lost": 1,
+            "joliet_changed": 1,
+            "decode_lost": 257
+          }
+        },
+        "maccyrillic": {
+          "available": true,
+          "counts": {
+            "encode_lost": 1,
+            "joliet_changed": 1,
+            "decode_lost": 257
+          }
+        },
+        "macgaelic": {
+          "available": true,
+          "counts": {
+            "encode_lost": 1,
+            "joliet_changed": 1,
+            "decode_lost": 257
+          }
+        },
+        "macgreek": {
+          "available": true,
+          "counts": {
+            "encode_lost": 1,
+            "joliet_changed": 1,
+            "decode_lost": 257
+          }
+        },
+        "maciceland": {
+          "available": true,
+          "counts": {
+            "encode_lost": 1,
+            "joliet_changed": 1,
+            "decode_lost": 257
+          }
+        },
+        "macinuit": {
+          "available": true,
+          "counts": {
+            "encode_lost": 1,
+            "joliet_changed": 1,
+            "decode_lost": 257
+          }
+        },
+        "macroman": {
+          "available": true,
+          "counts": {
+            "encode_lost": 1,
+            "joliet_changed": 1,
+            "decode_lost": 257
+          }
+        },
+        "macromanian": {
+          "available": true,
+          "counts": {}
+        },
+        "macturkish": {
+          "available": true,
+          "counts": {
+            "encode_lost": 1,
+            "joliet_changed": 1,
+            "decode_lost": 257
+          }
+        },
+        "ascii": {
+          "available": true,
+          "counts": {}
+        },
+        "cp1250": {
+          "available": true,
+          "counts": {}
+        },
+        "cp1251": {
+          "available": true,
+          "counts": {
+            "encode_lost": 9,
+            "joliet_changed": 12,
+            "encode_added": 2,
+            "encode_changed": 1
+          },
+          "examples": {
+            "encode_lost": [
+              {
+                "unicode": "U+00C3",
+                "nls": "bb",
+                "system": null
+              },
+              {
+                "unicode": "U+00CB",
+                "nls": "bb",
+                "system": null
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+00C3",
+                "nls": 187,
+                "system": 63
+              },
+              {
+                "input": "U+00CB",
+                "nls": 187,
+                "system": 63
+              }
+            ],
+            "encode_added": [
+              {
+                "unicode": "U+0490",
+                "nls": null,
+                "system": "a5"
+              },
+              {
+                "unicode": "U+20AC",
+                "nls": null,
+                "system": "88"
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+0491",
+                "nls": "a5",
+                "system": "b4"
+              }
+            ]
+          }
+        },
+        "cp1255": {
+          "available": true,
+          "counts": {
+            "encode_added": 3,
+            "joliet_changed": 6,
+            "encode_lost": 1,
+            "decode_changed": 257,
+            "decode_lost": 257,
+            "decode_added": 514
+          },
+          "examples": {
+            "encode_added": [
+              {
+                "unicode": "U+00A1",
+                "nls": null,
+                "system": "a1"
+              },
+              {
+                "unicode": "U+00AF",
+                "nls": null,
+                "system": "af"
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+00A1",
+                "nls": 63,
+                "system": 161
+              },
+              {
+                "input": "U+00AF",
+                "nls": 63,
+                "system": 175
+              }
+            ],
+            "encode_lost": [
+              {
+                "unicode": "U+2116",
+                "nls": "b9",
+                "system": null
+              }
+            ],
+            "decode_changed": [
+              {
+                "bytes": "af",
+                "nls": [
+                  1,
+                  8254
+                ],
+                "system": [
+                  1,
+                  175
+                ]
+              },
+              {
+                "bytes": "af00",
+                "nls": [
+                  1,
+                  8254
+                ],
+                "system": [
+                  1,
+                  175
+                ]
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "df",
+                "nls": [
+                  1,
+                  8215
+                ],
+                "system": null
+              },
+              {
+                "bytes": "df00",
+                "nls": [
+                  1,
+                  8215
+                ],
+                "system": null
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "fd",
+                "nls": null,
+                "system": [
+                  1,
+                  8206
+                ]
+              },
+              {
+                "bytes": "fe",
+                "nls": null,
+                "system": [
+                  1,
+                  8207
+                ]
+              }
+            ]
+          }
+        },
+        "cp737": {
+          "available": true,
+          "counts": {}
+        },
+        "cp775": {
+          "available": true,
+          "counts": {}
+        },
+        "cp850": {
+          "available": true,
+          "counts": {}
+        },
+        "cp852": {
+          "available": true,
+          "counts": {}
+        },
+        "cp855": {
+          "available": true,
+          "counts": {}
+        },
+        "cp857": {
+          "available": true,
+          "counts": {}
+        },
+        "cp860": {
+          "available": true,
+          "counts": {}
+        },
+        "cp861": {
+          "available": true,
+          "counts": {}
+        },
+        "cp862": {
+          "available": true,
+          "counts": {}
+        },
+        "cp863": {
+          "available": true,
+          "counts": {}
+        },
+        "cp864": {
+          "available": true,
+          "counts": {}
+        },
+        "cp865": {
+          "available": true,
+          "counts": {}
+        },
+        "cp866": {
+          "available": true,
+          "counts": {}
+        },
+        "cp869": {
+          "available": true,
+          "counts": {}
+        },
+        "cp874": {
+          "available": true,
+          "counts": {
+            "encode_added": 1,
+            "joliet_changed": 1,
+            "decode_added": 2313
+          }
+        },
+        "cp932": {
+          "available": true,
+          "counts": {
+            "encode_lost": 4,
+            "joliet_changed": 1884,
+            "encode_changed": 395,
+            "encode_added": 1880,
+            "decode_added": 1880
+          },
+          "examples": {
+            "encode_lost": [
+              {
+                "unicode": "U+00A2",
+                "nls": "8191",
+                "system": null
+              },
+              {
+                "unicode": "U+00A3",
+                "nls": "8192",
+                "system": null
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+00A2",
+                "nls": 65504,
+                "system": 63
+              },
+              {
+                "input": "U+00A3",
+                "nls": 65505,
+                "system": 63
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+2116",
+                "nls": "fa59",
+                "system": "8782"
+              },
+              {
+                "unicode": "U+2121",
+                "nls": "fa5a",
+                "system": "8784"
+              }
+            ],
+            "encode_added": [
+              {
+                "unicode": "U+E000",
+                "nls": null,
+                "system": "f040"
+              },
+              {
+                "unicode": "U+E001",
+                "nls": null,
+                "system": "f041"
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "f040",
+                "nls": null,
+                "system": [
+                  2,
+                  57344
+                ]
+              },
+              {
+                "bytes": "f041",
+                "nls": null,
+                "system": [
+                  2,
+                  57345
+                ]
+              }
+            ]
+          }
+        },
+        "cp936": {
+          "available": true,
+          "counts": {
+            "encode_lost": 382,
+            "joliet_changed": 450,
+            "encode_added": 68,
+            "encode_changed": 1,
+            "decode_lost": 766,
+            "decode_added": 195
+          },
+          "examples": {
+            "encode_lost": [
+              {
+                "unicode": "U+0100",
+                "nls": "a8a1",
+                "system": null
+              },
+              {
+                "unicode": "U+0112",
+                "nls": "a8a5",
+                "system": null
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0100",
+                "nls": 257,
+                "system": 63
+              },
+              {
+                "input": "U+0112",
+                "nls": 275,
+                "system": 63
+              }
+            ],
+            "encode_added": [
+              {
+                "unicode": "U+01F9",
+                "nls": null,
+                "system": "a8bf"
+              },
+              {
+                "unicode": "U+E505",
+                "nls": null,
+                "system": "a180"
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+20AC",
+                "nls": "80",
+                "system": "a2e3"
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "80",
+                "nls": [
+                  1,
+                  8364
+                ],
+                "system": null
+              },
+              {
+                "bytes": "81",
+                "nls": [
+                  1,
+                  129
+                ],
+                "system": null
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "a140",
+                "nls": null,
+                "system": [
+                  2,
+                  58566
+                ]
+              },
+              {
+                "bytes": "a141",
+                "nls": null,
+                "system": [
+                  2,
+                  58567
+                ]
+              }
+            ]
+          }
+        },
+        "cp949": {
+          "available": true,
+          "counts": {
+            "encode_lost": 428,
+            "joliet_changed": 430,
+            "encode_changed": 32,
+            "encode_added": 2,
+            "decode_lost": 1276,
+            "decode_added": 1
+          },
+          "examples": {
+            "encode_lost": [
+              {
+                "unicode": "U+0080",
+                "nls": "80",
+                "system": null
+              },
+              {
+                "unicode": "U+0081",
+                "nls": "81",
+                "system": null
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0080",
+                "nls": 128,
+                "system": 63
+              },
+              {
+                "input": "U+0081",
+                "nls": 129,
+                "system": 63
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+00A1",
+                "nls": "a1",
+                "system": "a2ae"
+              },
+              {
+                "unicode": "U+00A4",
+                "nls": "a4",
+                "system": "a2b4"
+              }
+            ],
+            "encode_added": [
+              {
+                "unicode": "U+20AC",
+                "nls": null,
+                "system": "a2e6"
+              },
+              {
+                "unicode": "U+327E",
+                "nls": null,
+                "system": "a2e8"
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "80",
+                "nls": [
+                  1,
+                  128
+                ],
+                "system": null
+              },
+              {
+                "bytes": "81",
+                "nls": [
+                  1,
+                  129
+                ],
+                "system": null
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "a2e8",
+                "nls": null,
+                "system": [
+                  2,
+                  12926
+                ]
+              }
+            ]
+          }
+        },
+        "cp950": {
+          "available": true,
+          "counts": {
+            "encode_lost": 522,
+            "joliet_changed": 523,
+            "encode_changed": 11,
+            "encode_added": 1,
+            "decode_lost": 10711
+          },
+          "examples": {
+            "encode_lost": [
+              {
+                "unicode": "U+0080",
+                "nls": "80",
+                "system": null
+              },
+              {
+                "unicode": "U+0081",
+                "nls": "81",
+                "system": null
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0080",
+                "nls": 128,
+                "system": 63
+              },
+              {
+                "input": "U+0081",
+                "nls": 129,
+                "system": 63
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+00A7",
+                "nls": "a7",
+                "system": "a1b1"
+              },
+              {
+                "unicode": "U+00AF",
+                "nls": "af",
+                "system": "a1c2"
+              }
+            ],
+            "encode_added": [
+              {
+                "unicode": "U+20AC",
+                "nls": null,
+                "system": "a3e1"
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "80",
+                "nls": [
+                  1,
+                  128
+                ],
+                "system": null
+              },
+              {
+                "bytes": "81",
+                "nls": [
+                  1,
+                  129
+                ],
+                "system": null
+              }
+            ]
+          }
+        },
+        "euc-jp": {
+          "available": true,
+          "counts": {
+            "encode_added": 5790,
+            "joliet_changed": 5968,
+            "encode_lost": 175,
+            "encode_changed": 9,
+            "decode_added": 30930,
+            "decode_changed": 8,
+            "decode_lost": 202
+          },
+          "examples": {
+            "encode_added": [
+              {
+                "unicode": "U+00A1",
+                "nls": null,
+                "system": "8fa2c2"
+              },
+              {
+                "unicode": "U+00A4",
+                "nls": null,
+                "system": "8fa2f0"
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+00A1",
+                "nls": 63,
+                "system": 161
+              },
+              {
+                "input": "U+00A2",
+                "nls": 65504,
+                "system": 162
+              }
+            ],
+            "encode_lost": [
+              {
+                "unicode": "U+2015",
+                "nls": "a1bd",
+                "system": null
+              },
+              {
+                "unicode": "U+2121",
+                "nls": "8ff4ad",
+                "system": null
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+2116",
+                "nls": "8ff4ac",
+                "system": "8fa2f1"
+              },
+              {
+                "unicode": "U+221A",
+                "nls": "adf5",
+                "system": "a2e5"
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "8e21",
+                "nls": null,
+                "system": [
+                  2,
+                  65377
+                ]
+              },
+              {
+                "bytes": "8e22",
+                "nls": null,
+                "system": [
+                  2,
+                  65378
+                ]
+              }
+            ],
+            "decode_changed": [
+              {
+                "bytes": "a1bd",
+                "nls": [
+                  2,
+                  8213
+                ],
+                "system": [
+                  2,
+                  8212
+                ]
+              },
+              {
+                "bytes": "a1c1",
+                "nls": [
+                  2,
+                  65374
+                ],
+                "system": [
+                  2,
+                  12316
+                ]
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "ada1",
+                "nls": [
+                  2,
+                  9312
+                ],
+                "system": null
+              },
+              {
+                "bytes": "ada2",
+                "nls": [
+                  2,
+                  9313
+                ],
+                "system": null
+              }
+            ]
+          }
+        },
+        "iso8859-1": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-13": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-14": {
+          "available": true,
+          "counts": {
+            "encode_lost": 27,
+            "joliet_changed": 29,
+            "encode_changed": 2
+          }
+        },
+        "iso8859-15": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-2": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-3": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-4": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-5": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-6": {
+          "available": true,
+          "counts": {
+            "encode_added": 10,
+            "joliet_changed": 20,
+            "encode_lost": 10,
+            "decode_changed": 2570
+          },
+          "examples": {
+            "encode_added": [
+              {
+                "unicode": "U+0030",
+                "nls": null,
+                "system": "30"
+              },
+              {
+                "unicode": "U+0031",
+                "nls": null,
+                "system": "31"
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0030",
+                "nls": 63,
+                "system": 48
+              },
+              {
+                "input": "U+0031",
+                "nls": 63,
+                "system": 49
+              }
+            ],
+            "encode_lost": [
+              {
+                "unicode": "U+0660",
+                "nls": "30",
+                "system": null
+              },
+              {
+                "unicode": "U+0661",
+                "nls": "31",
+                "system": null
+              }
+            ],
+            "decode_changed": [
+              {
+                "bytes": "30",
+                "nls": [
+                  1,
+                  1632
+                ],
+                "system": [
+                  1,
+                  48
+                ]
+              },
+              {
+                "bytes": "31",
+                "nls": [
+                  1,
+                  1633
+                ],
+                "system": [
+                  1,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        "iso8859-7": {
+          "available": true,
+          "counts": {
+            "encode_lost": 2,
+            "joliet_changed": 7,
+            "encode_added": 5,
+            "decode_changed": 514,
+            "decode_added": 771
+          }
+        },
+        "iso8859-9": {
+          "available": true,
+          "counts": {}
+        },
+        "koi8-r": {
+          "available": true,
+          "counts": {}
+        },
+        "koi8-ru": {
+          "available": true,
+          "counts": {}
+        },
+        "koi8-u": {
+          "available": true,
+          "counts": {}
+        },
+        "default": {
+          "available": true,
+          "counts": {}
+        }
+      }
+    },
+    "linux": {
+      "system": "Linux-6.8.0-147-generic-x86_64-with-glibc2.39",
+      "libc": [
+        "glibc",
+        "2.39"
+      ],
+      "cp437_lower_differences": [],
+      "charsets": {
+        "cp437": {
+          "available": true,
+          "counts": {}
+        },
+        "macceltic": {
+          "available": false
+        },
+        "maccenteuro": {
+          "available": true,
+          "counts": {}
+        },
+        "maccroatian": {
+          "available": false
+        },
+        "maccyrillic": {
+          "available": true,
+          "counts": {
+            "encode_added": 1,
+            "joliet_changed": 2,
+            "encode_lost": 1,
+            "decode_changed": 257
+          }
+        },
+        "macgaelic": {
+          "available": false
+        },
+        "macgreek": {
+          "available": false
+        },
+        "maciceland": {
+          "available": true,
+          "counts": {
+            "encode_added": 8,
+            "joliet_changed": 18,
+            "encode_lost": 10,
+            "encode_changed": 2,
+            "decode_changed": 2570,
+            "decode_lost": 514
+          },
+          "examples": {
+            "encode_added": [
+              {
+                "unicode": "U+00A4",
+                "nls": null,
+                "system": "db"
+              },
+              {
+                "unicode": "U+0110",
+                "nls": null,
+                "system": "dc"
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+00A4",
+                "nls": 63,
+                "system": 164
+              },
+              {
+                "input": "U+00D0",
+                "nls": 208,
+                "system": 63
+              }
+            ],
+            "encode_lost": [
+              {
+                "unicode": "U+00D0",
+                "nls": "dc",
+                "system": null
+              },
+              {
+                "unicode": "U+00DD",
+                "nls": "a0",
+                "system": null
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+2013",
+                "nls": "d0",
+                "system": "d1"
+              },
+              {
+                "unicode": "U+2014",
+                "nls": "d1",
+                "system": "d0"
+              }
+            ],
+            "decode_changed": [
+              {
+                "bytes": "a0",
+                "nls": [
+                  1,
+                  221
+                ],
+                "system": [
+                  1,
+                  8224
+                ]
+              },
+              {
+                "bytes": "c6",
+                "nls": [
+                  1,
+                  8710
+                ],
+                "system": [
+                  1,
+                  916
+                ]
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "f6",
+                "nls": [
+                  1,
+                  710
+                ],
+                "system": null
+              },
+              {
+                "bytes": "f7",
+                "nls": [
+                  1,
+                  732
+                ],
+                "system": null
+              }
+            ]
+          }
+        },
+        "macinuit": {
+          "available": false
+        },
+        "macroman": {
+          "available": true,
+          "counts": {
+            "encode_added": 2,
+            "joliet_changed": 4,
+            "encode_lost": 2,
+            "decode_changed": 514
+          }
+        },
+        "macromanian": {
+          "available": false
+        },
+        "macturkish": {
+          "available": false
+        },
+        "ascii": {
+          "available": true,
+          "counts": {}
+        },
+        "cp1250": {
+          "available": true,
+          "counts": {}
+        },
+        "cp1251": {
+          "available": true,
+          "counts": {
+            "encode_lost": 9,
+            "joliet_changed": 12,
+            "encode_added": 2,
+            "encode_changed": 1
+          },
+          "examples": {
+            "encode_lost": [
+              {
+                "unicode": "U+00C3",
+                "nls": "bb",
+                "system": null
+              },
+              {
+                "unicode": "U+00CB",
+                "nls": "bb",
+                "system": null
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+00C3",
+                "nls": 187,
+                "system": 63
+              },
+              {
+                "input": "U+00CB",
+                "nls": 187,
+                "system": 63
+              }
+            ],
+            "encode_added": [
+              {
+                "unicode": "U+0490",
+                "nls": null,
+                "system": "a5"
+              },
+              {
+                "unicode": "U+20AC",
+                "nls": null,
+                "system": "88"
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+0491",
+                "nls": "a5",
+                "system": "b4"
+              }
+            ]
+          }
+        },
+        "cp1255": {
+          "available": true,
+          "counts": {
+            "encode_added": 3,
+            "joliet_changed": 6,
+            "encode_lost": 1,
+            "decode_changed": 257,
+            "decode_lost": 257,
+            "decode_added": 514
+          },
+          "examples": {
+            "encode_added": [
+              {
+                "unicode": "U+00A1",
+                "nls": null,
+                "system": "a1"
+              },
+              {
+                "unicode": "U+00AF",
+                "nls": null,
+                "system": "af"
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+00A1",
+                "nls": 63,
+                "system": 161
+              },
+              {
+                "input": "U+00AF",
+                "nls": 63,
+                "system": 175
+              }
+            ],
+            "encode_lost": [
+              {
+                "unicode": "U+2116",
+                "nls": "b9",
+                "system": null
+              }
+            ],
+            "decode_changed": [
+              {
+                "bytes": "af",
+                "nls": [
+                  1,
+                  8254
+                ],
+                "system": [
+                  1,
+                  175
+                ]
+              },
+              {
+                "bytes": "af00",
+                "nls": [
+                  1,
+                  8254
+                ],
+                "system": [
+                  1,
+                  175
+                ]
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "df",
+                "nls": [
+                  1,
+                  8215
+                ],
+                "system": null
+              },
+              {
+                "bytes": "df00",
+                "nls": [
+                  1,
+                  8215
+                ],
+                "system": null
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "fd",
+                "nls": null,
+                "system": [
+                  1,
+                  8206
+                ]
+              },
+              {
+                "bytes": "fe",
+                "nls": null,
+                "system": [
+                  1,
+                  8207
+                ]
+              }
+            ]
+          }
+        },
+        "cp737": {
+          "available": true,
+          "counts": {}
+        },
+        "cp775": {
+          "available": true,
+          "counts": {}
+        },
+        "cp850": {
+          "available": true,
+          "counts": {}
+        },
+        "cp852": {
+          "available": true,
+          "counts": {}
+        },
+        "cp855": {
+          "available": true,
+          "counts": {}
+        },
+        "cp857": {
+          "available": true,
+          "counts": {}
+        },
+        "cp860": {
+          "available": true,
+          "counts": {}
+        },
+        "cp861": {
+          "available": true,
+          "counts": {}
+        },
+        "cp862": {
+          "available": true,
+          "counts": {}
+        },
+        "cp863": {
+          "available": true,
+          "counts": {}
+        },
+        "cp864": {
+          "available": true,
+          "counts": {}
+        },
+        "cp865": {
+          "available": true,
+          "counts": {}
+        },
+        "cp866": {
+          "available": true,
+          "counts": {}
+        },
+        "cp869": {
+          "available": true,
+          "counts": {}
+        },
+        "cp874": {
+          "available": true,
+          "counts": {
+            "encode_added": 1,
+            "joliet_changed": 1,
+            "decode_added": 257
+          }
+        },
+        "cp932": {
+          "available": true,
+          "counts": {
+            "encode_lost": 4,
+            "joliet_changed": 1884,
+            "encode_changed": 395,
+            "encode_added": 1880,
+            "decode_added": 1880
+          },
+          "examples": {
+            "encode_lost": [
+              {
+                "unicode": "U+00A2",
+                "nls": "8191",
+                "system": null
+              },
+              {
+                "unicode": "U+00A3",
+                "nls": "8192",
+                "system": null
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+00A2",
+                "nls": 65504,
+                "system": 63
+              },
+              {
+                "input": "U+00A3",
+                "nls": 65505,
+                "system": 63
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+2116",
+                "nls": "fa59",
+                "system": "8782"
+              },
+              {
+                "unicode": "U+2121",
+                "nls": "fa5a",
+                "system": "8784"
+              }
+            ],
+            "encode_added": [
+              {
+                "unicode": "U+E000",
+                "nls": null,
+                "system": "f040"
+              },
+              {
+                "unicode": "U+E001",
+                "nls": null,
+                "system": "f041"
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "f040",
+                "nls": null,
+                "system": [
+                  2,
+                  57344
+                ]
+              },
+              {
+                "bytes": "f041",
+                "nls": null,
+                "system": [
+                  2,
+                  57345
+                ]
+              }
+            ]
+          }
+        },
+        "cp936": {
+          "available": true,
+          "counts": {
+            "encode_lost": 380,
+            "joliet_changed": 380,
+            "decode_lost": 509
+          },
+          "examples": {
+            "encode_lost": [
+              {
+                "unicode": "U+0100",
+                "nls": "a8a1",
+                "system": null
+              },
+              {
+                "unicode": "U+0112",
+                "nls": "a8a5",
+                "system": null
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0100",
+                "nls": 257,
+                "system": 63
+              },
+              {
+                "input": "U+0112",
+                "nls": 275,
+                "system": 63
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "81",
+                "nls": [
+                  1,
+                  129
+                ],
+                "system": null
+              },
+              {
+                "bytes": "82",
+                "nls": [
+                  1,
+                  130
+                ],
+                "system": null
+              }
+            ]
+          }
+        },
+        "cp949": {
+          "available": true,
+          "counts": {
+            "encode_lost": 428,
+            "joliet_changed": 429,
+            "encode_changed": 32,
+            "encode_added": 1,
+            "decode_lost": 1276
+          },
+          "examples": {
+            "encode_lost": [
+              {
+                "unicode": "U+0080",
+                "nls": "80",
+                "system": null
+              },
+              {
+                "unicode": "U+0081",
+                "nls": "81",
+                "system": null
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0080",
+                "nls": 128,
+                "system": 63
+              },
+              {
+                "input": "U+0081",
+                "nls": 129,
+                "system": 63
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+00A1",
+                "nls": "a1",
+                "system": "a2ae"
+              },
+              {
+                "unicode": "U+00A4",
+                "nls": "a4",
+                "system": "a2b4"
+              }
+            ],
+            "encode_added": [
+              {
+                "unicode": "U+20AC",
+                "nls": null,
+                "system": "a2e6"
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "80",
+                "nls": [
+                  1,
+                  128
+                ],
+                "system": null
+              },
+              {
+                "bytes": "81",
+                "nls": [
+                  1,
+                  129
+                ],
+                "system": null
+              }
+            ]
+          }
+        },
+        "cp950": {
+          "available": true,
+          "counts": {
+            "encode_lost": 521,
+            "joliet_changed": 930,
+            "encode_changed": 11,
+            "encode_added": 409,
+            "decode_lost": 10140,
+            "decode_added": 94,
+            "decode_changed": 314
+          },
+          "examples": {
+            "encode_lost": [
+              {
+                "unicode": "U+0081",
+                "nls": "81",
+                "system": null
+              },
+              {
+                "unicode": "U+0082",
+                "nls": "82",
+                "system": null
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0081",
+                "nls": 129,
+                "system": 63
+              },
+              {
+                "input": "U+0082",
+                "nls": 130,
+                "system": 63
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+00A7",
+                "nls": "a7",
+                "system": "a1b1"
+              },
+              {
+                "unicode": "U+00AF",
+                "nls": "af",
+                "system": "a1c2"
+              }
+            ],
+            "encode_added": [
+              {
+                "unicode": "U+20AC",
+                "nls": null,
+                "system": "a3e1"
+              },
+              {
+                "unicode": "U+F6B1",
+                "nls": null,
+                "system": "c6a1"
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "81",
+                "nls": [
+                  1,
+                  129
+                ],
+                "system": null
+              },
+              {
+                "bytes": "82",
+                "nls": [
+                  1,
+                  130
+                ],
+                "system": null
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "c6a1",
+                "nls": null,
+                "system": [
+                  2,
+                  63153
+                ]
+              },
+              {
+                "bytes": "c6a2",
+                "nls": null,
+                "system": [
+                  2,
+                  63154
+                ]
+              }
+            ],
+            "decode_changed": [
+              {
+                "bytes": "c740",
+                "nls": [
+                  1,
+                  199
+                ],
+                "system": [
+                  2,
+                  63247
+                ]
+              },
+              {
+                "bytes": "c741",
+                "nls": [
+                  1,
+                  199
+                ],
+                "system": [
+                  2,
+                  63248
+                ]
+              }
+            ]
+          }
+        },
+        "euc-jp": {
+          "available": true,
+          "counts": {
+            "encode_added": 5819,
+            "joliet_changed": 5995,
+            "encode_changed": 10,
+            "encode_lost": 173,
+            "decode_added": 13497,
+            "decode_changed": 7,
+            "decode_lost": 202
+          },
+          "examples": {
+            "encode_added": [
+              {
+                "unicode": "U+0080",
+                "nls": null,
+                "system": "80"
+              },
+              {
+                "unicode": "U+0081",
+                "nls": null,
+                "system": "81"
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0080",
+                "nls": 63,
+                "system": 128
+              },
+              {
+                "input": "U+0081",
+                "nls": 63,
+                "system": 129
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+2116",
+                "nls": "8ff4ac",
+                "system": "8fa2f1"
+              },
+              {
+                "unicode": "U+221A",
+                "nls": "adf5",
+                "system": "a2e5"
+              }
+            ],
+            "encode_lost": [
+              {
+                "unicode": "U+2121",
+                "nls": "8ff4ad",
+                "system": null
+              },
+              {
+                "unicode": "U+2160",
+                "nls": "8ff3fd",
+                "system": null
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "80",
+                "nls": null,
+                "system": [
+                  1,
+                  128
+                ]
+              },
+              {
+                "bytes": "81",
+                "nls": null,
+                "system": [
+                  1,
+                  129
+                ]
+              }
+            ],
+            "decode_changed": [
+              {
+                "bytes": "a1c1",
+                "nls": [
+                  2,
+                  65374
+                ],
+                "system": [
+                  2,
+                  12316
+                ]
+              },
+              {
+                "bytes": "a1c2",
+                "nls": [
+                  2,
+                  8741
+                ],
+                "system": [
+                  2,
+                  8214
+                ]
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "ada1",
+                "nls": [
+                  2,
+                  9312
+                ],
+                "system": null
+              },
+              {
+                "bytes": "ada2",
+                "nls": [
+                  2,
+                  9313
+                ],
+                "system": null
+              }
+            ]
+          }
+        },
+        "iso8859-1": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-13": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-14": {
+          "available": true,
+          "counts": {
+            "encode_lost": 27,
+            "joliet_changed": 29,
+            "encode_changed": 2
+          }
+        },
+        "iso8859-15": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-2": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-3": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-4": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-5": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-6": {
+          "available": true,
+          "counts": {
+            "encode_added": 10,
+            "joliet_changed": 20,
+            "encode_lost": 10,
+            "decode_changed": 2570
+          },
+          "examples": {
+            "encode_added": [
+              {
+                "unicode": "U+0030",
+                "nls": null,
+                "system": "30"
+              },
+              {
+                "unicode": "U+0031",
+                "nls": null,
+                "system": "31"
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0030",
+                "nls": 63,
+                "system": 48
+              },
+              {
+                "input": "U+0031",
+                "nls": 63,
+                "system": 49
+              }
+            ],
+            "encode_lost": [
+              {
+                "unicode": "U+0660",
+                "nls": "30",
+                "system": null
+              },
+              {
+                "unicode": "U+0661",
+                "nls": "31",
+                "system": null
+              }
+            ],
+            "decode_changed": [
+              {
+                "bytes": "30",
+                "nls": [
+                  1,
+                  1632
+                ],
+                "system": [
+                  1,
+                  48
+                ]
+              },
+              {
+                "bytes": "31",
+                "nls": [
+                  1,
+                  1633
+                ],
+                "system": [
+                  1,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        "iso8859-7": {
+          "available": true,
+          "counts": {
+            "encode_lost": 2,
+            "joliet_changed": 7,
+            "encode_added": 5,
+            "decode_changed": 514,
+            "decode_added": 771
+          }
+        },
+        "iso8859-9": {
+          "available": true,
+          "counts": {}
+        },
+        "koi8-r": {
+          "available": true,
+          "counts": {}
+        },
+        "koi8-ru": {
+          "available": true,
+          "counts": {
+            "encode_added": 9,
+            "joliet_changed": 18,
+            "encode_lost": 9,
+            "decode_changed": 2313
+          }
+        },
+        "koi8-u": {
+          "available": true,
+          "counts": {}
+        },
+        "default": {
+          "available": true,
+          "counts": {}
+        }
+      }
+    },
+    "windows": {
+      "system": "Windows-11-10.0.26300-SP0",
+      "libc": [
+        "",
+        ""
+      ],
+      "cp437_lower_differences": [],
+      "charsets": {
+        "cp437": {
+          "available": true,
+          "counts": {}
+        },
+        "macceltic": {
+          "available": false
+        },
+        "maccenteuro": {
+          "available": true,
+          "counts": {}
+        },
+        "maccroatian": {
+          "available": true,
+          "counts": {
+            "encode_added": 2,
+            "joliet_changed": 5,
+            "encode_lost": 3,
+            "decode_changed": 514,
+            "decode_lost": 257
+          }
+        },
+        "maccyrillic": {
+          "available": true,
+          "counts": {
+            "encode_added": 3,
+            "joliet_changed": 6,
+            "encode_lost": 3,
+            "decode_changed": 771
+          }
+        },
+        "macgaelic": {
+          "available": false
+        },
+        "macgreek": {
+          "available": true,
+          "counts": {
+            "encode_changed": 1,
+            "encode_lost": 2,
+            "joliet_changed": 3,
+            "encode_added": 1,
+            "decode_changed": 514,
+            "decode_lost": 257
+          }
+        },
+        "maciceland": {
+          "available": true,
+          "counts": {
+            "encode_added": 2,
+            "joliet_changed": 5,
+            "encode_lost": 3,
+            "decode_changed": 514,
+            "decode_lost": 257
+          }
+        },
+        "macinuit": {
+          "available": false
+        },
+        "macroman": {
+          "available": true,
+          "counts": {
+            "encode_lost": 2,
+            "joliet_changed": 3,
+            "encode_added": 1,
+            "decode_changed": 257,
+            "decode_lost": 257
+          }
+        },
+        "macromanian": {
+          "available": true,
+          "counts": {
+            "encode_added": 6,
+            "joliet_changed": 13,
+            "encode_lost": 7,
+            "decode_changed": 1542,
+            "decode_lost": 257
+          }
+        },
+        "macturkish": {
+          "available": true,
+          "counts": {
+            "encode_lost": 3,
+            "joliet_changed": 4,
+            "encode_added": 1,
+            "decode_changed": 257,
+            "decode_lost": 514
+          }
+        },
+        "ascii": {
+          "available": true,
+          "counts": {
+            "decode_added": 32382
+          }
+        },
+        "cp1250": {
+          "available": true,
+          "counts": {
+            "encode_added": 5,
+            "joliet_changed": 5,
+            "decode_added": 1285
+          }
+        },
+        "cp1251": {
+          "available": true,
+          "counts": {
+            "encode_added": 3,
+            "joliet_changed": 13,
+            "encode_lost": 9,
+            "encode_changed": 1,
+            "decode_added": 257
+          },
+          "examples": {
+            "encode_added": [
+              {
+                "unicode": "U+0098",
+                "nls": null,
+                "system": "98"
+              },
+              {
+                "unicode": "U+0490",
+                "nls": null,
+                "system": "a5"
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0098",
+                "nls": 63,
+                "system": 152
+              },
+              {
+                "input": "U+00C3",
+                "nls": 187,
+                "system": 63
+              }
+            ],
+            "encode_lost": [
+              {
+                "unicode": "U+00C3",
+                "nls": "bb",
+                "system": null
+              },
+              {
+                "unicode": "U+00CB",
+                "nls": "bb",
+                "system": null
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+0491",
+                "nls": "a5",
+                "system": "b4"
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "98",
+                "nls": null,
+                "system": [
+                  1,
+                  152
+                ]
+              },
+              {
+                "bytes": "9800",
+                "nls": null,
+                "system": [
+                  1,
+                  152
+                ]
+              }
+            ]
+          }
+        },
+        "cp1255": {
+          "available": true,
+          "counts": {
+            "encode_added": 16,
+            "joliet_changed": 19,
+            "encode_lost": 1,
+            "decode_added": 3855,
+            "decode_changed": 257,
+            "decode_lost": 257
+          },
+          "examples": {
+            "encode_added": [
+              {
+                "unicode": "U+0081",
+                "nls": null,
+                "system": "81"
+              },
+              {
+                "unicode": "U+008A",
+                "nls": null,
+                "system": "8a"
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0081",
+                "nls": 63,
+                "system": 129
+              },
+              {
+                "input": "U+008A",
+                "nls": 63,
+                "system": 138
+              }
+            ],
+            "encode_lost": [
+              {
+                "unicode": "U+2116",
+                "nls": "b9",
+                "system": null
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "81",
+                "nls": null,
+                "system": [
+                  1,
+                  129
+                ]
+              },
+              {
+                "bytes": "8a",
+                "nls": null,
+                "system": [
+                  1,
+                  138
+                ]
+              }
+            ],
+            "decode_changed": [
+              {
+                "bytes": "af",
+                "nls": [
+                  1,
+                  8254
+                ],
+                "system": [
+                  1,
+                  175
+                ]
+              },
+              {
+                "bytes": "af00",
+                "nls": [
+                  1,
+                  8254
+                ],
+                "system": [
+                  1,
+                  175
+                ]
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "df",
+                "nls": [
+                  1,
+                  8215
+                ],
+                "system": null
+              },
+              {
+                "bytes": "df00",
+                "nls": [
+                  1,
+                  8215
+                ],
+                "system": null
+              }
+            ]
+          }
+        },
+        "cp737": {
+          "available": true,
+          "counts": {}
+        },
+        "cp775": {
+          "available": true,
+          "counts": {}
+        },
+        "cp850": {
+          "available": true,
+          "counts": {}
+        },
+        "cp852": {
+          "available": true,
+          "counts": {}
+        },
+        "cp855": {
+          "available": true,
+          "counts": {}
+        },
+        "cp857": {
+          "available": true,
+          "counts": {}
+        },
+        "cp860": {
+          "available": true,
+          "counts": {}
+        },
+        "cp861": {
+          "available": true,
+          "counts": {}
+        },
+        "cp862": {
+          "available": true,
+          "counts": {}
+        },
+        "cp863": {
+          "available": true,
+          "counts": {}
+        },
+        "cp864": {
+          "available": true,
+          "counts": {
+            "encode_added": 4,
+            "joliet_changed": 5,
+            "encode_lost": 1,
+            "decode_changed": 257,
+            "decode_added": 771
+          }
+        },
+        "cp865": {
+          "available": true,
+          "counts": {}
+        },
+        "cp866": {
+          "available": true,
+          "counts": {}
+        },
+        "cp869": {
+          "available": true,
+          "counts": {
+            "encode_added": 9,
+            "joliet_changed": 9,
+            "decode_added": 2313
+          }
+        },
+        "cp874": {
+          "available": true,
+          "counts": {
+            "encode_added": 24,
+            "joliet_changed": 24,
+            "decode_added": 6168
+          }
+        },
+        "cp932": {
+          "available": true,
+          "counts": {
+            "encode_added": 1881,
+            "joliet_changed": 1885,
+            "encode_lost": 4,
+            "encode_changed": 395,
+            "decode_added": 2137
+          },
+          "examples": {
+            "encode_added": [
+              {
+                "unicode": "U+0080",
+                "nls": null,
+                "system": "80"
+              },
+              {
+                "unicode": "U+E000",
+                "nls": null,
+                "system": "f040"
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0080",
+                "nls": 63,
+                "system": 128
+              },
+              {
+                "input": "U+00A2",
+                "nls": 65504,
+                "system": 63
+              }
+            ],
+            "encode_lost": [
+              {
+                "unicode": "U+00A2",
+                "nls": "8191",
+                "system": null
+              },
+              {
+                "unicode": "U+00A3",
+                "nls": "8192",
+                "system": null
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+2116",
+                "nls": "fa59",
+                "system": "8782"
+              },
+              {
+                "unicode": "U+2121",
+                "nls": "fa5a",
+                "system": "8784"
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "80",
+                "nls": null,
+                "system": [
+                  1,
+                  128
+                ]
+              },
+              {
+                "bytes": "8000",
+                "nls": null,
+                "system": [
+                  1,
+                  128
+                ]
+              }
+            ]
+          }
+        },
+        "cp936": {
+          "available": true,
+          "counts": {
+            "encode_lost": 380,
+            "joliet_changed": 2529,
+            "encode_added": 2149,
+            "decode_lost": 509,
+            "decode_added": 2149
+          },
+          "examples": {
+            "encode_lost": [
+              {
+                "unicode": "U+0100",
+                "nls": "a8a1",
+                "system": null
+              },
+              {
+                "unicode": "U+0112",
+                "nls": "a8a5",
+                "system": null
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0100",
+                "nls": 257,
+                "system": 63
+              },
+              {
+                "input": "U+0112",
+                "nls": 275,
+                "system": 63
+              }
+            ],
+            "encode_added": [
+              {
+                "unicode": "U+E000",
+                "nls": null,
+                "system": "aaa1"
+              },
+              {
+                "unicode": "U+E001",
+                "nls": null,
+                "system": "aaa2"
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "81",
+                "nls": [
+                  1,
+                  129
+                ],
+                "system": null
+              },
+              {
+                "bytes": "82",
+                "nls": [
+                  1,
+                  130
+                ],
+                "system": null
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "a140",
+                "nls": null,
+                "system": [
+                  2,
+                  58566
+                ]
+              },
+              {
+                "bytes": "a141",
+                "nls": null,
+                "system": [
+                  2,
+                  58567
+                ]
+              }
+            ]
+          }
+        },
+        "cp949": {
+          "available": true,
+          "counts": {
+            "encode_lost": 427,
+            "joliet_changed": 616,
+            "encode_changed": 32,
+            "encode_added": 189,
+            "decode_lost": 831,
+            "decode_changed": 188
+          },
+          "examples": {
+            "encode_lost": [
+              {
+                "unicode": "U+0081",
+                "nls": "81",
+                "system": null
+              },
+              {
+                "unicode": "U+0082",
+                "nls": "82",
+                "system": null
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0081",
+                "nls": 129,
+                "system": 63
+              },
+              {
+                "input": "U+0082",
+                "nls": 130,
+                "system": 63
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+00A1",
+                "nls": "a1",
+                "system": "a2ae"
+              },
+              {
+                "unicode": "U+00A4",
+                "nls": "a4",
+                "system": "a2b4"
+              }
+            ],
+            "encode_added": [
+              {
+                "unicode": "U+20AC",
+                "nls": null,
+                "system": "a2e6"
+              },
+              {
+                "unicode": "U+E000",
+                "nls": null,
+                "system": "c9a1"
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "81",
+                "nls": [
+                  1,
+                  129
+                ],
+                "system": null
+              },
+              {
+                "bytes": "82",
+                "nls": [
+                  1,
+                  130
+                ],
+                "system": null
+              }
+            ],
+            "decode_changed": [
+              {
+                "bytes": "c9a1",
+                "nls": [
+                  1,
+                  201
+                ],
+                "system": [
+                  2,
+                  57344
+                ]
+              },
+              {
+                "bytes": "c9a2",
+                "nls": [
+                  1,
+                  201
+                ],
+                "system": [
+                  2,
+                  57345
+                ]
+              }
+            ]
+          }
+        },
+        "cp950": {
+          "available": true,
+          "counts": {
+            "encode_lost": 521,
+            "joliet_changed": 6739,
+            "encode_changed": 7,
+            "encode_added": 6218,
+            "decode_lost": 4331,
+            "decode_changed": 6123,
+            "decode_added": 94
+          },
+          "examples": {
+            "encode_lost": [
+              {
+                "unicode": "U+0081",
+                "nls": "81",
+                "system": null
+              },
+              {
+                "unicode": "U+0082",
+                "nls": "82",
+                "system": null
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0081",
+                "nls": 129,
+                "system": 63
+              },
+              {
+                "input": "U+0082",
+                "nls": 130,
+                "system": 63
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+00A7",
+                "nls": "a7",
+                "system": "a1b1"
+              },
+              {
+                "unicode": "U+00AF",
+                "nls": "af",
+                "system": "a1c2"
+              }
+            ],
+            "encode_added": [
+              {
+                "unicode": "U+20AC",
+                "nls": null,
+                "system": "a3e1"
+              },
+              {
+                "unicode": "U+E000",
+                "nls": null,
+                "system": "fa40"
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "81",
+                "nls": [
+                  1,
+                  129
+                ],
+                "system": null
+              },
+              {
+                "bytes": "82",
+                "nls": [
+                  1,
+                  130
+                ],
+                "system": null
+              }
+            ],
+            "decode_changed": [
+              {
+                "bytes": "8140",
+                "nls": [
+                  1,
+                  129
+                ],
+                "system": [
+                  2,
+                  61112
+                ]
+              },
+              {
+                "bytes": "8141",
+                "nls": [
+                  1,
+                  129
+                ],
+                "system": [
+                  2,
+                  61113
+                ]
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "c6a1",
+                "nls": null,
+                "system": [
+                  2,
+                  63153
+                ]
+              },
+              {
+                "bytes": "c6a2",
+                "nls": null,
+                "system": [
+                  2,
+                  63154
+                ]
+              }
+            ]
+          }
+        },
+        "euc-jp": {
+          "available": true,
+          "counts": {
+            "encode_added": 7670,
+            "joliet_changed": 7683,
+            "encode_changed": 392,
+            "encode_lost": 10,
+            "decode_added": 81141,
+            "decode_changed": 406,
+            "decode_lost": 9
+          },
+          "examples": {
+            "encode_added": [
+              {
+                "unicode": "U+00A1",
+                "nls": null,
+                "system": "a242"
+              },
+              {
+                "unicode": "U+00A4",
+                "nls": null,
+                "system": "a270"
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+00A1",
+                "nls": 63,
+                "system": 161
+              },
+              {
+                "input": "U+00A2",
+                "nls": 65504,
+                "system": 162
+              }
+            ],
+            "encode_changed": [
+              {
+                "unicode": "U+2116",
+                "nls": "8ff4ac",
+                "system": "ade2"
+              },
+              {
+                "unicode": "U+2121",
+                "nls": "8ff4ad",
+                "system": "ade4"
+              }
+            ],
+            "encode_lost": [
+              {
+                "unicode": "U+2225",
+                "nls": "a1c2",
+                "system": null
+              },
+              {
+                "unicode": "U+301D",
+                "nls": "ade0",
+                "system": null
+              }
+            ],
+            "decode_added": [
+              {
+                "bytes": "80",
+                "nls": null,
+                "system": [
+                  1,
+                  128
+                ]
+              },
+              {
+                "bytes": "81",
+                "nls": null,
+                "system": [
+                  1,
+                  129
+                ]
+              }
+            ],
+            "decode_changed": [
+              {
+                "bytes": "a1c1",
+                "nls": [
+                  2,
+                  65374
+                ],
+                "system": [
+                  2,
+                  12316
+                ]
+              },
+              {
+                "bytes": "a1c2",
+                "nls": [
+                  2,
+                  8741
+                ],
+                "system": [
+                  2,
+                  8214
+                ]
+              }
+            ],
+            "decode_lost": [
+              {
+                "bytes": "adf0",
+                "nls": [
+                  2,
+                  8786
+                ],
+                "system": null
+              },
+              {
+                "bytes": "adf1",
+                "nls": [
+                  2,
+                  8801
+                ],
+                "system": null
+              }
+            ]
+          }
+        },
+        "iso8859-1": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-13": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-14": {
+          "available": false
+        },
+        "iso8859-15": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-2": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-3": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-4": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-5": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-6": {
+          "available": true,
+          "counts": {
+            "encode_added": 10,
+            "joliet_changed": 20,
+            "encode_lost": 10,
+            "decode_changed": 2570
+          },
+          "examples": {
+            "encode_added": [
+              {
+                "unicode": "U+0030",
+                "nls": null,
+                "system": "30"
+              },
+              {
+                "unicode": "U+0031",
+                "nls": null,
+                "system": "31"
+              }
+            ],
+            "joliet_changed": [
+              {
+                "input": "U+0030",
+                "nls": 63,
+                "system": 48
+              },
+              {
+                "input": "U+0031",
+                "nls": 63,
+                "system": 49
+              }
+            ],
+            "encode_lost": [
+              {
+                "unicode": "U+0660",
+                "nls": "30",
+                "system": null
+              },
+              {
+                "unicode": "U+0661",
+                "nls": "31",
+                "system": null
+              }
+            ],
+            "decode_changed": [
+              {
+                "bytes": "30",
+                "nls": [
+                  1,
+                  1632
+                ],
+                "system": [
+                  1,
+                  48
+                ]
+              },
+              {
+                "bytes": "31",
+                "nls": [
+                  1,
+                  1633
+                ],
+                "system": [
+                  1,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        "iso8859-7": {
+          "available": true,
+          "counts": {}
+        },
+        "iso8859-9": {
+          "available": true,
+          "counts": {}
+        },
+        "koi8-r": {
+          "available": true,
+          "counts": {}
+        },
+        "koi8-ru": {
+          "available": false
+        },
+        "koi8-u": {
+          "available": true,
+          "counts": {
+            "encode_added": 2,
+            "joliet_changed": 4,
+            "encode_lost": 2,
+            "decode_changed": 514
+          }
+        },
+        "default": {
+          "available": true,
+          "counts": {}
+        }
+      }
+    }
+  }
+}

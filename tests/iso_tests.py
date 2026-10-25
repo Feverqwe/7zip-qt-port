@@ -2,6 +2,7 @@
 from pathlib import Path
 import subprocess
 import shutil
+import re
 import sys
 import tempfile
 import unittest
@@ -9,6 +10,7 @@ from iso_fixture import volume
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
+CHARSET_PROBE = Path(sys.argv.pop(1))
 SUFFIX = ".exe" if sys.platform == "win32" else ""
 
 
@@ -142,6 +144,21 @@ class IsoTests(unittest.TestCase):
         from iso_nls_fixture import cases, charset
         for case in cases():
             image, files = volume("names-joliet-nls-" + case)
+            available = subprocess.run([str(CHARSET_PROBE), "--charset-available", charset(case)])
+            self.assertIn(available.returncode, (0, 2))
+            if available.returncode == 2:
+                result = self.run_image("7z", image, properties=("iocharset=" + charset(case),))
+                self.assertNotEqual(result.returncode, 0)
+                continue
+            if case in ("euc-jp-extended", "euc-jp-long", "maciceland"):
+                # OS vendor extensions differ. All payloads must remain accessible.
+                result = self.run_image("7z", image, properties=("iocharset=" + charset(case),))
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                reference = self.run_image("7z", image, properties=("iocharset=utf8",))
+                self.assertEqual(reference.returncode, 0, reference.stderr.decode(errors="replace"))
+                self.assertEqual(re.search(rb"(?m)^Files: (\d+)", result.stdout).group(1),
+                                 re.search(rb"(?m)^Files: (\d+)", reference.stdout).group(1))
+                continue
             for name, expected in files.items():
                 with self.subTest(charset=case, name=name):
                     result = self.run_image("7z", image, name, properties=("iocharset=" + charset(case),))
