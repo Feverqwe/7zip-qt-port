@@ -20,7 +20,7 @@
 — запрошенное изменение controls/transport с сохранением Pause и Cancel.
 
 [Выборочный перенос native readers](upstream-port-audit/container-layers.md)
-— QCOW Zstandard, границы потоков и удаление Background по запросу пользователя.
+— QCOW Zstandard/extended L2, границы потоков и удаление Background по запросу пользователя.
 
 [Единые readers для приложения и 7z](upstream-port-audit/license-variants.md)
 — удаление SDK-дублей, общие probes/dependencies и границы бинарных модулей.

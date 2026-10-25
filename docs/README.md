@@ -34,7 +34,7 @@ evidence applies only to the recorded revision, platform and scenario.
 | Configure remote hosts and validate Linux/Windows | [Local configuration](runner-configuration.md), [runner workflows](hyperv-runners.md) |
 | Build local packages or understand CI/release scope | [Packaging and CI](ci.md) |
 | Check source provenance and adaptation decisions | [Source audit](upstream-port-audit.md), [module decisions](omitted-scope-audit.md) |
-| Compare or update upstream | [Baseline manifest](upstream-baseline.json), [update procedure](upstream-update.md) |
+| Compare or update upstream | [7-Zip baseline](upstream-baseline.json), [QEMU QCOW baseline](qcow-qemu-baseline.json), [update procedure](upstream-update.md) |
 | Review the completed UX acceptance scope | [Acceptance](ux-port-audit.md) |
 | Save an investigation or handoff | [Memory protocol](agent-memory.md) |
 | Find a completed plan, past decision or validation record | [Archive](archive/README.md) |

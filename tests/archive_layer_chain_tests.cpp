@@ -310,6 +310,7 @@ class ArchiveLayerChainTests final : public QObject {
             QCOMPARE(ItemStream(compressed, 0, &native), S_OK);
         }
         auto *fault = new CBudgetInput(native, &released);
+        CBudgetInput *copySource = fault;
         CMyComPtr<IInStream> rootInput = fault;
         native.Release();
         CMyComPtr<IInStream> disk, diskInput, partition, partitionInput;
@@ -327,9 +328,9 @@ class ArchiveLayerChainTests final : public QObject {
             QVERIFY(agent);
             NWindows::NCOM::CPropVariant method;
             QCOMPARE(agent->GetArchiveProperties()->GetArchiveProperty(kpidMethod, &method), S_OK);
-            if (image.startsWith("deflate") || image.startsWith("zstd")) {
+            if (image.contains("deflate") || image.contains("zstd")) {
                 QCOMPARE(method.vt, VARTYPE(VT_BSTR));
-                QCOMPARE(QString::fromWCharArray(method.bstrVal), image.startsWith("zstd")
+                QCOMPARE(QString::fromWCharArray(method.bstrVal), image.contains("zstd")
                                                                       ? QStringLiteral("ZSTD")
                                                                       : QStringLiteral("Deflate"));
             } else
@@ -386,7 +387,13 @@ class ArchiveLayerChainTests final : public QObject {
             diskInput = new CBudgetInput(disk);
             QCOMPARE(open(diskInput, L"virtual disk.mbr", L"MBR", table), S_OK);
             QCOMPARE(ItemStream(table, 0, &partition), S_OK);
-            partitionInput = new CBudgetInput(partition);
+            auto *decodedSource = new CBudgetInput(partition);
+            partitionInput = decodedSource;
+            // With the larger extended-L2 clusters QEMU can pack the entire
+            // fixture payload into QCOW's compressed-input cache. Inject at the
+            // decoded partition boundary so copying must actually meet the fault.
+            if (image.startsWith("extended-"))
+                copySource = decodedSource;
             QCOMPARE(open(partitionInput, L"selected partition.ext", L"Ext", filesystem), S_OK);
         }
         QCOMPARE(filesystem->BindToFolder(L"папка 空", &selected), S_OK);
@@ -428,9 +435,9 @@ class ArchiveLayerChainTests final : public QObject {
         auto *observer = new CArchiveCopyCallback;
         CMyComPtr<IFolderOperationsExtractCallback> callback = observer;
         observer->Cancel = mode == "cancel";
-        fault->ObservedRequest = false;
-        fault->CancelAtRead = mode == "read-cancel" ? &observer->Cancel : nullptr;
-        fault->Failure = mode == "source-failure" ? E_FAIL : S_OK;
+        copySource->ObservedRequest = false;
+        copySource->CancelAtRead = mode == "read-cancel" ? &observer->Cancel : nullptr;
+        copySource->Failure = mode == "source-failure" ? E_FAIL : S_OK;
         const QString output = directory.filePath("selected output");
         QVERIFY(QDir().mkpath(output));
         const auto prefix = (output + '/').toStdWString();
@@ -445,10 +452,10 @@ class ArchiveLayerChainTests final : public QObject {
         else if (mode == "source-failure")
             QVERIFY(result != S_OK || observer->Errors);
         if (mode == "read-cancel")
-            QVERIFY(fault->ObservedRequest);
+            QVERIFY(copySource->ObservedRequest);
         if (mode == "cancel" || mode == "source-failure" || mode == "read-cancel") {
-            fault->Failure = S_OK;
-            fault->CancelAtRead = nullptr;
+            copySource->Failure = S_OK;
+            copySource->CancelAtRead = nullptr;
             observer = new CArchiveCopyCallback;
             callback = observer;
             QCOMPARE(copy(), S_OK);

@@ -135,6 +135,8 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-desktop)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lucide/LICENSE"
     DESTINATION share/licenses/sevenzip-desktop/lucide)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/qemu/LICENSE"
+    DESTINATION share/licenses/sevenzip-desktop/qemu)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/7z.sfx"
     "${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/7z.sfx.json" DESTINATION bin)
 qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT windows_deploy_script
