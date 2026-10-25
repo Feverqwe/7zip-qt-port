@@ -5,6 +5,7 @@
 // 9128b80e3a471108678e2b3ec3c985861c8d7b0f, Igor Pavlov, LGPL-2.1-or-later.
 #include "qtarchivereadoperation.h"
 #include "7zip/Common/FileStreams.h"
+#include "7zip/Common/LimitedStreams.h"
 #include "7zip/IPassword.h"
 #include "CPP/7zip/UI/Common/ArchiveOpenCallback.h"
 #include "CPP/7zip/UI/Common/IFileExtractCallback.h"
@@ -155,9 +156,18 @@ HRESULT ExtractEntry(QtArchiveReadOperation &operation,
     const CArc &arc = reader->arc();
     UInt32 count;
     RINOK(arc.Archive->GetNumberOfItems(&count))
-    UInt32 selected = UInt32(-1);
+    UInt32 selected = operation.Output.NativeIndex;
+    if (selected != UInt32(-1)) {
+        if (selected >= count)
+            return E_INVALIDARG;
+        bool directory = false, alternate = false;
+        RINOK(Archive_IsItem_Dir(arc.Archive, selected, directory))
+        RINOK(Archive_IsItem_AltStream(arc.Archive, selected, alternate))
+        if (directory || alternate != operation.Output.AltStream)
+            return E_INVALIDARG;
+    }
     const auto entry = QDir::fromNativeSeparators(operation.Output.Entry);
-    for (UInt32 index = 0; index < count; ++index) {
+    for (UInt32 index = 0; operation.Output.NativeIndex == UInt32(-1) && index < count; ++index) {
         RINOK(operation.checkpoint())
         UString path;
         RINOK(arc.GetItem_Path(index, path))
@@ -183,7 +193,14 @@ HRESULT ExtractEntry(QtArchiveReadOperation &operation,
     if (!output->Create_NEW(us2fs(operation.Output.Path.toStdWString().c_str())))
         return GetLastError_noZero_HRESULT();
     operation.OutputCreated = true;
-    callback.SetOutput(selected, output.Interface());
+    CMyComPtr<ISequentialOutStream> bounded = output.Interface();
+    if (operation.Output.Limit != UInt64(-1)) {
+        auto *limited = new CLimitedSequentialOutStream;
+        bounded = limited;
+        limited->SetStream(output.Interface());
+        limited->Init(operation.Output.Limit);
+    }
+    callback.SetOutput(selected, bounded);
     const HRESULT result = ArchiveBackend::extractNativeArchive(reader, &selected, 1, 0, &callback);
     callback.SetOutput(UInt32(-1), nullptr);
     const HRESULT closed = output->Close();
@@ -203,6 +220,12 @@ QtArchiveReadOperation::QtArchiveReadOperation(QString path, QString password,
     : catalog_(std::move(catalog)), path_(std::move(path)), work_(std::move(work)), kind_(kind),
       format_(std::move(format)), moduleLocation_(std::move(moduleLocation)),
       password_(std::move(password)), passwordDefined_(!password_.isEmpty()) {}
+
+QtArchiveReadOperation::QtArchiveReadOperation(std::shared_ptr<ArchiveNativeOpen> reader,
+                                               QString password)
+    : QtArchiveReadOperation({}, std::move(password), {}, {}, Kind::ExtractEntry) {
+    retainedReader_ = std::move(reader);
+}
 
 void QtArchiveReadOperation::cancel() {
     progress_.cancel();
@@ -287,7 +310,7 @@ void QtArchiveReadOperation::run() {
         Result = checkpoint();
         if (Result != S_OK)
             return;
-        if (!catalog_) {
+        if (!retainedReader_ && !catalog_) {
             catalog_ = ArchiveCodecProbe::LoadCatalog(moduleLocation_);
             CatalogDiagnostic = catalog_->error();
         }
@@ -296,20 +319,23 @@ void QtArchiveReadOperation::run() {
         Result = checkpoint();
         if (Result != S_OK)
             return;
-        Result = catalog_->result();
+        Result = retainedReader_ ? S_OK : catalog_->result();
         if (Result != S_OK) {
             CatalogDiagnostic = catalog_->error();
             return;
         }
         auto *callback = new CTestCallback(*this);
         CMyComPtr<IArchiveExtractCallback> retained = callback;
-        auto reader = std::make_shared<ArchiveNativeOpen>(catalog_);
-        Result = reader->Open(path_, format_, callback);
-        if (Result != S_OK)
-            recordOpenError(path_, reader->archiveLink().NonOpen_ErrorInfo);
-        for (unsigned i = 0; i < reader->archiveLink().Arcs.Size(); ++i) {
-            const auto &arc = reader->archiveLink().Arcs[i];
-            recordOpenError(QString::fromWCharArray(arc.Path), arc.ErrorInfo);
+        auto reader = retainedReader_;
+        if (!reader) {
+            reader = std::make_shared<ArchiveNativeOpen>(catalog_);
+            Result = reader->Open(path_, format_, callback);
+            if (Result != S_OK)
+                recordOpenError(path_, reader->archiveLink().NonOpen_ErrorInfo);
+            for (unsigned i = 0; i < reader->archiveLink().Arcs.Size(); ++i) {
+                const auto &arc = reader->archiveLink().Arcs[i];
+                recordOpenError(QString::fromWCharArray(arc.Path), arc.ErrorInfo);
+            }
         }
         if (Result != S_OK)
             return;

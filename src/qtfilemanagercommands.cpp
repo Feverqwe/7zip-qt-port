@@ -45,6 +45,7 @@ void QtFileManagerCommands::AttachActions() {
     AttachFileActions();
     AttachPanelActions();
     AttachViewActions();
+    AttachMountActions();
     window_.app_.AttachQtCommandServices(this);
     for (QAction *action : {window_.toolbarAdd_, window_.extract_, window_.test_, window_.copy_,
                             window_.move_, window_.remove_, window_.infoAction_})
@@ -261,6 +262,15 @@ QHash<unsigned, bool> QtFileManagerCommands::Availability() {
     availability[IDM_ABOUT] = availability[IDM_HELP_CONTENTS];
     availability[IDM_TEMP_DIR] = availability[IDM_HELP_CONTENTS];
     availability[OpenArchivePicker] = availability[IDM_HELP_CONTENTS] && !w.backend_->busy();
+    availability[ManageMounts] = availability[IDM_HELP_CONTENTS];
+    if (availability[OpenArchivePicker] && safeFolderQueries && !w.scanningArchive_ &&
+        !w.scanningDisk_) {
+        const auto *folder = dynamic_cast<CAgentFolder *>(panel.GetFolder());
+        const auto *resource =
+            folder ? dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource()) : nullptr;
+        availability[MountReadOnly] =
+            resource && resource->NativeReaderLease() && resource->NativeItemProperties();
+    }
     availability[OpenDevicePicker] = availability[OpenArchivePicker] && safeFolderQueries &&
                                      !w.scanningDisk_ && !w.scanningArchive_ &&
                                      w.backend_->codecCatalog() &&

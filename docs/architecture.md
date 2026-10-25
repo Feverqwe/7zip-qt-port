@@ -181,6 +181,14 @@ Direct streams and device views are read-only; materialized nested archives keep
 their supported edit and parent-update workflow. Sequential Extract is never
 exposed as seek through replay.
 
+Read-only mounts use an `ArchiveBackend` snapshot retaining the same native
+reader generation and resource leases. The mount owner is independent of panel
+navigation. Reader work stays in the application's worker; the separate SMB
+process receives immutable metadata and bounded range replies over private IPC.
+The independent OS-client broker owns native mount cleanup. Extraction and use
+of unverified output have separate, default-deny consent boundaries. See the
+[source audit](upstream-port-audit/readonly-smb.md) for provenance and validation.
+
 Treat archive names and metadata as untrusted. Validate output destinations and
 member paths at the operation boundary, preserve literal Unicode arguments and
 avoid shell interpretation. Transactional update and temporary-resource owners

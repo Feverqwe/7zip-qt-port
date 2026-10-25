@@ -1,0 +1,16 @@
+#include <QString>
+class NativeClient
+{
+    PROP(quint16 port=0 CONSTANT)
+    PROP(QString share="" CONSTANT)
+    PROP(QString user="" CONSTANT)
+    PROP(QString password="" CONSTANT)
+    PROP(QString owner="" CONSTANT)
+    PROP(QString directory="" CONSTANT)
+    PROP(bool recovery=false READONLY)
+    PROP(bool force=false READONLY)
+    SLOT(bool ready())
+    SLOT(bool mounted(QString path, QString error))
+    SLOT(bool unmounted(QString error))
+    SIGNAL(requestUnmount(bool force))
+}

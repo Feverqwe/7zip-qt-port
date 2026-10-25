@@ -18,6 +18,10 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyWindowsRuntime.cmake.in"
 install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/VerifyWindowsRuntime.cmake")
 install(TARGETS sevenzip_desktop sevenzip_shell RUNTIME DESTINATION bin LIBRARY DESTINATION bin)
 install(TARGETS sevenzip_device_reader RUNTIME DESTINATION bin)
+install(TARGETS sevenzip_smb_server sevenzip_native_mount smb2 RUNTIME DESTINATION bin)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libsmb2/COPYING"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libsmb2/LICENCE-LGPL-2.1.txt"
+    DESTINATION share/licenses/sevenzip-desktop/libsmb2)
 install(FILES "$<TARGET_FILE:sevenzip_desktop>" DESTINATION bin RENAME 7zFM.exe)
 install(FILES "$<TARGET_FILE:sevenzip_desktop>" DESTINATION bin RENAME 7zG.exe)
 install(FILES "${SEVENZIP_WINDOWS_RUNTIME}/7z.exe" "${SEVENZIP_WINDOWS_RUNTIME}/7z.dll"

@@ -1,0 +1,37 @@
+#pragma once
+#include <QCoreApplication>
+#include <QDialog>
+#include <QHash>
+#include <QList>
+
+class QtArchiveMountSession;
+struct IUnknown;
+class QTreeWidget;
+class QPlainTextEdit;
+class QPushButton;
+
+// Modeless mount management, independent of either file-manager panel.
+class QtArchiveMountManager final : public QDialog {
+    Q_DECLARE_TR_FUNCTIONS(QtArchiveMountManager)
+    QWidget *owner_;
+    QList<QtArchiveMountSession *> sessions_;
+    QHash<QtArchiveMountSession *, QStringList> issues_;
+    QTreeWidget *list_;
+    QPlainTextEdit *details_;
+    QPushButton *open_, *copy_, *unmount_, *force_;
+    bool closingOwner_ = false;
+    QtArchiveMountSession *selected() const;
+    void refresh();
+    void updateDetails();
+    void unmountSelected(bool force);
+    void showManager();
+    void retranslate();
+
+  protected:
+    void changeEvent(QEvent *event) override;
+
+  public:
+    explicit QtArchiveMountManager(QWidget *owner);
+    void mount(IUnknown *resource, const QString &label, const QString &archivePassword);
+    bool canCloseOwner();
+};

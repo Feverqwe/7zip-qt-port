@@ -1,5 +1,40 @@
 # External tools and temporary resources
 
+## Extraction for mounted access
+
+The mount command applies to the currently opened container and retains its reader
+independently of panel navigation. Its contextual setup shows the source, temporary
+cache limit and optional archive password. Cancel starts no mount. Mount management
+is modeless: source/path/status rows, read-only details and errors, Open Folder,
+Copy Path and Unmount. Closing this manager hides it without disconnecting mounts.
+Closing the owner window offers Unmount and Close or Cancel. A busy unmount keeps
+the reader/server alive, leaves the owner open and offers an explicit force option.
+Keep mount actions together above the standard Close footer so that the complete
+action group, including force unmount, fits the compact window in EN/RU.
+These new commands have no original Windows7zFM resource counterpart.
+
+Before extracting an entry for a read-only mount, show its source, relative path
+and decoded size. Explain that the temporary cache is needed for external access
+and that the source remains read-only. Treat names as plain text. Extract permits
+only this impending extraction; Cancel, Escape, Return on the initial default,
+closing the prompt and destroying it all decline. Do not offer persistent blanket
+consent. Existing cache reads and direct seekable reads need no prompt.
+
+Unverified recoverable output needs a second explicit choice. Explain the risk
+of incomplete data and checksum errors; accepting extraction does not accept
+unverified data. Keep the warning visible in mount details when such data is used.
+
+On macOS the confirmation is contextual to the owning window and uses standard
+dialog controls. Keep actions visible and separate at normal and compact widths;
+long Unicode paths must wrap without concealing the decision. The caller must
+close pending prompts when their mount session stops. Backend cancellation must
+release a reader waiting for consent.
+
+`mount_extraction_prompt` checks decisions and writes current widget geometry.
+`archive_readonly_view` and `archive_mount_transport` check that denial produces
+no decoded data, cache eviction requires fresh consent and cancellation releases
+a pending decision. These are feature checks, not Windows visual-parity evidence.
+
 [Все UI-спецификации](../ui-layout-contracts.md). Разделы сохраняют исходные требования,
 якоря и границы датированных свидетельств. Новые результаты проверок —
 в [source audit](../upstream-port-audit.md).

@@ -4,6 +4,22 @@
 class CommandPolicyRuntimeTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
   private slots:
+    void filesystemCannotForgeMountCapability() {
+        QTemporaryDir fixture;
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(fixture.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        auto *mount = action(window, "mountReadOnlyAction");
+        QVERIFY(!mount->isEnabled());
+        mount->setEnabled(true);
+        mount->trigger();
+        QVERIFY(!window.findChild<QDialog *>("archiveMountSettings"));
+        QVERIFY(!window.findChild<QDialog *>("archiveMountManager"));
+        QCOMPARE(address->text(), QFileInfo(fixture.path()).canonicalFilePath());
+        QCOMPARE(backend.extractCalls, 0);
+    }
     void insideUsesFocusedFolderRatherThanAnotherSelectedFile() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

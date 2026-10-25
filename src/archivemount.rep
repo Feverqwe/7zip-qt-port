@@ -1,0 +1,16 @@
+#include <QList>
+#include <QByteArray>
+
+POD MountTreeEntry(quint64 id, quint64 parent, quint64 size, quint64 modified, QString name, bool directory)
+POD MountTreeRead(quint32 result, qint32 operation, QByteArray data, QString error)
+
+class ArchiveMount
+{
+    PROP(QList<MountTreeEntry> entries={} CONSTANT)
+    PROP(QString user="" CONSTANT)
+    PROP(QString password="" CONSTANT)
+    PROP(QString share="Sevenzip" CONSTANT)
+    SLOT(MountTreeRead read(quint64 id, quint64 offset, quint32 length))
+    SLOT(void listening(quint16 port))
+    SLOT(void failed(QString error))
+}

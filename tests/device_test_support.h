@@ -4,6 +4,7 @@
 #include "deviceaccess.h"
 #include <QByteArray>
 #include <QString>
+#include <atomic>
 
 namespace {
 class CDeviceInput final : public IInStream, public CMyUnknownImp {
@@ -12,7 +13,7 @@ class CDeviceInput final : public IInStream, public CMyUnknownImp {
     UInt64 position_ = 0;
 
   public:
-    bool Disconnected = false;
+    std::atomic_bool Disconnected{false};
     UInt64 FarthestRead = 0;
     explicit CDeviceInput(const QByteArray &data) {
         auto *input = new CBufInStream;

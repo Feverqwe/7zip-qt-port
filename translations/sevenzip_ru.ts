@@ -6549,4 +6549,437 @@ Use `Revert` to recover timestamp.</source>
             <translation>Спрашивать перед открытием неизвестных типов файлов</translation>
         </message>
     </context>
+    <context>
+        <name>QtArchiveMountManager</name>
+        <message>
+            <source>Connection needs recovery</source>
+            <translation>Нужно восстановить управление подключением</translation>
+        </message>
+        <message>
+            <location filename="../src/qtfilemanagermountcommands.cpp" line="+12" />
+            <source>Mount read-only…</source>
+            <translation>Подключить только для чтения…</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>Read-only mounts…</source>
+            <translation>Подключения только для чтения…</translation>
+        </message>
+        <message>
+            <location filename="../src/qtarchivemountmanagerdialog.cpp" line="+17" />
+            <location line="+44" />
+            <source>Read-only mounts</source>
+            <translation>Подключения только для чтения</translation>
+        </message>
+        <message>
+            <location line="-39" />
+            <location line="+40" />
+            <source>Source</source>
+            <translation>Источник</translation>
+        </message>
+        <message>
+            <location line="-40" />
+            <location line="+40" />
+            <source>Mount path</source>
+            <translation>Путь подключения</translation>
+        </message>
+        <message>
+            <location line="-40" />
+            <location line="+40" />
+            <source>Status</source>
+            <translation>Состояние</translation>
+        </message>
+        <message>
+            <location line="-31" />
+            <location line="+32" />
+            <source>Mount details</source>
+            <translation>Сведения о подключении</translation>
+        </message>
+        <message>
+            <location line="-29" />
+            <location line="+30" />
+            <source>Open Folder</source>
+            <translation>Открыть папку</translation>
+        </message>
+        <message>
+            <location line="-29" />
+            <location line="+30" />
+            <source>Copy Path</source>
+            <translation>Копировать путь</translation>
+        </message>
+        <message>
+            <location line="-29" />
+            <location line="+30" />
+            <source>Unmount</source>
+            <translation>Отключить</translation>
+        </message>
+        <message>
+            <location line="-29" />
+            <location line="+30" />
+            <source>Force Unmount…</source>
+            <translation>Принудительно…</translation>
+        </message>
+        <message>
+            <location line="+25" />
+            <source>Read-only access</source>
+            <translation>Только для чтения</translation>
+        </message>
+        <message>
+            <location line="+14" />
+            <source>Force unmount</source>
+            <translation>Принудительное отключение</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Disconnect this mount even if another application is using it? Open files may stop working.</source>
+            <translation>Отключить подключение, даже если его использует другое приложение? Открытые файлы могут стать недоступны.</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <source>Force Unmount</source>
+            <translation>Отключить принудительно</translation>
+        </message>
+        <message>
+            <location filename="../src/qtarchivemountmanager.cpp" line="+20" />
+            <location line="+11" />
+            <location filename="../src/qtmountsettings.cpp" line="+18" />
+            <source>Mount read-only</source>
+            <translation>Подключение только для чтения</translation>
+        </message>
+        <message>
+            <location filename="../src/qtmountsettings.cpp" line="+4" />
+            <source>Expose this container to other applications through a local read-only mount. Files that require extraction will ask for confirmation individually.</source>
+            <translation>Откройте другим приложениям доступ к этому контейнеру через локальное подключение только для чтения. Перед извлечением каждого файла потребуется отдельное подтверждение.</translation>
+        </message>
+        <message>
+            <location line="+16" />
+            <source> MiB</source>
+            <translation> МиБ</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Temporary cache limit:</source>
+            <translation>Лимит временного кеша:</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Archive password (if needed):</source>
+            <translation>Пароль архива (если нужен):</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>Mount</source>
+            <translation>Подключить</translation>
+        </message>
+        <message>
+            <location filename="../src/qtarchivemountmanager.cpp" line="+1" />
+            <source>The bundled SMB server is missing or cannot be executed.</source>
+            <translation>Встроенный SMB-сервер отсутствует или не запускается.</translation>
+        </message>
+        <message>
+            <location line="+9" />
+            <source>Read failed: %1</source>
+            <translation>Ошибка чтения: %1</translation>
+        </message>
+        <message>
+            <location line="+24" />
+            <source>Preparing</source>
+            <translation>Подготовка</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Mounting</source>
+            <translation>Подключение</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Mounted read-only</source>
+            <translation>Подключено только для чтения</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Unmounting</source>
+            <translation>Отключение</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Stopping</source>
+            <translation>Завершение</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Disconnected</source>
+            <translation>Отключено</translation>
+        </message>
+        <message>
+            <location line="+13" />
+            <source>%1 — attention required</source>
+            <translation>%1 — требуется внимание</translation>
+        </message>
+        <message>
+            <location line="+24" />
+            <source>Disconnect mounts before closing</source>
+            <translation>Отключение перед закрытием</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Unmount the active connections and close this window?</source>
+            <translation>Отключить активные подключения и закрыть окно?</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Unmount and Close</source>
+            <translation>Отключить и закрыть</translation>
+        </message>
+        <message>
+            <location line="+10" />
+            <source>Unverified data: %1</source>
+            <translation>Непроверенные данные: %1</translation>
+        </message>
+    </context>
+    <context>
+        <name>QtArchiveMountSession</name>
+        <message>
+            <location filename="../src/qtarchivemountsession.cpp" line="+15" />
+            <source>The system returned no mount path.</source>
+            <translation>Система не сообщила путь подключения.</translation>
+        </message>
+        <message>
+            <location line="+10" />
+            <source>Could not unmount. Close files using this mount and retry. %1</source>
+            <translation>Не удалось отключить. Закройте файлы, открытые через это подключение, и повторите попытку. %1</translation>
+        </message>
+        <message>
+            <location line="+13" />
+            <source>Could not start the bundled SMB server: %1</source>
+            <translation>Не удалось запустить встроенный SMB-сервер: %1</translation>
+        </message>
+        <message>
+            <location line="+5" />
+            <source>The SMB server stopped unexpectedly.</source>
+            <translation>SMB-сервер неожиданно завершил работу.</translation>
+        </message>
+        <message>
+            <location line="+38" />
+            <source>Could not create a private mount directory.</source>
+            <translation>Не удалось создать защищённую папку подключения.</translation>
+        </message>
+        <message>
+            <location line="+33" />
+            <source>The SMB server did not become ready.</source>
+            <translation>SMB-сервер не завершил подготовку.</translation>
+        </message>
+    </context>
+    <context>
+        <name>QtMountExtractionPrompt</name>
+        <message>
+            <location filename="../src/qtmountextractionprompt.cpp" line="+11" />
+            <source>Extract for mounted access</source>
+            <translation>Извлечение для подключения</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <source>Extract this file into the temporary mount cache?</source>
+            <translation>Извлечь файл во временный кеш подключения?</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>%1
+%2
+Size: %3
+
+This file requires extraction before another application can read it. The source remains read-only.</source>
+            <translation>%1
+%2
+Размер: %3
+
+Чтобы другое приложение могло прочитать файл, его нужно извлечь. Исходные данные останутся доступны только для чтения.</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <source>Extract</source>
+            <translation>Извлечь</translation>
+        </message>
+        <message>
+            <location filename="../src/qtmountextractionprompt.cpp" line="+13" />
+            <source>Use unverified extracted data</source>
+            <translation>Использовать непроверенные извлечённые данные</translation>
+        </message>
+        <message>
+            <location line="+9" />
+            <source>The reader reported damaged or incomplete data. Use the readable output for this mount?</source>
+            <translation>Данные повреждены или неполны. Использовать доступную часть в этом подключении?</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <source>%1
+%2
+Available data: %3
+
+Data may be incomplete or have checksum errors. This choice does not repair or verify it. The source remains read-only.</source>
+            <translation>%1
+%2
+Доступно данных: %3
+
+Данные могут быть неполными или содержать ошибки контрольной суммы. Этот выбор не исправляет и не проверяет их. Источник остаётся доступным только для чтения.</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Use Unverified Data</source>
+            <translation>Использовать данные</translation>
+        </message>
+    </context>
+    <context>
+        <name>QtNativeMountJob</name>
+        <message>
+            <source>The mount belongs to another session and has been preserved.</source>
+            <translation>Том принадлежит другому сеансу и оставлен подключённым.</translation>
+        </message>
+        <message>
+            <source>Could not inspect the system mount table.</source>
+            <translation>Не удалось прочитать системный список подключённых томов.</translation>
+        </message>
+        <message>
+            <location filename="../src/qtnativemountjob_linux.cpp" line="+58" />
+            <source>Could not unmount the read-only volume: %1</source>
+            <translation>Не удалось отключить том только для чтения: %1</translation>
+        </message>
+        <message>
+            <location line="+10" />
+            <source>The system CIFS client could not mount the volume: %1
+Check that your distribution's CIFS support and cifs-utils are installed.</source>
+            <translation>Системный клиент CIFS не смог подключить том: %1
+Проверьте, что в вашем дистрибутиве установлены поддержка CIFS и cifs-utils.</translation>
+        </message>
+        <message>
+            <location line="+24" />
+            <location filename="../src/qtnativemountjob_win.cpp" line="+137" />
+            <source>A system mount operation is already active.</source>
+            <translation>Системная операция подключения уже выполняется.</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Install system CIFS support and cifs-utils with your distribution's package manager, then retry. Sevenzip does not provide a filesystem driver.</source>
+            <translation>Установите системную поддержку CIFS и cifs-utils через менеджер пакетов вашего дистрибутива и повторите попытку. Sevenzip не устанавливает собственный драйвер файловой системы.</translation>
+        </message>
+        <message>
+            <location line="+11" />
+            <source>The private mount channel does not belong to the requesting user, or administrator authorization is unavailable.</source>
+            <translation>Канал подключения не принадлежит пользователю, который запросил подключение, или разрешение администратора недоступно.</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Could not identify the requesting user's primary group.</source>
+            <translation>Не удалось определить основную группу пользователя.</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Could not create a protected mount directory: %1</source>
+            <translation>Не удалось создать защищённую папку подключения: %1</translation>
+        </message>
+        <message>
+            <location line="+9" />
+            <source>Could not create the mountpoint: %1</source>
+            <translation>Не удалось создать точку подключения: %1</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Could not restrict the mountpoint to the requesting user: %1</source>
+            <translation>Не удалось ограничить доступ к точке подключения текущим пользователем: %1</translation>
+        </message>
+        <message>
+            <location line="+14" />
+            <source>Could not create private credentials for the system CIFS client.</source>
+            <translation>Не удалось подготовить защищённые учётные данные для системного клиента CIFS.</translation>
+        </message>
+        <message>
+            <location line="+25" />
+            <source>The system umount command is unavailable.</source>
+            <translation>Системная команда umount недоступна.</translation>
+        </message>
+        <message>
+            <location filename="../src/qtnativemountjob_win.cpp" line="-35" />
+            <source>The system SMB client failed: %1</source>
+            <translation>Ошибка системного клиента SMB: %1</translation>
+        </message>
+        <message>
+            <location line="+15" />
+            <source>The system SMB client returned an invalid drive path.</source>
+            <translation>Системный клиент SMB вернул неверный путь диска.</translation>
+        </message>
+        <message>
+            <location line="+26" />
+            <source>Authorize mounting with the same Windows account that opened Sevenzip.</source>
+            <translation>Разрешите подключение с той же учётной записью Windows, в которой запущен Sevenzip.</translation>
+        </message>
+        <message>
+            <location filename="../src/qtnativemountjob_mac.mm" line="+58" />
+            <source>The private mount directory is unavailable.</source>
+            <translation>Защищённая папка подключения недоступна.</translation>
+        </message>
+    </context>
+    <context>
+        <name>QtSmbMountPlatform</name>
+        <message>
+            <location filename="../src/qtsmbmountplatform_remote.cpp" line="+56" />
+            <location line="+121" />
+            <source>The system mount helper stopped unexpectedly.</source>
+            <translation>Системный помощник подключения неожиданно завершился.</translation>
+        </message>
+        <message>
+            <location line="-88" />
+            <source>Mounting on a free SMB port requires Windows 11 24H2 or Windows Server 2025 or newer and administrator permission.</source>
+            <translation>Для подключения через свободный порт SMB нужна Windows 11 24H2, Windows Server 2025 или более новая версия, а также разрешение администратора.</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>System CIFS support is required. Install cifs-utils with your distribution's package manager, then retry. Sevenzip does not provide a filesystem driver.</source>
+            <translation>Нужна системная поддержка CIFS. Установите cifs-utils через менеджер пакетов вашего дистрибутива и повторите попытку. Sevenzip не устанавливает собственный драйвер файловой системы.</translation>
+        </message>
+        <message>
+            <location line="+14" />
+            <source>A system mount operation is already active.</source>
+            <translation>Системная операция подключения уже выполняется.</translation>
+        </message>
+        <message>
+            <location line="+5" />
+            <source>Could not identify the current user for private mount access.</source>
+            <translation>Не удалось определить текущего пользователя для ограничения доступа к подключению.</translation>
+        </message>
+        <message>
+            <location line="+22" />
+            <source>Could not create the private system-mount channel.</source>
+            <translation>Не удалось создать защищённый канал системного подключения.</translation>
+        </message>
+        <message>
+            <location line="+35" />
+            <source>Administrator authorization was cancelled or unavailable.</source>
+            <translation>Разрешение администратора отменено или недоступно.</translation>
+        </message>
+        <message>
+            <location line="+30" />
+            <source>Administrator authorization is required, but no system authorization helper is available.</source>
+            <translation>Нужно разрешение администратора, но системный помощник авторизации недоступен.</translation>
+        </message>
+        <message>
+            <location line="+13" />
+            <source>The system mount helper is unavailable.</source>
+            <translation>Системный помощник подключения недоступен.</translation>
+        </message>
+        <message>
+            <source>The bundled system mount helper is missing or cannot be executed.</source>
+            <translation>Встроенный системный помощник подключения отсутствует или не запускается.</translation>
+        </message>
+        <message>
+            <source>Administrator authorization is required. Enable your system's PolicyKit helper (pkexec), or ask your administrator to authorize the Sevenzip mount helper, then retry.</source>
+            <translation>Нужно разрешение администратора. Включите системный помощник PolicyKit (pkexec) или попросите администратора разрешить запуск помощника подключения Sevenzip, затем повторите попытку.</translation>
+        </message>
+    </context>
+    <context>
+        <name>ArchiveReadOnlyView</name>
+        <message>
+            <source>Limited access was allowed for this device. Files may be missing, outdated or unreadable.</source>
+            <translation>Для этого устройства разрешён ограниченный доступ. Файлы могут отсутствовать, быть устаревшими или нечитаемыми.</translation>
+        </message>
+    </context>
 </TS>

@@ -106,14 +106,25 @@ HRESULT CreateArchiveItemStream(IUnknown *resource, UInt32 index, ISequentialInS
         return E_INVALIDARG;
     *stream = nullptr;
     auto *owner = dynamic_cast<QtArchiveFileResource *>(resource);
-    IInArchive *native = owner ? owner->NativeItemProperties() : nullptr;
+    if (!owner || !owner->NativeItemProperties())
+        return S_OK;
+    return CreateArchiveItemStream(resource, owner->NativeReaderLease(), owner->ContainerDepth(),
+                                   index, stream, request);
+    COM_TRY_END
+}
+
+HRESULT CreateArchiveItemStream(IUnknown *resource, std::shared_ptr<ArchiveNativeOpen> lease,
+                                UInt64 depth, UInt32 index, ISequentialInStream **stream,
+                                IProgress *request) {
+    COM_TRY_BEGIN
+    if (!stream)
+        return E_INVALIDARG;
+    *stream = nullptr;
+    IInArchive *native = lease ? lease->arc().Archive.Interface() : nullptr;
     CMyComPtr<IInArchiveGetStream> streams;
     if (!native || native->QueryInterface(IID_IInArchiveGetStream, (void **)&streams) != S_OK ||
         !streams)
         return S_OK;
-    auto lease = owner->NativeReaderLease();
-    if (!lease)
-        return E_FAIL;
     std::lock_guard<std::mutex> lock(lease->itemStreamMutex());
     ArchiveInputReadRequestScope scope(lease->inputStream(), request);
     if (request) {
@@ -123,7 +134,7 @@ HRESULT CreateArchiveItemStream(IUnknown *resource, UInt32 index, ISequentialInS
     const HRESULT result = streams->GetStream(index, &source);
     if (source) {
         CMyComPtr<ISequentialInStream> retained =
-            new CArchiveItemStream(resource, std::move(lease), source, owner->ContainerDepth());
+            new CArchiveItemStream(resource, std::move(lease), source, depth);
         *stream = retained.Detach();
     }
     return result;

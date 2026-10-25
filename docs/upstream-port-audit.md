@@ -57,6 +57,10 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Локальный read-only SMB](upstream-port-audit/readonly-smb.md)
+  — исследовательский fork libsmb2, исходные blockers, native macOS probes и
+  границы незавершённой reader/UI-интеграции.
+
 - [Системные charset services](upstream-port-audit/isofs-linux.md#system-charset-services)
   — удаление Linux NLS tables, платформенные различия и сохранение FAT CP437.
 

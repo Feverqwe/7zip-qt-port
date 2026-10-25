@@ -3,22 +3,31 @@
 #include "qtfilemanagercommandservices.h"
 #include <QHash>
 #include <QList>
+#include <QPointer>
 #include <functional>
 
 class QAction;
 class MainWindow;
 class CPanel;
+class QtArchiveMountManager;
 
 // Qt presentation and existing transport consumers for CApp's native entry.
 // Native menu policy is recomputed for execution, never read from QAction state.
 class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
   public:
-    enum Extension : unsigned { Back = 1000, OpenArchivePicker, OpenDevicePicker };
+    enum Extension : unsigned {
+        Back = 1000,
+        OpenArchivePicker,
+        OpenDevicePicker,
+        MountReadOnly,
+        ManageMounts
+    };
     explicit QtFileManagerCommands(MainWindow &window);
     void AttachActions();
     void RefreshActions();
     void RefreshViewActions();
     void ActivateItems(Qt::KeyboardModifiers modifiers);
+    bool CanCloseMounts();
     bool CanExecuteCommand(unsigned id) override;
     bool IsShiftDown() const override;
     void InvokePluginCommand(unsigned id) override;
@@ -79,6 +88,10 @@ class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
     void SetBookmark(unsigned index) override;
 
   private:
+    QPointer<QtArchiveMountManager> mounts_;
+    void AttachMountActions();
+    void MountReadOnlyContainer();
+    void ShowMounts();
     void OpenDevice();
     struct TransportCapabilities {
         bool filesystem = false, archive = false, writable = false, mutationWritable = false;

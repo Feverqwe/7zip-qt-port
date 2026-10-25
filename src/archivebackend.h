@@ -92,6 +92,8 @@ struct ExtractionOptions {
     CBoolPair NtSecurity;
 };
 
+class ArchiveReadOnlyView;
+
 class ArchiveBackend : public QObject {
     Q_OBJECT
 
@@ -109,6 +111,19 @@ class ArchiveBackend : public QObject {
         return std::atomic_load(&codecCatalog_);
     }
     ArchiveBackend *createIndependentBackend(QObject *parent = nullptr) const;
+    // Worker-only snapshot/read service, retaining the exact opened resource.
+    static HRESULT
+    createReadOnlyView(IUnknown *resource, quint64 cacheLimit, const QString &password,
+                       std::shared_ptr<ArchiveReadOnlyView> &view, QString &error,
+                       std::function<bool(const QString &, quint64)> extractionConsent = {},
+                       std::function<bool(const QString &, quint64, Int32)> recoveryConsent = {});
+    // Capture the panel generation on its owner thread; prepare/enumerate on a worker.
+    static std::shared_ptr<ArchiveReadOnlyView>
+    retainReadOnlyView(IUnknown *resource, quint64 cacheLimit, const QString &password,
+                       std::function<bool(const QString &, quint64)> extractionConsent = {},
+                       std::function<bool(const QString &, quint64, Int32)> recoveryConsent = {});
+    static HRESULT prepareReadOnlyView(const std::shared_ptr<ArchiveReadOnlyView> &view,
+                                       QString &error);
     virtual bool discoverCodecCatalog(const QString &module = {});
     // GUI-thread state; opening workers request it through their manager.
     bool discoveringCodecs() const { return codecDiscoveryActive_; }
