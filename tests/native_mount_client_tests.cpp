@@ -39,6 +39,7 @@ class NativeMountClientTests final : public QObject {
         QTest::addColumn<int>("mode");
         QTest::newRow("explicit unmount") << 0;
         QTest::newRow("owner channel lost") << 1;
+        QTest::newRow("case-distinct files") << 3;
 #if defined(Q_OS_MACOS) || defined(Q_OS_WIN)
         QTest::newRow("broker killed then recovered") << 2;
 #endif
@@ -58,7 +59,10 @@ class NativeMountClientTests final : public QObject {
         QVERIFY(target.isValid());
         target.setAutoRemove(false);
         QProcess server;
-        server.start(QStringLiteral(SEVENZIP_SMB_PROBE), {"0"});
+        QStringList arguments{"0"};
+        if (mode == 3)
+            arguments.append("--case-names");
+        server.start(QStringLiteral(SEVENZIP_SMB_PROBE), arguments);
         QVERIFY(server.waitForStarted(10000));
         QByteArray diagnostics;
         QRegularExpression ready("loopback SMB fixture ready on port ([0-9]+)");
@@ -105,9 +109,23 @@ class NativeMountClientTests final : public QObject {
         QVERIFY(data.seek(100003));
         QByteArray expected(4096, Qt::Uninitialized);
         for (int i = 0; i < expected.size(); ++i)
-            expected[i] = char((100003 + i) % 251);
+            expected[i] = char((100003 + i + (mode == 3 ? 3 : 0)) % 251);
         QCOMPARE(data.read(4096), expected);
         data.close();
+        if (mode == 3) {
+            const QDir directory(root.filePath("xtables"));
+            const auto names = directory.entryList(QDir::Files);
+            QVERIFY(names.contains("libip6t_hl.so"));
+            QVERIFY(names.contains("libip6t_HL.so"));
+            for (int repeat = 0; repeat < 3; ++repeat) {
+                for (const auto &name : {"libip6t_hl.so", "libip6t_HL.so"}) {
+                    QFile entry(directory.filePath(name));
+                    QVERIFY(entry.open(QIODevice::ReadOnly));
+                    QCOMPARE(entry.read(1),
+                             QByteArray(1, name == QByteArray("libip6t_hl.so") ? 6 : 7));
+                }
+            }
+        }
         QFile forbidden(root.filePath("new.bin"));
         QVERIFY(!forbidden.open(QIODevice::WriteOnly));
         if (mode == 1) {

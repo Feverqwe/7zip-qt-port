@@ -7,10 +7,13 @@ independently of panel navigation. Its contextual setup shows the source, tempor
 cache limit and optional archive password. Cancel starts no mount. Mount management
 is modeless: source/path/status rows, read-only details and errors, Open Folder,
 Copy Path and Unmount. Closing this manager hides it without disconnecting mounts.
+Remove from List is enabled only for a stopped session, including a failed mount.
+It removes the selected record and its details without touching source files.
+Keep this list action in the footer alongside Close, separate from active-mount actions.
 Closing the owner window offers Unmount and Close or Cancel. A busy unmount keeps
 the reader/server alive, leaves the owner open and offers an explicit force option.
-Keep mount actions together above the standard Close footer so that the complete
-action group, including force unmount, fits the compact window in EN/RU.
+Group file-access and disconnect actions into separate rows above the standard
+Close footer so that every action, including force unmount, fits the compact window in EN/RU.
 These new commands have no original Windows7zFM resource counterpart.
 
 Before extracting an entry for a read-only mount, show its source, relative path

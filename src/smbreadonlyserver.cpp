@@ -8,9 +8,7 @@
 #include <limits>
 
 namespace {
-QString Key(const QString &path) {
-    return path.normalized(QString::NormalizationForm_C).toCaseFolded();
-}
+QString Key(const QString &path) { return path.normalized(QString::NormalizationForm_C); }
 template <typename Work> int Guard(Work work) noexcept {
     try {
         return work();

@@ -33,8 +33,9 @@ QtArchiveMountManager::QtArchiveMountManager(QWidget *owner) : QDialog(owner), o
     auto *buttons = new QDialogButtonBox(this);
     open_ = buttons->addButton(tr("Open Folder"), QDialogButtonBox::ActionRole);
     copy_ = buttons->addButton(tr("Copy Path"), QDialogButtonBox::ActionRole);
-    unmount_ = buttons->addButton(tr("Unmount"), QDialogButtonBox::ActionRole);
-    force_ = buttons->addButton(tr("Force Unmount…"), QDialogButtonBox::ActionRole);
+    auto *disconnectButtons = new QDialogButtonBox(this);
+    unmount_ = disconnectButtons->addButton(tr("Unmount"), QDialogButtonBox::ActionRole);
+    force_ = disconnectButtons->addButton(tr("Force Unmount…"), QDialogButtonBox::ActionRole);
     force_->setObjectName("forceUnmountButton");
     unmount_->setObjectName("unmountButton");
     copy_->setObjectName("copyMountPathButton");
@@ -42,8 +43,13 @@ QtArchiveMountManager::QtArchiveMountManager(QWidget *owner) : QDialog(owner), o
     for (auto *button : {open_, copy_, unmount_, force_})
         button->setAutoDefault(false);
     layout->addWidget(buttons);
+    layout->addWidget(disconnectButtons);
     auto *footer = new QDialogButtonBox(QDialogButtonBox::Close, this);
+    remove_ = footer->addButton(tr("Remove from List"), QDialogButtonBox::ActionRole);
+    remove_->setObjectName("removeMountButton");
+    remove_->setAutoDefault(false);
     layout->addWidget(footer);
+    connect(remove_, &QPushButton::clicked, this, &QtArchiveMountManager::removeSelected);
     connect(footer, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(list_, &QTreeWidget::itemSelectionChanged, this, &QtArchiveMountManager::updateDetails);
     connect(open_, &QPushButton::clicked, this, [this] {
@@ -67,6 +73,7 @@ void QtArchiveMountManager::retranslate() {
     copy_->setText(tr("Copy Path"));
     unmount_->setText(tr("Unmount"));
     force_->setText(tr("Force Unmount…"));
+    remove_->setText(tr("Remove from List"));
     refresh();
 }
 void QtArchiveMountManager::changeEvent(QEvent *event) {
@@ -89,6 +96,7 @@ void QtArchiveMountManager::updateDetails() {
                          (mounted || status == QtArchiveMountSession::Status::Preparing ||
                           status == QtArchiveMountSession::Status::Mounting));
     force_->setVisible(mounted && session && !session->error().isEmpty());
+    remove_->setEnabled(session && status == QtArchiveMountSession::Status::Stopped);
     QStringList details;
     if (session) {
         details << session->label() << session->path() << tr("Read-only access");
@@ -116,6 +124,20 @@ void QtArchiveMountManager::unmountSelected(bool force) {
             return;
     }
     session->unmount(force);
+}
+void QtArchiveMountManager::removeSelected() {
+    auto *session = selected();
+    if (!session || session->status() != QtArchiveMountSession::Status::Stopped)
+        return;
+    const int row = sessions_.indexOf(session);
+    sessions_.removeAt(row);
+    issues_.remove(session);
+    disconnect(session, nullptr, this, nullptr);
+    delete list_->takeTopLevelItem(row);
+    session->deleteLater();
+    if (!sessions_.isEmpty())
+        list_->setCurrentItem(list_->topLevelItem(qMin(row, int(sessions_.size()) - 1)));
+    refresh();
 }
 void QtArchiveMountManager::showManager() {
     show();

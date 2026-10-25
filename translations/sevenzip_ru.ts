@@ -6552,6 +6552,10 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>QtArchiveMountManager</name>
         <message>
+            <source>Remove from List</source>
+            <translation>Убрать из списка</translation>
+        </message>
+        <message>
             <source>Connection needs recovery</source>
             <translation>Нужно восстановить управление подключением</translation>
         </message>

@@ -58,6 +58,43 @@ class ArchiveReadOnlyViewTests final : public QObject {
         QTest::newRow("current directory") << QByteArray(".");
         QTest::newRow("repeated current directory") << QByteArray("./.");
     }
+    void caseDistinctEntries_data() { retainedRanges_data(); }
+    void caseDistinctEntries() {
+        QFETCH(QString, format);
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath("case." + format);
+        const QList<NativeArchiveFixture::Item> items{
+            {"usr/lib/xtables/libip6t_hl.so", "lowercase"},
+            {"usr/lib/xtables/libip6t_HL.so", "uppercase"},
+            {"Folder/data.bin", "first directory"},
+            {"folder/data.bin", "second directory"}};
+        QVERIFY(NativeArchiveFixture::Write(path, items, format));
+        CMyComPtr<IUnknown> resource;
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QCOMPARE(Worker([&] { return Open(path, format, resource, reader); }), S_OK);
+        std::shared_ptr<ArchiveReadOnlyView> view;
+        QString error;
+        QCOMPARE(Worker([&] {
+                     return ArchiveBackend::createReadOnlyView(
+                         resource, 4096, {}, view, error,
+                         [](const QString &, quint64) { return true; });
+                 }),
+                 S_OK);
+        for (const auto &item : items) {
+            quint64 parent = 1;
+            for (const auto &component : item.Path.split(u'/')) {
+                quint64 found = 0;
+                for (const auto &entry : view->entries())
+                    if (entry.Parent == parent && entry.Name == component)
+                        found = entry.Id;
+                QVERIFY(found);
+                parent = found;
+            }
+            const auto result = Worker([&] { return view->read(parent, 0, 1024); });
+            QCOMPARE(result.Result, S_OK);
+            QCOMPARE(result.Data, item.Bytes);
+        }
+    }
     void currentDirectoryEntries() {
         QFETCH(QByteArray, root);
         QTemporaryDir fixture;
@@ -378,7 +415,7 @@ class ArchiveReadOnlyViewTests final : public QObject {
         QTest::newRow("parent after current directory") << QStringList{"./../outside.bin"};
         QTest::newRow("current directory collision") << QStringList{"a/./data.bin", "a/data.bin"};
         QTest::newRow("absolute current directory") << QStringList{"/./outside.bin"};
-        QTest::newRow("case collision") << QStringList{"DATA.bin", "data.bin"};
+        QTest::newRow("duplicate file") << QStringList{"data.bin", "data.bin"};
         QTest::newRow("stream syntax") << QStringList{"data:stream.bin"};
     }
     void rejectsUnsafeOrAmbiguousNamespace() {

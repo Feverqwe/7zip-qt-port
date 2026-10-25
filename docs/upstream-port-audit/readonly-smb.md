@@ -166,6 +166,26 @@ Physical-device authorization/removal through a native mounted path is unverifie
 
 ## Runtime evidence
 
+### Case-distinct entries
+
+The archive projection and server namespace preserve case-distinct files and
+directories. The server advertises case-sensitive search and uses it for opens
+and directory patterns. It no longer folds paths to lowercase for identity;
+canonical Unicode normalization and rejection of duplicate or unsafe paths stay
+in place. This corrects local integration, without importing or changing an
+archive reader or the SMB library. Backend regressions read different bytes from
+case-distinct TAR/ZIP files and directories. The native-client fixture alternates
+opens of `libip6t_hl.so` and `libip6t_HL.so` with different contents, so an alias
+or client cache substitution is detected.
+
+2026-10-25: this native-client case passes on macOS (NetFS), Windows 11
+(restricted native global mapping) and Linux (`mount.cifs`), alongside the
+existing detach/owner-loss scenarios. No system case-handling or SMB security
+policy was changed. The advertised search capability follows
+[FileFsAttributeInformation](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_fs_attribute_information).
+The CPIO regressions also declare their external reader runtime dependency,
+so focused builds do not depend on modules left by an earlier application build.
+
 ### CPIO current-directory entries
 
 The mount namespace accepts explicit current-directory records and `./` path

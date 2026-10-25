@@ -36,8 +36,7 @@ int SmbReadOnlyServer::State::directory(smb2_context *context,
     QString pattern = opened->Pattern;
     if (pattern.isEmpty() || pattern == "*.*")
         pattern = QStringLiteral("*");
-    const QRegularExpression match(QRegularExpression::wildcardToRegularExpression(pattern),
-                                   QRegularExpression::CaseInsensitiveOption);
+    const QRegularExpression match(QRegularExpression::wildcardToRegularExpression(pattern));
     if (!match.isValid())
         return status(SMB2_STATUS_INVALID_PARAMETER);
     auto &output = client(context).Directory;
@@ -112,7 +111,7 @@ int SmbReadOnlyServer::State::query(smb2_context *context, smb2_query_info_reque
             info.Attributes.filesystem_name_length = 8;
             info.Attributes.maximum_component_name_length = 255;
             info.Attributes.filesystem_attributes =
-                0x00080006; // Read-only, Unicode, preserved names.
+                0x00080007; // Read-only, Unicode, preserved names, case-sensitive search.
             reply->output_buffer_length = sizeof(info.Attributes);
             return 0;
         case SMB2_FILE_FS_SIZE_INFORMATION:

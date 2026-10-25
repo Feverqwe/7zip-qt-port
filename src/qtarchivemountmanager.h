@@ -18,12 +18,13 @@ class QtArchiveMountManager final : public QDialog {
     QHash<QtArchiveMountSession *, QStringList> issues_;
     QTreeWidget *list_;
     QPlainTextEdit *details_;
-    QPushButton *open_, *copy_, *unmount_, *force_;
+    QPushButton *open_, *copy_, *unmount_, *force_, *remove_;
     bool closingOwner_ = false;
     QtArchiveMountSession *selected() const;
     void refresh();
     void updateDetails();
     void unmountSelected(bool force);
+    void removeSelected();
     void showManager();
     void retranslate();
 

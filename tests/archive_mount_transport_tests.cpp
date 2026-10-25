@@ -402,6 +402,10 @@ class ArchiveMountTransportTests final : public QObject {
         auto *copy = manager.findChild<QPushButton *>("copyMountPathButton");
         QTRY_VERIFY_WITH_TIMEOUT(copy->isEnabled(), 15000);
         copy->click();
+        auto *remove = manager.findChild<QPushButton *>("removeMountButton");
+        QVERIFY(!remove->isEnabled());
+        remove->click();
+        QCOMPARE(manager.findChild<QTreeWidget *>("mountList")->topLevelItemCount(), 1);
         const QString mounted = QApplication::clipboard()->text();
         const auto bytes = ClientWork([&] {
             QFile file(QDir(mounted).filePath(name));
@@ -420,6 +424,7 @@ class ArchiveMountTransportTests final : public QObject {
         manager.findChild<QPushButton *>("unmountButton")->click();
         QTRY_VERIFY_WITH_TIMEOUT(copy->isEnabled(), 15000);
         QVERIFY(manager.findChild<QPushButton *>("forceUnmountButton")->isVisible());
+        QVERIFY(!remove->isEnabled());
         manager.resize(640, 400);
         QTest::qWait(10);
         bool geometryFits = manager.width() <= 640;
@@ -438,6 +443,9 @@ class ArchiveMountTransportTests final : public QObject {
         auto *session = manager.findChild<QtArchiveMountSession *>();
         QVERIFY(session);
         QTRY_COMPARE_WITH_TIMEOUT(session->status(), QtArchiveMountSession::Status::Stopped, 15000);
+        QVERIFY(remove->isEnabled());
+        remove->click();
+        QCOMPARE(list->topLevelItemCount(), 0);
         QVERIFY(manager.canCloseOwner());
         QCOMPARE(confirmations, 1);
         QVERIFY(geometryFits);

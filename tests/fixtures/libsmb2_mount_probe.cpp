@@ -9,22 +9,28 @@ int main(int argc, char **argv) {
         return 2;
     constexpr quint64 size = (quint64(5) << 30) + 123;
     const bool trace = argc == 3 && QString::fromUtf8(argv[2]) == "--trace";
+    const bool caseNames = argc == 3 && QString::fromUtf8(argv[2]) == "--case-names";
     QList<SmbTreeEntry> entries{
         {1, 0, 0, 0, {}, true},
         {2, 1, 65536, 133800000000000007ULL, QStringLiteral("hello.txt"), false},
         {3, 1, 262144, 116444736000000000ULL, QStringLiteral("Файл с пробелом.bin"), false},
         {4, 1, size, 110000000000000000ULL, QStringLiteral("large.bin"), false}};
-    SmbReadOnlyServer server(std::move(entries), QStringLiteral("szprobe"),
-                             QStringLiteral("LocalProbeOnly427"),
-                             [trace](quint64, quint64 offset, quint32 length) {
-                                 if (trace)
-                                     std::fprintf(stderr, "fixture read\n");
-                                 SmbTreeRead result;
-                                 result.Data.resize(length);
-                                 for (quint32 i = 0; i < length; ++i)
-                                     result.Data[i] = char((offset + i) % 251);
-                                 return result;
-                             });
+    if (caseNames) {
+        entries.append({5, 1, 0, 0, QStringLiteral("xtables"), true});
+        entries.append({6, 5, 4096, 0, QStringLiteral("libip6t_hl.so"), false});
+        entries.append({7, 5, 4096, 0, QStringLiteral("libip6t_HL.so"), false});
+    }
+    SmbReadOnlyServer server(
+        std::move(entries), QStringLiteral("szprobe"), QStringLiteral("LocalProbeOnly427"),
+        [trace, caseNames](quint64 id, quint64 offset, quint32 length) {
+            if (trace)
+                std::fprintf(stderr, "fixture read\n");
+            SmbTreeRead result;
+            result.Data.resize(length);
+            for (quint32 i = 0; i < length; ++i)
+                result.Data[i] = char((offset + i + (caseNames ? id : 0)) % 251);
+            return result;
+        });
     QString error;
     if (trace)
         server.setDiagnosticHandler(

@@ -1,11 +1,16 @@
 #include "layout_inspection.h"
 #include "qtarchivemountmanager.h"
+#include "qtarchivemountsession.h"
 #include "qtmountextractionprompt.h"
 #include "qtmountsettings.h"
+#include "qtsmbmountplatform.h"
+#include <QFile>
 #include <QLabel>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScopeGuard>
 #include <QTranslator>
+#include <QTreeWidget>
 #include <QtTest>
 #include <atomic>
 #include <future>
@@ -13,6 +18,57 @@
 class MountExtractionPromptTests final : public QObject {
     Q_OBJECT
   private slots:
+    void removesOnlySelectedStoppedRecord() {
+        const auto unavailable = QtSmbMountPlatform::unavailableReason();
+        if (!unavailable.isEmpty())
+            QSKIP(qPrintable(unavailable));
+        QTemporaryDir fixture;
+        const QString first = fixture.filePath("first.img");
+        const QString second = fixture.filePath("second.img");
+        for (const auto &path : {first, second}) {
+            QFile source(path);
+            QVERIFY(source.open(QIODevice::WriteOnly));
+            QCOMPARE(source.write("source bytes"), qint64(12));
+        }
+        QWidget owner;
+        QtArchiveMountManager manager(&owner);
+        auto *remove = manager.findChild<QPushButton *>("removeMountButton");
+        auto *list = manager.findChild<QTreeWidget *>("mountList");
+        QVERIFY(remove && list);
+        QVERIFY(!remove->isEnabled());
+        QTimer answer;
+        connect(&answer, &QTimer::timeout, this, [] {
+            if (auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+                dialog && dialog->objectName() == "archiveMountSettings")
+                dialog->accept();
+        });
+        answer.start(5);
+        for (const auto &label : {first, second}) {
+            // Missing retained readers fail before starting a server or OS mount.
+            manager.mount(nullptr, label, {});
+            QVERIFY(!remove->isEnabled());
+            auto *session = manager.findChildren<QtArchiveMountSession *>().last();
+            QTRY_COMPARE(session->status(), QtArchiveMountSession::Status::Stopped);
+            QVERIFY(remove->isEnabled());
+        }
+        answer.stop();
+        QCOMPARE(list->topLevelItemCount(), 2);
+        list->setCurrentItem(list->topLevelItem(0));
+        remove->click();
+        QCOMPARE(list->topLevelItemCount(), 1);
+        QCOMPARE(list->currentItem()->text(0), second);
+        QVERIFY(remove->isEnabled());
+        remove->click();
+        QCOMPARE(list->topLevelItemCount(), 0);
+        QVERIFY(manager.findChild<QPlainTextEdit *>("mountDetails")->toPlainText().isEmpty());
+        QVERIFY(!remove->isEnabled());
+        QVERIFY(manager.canCloseOwner());
+        for (const auto &path : {first, second}) {
+            QFile source(path);
+            QVERIFY(source.open(QIODevice::ReadOnly));
+            QCOMPARE(source.readAll(), QByteArray("source bytes"));
+        }
+    }
     void managerActionsGeometry_data() {
         QTest::addColumn<int>("width");
         QTest::addColumn<QString>("language");

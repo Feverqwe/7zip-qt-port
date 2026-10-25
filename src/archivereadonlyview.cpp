@@ -34,9 +34,7 @@ class ReadRequest final : public IProgress, public CMyUnknownImp {
     Z7_COM7F_IMF(SetTotal(UInt64)) override { return cancelled_ ? E_ABORT : S_OK; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return cancelled_ ? E_ABORT : S_OK; }
 };
-QString Key(const QString &path) {
-    return path.normalized(QString::NormalizationForm_C).toCaseFolded();
-}
+QString Key(const QString &path) { return path.normalized(QString::NormalizationForm_C); }
 bool SafeComponent(const QString &name) {
     return !name.isEmpty() && name != QStringLiteral(".") && name != QStringLiteral("..") &&
            name.size() <= 255 && !name.contains(QChar::Null) && !name.contains(u':') &&
