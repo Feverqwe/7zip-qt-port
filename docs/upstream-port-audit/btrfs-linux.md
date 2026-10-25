@@ -16,7 +16,7 @@ from `fs/btrfs`, the public disk structures and their dependencies, with a map
 to adapted owners. Hashes describe original bytes, independently of local
 formatting or refactoring. The sibling 7-Zip checkout is unchanged.
 
-Use the existing [reference verification and review procedure](../upstream-update.md#qemu-and-linux-reference-baselines):
+Use the existing [reference verification and review procedure](../upstream-update.md#external-reference-baselines):
 
 ```sh
 python3 scripts/upstream_baseline.py reference-verify \

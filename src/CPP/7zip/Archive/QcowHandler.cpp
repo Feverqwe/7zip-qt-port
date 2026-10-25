@@ -15,21 +15,16 @@
 
 #include "../../Windows/PropVariant.h"
 #include "../../Windows/PropVariantUtils.h"
-#include "../../Windows/TimeUtils.h"
 
 #include "../Common/CWrappers.h"
-#include "../Common/LimitedStreams.h"
 #include "../Common/RegisterArc.h"
 #include "../Common/StreamObjects.h"
 #include "../Common/StreamUtils.h"
 
 #include "../Compress/DeflateDecoder.h"
-#include "../Crypto/MyAes.h"
-#include "../IPassword.h"
 
 #include "../../../block/qcow.h"
 #include "../../../block/qcow2.h"
-#include "../../../crypto/block-qcow.h"
 #include "HandlerCont.h"
 
 #define Get32(p) GetBe32a(p)
@@ -53,9 +48,6 @@ Z7_class_CHandler_final : public CHandlerImg {
     Z7_IFACE_COM7_IMP(IInArchive_Img)
     Z7_IFACE_COM7_IMP(IInArchiveGetStream)
     Z7_IFACE_COM7_IMP(ISequentialInStream)
-    Z7_COM7F_IMP(GetNumberOfItems(UInt32 * numItems))
-    Z7_COM7F_IMP(Extract(const UInt32 *indices, UInt32 numItems, Int32 testMode,
-                         IArchiveExtractCallback *extractCallback))
 
     unsigned _clusterBits;
     unsigned _numMidBits;
@@ -86,21 +78,8 @@ Z7_class_CHandler_final : public CHandlerImg {
 
     UInt32 _version;
     UInt32 _cryptMethod;
-    CByteBuffer_Wipe _key;
-    bool _keyReady = false;
-    bool _legacyEncryption = false;
-    CAlignedBuffer _cryptoSector;
-    CMyComPtr2<ICompressFilter, NCrypto::CAesCbcDecoder> _aes;
     UInt64 _incompatFlags;
     Qcow2HeaderExtensions _extensions{};
-    QCowSnapshot *_snapshots = NULL;
-    UInt32 _numSnapshots = 0;
-    CMyComPtr<IInStream> _sourceStream;
-    bool _isDiskStream = false;
-    bool _useSnapshot = false;
-    UInt64 _snapshotL1Offset = 0;
-    UInt32 _snapshotL1Size = 0;
-    UInt64 _snapshotDiskSize = 0;
     CMyComPtr<IInStream> _backingStream;
     CMyComPtr<IInStream> _dataStream;
     UInt64 _backingSize = 0;
@@ -126,14 +105,11 @@ Z7_class_CHandler_final : public CHandlerImg {
     HRESULT OpenReference(IArchiveOpenCallback * openCallback, const UString &name,
                           CMyComPtr<IInStream> &input, UString &resolvedName);
     HRESULT OpenParent(IArchiveOpenCallback * openCallback);
-    HRESULT CreateImage(UInt32 index, CHandler * &image, CMyComPtr<IInStream> & owner,
-                        IArchiveOpenCallback *callback = NULL);
 
   public:
-    CHandler() : _zstd(NULL), _key(16) {}
+    CHandler() : _zstd(NULL) {}
     ~CHandler() {
         qcow2_free_extensions(&_extensions);
-        qcow2_free_snapshots(_snapshots, _numSnapshots);
         if (_zstd)
             ZstdDec_Destroy(_zstd);
     }
@@ -324,39 +300,6 @@ Z7_COM7F_IMF(CHandler::Read(void *data, UInt32 size, UInt32 *processedSize)) {
                     }
                     if (allocated) {
                         v &= _compressedFlag - 1;
-                        if (_cryptMethod == 1) {
-                            if (!_keyReady)
-                                return E_NOTIMPL;
-                            const UInt64 sector = _virtPos & ~(UInt64)511;
-                            const size_t inSector = (size_t)_virtPos & 511;
-                            if (size > 512 - inSector)
-                                size = (UInt32)(512 - inSector);
-                            v += lowBits & ~(size_t)511;
-                            IInStream *input =
-                                _externalData ? _dataStream.Interface() : Stream.Interface();
-                            RINOK(InStream_SeekSet(input, v))
-                            _cryptoSector.AllocAtLeast(512);
-                            if (!_cryptoSector.IsAllocated())
-                                return E_OUTOFMEMORY;
-                            RINOK(ReadStream_FALSE(input, _cryptoSector, 512))
-                            if (!_externalData)
-                                _posInArc = v + 512;
-                            const auto decrypt = [](void *opaque, const unsigned char *iv,
-                                                    unsigned char *buf, size_t len) -> int32_t {
-                                auto *aes = static_cast<NCrypto::CAesCbcDecoder *>(opaque);
-                                RINOK(aes->SetInitVector(iv, 16))
-                                return aes->Filter(buf, (UInt32)len) == len ? S_OK : S_FALSE;
-                            };
-                            if (!_aes.Interface())
-                                return E_NOTIMPL;
-                            RINOK(qcrypto_block_qcow_decrypt(_aes.ClsPtr(), decrypt, sector,
-                                                             _cryptoSector, 512))
-                            memcpy(data, (const Byte *)_cryptoSector + inSector, size);
-                            _virtPos += size;
-                            if (processedSize)
-                                *processedSize = size;
-                            return S_OK;
-                        }
                         v += lowBits;
                         if (_externalData) {
                             RINOK(InStream_SeekSet(_dataStream, v))
@@ -400,13 +343,11 @@ Z7_COM7F_IMF(CHandler::Read(void *data, UInt32 size, UInt32 *processedSize)) {
     return S_OK;
 }
 
-static const Byte kProps[] = {kpidPath,  kpidSize,      kpidPackSize,
-                              kpidMTime, kpidEncrypted, kpidComment};
+static const Byte kProps[] = {kpidSize, kpidPackSize};
 
 static const Byte kArcProps[] = {kpidClusterSize,
                                  kpidSectorSize, // actually we need variable to show table size
-                                 kpidHeadersSize, kpidUnpackVer, kpidMethod,
-                                 kpidCharacts,    kpidWarning};
+                                 kpidHeadersSize, kpidUnpackVer, kpidMethod, kpidCharacts};
 
 IMP_IInArchive_Props IMP_IInArchive_ArcProps
 
@@ -422,8 +363,7 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
 
     switch (propID) {
     case kpidMainSubfile:
-        if (!_numSnapshots)
-            prop = (UInt32)0;
+        prop = (UInt32)0;
         break;
     case kpidClusterSize:
         prop = (UInt32)1 << _clusterBits;
@@ -432,8 +372,7 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         prop = (UInt32)1 << (_numMidBits + _l2EntryBits);
         break;
     case kpidHeadersSize:
-        if (!_numSnapshots)
-            prop = _table.Size() + (UInt64)_dir.Size() * 8;
+        prop = _table.Size() + (UInt64)_dir.Size() * 8;
         break;
     case kpidPhySize:
         if (_phySize)
@@ -469,7 +408,7 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             s.Add_Space_if_NotEmpty();
             if (_cryptMethod == 1)
                 s += "AES";
-            else if (_cryptMethod == 2)
+            if (_cryptMethod == 2)
                 s += "LUKS";
             else {
                 s += "Encryption:";
@@ -480,10 +419,6 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             prop = s;
         break;
     }
-    case kpidWarning:
-        if (_legacyEncryption)
-            prop = "Legacy QCOW AES has no password or data authentication";
-        break;
 
     case kpidErrorFlags: {
         UInt32 v = 0;
@@ -509,57 +444,19 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
     COM_TRY_END
 }
 
-Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *value)) {
+Z7_COM7F_IMF(CHandler::GetProperty(UInt32 /* index */, PROPID propID, PROPVARIANT *value)) {
     COM_TRY_BEGIN
-    if (index > _numSnapshots)
-        return E_INVALIDARG;
     NCOM::CPropVariant prop;
 
     switch (propID) {
     case kpidSize:
-        prop = index ? _snapshots[index - 1].disk_size : _size;
-        break;
-    case kpidEncrypted:
-        prop = _cryptMethod != 0 || _legacyEncryption;
+        prop = _size;
         break;
     case kpidPackSize:
-        // Snapshot images share physical clusters; do not count the source
-        // file's bytes once per snapshot when clients sum packed sizes.
-        if (!index)
-            prop = _phySize;
+        prop = _phySize;
         break;
     case kpidExtension:
-        prop = (index == 0 && _imgExt ? _imgExt : "img");
-        break;
-    case kpidPath:
-        if (_numSnapshots) {
-            AString path;
-            if (index) {
-                path = "snapshot-";
-                path.Add_UInt32(index);
-                path += ".img";
-            } else
-                path = "current.img";
-            prop = path;
-        }
-        break;
-    case kpidMTime:
-        if (index) {
-            const QCowSnapshot &sn = _snapshots[index - 1];
-            const UInt32 ns = sn.date_nsec < 1000000000 ? sn.date_nsec : 0;
-            const UInt64 time = NTime::UnixTime64_To_FileTime64(sn.date_sec) + ns / 100;
-            FILETIME ft;
-            ft.dwLowDateTime = (DWORD)time;
-            ft.dwHighDateTime = (DWORD)(time >> 32);
-            prop.SetAsTimeFrom_FT_Prec_Ns100(ft, k_PropVar_TimePrec_1ns, ns % 100);
-        }
-        break;
-    case kpidComment:
-        if (index) {
-            UString name;
-            if (ConvertUTF8ToUnicode(AString(_snapshots[index - 1].name), name))
-                prop = name;
-        }
+        prop = (_imgExt ? _imgExt : "img");
         break;
     }
 
@@ -583,8 +480,6 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
     const UInt64 k_CompressedSize_MAX = (UInt64)1 << 60;
 
     _size = Get64((const Byte *)(const void *)buf64 + 0x18);
-    if (_useSnapshot)
-        _size = _snapshotDiskSize;
     if (_size > k_UncompressedSize_MAX)
         return S_FALSE;
     size_t l1Size;
@@ -613,8 +508,6 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
         _numMidBits = _clusterBits - 3;
         _cryptMethod = Get32((const Byte *)(const void *)buf64 + 0x20);
         l1Size = Get32((const Byte *)(const void *)buf64 + 0x24);
-        if (_useSnapshot)
-            l1Size = _snapshotL1Size;
         headerSize = 0x48;
         if (_version >= 3) {
             _incompatFlags = Get64((const Byte *)(const void *)buf64 + 0x48);
@@ -647,6 +540,13 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
         const UInt64 refOffset =
             Get64((const Byte *)(const void *)buf64 + 0x30); // must be aligned for cluster
         const UInt32 refClusters = Get32((const Byte *)(const void *)buf64 + 0x38);
+        // UInt32 numSnapshots = Get32((const Byte *)(const void *)buf64 + 0x3C);
+        // UInt64 snapshotsOffset = Get64((const Byte *)(const void *)buf64 + 0x40); // must be
+        // aligned for cluster
+        /*
+        if (numSnapshots)
+          return S_FALSE;
+        */
         if (refClusters) {
             if (refOffset > k_CompressedSize_MAX)
                 return S_FALSE;
@@ -674,7 +574,7 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
     }
 
     const UInt64 l1Offset =
-        _useSnapshot ? _snapshotL1Offset : Get64((const Byte *)(const void *)buf64 + 0x28);
+        Get64((const Byte *)(const void *)buf64 + 0x28); // must be aligned for cluster ?
     if ((l1Size && l1Offset < headerSize) || l1Offset > k_CompressedSize_MAX ||
         (_version >= 2 && (l1Offset & (((UInt64)1 << _clusterBits) - 1))))
         return S_FALSE;
@@ -726,31 +626,6 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
         RINOK(qcow2_read_extensions(read, stream, headerSize, extEnd, fileSize, &_extensions))
         if (_extensions.has_crypto && _cryptMethod != 2)
             return S_FALSE;
-        if (!_isDiskStream) {
-            const UInt32 numSnapshots = Get32((const Byte *)(const void *)buf64 + 0x3C);
-            struct CReadContext {
-                IInStream *Input;
-                IArchiveOpenCallback *Callback;
-            } context = {stream, openCallback};
-            const auto readSnapshot = [](void *opaque, uint64_t offset, void *data,
-                                         size_t size) -> int32_t {
-                auto &ctx = *static_cast<CReadContext *>(opaque);
-                if (ctx.Callback) {
-                    RINOK(ctx.Callback->SetCompleted(NULL, NULL))
-                }
-                RINOK(InStream_SeekSet(ctx.Input, offset))
-                return ReadStream_FALSE(ctx.Input, data, size);
-            };
-            uint64_t end;
-            RINOK(qcow2_read_snapshots(
-                readSnapshot, &context, Get64((const Byte *)(const void *)buf64 + 0x40),
-                numSnapshots, _size, fileSize, _clusterBits, &_snapshots, &end))
-            _numSnapshots = numSnapshots;
-            if (_phySize < end)
-                _phySize = end;
-            if (_numSnapshots)
-                _phySize = fileSize;
-        }
     }
     if (_sourceName.IsEmpty() && openCallback) {
         CMyComPtr<IArchiveOpenVolumeCallback> volumes;
@@ -767,7 +642,7 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
         (!_externalData || backOffset))
         return S_FALSE;
     _dataSize = fileSize;
-    if (_externalData && !_isDiskStream) {
+    if (_externalData) {
         if (!_extensions.image_data_file || !_extensions.image_data_file[0]) {
             _errorMessage = L"Missing external data file name";
             return S_FALSE;
@@ -776,11 +651,6 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
         if (!ConvertUTF8ToUnicode(AString(_extensions.image_data_file), name))
             return S_FALSE;
         RINOK(OpenReference(openCallback, name, _dataStream, resolved))
-        RINOK(InStream_GetSize_SeekToBegin(_dataStream, _dataSize))
-    }
-    if (_externalData && _isDiskStream) {
-        if (!_dataStream)
-            return S_FALSE;
         RINOK(InStream_GetSize_SeekToBegin(_dataStream, _dataSize))
     }
     const size_t t1SizeBytes = (size_t)l1Size << 3;
@@ -953,44 +823,13 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
     if (curTable != numTables)
         return E_FAIL;
 
-    if (_cryptMethod == 1 && !_isDiskStream) {
-        CMyComPtr<ICryptoGetTextPassword> passwordProvider;
-        if (openCallback)
-            openCallback->QueryInterface(IID_ICryptoGetTextPassword, (void **)&passwordProvider);
-        if (!passwordProvider) {
-            _errorMessage = L"Password required for encrypted QCOW image";
-            return E_ABORT;
-        }
-        CMyComBSTR_Wipe password;
-        RINOK(passwordProvider->CryptoGetTextPassword(&password))
-        UString_Wipe unicode;
-        unicode.SetFromBstr(password);
-        AString_Wipe utf8;
-        ConvertUnicodeToUTF8(unicode, utf8);
-        qcrypto_block_qcow_init(utf8, _key);
-        _keyReady = true;
-    }
-    if (_cryptMethod == 1)
-        _legacyEncryption = true;
-    if (_cryptMethod > 1)
+    if (_cryptMethod)
         _unsupported = true;
     if (_compressionType > 1)
         _unsupported = true;
 
-    _sourceStream = stream;
-    // The original extent stream restores source position on each read. Each
-    // image mapping owns a cursor even when source bytes are shared.
-    CMyComPtr2_Create<IInStream, CExtentsStream> cursor;
-    cursor->Stream = stream;
-    CSeekExtent extent;
-    extent.Virt = 0;
-    extent.Phy = 0;
-    cursor->Extents.Add(extent);
-    extent.Virt = fileSize;
-    cursor->Extents.Add(extent);
-    cursor->Init();
-    Stream = cursor;
-    if (!_backingName.IsEmpty() && !_isDiskStream) {
+    Stream = stream;
+    if (!_backingName.IsEmpty()) {
         RINOK(OpenParent(openCallback))
     }
     return S_OK;
@@ -1062,8 +901,6 @@ HRESULT CHandler::OpenParent(IArchiveOpenCallback *callback) {
         _unsupported = parent->_unsupported;
         return result;
     }
-    if (parent->_legacyEncryption)
-        _legacyEncryption = true;
     CMyComPtr<ISequentialInStream> sequential;
     RINOK(parent->GetStream(0, &sequential))
     if (!sequential)
@@ -1099,17 +936,7 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _backingName.Empty();
     _sourceName.Empty();
     _errorMessage.Empty();
-    _key.Wipe();
-    _keyReady = false;
-    _legacyEncryption = false;
-    _aes.SetFromCls(NULL);
     qcow2_free_extensions(&_extensions);
-    qcow2_free_snapshots(_snapshots, _numSnapshots);
-    _snapshots = NULL;
-    _numSnapshots = 0;
-    _sourceStream.Release();
-    _isDiskStream = false;
-    _useSnapshot = false;
 
     // CHandlerImg:
     Clear_HandlerImg_Vars();
@@ -1117,136 +944,11 @@ Z7_COM7F_IMF(CHandler::Close()) {
     return S_OK;
 }
 
-HRESULT CHandler::CreateImage(UInt32 index, CHandler *&image, CMyComPtr<IInStream> &owner,
-                              IArchiveOpenCallback *callback) {
-    if (index > _numSnapshots || !Stream)
-        return E_INVALIDARG;
-    // QEMU snapshot operations reject external data files: their guest bytes
-    // are overwritten in place and cannot represent a historical disk state.
-    if (index && _externalData)
-        return E_NOTIMPL;
-    image = new CHandler;
-    owner = image;
-    image->Close();
-    image->_isDiskStream = true;
-    image->_backingStream = _backingStream;
-    image->_backingSize = _backingSize;
-    image->_dataStream = _dataStream;
-    image->_key.CopyFrom(_key, 16);
-    image->_keyReady = _keyReady;
-    image->_legacyEncryption = _legacyEncryption;
-    if (index) {
-        const QCowSnapshot &sn = _snapshots[index - 1];
-        // QEMU snapshot_load_tmp selects the saved L1 without changing disk bytes.
-        image->_useSnapshot = true;
-        image->_snapshotL1Offset = sn.l1_table_offset;
-        image->_snapshotL1Size = sn.l1_size;
-        image->_snapshotDiskSize = sn.disk_size;
-    }
-    RINOK(InStream_SeekSet(_sourceStream, 0))
-    return image->Open2(_sourceStream, callback);
-}
-
-Z7_COM7F_IMF(CHandler::GetNumberOfItems(UInt32 *numItems)) {
-    *numItems = _numSnapshots + 1;
-    return S_OK;
-}
-
-// Preserve CHandlerImg's extraction/error projection for each selected image;
-// only translate its single-item index and progress into the enclosing archive.
-class CSnapshotExtractCallback final : public IArchiveExtractCallback,
-                                       public IArchiveOpenCallback,
-                                       public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_2(IArchiveExtractCallback, IArchiveOpenCallback)
-  public:
-    IArchiveExtractCallback *Callback;
-    UInt32 Index;
-    UInt64 Completed;
-    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
-    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
-        return Callback->SetCompleted(&Completed);
-    }
-    Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
-    Z7_COM7F_IMF(SetCompleted(const UInt64 *value)) override {
-        if (!value)
-            return Callback->SetCompleted(NULL);
-        const UInt64 completed = Completed + *value;
-        return Callback->SetCompleted(&completed);
-    }
-    Z7_COM7F_IMF(GetStream(UInt32, ISequentialOutStream **stream, Int32 mode)) override {
-        return Callback->GetStream(Index, stream, mode);
-    }
-    Z7_COM7F_IMF(PrepareOperation(Int32 mode)) override { return Callback->PrepareOperation(mode); }
-    Z7_COM7F_IMF(SetOperationResult(Int32 result)) override {
-        return Callback->SetOperationResult(result);
-    }
-};
-
-Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 testMode,
-                               IArchiveExtractCallback *callback)) {
-    COM_TRY_BEGIN
-    // Indexed selection/aggregate progress follows CHandlerCont::Extract;
-    // CHandlerImg::Extract remains the authoritative single-image operation.
-    const bool all = numItems == (UInt32)(Int32)-1;
-    if (all)
-        numItems = _numSnapshots + 1;
-    if (!numItems)
-        return S_OK;
-    if (!all && !indices)
-        return E_INVALIDARG;
-    UInt64 total = 0;
-    for (UInt32 i = 0; i < numItems; i++) {
-        const UInt32 index = all ? i : indices[i];
-        if (index > _numSnapshots)
-            return E_INVALIDARG;
-        const UInt64 size = index ? _snapshots[index - 1].disk_size : _size;
-        if (size > (UInt64)(Int64)-1 - total)
-            return E_INVALIDARG;
-        total += size;
-    }
-    RINOK(callback->SetTotal(total))
-    total = 0;
-    for (UInt32 i = 0; i < numItems; i++) {
-        RINOK(callback->SetCompleted(&total))
-        const UInt32 index = all ? i : indices[i];
-        CMyComPtr2_Create<IArchiveExtractCallback, CSnapshotExtractCallback> mapped;
-        mapped->Callback = callback;
-        mapped->Index = index;
-        mapped->Completed = total;
-        CHandler *image;
-        CMyComPtr<IInStream> owner;
-        const HRESULT result = CreateImage(index, image, owner, mapped.ClsPtr());
-        if (result == S_FALSE || result == E_NOTIMPL) {
-            CMyComPtr<ISequentialOutStream> output;
-            const Int32 mode = testMode ? NExtract::NAskMode::kTest : NExtract::NAskMode::kExtract;
-            RINOK(callback->GetStream(index, &output, mode))
-            if (testMode || output) {
-                RINOK(callback->PrepareOperation(mode))
-                RINOK(callback->SetOperationResult(
-                    result == E_NOTIMPL ? NExtract::NOperationResult::kUnsupportedMethod
-                                        : NExtract::NOperationResult::kDataError))
-            }
-        } else {
-            RINOK(result)
-            RINOK(image->CHandlerImg::Extract(NULL, (UInt32)(Int32)-1, testMode, mapped))
-        }
-        total += index ? _snapshots[index - 1].disk_size : _size;
-    }
-    return callback->SetCompleted(&total);
-    COM_TRY_END
-}
-
-Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
+Z7_COM7F_IMF(CHandler::GetStream(UInt32 /* index */, ISequentialInStream **stream)) {
     COM_TRY_BEGIN
     *stream = NULL;
     if (_unsupported || !Stream)
         return S_FALSE;
-    if (_cryptMethod == 1) {
-        if (!_keyReady)
-            return S_FALSE;
-        _aes.Create_if_Empty();
-        RINOK(_aes->SetKey(_key, 16))
-    }
     if (_needCompression) {
         if (_compressionType > 1)
             return S_FALSE;
@@ -1267,12 +969,6 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
         const size_t clusterSize = (size_t)1 << _clusterBits;
         _cache.AllocAtLeast(clusterSize);
         _cacheCompressed.AllocAtLeast(clusterSize * 2);
-    }
-    if (!_isDiskStream) {
-        CHandler *image;
-        CMyComPtr<IInStream> owner;
-        RINOK(CreateImage(index, image, owner))
-        return image->GetStream(0, stream);
     }
     CMyComPtr<ISequentialInStream> streamTemp = this;
     RINOK(InitAndSeek())

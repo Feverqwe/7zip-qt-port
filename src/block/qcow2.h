@@ -46,21 +46,6 @@ typedef struct Qcow2HeaderExtensions {
     bool has_crypto;
 } Qcow2HeaderExtensions;
 
-/* Selected read-side QCowSnapshot fields; unknown extra data is skipped. */
-typedef struct QCowSnapshot {
-    uint64_t l1_table_offset;
-    uint32_t l1_size;
-    char *id_str;
-    char *name;
-    uint64_t disk_size;
-    uint64_t vm_state_size;
-    uint32_t date_sec;
-    uint32_t date_nsec;
-    uint64_t vm_clock_nsec;
-    uint64_t icount;
-    uint32_t extra_data_size;
-} QCowSnapshot;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -68,10 +53,6 @@ int32_t qcow2_read_extensions(Qcow2ReadFunc readfunc, void *opaque, uint64_t sta
                               uint64_t end_offset, uint64_t file_size,
                               Qcow2HeaderExtensions *extensions);
 void qcow2_free_extensions(Qcow2HeaderExtensions *extensions);
-int32_t qcow2_read_snapshots(Qcow2ReadFunc readfunc, void *opaque, uint64_t snapshots_offset,
-                             uint32_t nb_snapshots, uint64_t disk_size, uint64_t file_size,
-                             unsigned cluster_bits, QCowSnapshot **snapshots, uint64_t *table_end);
-void qcow2_free_snapshots(QCowSnapshot *snapshots, uint32_t nb_snapshots);
 #ifdef __cplusplus
 }
 #endif

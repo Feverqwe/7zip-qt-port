@@ -86,7 +86,7 @@ after review, including when a member is unchanged in the new release.
 Early verification and synthetic-review evidence is preserved in
 [the tooling archive](archive/qt-port/workflow-evidence.md).
 
-## QEMU and Linux reference baselines
+## External reference baselines
 
 ZIP's libzstd encoder and its 7-Zip-zstd adapter use the same reference
 verification/review commands with explicit source-to-owner maps. Their pinned

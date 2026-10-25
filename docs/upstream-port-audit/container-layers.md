@@ -152,9 +152,9 @@ and slow suites were not run for this platform-independent reader update.
 
 ### Dependent QCOW images — 2026-10-24
 
-The active QCOW goal includes backing chains, external data, encrypted images
-and internal snapshots. This step completes the raw/QCOW dependent-file scenario;
-it does not establish completion of encryption or snapshot access.
+The original QCOW investigation included backing chains, external data, encrypted
+images and internal snapshots. This step completes the raw/QCOW dependent-file
+scenario; it does not establish completion of encryption or snapshot access.
 
 Compared the complete `qcow2_read_extensions`, `qcow2_do_open`,
 `qcow2_get_host_offset`, `qcow2_co_preadv_task` and
@@ -259,132 +259,15 @@ after it. Five original QEMU file hashes verified. The legacy step has no new
 Linux/Windows or installed-package acceptance; the guest evidence above predates
 this step. Full and slow suites were not run.
 
-### Internal QCOW2 snapshots — 2026-10-24
-
-Compared complete `block/qcow2-snapshot.c` at the pinned QEMU commit:
-`qcow2_do_read_snapshots`, `qcow2_free_single_snapshot`, `qcow2_free_snapshots`,
-`qcow2_snapshot_list`, `qcow2_snapshot_load_tmp`; their `qcow2_do_open` callers,
-`QCowSnapshotHeader`, `QCowSnapshotExtraData`, `QCowSnapshot` and geometry/table
-validation in `block/qcow2.c/.h`. The QEMU baseline now also pins the complete
-snapshot unit and maps it to `src/block/qcow2-snapshot.c`, compiled as C by the
-existing native runtime integration. Its MIT notice is retained.
-
-Adapted the read/free branches with native bounded read callbacks and explicit
-state arguments instead of block-graph/coroutine services. Preserved entry
-alignment, count/table/extra-data limits, known extra fields and the old-header
-disk-size fallback. Unknown extra data is bounds-checked and skipped, rather
-than retained for a future rewrite. Repair, snapshot mutation/deletion/activation,
-refcount changes and VM resume are omitted. VM-state sizes/clocks are metadata;
-VM-state payload export is not yet exposed and remains for the goal's read-side
-scope audit. No source image is changed to select a snapshot.
-
-The SDK handler reads current and saved disk mappings through the existing
-7-Zip L1/L2 validation and decoders. Selecting a snapshot supplies its saved L1
-offset/count and geometry, following QEMU's temporary loader rather than its
-mutating activation path. Each stream owns its mapping/cache and an original
-`CExtentsStream` cursor over shared immutable source bytes. Raw/QCOW backing
-references remain retained and source positions are restored on each read.
-The handler's directly exposed current-image stream remains usable too.
-QEMU rejects snapshot operations on external-data images; a declared historical
-image there returns unsupported instead of reusing current external guest bytes.
-
-`HandlerCont.h` moved from exact dependencies into the SDK adaptation root.
-Its original body is identical at 9128 and b88, SHA256
-`0dc3ecde43894bddb416ae8c47f6aa55ac66450fe8376a1b81c78b24ccafe40e`.
-Only two image operations become overridable/protected; include fallbacks serve
-both the complete upstream runtime tree and the split Qt/vendor include layout.
-Formatting is normalized separately from those declaration changes. Snapshot
-extraction retains `CHandlerImg::Extract` as the operation/error owner; a narrow
-callback adapter forwards item indexes, aggregate progress and cancellation,
-including during L1/L2 acquisition. Original-hash validation covers adapted
-7-Zip baseline units as well as the separate QEMU manifest.
-
-Snapshots use generated file paths, with their original names in comments and
-creation times in file-time properties. Untrusted names never become paths.
-The current disk and each saved disk expose their own lengths; shared physical
-bytes are not counted once per snapshot. Main-subfile auto-opening is suppressed
-when snapshots exist, so opening the image retains the snapshot selection.
-A bad saved L1 mapping reports a per-item data error while other mappings remain
-readable. Snapshotless source behavior is covered by the existing QCOW suites.
-
-Validation on macOS, current combined worktree with 7-Zip 26.05: the six existing
-focused suites passed (QCOW, references, layer chains/lifetime, baseline/cache);
-the new `archive_qcow_snapshots` suite passed after correcting the test's payload
-buffer length. It covers QEMU-oracled full bytes/geometry, interleaved and retained
-streams, metadata, selected/all Test and Extract, output failure/cancellation,
-metadata-acquisition cancellation, malformed tables and an isolated damaged
-snapshot. The native folder path also reads a file through snapshot → MBR → ext4.
-Source and backing files remain unchanged. Regeneration reproduced all 17 new
-gzip fixtures byte-for-byte; all six QEMU original hashes verified. No new
-Linux/Windows, full/slow or installed-package acceptance is claimed for this step.
-
-### Legacy QCOW AES-CBC — 2026-10-24
-
-Compared QEMU `crypto/block-qcow.c/.h`, `crypto/block.c`, `crypto/blockpriv.h`,
-`crypto/ivgen-plain64.c`, `qcow_co_preadv` in `block/qcow.c`, and
-`qcow2_co_encdec` in `block/qcow2-threads.c` at the pinned QEMU revision.
-Original units and LGPL text are pinned in the same QEMU baseline. Adapted C
-read branches remain in `src/crypto/block-qcow.c`, `block.c` and
-`ivgen-plain64.c`, preserving module boundaries and notices; the narrow callback
-interface is in `block-qcow.h`. Retained full LGPL-2.1 text is installed with the
-existing MIT metadata notice and the source notices permit later LGPL versions.
-
-Preserved key construction (first 16 UTF-8 bytes, zero padding), 512-byte sectors,
-little-endian plain64 virtual-sector IV and per-sector CBC initialization.
-Compressed and unallocated/explicit-zero branches retain QEMU's placement of
-decryption on allocated stored bytes only. The provider is original 7-Zip
-`NCrypto::CAesCbcDecoder`/`C/Aes` through a callback: QEMU secret objects, cipher
-pool, locks, GLib and crypto backends are omitted. Runtime C objects link into
-both console and module without introducing an AES dependency into the dynamic
-console. Cipher state belongs to each native stream; C input is aligned using
-the existing buffer allocator. There is no independent AES implementation.
-
-The handler acquires an explicit password through `ICryptoGetTextPassword`,
-using the existing 7-Zip BSTR/Unicode/UTF-8 wipe wrappers. Missing/cancelled input
-does not silently become an empty key. An explicitly supplied empty password is
-valid for this format. Child/snapshot streams copy the authorized image key,
-without retaining the opening UI callback or requesting it again for each read.
-Close wipes the raw key and releases that handler's AES provider; independently
-retained streams keep their own key/provider until their own lifetime ends.
-Arbitrary byte reads decode a bounded aligned sector before copying its requested
-portion; source bytes and archive/extraction bounds remain unchanged.
-
-Legacy QCOW AES has no key check, MAC or plaintext checksum. QEMU likewise cannot
-authenticate a wrong password or arbitrary plaintext. The archive exposes an
-explicit warning and encrypted item property; a dependency's warning propagates
-through an unencrypted overlay. Successful copying does not establish authenticity.
-No magic-byte heuristic is substituted for an absent authentication mechanism.
-LUKS keyslot/digest verification is a separate unfinished implementation.
-Distinct passwords for separately encrypted layers still require dependency-key
-selection beyond the original shared opening callback; this is integration work,
-not a claim that the current password UI can distinguish those secrets.
-
-QEMU generates and independently decrypts the fake-key fixtures: QCOW1, QCOW2 v2,
-extended L2, an encrypted snapshot and an unencrypted overlay over encrypted
-QCOW2. A sparse image verifies a guest sector beyond 2 TiB (the upper IV bits).
-The tests compare complete bytes, unaligned/backward/retained streams, snapshot
-bytes, Unicode and byte-truncated keys, an explicit empty password, open cancel,
-extraction/output failure/cancel and input immutability. A wrong-password fixture
-demonstrates unverified output accompanied by the retained warning, instead of
-claiming this unauthenticated format can reject every wrong key.
-
-macOS runtime acceptance with current combined 7-Zip 26.05 worktree: eight
-focused suites passed in 18.90 s (`archive_qcow_crypto`, QCOW, references,
-snapshots, chains, lifetime, baseline and runtime cache). The native console and
-module rebuilt incrementally; new C code uses the existing C compiler/cache.
-Thirteen original QEMU inventory hashes verified, including the LGPL text. All ten
-new gzip fixtures regenerate byte-identically. The earlier direct C AES provider
-attempt was replaced by the callback boundary after showing that the dynamic
-console does not link AES; no special console AES implementation was added.
-No new Linux/Windows, full/slow or installed-package acceptance is claimed.
-
-Remaining source-visible goal work: LUKS read/decryption paths,
-snapshot VM-state payload scope, distinct dependency secrets,
-backing-format delegation beyond raw/QCOW, and explicit dependency selection where
-the existing volume callback rejects a path or cannot resolve a stream-contained
-image's siblings. These are missing implementations
-or integration work, not evidence that QEMU cannot read those inputs. No blanket
-claim of current-QEMU read parity is made by the focused dependent-file checks.
+Current scope decision — 2026-10-25: the user removed internal snapshot reading
+and legacy AES-CBC while retaining extended L2, raw/QCOW backing chains, external
+data and compressed QCOW1. Their crypto/snapshot adaptations, fixtures and tests
+are removed; unchanged `HandlerCont.h` is again owned by the vendor dependency.
+The QEMU baseline retains only the five original units used by this read scope,
+with its MIT notice and source-to-owner mappings. Encryption, snapshot selection,
+backing formats beyond raw/QCOW and dependency selection beyond the existing
+volume callback remain unsupported. This is the selected product scope, not a
+claim that QEMU cannot read those inputs or that the port has full QEMU parity.
 
 ## Retained native streams and generations
 
