@@ -4812,14 +4812,27 @@ file(GLOB_RECURSE sevenzip_translation_sources CONFIGURE_DEPENDS
     src/*.cpp src/*.h src/*.mm)
 file(GLOB sevenzip_translation_catalogs CONFIGURE_DEPENDS translations/sevenzip_*.ts)
 list(REMOVE_ITEM sevenzip_translation_catalogs "${CMAKE_CURRENT_SOURCE_DIR}/translations/sevenzip_en.ts")
-qt_add_translations(sevenzip_filesystem
+qt_add_lupdate(
     SOURCE_TARGETS sevenzip_filesystem
     SOURCES ${sevenzip_translation_sources}
     TS_FILES ${sevenzip_translation_catalogs}
     PLURALS_TS_FILE translations/sevenzip_en.ts
+    LUPDATE_TARGET sevenzip_lupdate
+    OPTIONS -no-obsolete -locations relative)
+# Qt's English source strings are built in; only translated catalogs need
+# qtbase merging. Keep missing-catalog warnings enabled for those languages.
+qt_add_lrelease(
+    TS_FILES ${sevenzip_translation_catalogs}
     MERGE_QT_TRANSLATIONS
     QT_TRANSLATION_CATALOGS qtbase
-    RESOURCE_PREFIX "/translations"
-    LUPDATE_TARGET sevenzip_lupdate
     LRELEASE_TARGET sevenzip_lrelease
-    LUPDATE_OPTIONS -no-obsolete -locations relative)
+    QM_FILES_OUTPUT_VARIABLE sevenzip_translated_qm_files)
+qt_add_lrelease(
+    TS_FILES translations/sevenzip_en.ts
+    LRELEASE_TARGET sevenzip_en_lrelease
+    QM_FILES_OUTPUT_VARIABLE sevenzip_english_qm_files)
+add_dependencies(sevenzip_lrelease sevenzip_en_lrelease)
+qt_add_resources(sevenzip_filesystem sevenzip_filesystem_translations
+    PREFIX "/translations"
+    BASE "${CMAKE_CURRENT_BINARY_DIR}"
+    FILES ${sevenzip_translated_qm_files} ${sevenzip_english_qm_files})
