@@ -49,7 +49,7 @@ class DragArchiveTests : public QObject {
         CMyComPtr<IFolderFolder> metadata =
             new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
         CMyComPtr2_Create<IFolderArcProps, CAgent> agent;
-        if (agent->Init({}, metadata, UString("zip"), owner) != S_OK)
+        if (agent->Init(metadata, UString("zip"), owner) != S_OK)
             return false;
         CMyComPtr<IFolderFolder> folder;
         if (agent->BindToRootFolder(&folder) != S_OK || folder->LoadItems() != S_OK)
@@ -237,7 +237,7 @@ class DragArchiveTests : public QObject {
         CMyComPtr<IFolderFolder> metadata =
             new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
         CMyComPtr2_Create<IFolderArcProps, CAgent> agent;
-        QCOMPARE(agent->Init({}, metadata, UString("zip"), resourceOwner), S_OK);
+        QCOMPARE(agent->Init(metadata, UString("zip"), resourceOwner), S_OK);
         CMyComPtr<IFolderFolder> root;
         QCOMPARE(agent->BindToRootFolder(&root), S_OK);
         QCOMPARE(root->LoadItems(), S_OK);

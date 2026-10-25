@@ -174,7 +174,7 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
         CMyComPtr<IUnknown> resource = resourceSpec;
         resourceSpec->SetArchiveMetadata(32, 0);
         CMyComPtr2_Create<IFolderArcProps, CAgent> agent;
-        QCOMPARE(agent->Init({}, metadata, UString("zip"), resource), S_OK);
+        QCOMPARE(agent->Init(metadata, UString("zip"), resource), S_OK);
         const CArc &arc = agent->GetArc();
         QVERIFY(arc.PhySize_Defined);
         QCOMPARE(arc.PhySize, UInt64(32));

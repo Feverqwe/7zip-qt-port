@@ -151,7 +151,12 @@ void MainWindow::extractTo(const QString &destination, bool onlySelected, const 
     if (app_.QtOperations().closed())
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
-    if (state_ != State::Viewing || entries_.isEmpty() || destination.isEmpty())
+    if (state_ != State::Viewing || destination.isEmpty())
+        return;
+    const auto *folder = dynamic_cast<CAgentFolder *>(app_.GetFocusedPanel().GetFolder());
+    IInArchive *metadata = folder ? folder->GetArchiveProperties() : nullptr;
+    UInt32 count = 0;
+    if (!metadata || metadata->GetNumberOfItems(&count) != S_OK || count == 0)
         return;
     QStringList names;
     if (onlySelected) {

@@ -33,7 +33,7 @@ class AgentCapabilityTests : public QObject {
         QCOMPARE(CreateArchiveMetadata(entries, &metadata), S_OK);
         auto *agentSpec = new CAgent;
         CMyComPtr<IFolderArcProps> agent = agentSpec;
-        QCOMPARE(agentSpec->Init(entries, metadata, UString("zip"), resource), S_OK);
+        QCOMPARE(agentSpec->Init(metadata, UString("zip"), resource), S_OK);
         CMyComPtr<IFolderFolder> root;
         QCOMPARE(agentSpec->BindToRootFolder(&root), S_OK);
         CMyComPtr<IFolderFolder> child;
@@ -75,7 +75,7 @@ class AgentCapabilityTests : public QObject {
         CMyComPtr<IFolderFolder> metadata;
         QCOMPARE(CreateArchiveMetadata({}, &metadata), S_OK);
         CAgent agent;
-        QCOMPARE(agent.Init({}, metadata, UString("zip"), resource), S_OK);
+        QCOMPARE(agent.Init(metadata, UString("zip"), resource), S_OK);
         QVERIFY(agent.Is_Attrib_ReadOnly());
         QVERIFY(file.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner));
     }

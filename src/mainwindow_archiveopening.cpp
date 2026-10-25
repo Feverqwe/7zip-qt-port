@@ -171,22 +171,6 @@ HRESULT MainWindow::renderBoundFolder(bool updateAddress) {
     displayArchive_ = QDir::fromNativeSeparators(ToQString(panel.GetCurrentFolderPrefix()));
     displayArchive_.chop(archiveFolder_.size() +
                          (archiveFolder_.isEmpty() || archiveFolder_.endsWith(':') ? 1 : 2));
-    entries_.clear();
-    IInArchive *metadata = folder->GetArchiveProperties();
-    UInt32 count = 0;
-    if (metadata && metadata->GetNumberOfItems(&count) == S_OK) {
-        for (UInt32 index = 0; index < count; ++index) {
-            UString path;
-            const HRESULT pathResult = folder->GetArchiveItemPath(index, path);
-            NWindows::NCOM::CPropVariant directory;
-            metadata->GetProperty(index, kpidIsDir, &directory);
-            ArchiveEntry entry;
-            if (pathResult == S_OK)
-                entry.path = QDir::fromNativeSeparators(ToQString(path));
-            entry.directory = directory.vt == VT_BOOL && directory.boolVal != VARIANT_FALSE;
-            entries_.append(entry);
-        }
-    }
     {
         QSignalBlocker block(flatView_);
         flatView_->setChecked(flatArchive_);

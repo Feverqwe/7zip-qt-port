@@ -133,7 +133,7 @@ HRESULT CreateArchiveFolder(const QList<ArchiveEntry> &entries, const UString &a
     RINOK(CreateArchiveMetadata(entries, &props))
     auto *agentSpec = new CAgent;
     CMyComPtr<IFolderArcProps> agent = agentSpec;
-    RINOK(agentSpec->Init(entries, props, archiveType, engineResource))
+    RINOK(agentSpec->Init(props, archiveType, engineResource))
     agentSpec->AttachEngineResource(engineResource);
     return agentSpec->BindToRootFolder(resultFolder);
     COM_TRY_END

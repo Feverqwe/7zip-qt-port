@@ -1543,8 +1543,8 @@ Z7_COM7F_IMF(CAgent::Open(IInStream *inStream, const wchar_t *filePath, const wc
     COM_TRY_END
 }
 
-HRESULT CAgent::Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveProps,
-                     const UString &archiveType, IUnknown *engineResource) {
+HRESULT CAgent::Init(IFolderFolder *archiveProps, const UString &archiveType,
+                     IUnknown *engineResource) {
     COM_TRY_BEGIN
     if (!archiveProps)
         return E_INVALIDARG;
@@ -1552,7 +1552,6 @@ HRESULT CAgent::Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveP
     // owner's metadata; CommonUpdateOperation restores its bound folder paths.
     if (!_archiveLink.Arcs.IsEmpty())
         return E_FAIL;
-    UNUSED_VAR(entries)
     RINOK(CreateArchiveLinkTransport(_archiveLink, archiveProps, engineResource))
     CArc &arc = _archiveLink.Arcs.Back();
     if (auto *resource = dynamic_cast<QtArchiveFileResource *>(engineResource)) {

@@ -215,8 +215,8 @@ class AgentFolderTests : public QObject {
         CMyComPtr<IFolderFolder> props = new QtPanelFolder("archive.zip", items);
         auto *agentSpec = new CAgent;
         CMyComPtr<IFolderArcProps> agent = agentSpec;
-        QCOMPARE(agentSpec->Init(entries, props, UString("zip")), S_OK);
-        QCOMPARE(agentSpec->Init({}, props, UString("other")), E_FAIL);
+        QCOMPARE(agentSpec->Init(props, UString("zip")), S_OK);
+        QCOMPARE(agentSpec->Init(props, UString("other")), E_FAIL);
         CMyComPtr<IFolderFolder> rootFolder;
         QCOMPARE(agentSpec->BindToRootFolder(&rootFolder), S_OK);
         entries.clear();
@@ -260,10 +260,10 @@ class AgentFolderTests : public QObject {
         UInt32 unopenedItems = 99;
         QCOMPARE(rootFolder->GetNumberOfItems(&unopenedItems), E_FAIL);
         rootFolder.Release();
-        QCOMPARE(agentSpec->Init({}, nullptr, UString("zip")), E_INVALIDARG);
+        QCOMPARE(agentSpec->Init(nullptr, UString("zip")), E_INVALIDARG);
         CObjectVector<CPanelItem> items;
         CMyComPtr<IFolderFolder> props = new QtPanelFolder("empty.zip", items);
-        QCOMPARE(agentSpec->Init({}, props, UString("zip")), S_OK);
+        QCOMPARE(agentSpec->Init(props, UString("zip")), S_OK);
         QCOMPARE(agentSpec->BindToRootFolder(&rootFolder), S_OK);
         owner.Release();
         props.Release();

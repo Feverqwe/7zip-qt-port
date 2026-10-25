@@ -100,7 +100,7 @@ class CNativeUpdateWorker final : public CProgressThreadVirt {
         CMyComPtr<IFolderFolder> props;
         RINOK(NativeProperties(*_resourceSpec, &props))
         CMyComPtr2_Create<IFolderArcProps, CAgent> agent;
-        RINOK(agent->Init({}, props, UString("zip"), _resource))
+        RINOK(agent->Init(props, UString("zip"), _resource))
         CMyComPtr<IFolderFolder> root, inside;
         RINOK(agent->BindToRootFolder(&root))
         RINOK(root->BindToFolder(L"inside", &inside))
@@ -157,7 +157,7 @@ class CNativeMutationWorker final : public CProgressThreadVirt {
         CMyComPtr<IFolderFolder> props;
         RINOK(NativeProperties(*_resourceSpec, &props))
         CMyComPtr2_Create<IFolderArcProps, CAgent> agent;
-        RINOK(agent->Init({}, props, ToUString(_format), _resource))
+        RINOK(agent->Init(props, ToUString(_format), _resource))
         CMyComPtr<IFolderFolder> root, inside;
         RINOK(agent->BindToRootFolder(&root))
         RINOK(root->BindToFolder(L"inside", &inside))
@@ -243,7 +243,7 @@ class CNativeAddWorker final : public CProgressThreadVirt {
             CMyComPtr<IFolderFolder> props;
             RINOK(NativeProperties(*_resourceSpec, &props))
             CMyComPtr2_Create<IFolderArcProps, CAgent> agent;
-            RINOK(agent->Init({}, props, ToUString(_format), _resource))
+            RINOK(agent->Init(props, ToUString(_format), _resource))
             CMyComPtr<IFolderFolder> root, inside;
             RINOK(agent->BindToRootFolder(&root))
             folder = root;

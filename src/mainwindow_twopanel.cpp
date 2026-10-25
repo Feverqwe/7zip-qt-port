@@ -22,7 +22,6 @@ void MainWindow::storePanelUi(unsigned index) {
     ui.archivePassword = archivePassword_;
     ui.archiveFolder = archiveFolder_;
     ui.history = history_;
-    ui.entries = entries_;
     ui.info = info_;
     ui.state = state_;
     ui.sortMode = sortMode_;
@@ -58,7 +57,6 @@ void MainWindow::restorePanelUi(unsigned index) {
     archivePassword_ = ui.archivePassword;
     archiveFolder_ = ui.archiveFolder;
     history_ = ui.history;
-    entries_ = ui.entries;
     info_ = ui.info;
     state_ = ui.state;
     sortMode_ = ui.sortMode;

@@ -351,7 +351,6 @@ class MainWindow : public QMainWindow {
         QString archivePassword;
         QString archiveFolder;
         QStringList history;
-        QList<ArchiveEntry> entries;
         ArchiveInfo info;
         State state = State::Filesystem;
         SortMode sortMode = SortMode::Name;
@@ -389,7 +388,6 @@ class MainWindow : public QMainWindow {
     ArchiveMoveStage archiveMoveStage_ = ArchiveMoveStage::None;
     CRecordVector<UInt32> archiveMoveIndices_;
     std::optional<unsigned> transferDestinationPanel_;
-    QList<ArchiveEntry> entries_;
     ArchiveInfo info_;
     QLineEdit *path_ = nullptr;
     QComboBox *pathCombo_ = nullptr;

@@ -173,7 +173,7 @@ class AgentPropertyProjectionTests final : public QObject {
         CMyComPtr<IFolderFolder> provider = failure;
         auto *agentSpec = new CAgent;
         CMyComPtr<IInFolderArchive> agent = agentSpec;
-        QCOMPARE(agentSpec->Init({}, provider, UString("zip")), S_OK);
+        QCOMPARE(agentSpec->Init(provider, UString("zip")), S_OK);
         CMyComPtr<IFolderFolder> folder;
         QCOMPARE(agent->BindToRootFolder(&folder), S_OK);
         metadata.Release();

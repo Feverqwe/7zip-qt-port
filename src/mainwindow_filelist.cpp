@@ -54,7 +54,6 @@ HRESULT MainWindow::showDirectory(const QString &path, bool remember, bool sourc
         const QSignalBlocker blocked(flatView_);
         flatView_->setChecked(flatDisk_);
     }
-    entries_.clear();
     renameEdit_.reset();
     table_->clearSelection();
     table_->setSortingEnabled(false);
