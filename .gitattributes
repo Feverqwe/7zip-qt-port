@@ -6,6 +6,8 @@ third_party/7zip/**/*.c -whitespace
 third_party/7zip/**/*.rc -whitespace
 # Linux baseline source and license notices also retain their original bytes.
 third_party/linux/** -text -whitespace
+# The SMB reference baseline pins original source bytes and notices too.
+third_party/libsmb2/** -text -whitespace
 # Official libzstd C dependencies keep original bytes on all platforms.
 src/zstd/** -text -whitespace
 # Preserve hashes of original language/distribution assets on every platform.

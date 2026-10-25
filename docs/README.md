@@ -14,6 +14,7 @@ evidence applies only to the recorded revision, platform and scenario.
 | --- | --- |
 | Learn about the application | [README](../README.md) |
 | Read files directly from an external device | [Direct device access](direct-device-reading.md) |
+| Open container files in other applications through a read-only mount | [Read-only mounts](readonly-mounts.md) |
 | Browse Android/flash F2FS images | [Read-only F2FS](f2fs-reading.md) |
 | Read fscrypt files using raw master keys | [Encrypted ext files](ext-encryption.md) |
 | Report a bug, contribute or check licenses | [Contributing](../CONTRIBUTING.md), [security](../SECURITY.md), [licenses](../THIRD_PARTY_NOTICES.md) |

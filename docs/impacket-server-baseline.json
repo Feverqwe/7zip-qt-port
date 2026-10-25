@@ -1,0 +1,15 @@
+{
+  "repository": "https://github.com/fortra/impacket.git",
+  "revision": "e9ae5bc550689fdcac37cd55bc33c5e1370e1e49",
+  "purpose": "Server suitability assessment only; not a shipped dependency",
+  "files": {
+    "LICENSE": "c847171fcd225ebe6a137242d7741a18d29a1bc24fd1c382ca1d57e1ae1d8f00",
+    "README.md": "0480ed5a084ce64c422e0f2d7f38eb82adf1e5b2a882880a1c186bc0bfed5968",
+    "examples/smbserver.py": "6f00a80f76e791f897f9e2f4038c506f56a41969b2448e7f790840a5e1bdee93",
+    "impacket/ntlm.py": "6279df6bc863d3d2341e59aefecd500d79dbd1d99d3470a1914eae29f3563616",
+    "impacket/smb3structs.py": "c6bbaa2270dbe0c2ededbe4c12625eefaee17cdd1283867e76d2daf91c801850",
+    "impacket/smbserver.py": "87b9338e5c741ae88ad1bcebd076d209a88ba58e2870cde603412ac76a78c018",
+    "setup.py": "0ed34d7c8ccac9ddfb8d998a25116aa4159ebb48f6841d70a6904697fdf77a92"
+  },
+  "adapted": {}
+}

@@ -26,6 +26,7 @@ set_source_files_properties(src/CPP/7zip/Common/LimitedStreams.cpp PROPERTIES
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools Network RemoteObjects)
 find_package(Threads REQUIRED)
+include(cmake/Smb.cmake)
 include(cmake/Zstd.cmake)
 include(cmake/Nls.cmake)
 include(cmake/Exfat.cmake)
@@ -540,6 +541,8 @@ endif()
 target_link_libraries(sevenzip_panel PUBLIC sevenzip_filesystem)
 
 add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfolder.h
+    src/archivereadonlyview.cpp src/archivereadonlyview.h
+    src/qtarchivemountsource.cpp src/qtarchivemountsource.h
     src/qtassociationfileopen.cpp src/qtassociationfileopen.h
     src/CPP/7zip/UI/Agent/ArchiveFolderOpen.cpp
     src/CPP/7zip/UI/FileManager/LangPage.cpp src/CPP/7zip/UI/FileManager/LangPage.h
@@ -578,6 +581,31 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/AgentProxy.cpp)
 target_include_directories(sevenzip_location PUBLIC src)
 target_link_libraries(sevenzip_location PUBLIC sevenzip_filesystem sevenzip_panel)
+target_link_libraries(sevenzip_location PUBLIC sevenzip_mount_protocol)
+add_library(sevenzip_mount_ui STATIC src/qtmountextractionprompt.cpp src/qtmountextractionprompt.h)
+target_sources(sevenzip_mount_ui PRIVATE src/qtmountsettings.cpp src/qtmountsettings.h)
+set_target_properties(sevenzip_mount_ui PROPERTIES AUTOMOC ON AUTOUIC OFF)
+target_link_libraries(sevenzip_mount_ui PUBLIC sevenzip_mount_protocol Qt6::Widgets)
+target_link_libraries(sevenzip_mount_ui PRIVATE sevenzip_panel)
+target_include_directories(sevenzip_mount_ui PUBLIC src)
+if(APPLE OR WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_sources(sevenzip_mount_ui PRIVATE src/qtarchivemountmanager.h
+        src/qtarchivemountmanager.cpp src/qtarchivemountmanagerdialog.cpp)
+    target_link_libraries(sevenzip_mount_ui PRIVATE sevenzip_location)
+endif()
+add_library(sevenzip_native_client STATIC src/qtsmbmountplatform.h)
+target_include_directories(sevenzip_native_client PUBLIC src)
+target_link_libraries(sevenzip_native_client PUBLIC sevenzip_mount_protocol)
+set_target_properties(sevenzip_native_client PROPERTIES AUTOMOC ON AUTOUIC OFF)
+target_sources(sevenzip_location PRIVATE src/qtarchivemountsession.h src/qtarchivemountsession.cpp)
+target_link_libraries(sevenzip_location PUBLIC sevenzip_native_client)
+if(APPLE OR WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_sources(sevenzip_native_client PRIVATE src/qtsmbmountplatform_remote.cpp)
+    add_dependencies(sevenzip_native_client sevenzip_native_mount)
+    if(WIN32)
+        target_link_libraries(sevenzip_native_client PRIVATE shell32)
+    endif()
+endif()
 target_link_libraries(sevenzip_location PRIVATE sevenzip_device_access)
 target_sources(sevenzip_location PRIVATE src/CPP/7zip/UI/GUI/GUI.cpp src/qtguicommand.h)
 target_include_directories(sevenzip_location PRIVATE src/CPP/Common src/CPP/7zip/UI/Common)
@@ -658,6 +686,17 @@ set_target_properties(sevenzip_desktop PROPERTIES
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
+add_custom_target(sevenzip_mount_runtime
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sevenzip_smb_server>
+            "$<TARGET_FILE_DIR:sevenzip_desktop>/$<TARGET_FILE_NAME:sevenzip_smb_server>"
+        DEPENDS sevenzip_smb_server VERBATIM)
+add_dependencies(sevenzip_desktop sevenzip_mount_runtime)
+if(TARGET sevenzip_native_mount)
+    add_custom_command(TARGET sevenzip_mount_runtime POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sevenzip_native_mount>
+            "$<TARGET_FILE_DIR:sevenzip_desktop>/$<TARGET_FILE_NAME:sevenzip_native_mount>" VERBATIM)
+    add_dependencies(sevenzip_mount_runtime sevenzip_native_mount)
+endif()
 sevenzip_deploy_exfat()
 sevenzip_deploy_xfs()
 sevenzip_deploy_fat()
@@ -1652,6 +1691,76 @@ if(BUILD_TESTING)
     add_test(NAME archive_layer_lifetime COMMAND archive_layer_lifetime_tests -silent)
     set_tests_properties(archive_layer_lifetime PROPERTIES TIMEOUT 45
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(archive_readonly_view_tests tests/archive_readonly_view_tests.cpp
+        ${source_extract_advanced_sources})
+    target_include_directories(archive_readonly_view_tests PRIVATE src tests)
+    target_link_libraries(archive_readonly_view_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME archive_readonly_view COMMAND archive_readonly_view_tests -silent)
+    qt_add_executable(archive_mount_device_tests tests/archive_mount_device_tests.cpp
+        tests/exfat_fixture.cpp ${source_extract_advanced_sources})
+    target_include_directories(archive_mount_device_tests PRIVATE src tests)
+    target_link_libraries(archive_mount_device_tests PRIVATE sevenzip_location Qt6::Test)
+    target_compile_definitions(archive_mount_device_tests PRIVATE
+        SEVENZIP_SMB_SERVER="$<TARGET_FILE:sevenzip_smb_server>")
+    add_dependencies(archive_mount_device_tests sevenzip_exfat_runtime sevenzip_smb_server)
+    add_test(NAME archive_mount_device COMMAND archive_mount_device_tests -silent)
+    set_tests_properties(archive_mount_device PROPERTIES TIMEOUT 120)
+    qt_add_executable(native_mount_client_tests tests/native_mount_client_tests.cpp)
+    target_link_libraries(native_mount_client_tests PRIVATE sevenzip_native_client Qt6::Test)
+    target_compile_definitions(native_mount_client_tests PRIVATE
+        SEVENZIP_SMB_PROBE="$<TARGET_FILE:smb2_mount_probe>")
+    add_dependencies(native_mount_client_tests smb2_mount_probe)
+    add_test(NAME native_mount_client COMMAND native_mount_client_tests -silent)
+    set_tests_properties(native_mount_client PROPERTIES TIMEOUT 150)
+    qt_add_executable(smb_readonly_server_tests tests/smb_readonly_server_tests.cpp)
+    target_link_libraries(smb_readonly_server_tests PRIVATE sevenzip_smb smb2 Qt6::Test Qt6::Network)
+    target_compile_definitions(smb_readonly_server_tests PRIVATE
+        SEVENZIP_SMB_PROBE="$<TARGET_FILE:smb2_mount_probe>")
+    add_dependencies(smb_readonly_server_tests smb2_mount_probe)
+    add_test(NAME smb_readonly_server COMMAND smb_readonly_server_tests -silent)
+    set_tests_properties(smb_readonly_server PROPERTIES TIMEOUT 30)
+    if(WIN32)
+        add_dependencies(smb_readonly_server_tests sevenzip_smb_server_smb_runtime)
+    endif()
+    qt_add_executable(mount_extraction_prompt_tests tests/mount_extraction_prompt_tests.cpp
+        tests/layout_inspection.cpp)
+    target_include_directories(mount_extraction_prompt_tests PRIVATE tests)
+    target_link_libraries(mount_extraction_prompt_tests PRIVATE sevenzip_mount_ui Qt6::Test)
+    add_test(NAME mount_extraction_prompt COMMAND mount_extraction_prompt_tests -silent)
+    set_tests_properties(mount_extraction_prompt PROPERTIES TIMEOUT 20
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    set_tests_properties(archive_readonly_view PROPERTIES TIMEOUT 45
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    if(UNIX)
+        qt_add_executable(archive_mount_transport_tests tests/archive_mount_transport_tests.cpp
+            ${source_extract_advanced_sources})
+        target_include_directories(archive_mount_transport_tests PRIVATE src tests)
+        target_link_libraries(archive_mount_transport_tests PRIVATE sevenzip_location smb2 Qt6::Test)
+        if(APPLE)
+            target_link_libraries(archive_mount_transport_tests PRIVATE sevenzip_mount_ui)
+            target_sources(archive_mount_transport_tests PRIVATE tests/layout_inspection.cpp)
+        endif()
+        target_compile_definitions(archive_mount_transport_tests PRIVATE
+            SEVENZIP_SMB_SERVER="$<TARGET_FILE:sevenzip_smb_server>")
+        add_dependencies(archive_mount_transport_tests sevenzip_smb_server)
+        add_test(NAME archive_mount_transport COMMAND archive_mount_transport_tests -silent)
+        set_tests_properties(archive_mount_transport PROPERTIES TIMEOUT 60
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endif()
+    if(APPLE)
+        qt_add_executable(archive_mount_media_tests tests/archive_mount_media_tests.cpp
+            tests/fixtures/native_media_consumer.mm ${source_extract_advanced_sources})
+        set_source_files_properties(tests/fixtures/native_media_consumer.mm PROPERTIES
+            COMPILE_OPTIONS "-fobjc-arc")
+        target_include_directories(archive_mount_media_tests PRIVATE src tests)
+        target_link_libraries(archive_mount_media_tests PRIVATE sevenzip_location Qt6::Test
+            "-framework PDFKit" "-framework AVFoundation" "-framework CoreVideo" "-framework CoreMedia")
+        target_compile_definitions(archive_mount_media_tests PRIVATE
+            SEVENZIP_SMB_SERVER="$<TARGET_FILE:sevenzip_smb_server>")
+        add_dependencies(archive_mount_media_tests sevenzip_smb_server)
+        add_test(NAME archive_mount_media COMMAND archive_mount_media_tests -silent)
+        set_tests_properties(archive_mount_media PROPERTIES TIMEOUT 120 ENVIRONMENT "QT_QPA_PLATFORM=cocoa")
+    endif()
     foreach(native_read_suite IN ITEMS native_archive_test native_listing native_source_extract)
         qt_add_executable(${native_read_suite}_tests tests/${native_read_suite}_tests.cpp
             ${source_extract_advanced_sources})
@@ -3291,6 +3400,10 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
         target_link_libraries(${engine_consumer} PRIVATE sevenzip_panel)
     endif()
     if("src/mainwindow.cpp" IN_LIST engine_consumer_sources)
+        if(APPLE OR WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
+            target_sources(${engine_consumer} PRIVATE src/qtfilemanagermountcommands.cpp)
+            target_link_libraries(${engine_consumer} PRIVATE sevenzip_mount_ui)
+        endif()
         target_sources(${engine_consumer} PRIVATE src/qtapppresentation.cpp src/qtapppresentation.h
             src/mainwindow_propertyinvalidation.cpp
             src/mainwindow_columns.cpp src/mainwindow_refresh.cpp

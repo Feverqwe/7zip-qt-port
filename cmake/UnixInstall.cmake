@@ -10,6 +10,17 @@ else()
     install(PROGRAMS "$<TARGET_FILE_DIR:sevenzip_desktop>/7zFM"
         "$<TARGET_FILE_DIR:sevenzip_desktop>/7zG" DESTINATION bin)
 endif()
+if(APPLE)
+    install(TARGETS sevenzip_smb_server sevenzip_native_mount
+        RUNTIME DESTINATION Sevenzip.app/Contents/MacOS)
+    install(TARGETS smb2 LIBRARY DESTINATION Sevenzip.app/Contents/Frameworks)
+else()
+    install(TARGETS sevenzip_smb_server sevenzip_native_mount RUNTIME DESTINATION bin)
+    install(TARGETS smb2 LIBRARY DESTINATION lib)
+endif()
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libsmb2/COPYING"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libsmb2/LICENCE-LGPL-2.1.txt"
+    DESTINATION "${notices_destination}/libsmb2")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib/LICENSE"
     DESTINATION "${notices_destination}/zlib")
 install(PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z"
@@ -131,7 +142,9 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/qemu/LICENSE"
 if(APPLE)
     qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT unix_deploy_script
         NO_TRANSLATIONS DEPLOY_TOOL_OPTIONS
-        "-executable=Sevenzip.app/Contents/MacOS/SevenzipDeviceReader")
+        "-executable=Sevenzip.app/Contents/MacOS/SevenzipDeviceReader"
+        "-executable=Sevenzip.app/Contents/MacOS/SevenzipSmb"
+        "-executable=Sevenzip.app/Contents/MacOS/SevenzipMount")
 else()
     qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT unix_deploy_script
         NO_TRANSLATIONS)

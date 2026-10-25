@@ -1,0 +1,302 @@
+# Local read-only SMB: implementation and evidence
+
+## Scope and current boundary
+
+2026-10-25, `feature/readonly-smb`, based on `6d955531`.
+The requested product scenario is a loopback-only SMB mount backed by the existing
+readers, with no separately installed filesystem driver or server. The user
+explicitly authorized a research fork of libsmb2 after reproduction of missing
+server-side compound handling. That authorization permits protocol fixes inside
+the fork; it does not authorize disabling OS security settings or creating new
+format readers.
+
+The user clarified the Linux prerequisite: use the system CIFS client. If CIFS or
+its required mount utility is unavailable, explain what the user must install
+(including `cifs-utils` where applicable). Do not build a replacement driver or
+install packages automatically. This Linux prerequisite is an explicit exception
+to the original no-extra-component deployment request.
+
+The user additionally requires explicit confirmation before extracting any file
+for a mount. Direct seekable reads and reuse of an existing cache do not extract.
+The backend now denies materialization when there is no consent callback or the
+user declines; every new materialization requires authorization before temporary
+output is created. This is connected to the product manager; a second, independent
+default-deny choice controls use of recoverable unverified extraction output.
+Cached unverified output retains its warning. Wrong-password/encrypted failure
+output is never offered as recovered data.
+
+Tools exposes Mount read-only and Read-only mounts for a retained native
+container. The modeless manager owns sessions independently of panel navigation,
+provides paths and unmount actions, preserves a busy mount and intercepts owner
+closure. A separate SMB child and OS-client broker communicate over user-private
+Qt Remote Objects endpoints. macOS uses NetFS; modern Windows uses a restricted
+global SMB mapping after UAC; Linux calls the system mount.cifs after system
+authorization. Credentials never enter process arguments. Acceptance evidence
+and remaining platform limitations below must be distinguished from source scope.
+
+## Library selection and provenance
+
+Selected research candidate: [sahlberg/libsmb2](https://github.com/sahlberg/libsmb2),
+commit `1395c54006f0cfb4da5df4b9fd9bf531feffe56a`. The
+[baseline](../libsmb2-server-baseline.json) pins complete original inventory units,
+including the headers, source/build dependencies and original example used for
+assessment. `adapted` maps original units to their authoritative local owners in
+`third_party/libsmb2`; unchanged dependencies are distinguished from local fixes.
+The reference example is studied, not shipped. The two probes are local API
+integration, not copies of its virtual disk implementation.
+
+The library is LGPL-2.1-or-later; notices and the original license are retained in
+`third_party/libsmb2`. Its C sources remain C. DCE/RPC, Kerberos/GSS providers,
+QUIC/RDMA transports and example utilities are not selected for the application
+build. Only the public server API is a candidate integration boundary; the
+directory wire diagnostic also inspects private output vectors to check emitted
+data. Product consumers must not depend on those private vectors.
+
+The fork retains upstream module boundaries. Current changes are:
+
+- `socket.c`: bind only IPv4 loopback; retain compound inheritance within one
+  received chain, after signature verification against original request bytes.
+- `libsmb2-private.h`, `smb2-cmd-create.c`, `pdu.c`, `libsmb2.c`: retain effective
+  FileId/SessionId/TreeId and failure status for related operations. Handlers
+  receive resolved handles, not protocol sentinel values.
+- `smb2-cmd-query-directory.c`: relative NextEntryOffset, eight-byte entry
+  alignment, bounded output and an error when no entry fits. Unsupported
+  directory information classes do not masquerade as an empty directory.
+- `libsmb2.c`, public server header: allow callback errors to carry NTSTATUS,
+  preserving the original fallback for `-errno`/`-1`. This lets adapters report
+  read-only, missing-handle and source errors without queuing a response while
+  the callback still uses its request.
+- Directory reply codecs support DIRECTORY/FULL/BOTH and ID_FULL/ID_BOTH using
+  the library's existing universal directory structure. QUERY_INFO adds scalar
+  Internal/EA/Access/Mode/Alignment and Name information through the existing
+  encoders. File and directory timestamps preserve pre-1970 values; QUERY reply
+  zero differs from SET_INFO's unchanged-time sentinel.
+- NTLM challenge flags include NEGOTIATE_NTLM and TARGET_TYPE_SERVER, required
+  by the native Windows SSP. Existing NTLM/signing primitives remain authoritative.
+- A positive READ callback result uses the library's existing STATUS_PENDING,
+  AsyncId and final-reply correlation. Qt IPC completion queues the final reply
+  on the server event loop; consent and decoding no longer block metadata traffic.
+  Outstanding reads and clients are bounded. CANCEL has no response of its own
+  and does not replace an outstanding request in the correlation queue;
+  cancellation of already running decoding is best effort at the OS-request
+  level, while session cancellation aborts its reader and pending consent.
+- POSIX select descriptors are checked against FD_SETSIZE before use.
+
+Only signed SMB 2.1 is accepted. This is a local read-only application adapter,
+not acceptance of the library as a general network server. Forged READ signature
+and cleared-signed-flag regressions verify rejection before invoking the reader;
+broader hostile-protocol fuzzing and additional dialects are outside this evidence.
+No new signing, NTLM or encryption algorithm is implemented by the adapter.
+The library's global context registry requires one server instance per process,
+without client contexts in that process. The product's child isolation supplies
+that boundary; wire tests use a separate synthetic server process as well.
+
+### Reproducible review
+
+Use a separate source checkout of the repository above. Original bytes are checked
+without depending on the current adaptation:
+
+```sh
+python3 scripts/upstream_baseline.py reference-verify \
+  --manifest docs/libsmb2-server-baseline.json --upstream build/review/libsmb2
+python3 scripts/upstream_baseline.py reference-review \
+  --manifest docs/libsmb2-server-baseline.json --upstream build/review/libsmb2 \
+  --new-revision <proposed-full-commit> --output build/review/libsmb2-update.md
+```
+
+The existing review includes each mapped local adaptation alongside the original
+baseline and proposed upstream revision. Do not update baseline hashes to match
+local protocol fixes. Review dependencies and omitted scope before updating.
+
+### Alternatives investigated
+
+| Candidate | Source findings and decision |
+| --- | --- |
+| [SMBLibrary](https://github.com/TalAloni/SMBLibrary), `582635541d2ec0c84eac5f66cbebd41e2d35c7ae` | C# server with INTFileStore and independent NTLM provider, LGPL-3.0-or-later. The reviewed receive/dispatch path parses requests and signs responses, but does not call the available signature verifier for incoming requests. Not selected without a security fix and a bundled runtime/deployment evaluation. This is a source finding, not a native interoperability test. [Reference inventory](../smblibrary-server-baseline.json). |
+| [Impacket](https://github.com/fortra/impacket), `e9ae5bc550689fdcac37cd55bc33c5e1370e1e49` | Python server, modified Apache license with additional component notices. `processRequest` replaces the received SMB2 signature by calling `signSMBv2` instead of authenticating it; filesystem operations use local OS paths and descriptors. Virtual readers would require replacing multiple command handlers. Not selected. No native runtime test. [Reference inventory](../impacket-server-baseline.json). |
+| [Samba](https://www.samba.org/) | Mature Unix server with [VFS modules](https://www.samba.org/~ab/output/htmldocs/Samba3-Developers-Guide/vfs.html), loopback binding and alternate ports. A bundled `smbd` plus version-bound VFS module is a different deployment from a small server library, and does not establish a native Windows server solution. Not built or ruled out universally; retained as an alternative if the libsmb2 fork is abandoned. No Samba source imported. |
+
+## Source integration review
+
+The upstream 7-Zip reference checkout is `9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
+`CPanel::OpenItemInArchive` in `CPP/7zip/UI/FileManager/PanelItemOpen.cpp` obtains
+`IInArchiveGetStream`, then uses the source CopyTo/materialization workflow when
+needed. No usable upstream SMB server or mount-session owner was found in the UI
+source. The SMB library adapter and lifecycle integration are new platform glue.
+
+Existing local owners reviewed before reader integration:
+
+- `ArchiveBackend::openNativeArchive`, `openDeviceFilesystem` and
+  `extractNativeArchive` retain the existing backend boundary.
+- `QtArchiveFolderManager::OpenLinkImpl` binds streams, device inputs, recovery
+  consent and native reader generations. Reopening a physical path alone would
+  lose nested-container ownership and consent state.
+- `QtArchiveFileResource` retains the codec catalog, native reader, direct input,
+  materialized temporary lease and limitations. The mount must retain a resource
+  generation independently of panel navigation.
+- `CreateArchiveItemStream` retains that resource and serializes independent
+  cursors through `ArchiveNativeOpen::itemStreamMutex`; it exposes seek only when
+  the native stream supplies it. Nonseekable entries need the existing bounded
+  materialization/cache route, not replay from offset zero for every request.
+
+`ArchiveReadOnlyView` retains that resource generation, projects a safe immutable
+tree and obtains seekable native streams. Nonseekable entries use the existing
+`QtArchiveReadOperation` with a retained native reader, a bounded output stream
+and explicit extraction consent. Recoverable unencrypted CRC/data/truncation
+output requires an additional scoped choice before exposure. Unsupported decoding,
+missing bytes, cancellation and password requirements remain errors. Unverified
+data is reported visibly and never becomes a verified extraction success.
+
+`QtArchiveMountSource` owns the reader on a dedicated thread; `SevenzipSmb` owns
+the server and receives only immutable metadata and bounded range replies over
+a user-restricted local QtRO endpoint. Credentials are generated per session.
+The macOS session owner uses NetFS rather than credentials in process arguments,
+and keeps the reader/server until unmount succeeds. Native tests pass for TAR and
+ZIP through this owner, including extraction consent and cleanup. NetFS receives
+a canonical mount path (its path validation rejects symlink ancestors); its
+completion is delivered through a Qt queued call rather than depending on a GUI
+dispatch queue in offscreen tests. The OS broker now owns the native mount in an
+independent process and force-detaches after losing its controller. The existing
+device/nested resource lease is retained rather than reopening paths. Nested TAR
+native media checks pass after both folder/window services close. The synthetic
+direct-device view check passes retained exFAT reads, an explicitly allowed dirty
+opening, source disconnect/error and retry. A missing direct-device limitation
+description falls back to a visible indication of the selected limited mode.
+Physical-device authorization/removal through a native mounted path is unverified.
+
+## Runtime evidence
+
+2026-10-25, macOS 27.0.1 arm64, native `/sbin/mount_smbfs`, synthetic fixture only.
+
+Before the compound fix, the server issued handle `1`, then received the related
+QUERY_INFO FileId `ffffffffffffffff`; native mounting failed with `Bad file
+descriptor`. After the fix the same opening succeeded. This follows the
+[related-request contract](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/46dd4182-62d3-4e30-9fe5-e2ec124edca1),
+which requires inheritance from the preceding operation. The public callback API
+had no effective-handle resolution or complete compound context for an adapter.
+
+The original directory encoder emitted offsets `96, 192, 0` for three equal-sized
+entries and returned 288 bytes for a client buffer of 96 bytes. The focused probe
+failed. The fork emits `96, 96, 0`; the bounded case returns one 96-byte entry.
+Both focused checks pass. The probe checks observable response traversal and
+buffer bounds; it does not search source text or pin private symbol spelling.
+
+The first successful mounted fixture used three synthetic 64 MiB files. Native
+checks passed for all names (including Cyrillic/spaces), nonsequential reads,
+three parallel readers and mmap. macOS presents decomposed Unicode names; checks
+compare normalized names. Write/create/delete/rename/metadata attempts received
+EROFS through the read-only mount. This does not alone prove every server-side
+write rejection; direct request checks remain necessary.
+
+`lsof` confirmed `127.0.0.1:20445`; `smbutil statshares` reported SMB 2.1,
+SIGNING_REQUIRED=TRUE and SIGNING_ON=TRUE. No global client security setting was
+changed. A synthetic username/password was used, never an OS-account password.
+The mount was removed before stopping the test server.
+
+SMB 3.1.1 with the original example reached server authentication but did not
+complete mounting. The exact cause was not isolated; this is not accepted SMB3
+support. The shared production adapter subsequently passed native range reads
+beyond 4 GiB, EOF, mmap and parallel reads against a synthetic `(5 GiB + 123)`
+byte virtual file. The probe does not allocate that entire file.
+
+The retained-reader and child transport suites pass with synthetic TAR and ZIP:
+range reads survive panel-resource release, direct seekable reads avoid
+extraction, denied extraction produces no data, explicit consent enables bounded
+materialization, cached reads require no new consent, wrong credentials fail,
+and direct SMB create/write/delete/rename/mkdir requests fail. The local socket
+transport check requires an unsandboxed run on this host; sandbox socket creation
+is denied. Additional focused checks pass for cancellation while awaiting consent
+and fresh consent after cache eviction. The native macOS NetFS test passes for
+mount/read/unmount of retained TAR/ZIP readers through the child. EN/RU manager
+checks exercise extraction consent, Copy Path, owner-close Cancel and busy
+unmount: the server remains readable until held files close and normal unmount
+then succeeds. Native-client tests also detach after loss of the owner channel.
+
+The extraction and unverified-output confirmations default to Cancel. Return,
+Escape, close and widget destruction deny; explicit acceptance is required.
+The contextual dialog uses standard Qt labels and button boxes with wrapped
+plain-text paths. EN/RU normal/compact widget JSON is checked on each platform;
+Windows exposed a form-wrapping height issue; vertically grouped fields and
+explicit wrapped-caption heights now pass normal/compact EN/RU geometry checks.
+Native Cocoa modality, VoiceOver
+and rendered Windows comparison have not been checked. Apple HIG pages were
+inaccessible to the web reader beyond JavaScript/unsupported Markdown; the local
+`macos-hig` reference dated 2026-10-18 informed the new contextual alert.
+
+Build and run the focused library checks with the normal worktree wrappers:
+
+```sh
+./scripts/build.sh dev smb2_directory_probe smb2_mount_probe
+./scripts/ctest.sh --preset dev -R '^smb2_server_directory$' --output-on-failure
+```
+
+The mount probe is opt-in: it starts a synthetic local SMB server with public test
+credentials. It does not open images/devices. Use a private empty mount directory,
+the native client with read-only/no-browse/new-session options, and unmount before
+stopping it. Native diagnostics can block inside the OS despite a subprocess
+timeout; preserve that lifecycle ordering.
+
+PDFKit has read the generated PDF's page/text through a mounted native TAR reader;
+AVPlayer has played and decoded changing frames after forward/backward seeks.
+No extraction occurred. AVFoundation releases file handles asynchronously, so
+the check keeps the server alive and retries a busy normal unmount. This is
+native-framework acceptance, not a rendered Preview/QuickTime UI check: computer
+use access to Sevenzip was unavailable in this session.
+
+A synthetic exFAT device is also exercised through the macOS native SMB mount:
+removal before the first data read reports an entry error without successful
+bytes, and restoring the source permits a correct retry. The source's disconnect
+switch is atomic because native reads run on another thread. A separate native
+session test kills its own SMB child after a successful read, observes the session
+failure and force-detaches the remaining OS mount. These are deterministic
+simulations, not physical-device removal acceptance.
+
+The broker acknowledges its private control channel before starting a native
+mount. Unexpected broker exit retains the server and session parameters, including
+when the mount-path acknowledgement was lost. Retrying unmount starts a recovery
+broker: macOS checks the exact mountpoint and SMB share, Windows selects only the
+exact session UNC mapping, and Linux checks the protected session mountpoint in
+the kernel mount table. A mismatching volume is preserved. The macOS native
+lifecycle test kills only its own broker, verifies continued reads, and successfully
+detaches through a replacement broker. Normal detach and control-channel loss also
+pass. The updated Linux broker compiles and its prerequisite/device/wire checks
+pass; native recovery remains unverified without mount.cifs. Windows recovery
+still requires a current MSVC build and platform-specific acceptance: the runner
+is held by a separate maintenance operation.
+
+Windows 11 Pro 10.0.26300 x64 passed alternate-port signed SMB 2.1 synthetic
+directory/Unicode/spaces, parallel ranges, >4 GiB, EOF, mmap and write-denial
+checks. An unqualified synthetic username failed in SSP before server authorization;
+`SevenzipLocal\\<session-user>` succeeds without changing signing or NTLM policy.
+The production private-IPC broker passed New-SmbGlobalMapping with FullAccess
+restricted to the requesting account. Actual UAC interaction and a non-elevated
+consumer's access to that global mapping remain unverified.
+
+Ubuntu 24.04 x64/kernel 6.8 passed the same native kernel CIFS data checks via an
+explicit util-linux diagnostic. The runner has kernel CIFS but no mount.cifs or
+pkexec; no packages were installed. The product's missing-cifs-utils explanation
+is tested; its installed mount.cifs/pkexec path is compiled but not runtime-accepted
+on this runner. `noserverino` avoids relying on an unsupported QFid CREATE context;
+the client assigns inode values. Hardlink inode identity is not promised.
+
+macOS runtime packaging installs the dynamic libsmb2, helpers, Qt dependencies
+and licenses, rewrites loader paths and signs nested code. Installed Cocoa startup
+passes. The installed native PDF/video tests for root and nested TAR also pass using the bundled server,
+OS broker and codec module with developer DYLD paths removed. Only its temporary
+test driver used a separate QtTest library; the test overlay was removed and the
+original bundle's deep/strict signature verified afterward.
+Physical source removal, rendered application media
+UI, Windows/Linux installed deployment and broader malformed-protocol cases remain
+outside current runtime evidence. Slow suites and full/release gates were not run.
+
+### Platform constraints to validate
+
+[Windows alternate-port mapping](https://learn.microsoft.com/en-us/windows-server/storage/file-server/smb-ports)
+requires Windows 11 24H2 / Server 2025 or newer and administrator permissions.
+Older Windows clients cannot simply use a free alternate TCP port. Do not disable
+the system SMB service or change global signing policy to free port 445.
+The [Linux kernel CIFS documentation](https://docs.kernel.org/admin-guide/cifs/usage.html)
+distinguishes kernel CIFS support from the recommended mount.cifs helper; neither
+may be assumed present on every desktop. The product must detect the native
+capability and explain a concrete limitation rather than installing a filesystem
+driver or promising universal mounts.

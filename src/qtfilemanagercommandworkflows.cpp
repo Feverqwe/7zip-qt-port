@@ -111,6 +111,12 @@ void QtFileManagerCommands::ExtractArchives() { window_.extractArchives(); }
 void QtFileManagerCommands::TestArchives() { window_.testArchive(); }
 bool QtFileManagerCommands::ExecuteExtensionCommand(unsigned id) {
     switch (id) {
+    case MountReadOnly:
+        MountReadOnlyContainer();
+        break;
+    case ManageMounts:
+        ShowMounts();
+        break;
     case OpenDevicePicker:
         OpenDevice();
         break;

@@ -1,0 +1,19 @@
+{
+  "repository": "https://github.com/TalAloni/SMBLibrary.git",
+  "revision": "582635541d2ec0c84eac5f66cbebd41e2d35c7ae",
+  "purpose": "Server suitability assessment only; not a shipped dependency",
+  "files": {
+    "License.txt": "7d3a95e5e06978064ed3f8e2b7c8f845e7fd8a405294727cc708f94cb83b8059",
+    "Readme.md": "ea6df1d1cfad41435adb4d527d26722b1490c534b1faeac94aa6f1dd4a4406bf",
+    "SMBLibrary/Authentication/NTLM/IndependentNTLMAuthenticationProvider.cs": "4259f3d089154f458e8fc2cd24fcd5e4622611fa8752d9acb040d9d67d1f1e37",
+    "SMBLibrary/SMB2/Commands/SMB2Command.cs": "259f5894c721ae5101537e4b33aefd36e4862b0fbeb6d8034bc617a6a11c3007",
+    "SMBLibrary/SMB2/SMB2Cryptography.cs": "951f190487d012a1157c3e85419302b7ef479baf77964dd8aba0f1cd46e8d3bd",
+    "SMBLibrary/SMBLibrary.csproj": "babc92674bb4a7c194e129c7fcf58d586d49798a0d1a029a503cd93124d4b7cf",
+    "SMBLibrary/Server/SMB2/NegotiateHelper.cs": "9d81e4f2d4ce49c3182c9a904cc46bbe3fbb3a85dd814ff373bacbcfb1028dba",
+    "SMBLibrary/Server/SMB2/SessionSetupHelper.cs": "e4a2ed1a0e0adb90bd132e5642b4f87747d82ec2b4ade0d8688f6236f9938881",
+    "SMBLibrary/Server/SMBServer.SMB2.cs": "51adff5f313125ca4ebf64b55b74664b09fe0db699760b4bd5575c74afc498c6",
+    "SMBLibrary/Server/SMBServer.cs": "d61c9a98360d5694e490054f8a7ff5952b6d79d456e665d51a97d9be27909e2c",
+    "ServerNotes.md": "99d18d6a2b3b2f62425bfc806227813e9c7b7dc181535793d84bcea86b463708"
+  },
+  "adapted": {}
+}

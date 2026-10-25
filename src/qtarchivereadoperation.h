@@ -38,11 +38,15 @@ class QtArchiveReadOperation final : public QThread {
         QString Entry;
         QString Path;
         bool AltStream = false;
+        UInt32 NativeIndex = UInt32(-1);
+        UInt64 Limit = UInt64(-1);
     };
     QtArchiveReadOperation(QString path, QString password,
                            std::shared_ptr<const ArchiveCodecCatalog> catalog, Work work,
                            Kind kind = Kind::Test, QString format = {},
                            QString moduleLocation = {});
+    // Extract an entry from an already consented, retained reader generation.
+    QtArchiveReadOperation(std::shared_ptr<ArchiveNativeOpen> reader, QString password);
     void cancel();
     void setPaused(bool paused);
     void providePassword(const QString &password);
@@ -72,6 +76,7 @@ class QtArchiveReadOperation final : public QThread {
     void recordOpenError(const QString &path, const CArcErrorInfo &error);
     // Native interfaces stay inside run and release before this module lease.
     std::shared_ptr<const ArchiveCodecCatalog> catalog_;
+    std::shared_ptr<ArchiveNativeOpen> retainedReader_;
     const QString path_;
     Work work_;
     const Kind kind_;

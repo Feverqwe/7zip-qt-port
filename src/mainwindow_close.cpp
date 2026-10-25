@@ -13,7 +13,8 @@ class QtFileManagerWindowServices final : public IQtFileManagerWindowServices {
     bool CanCloseNow() const override {
         const QWidget *modal = QApplication::activeModalWidget();
         return !window_.sourceArchiveProgress_ &&
-               !(modal && (modal == &window_ || window_.isAncestorOf(modal)));
+               !(modal && (modal == &window_ || window_.isAncestorOf(modal))) &&
+               window_.commands_->CanCloseMounts();
     }
     void Deactivate() override {
         window_.app_.QtOperations().Close();
