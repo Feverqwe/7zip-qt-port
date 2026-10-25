@@ -40,7 +40,7 @@ add_library(sevenzip_squashfs MODULE
     third_party/7zip/C/7zCrc.c third_party/7zip/C/7zCrcOpt.c
     third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c third_party/7zip/C/LzmaDec.c
     third_party/7zip/C/Lzma2Dec.c third_party/7zip/C/Xz.c src/C/XzDec.c
-    third_party/7zip/C/XzCrc64.c third_party/7zip/C/XzCrc64Opt.c
+    src/C/XzCrc64.c
     third_party/7zip/CPP/Common/XzCrc64Init.cpp
     src/C/Sha256.c third_party/7zip/C/Sha256Opt.c
     third_party/7zip/C/Bra.c third_party/7zip/C/Bra86.c third_party/7zip/C/BraIA64.c
@@ -49,7 +49,7 @@ target_include_directories(sevenzip_squashfs PRIVATE src src/C third_party/7zip/
     third_party/7zip/CPP/7zip/Archive)
 target_compile_definitions(sevenzip_squashfs PRIVATE Z7_ST)
 target_link_libraries(sevenzip_squashfs PRIVATE sevenzip_squashfs_metadata Threads::Threads
-    sevenzip_lz4 sevenzip_zstd sevenzip_zisofs_zlib)
+    sevenzip_lz4 sevenzip_zstd sevenzip_zisofs_zlib sevenzip_liblzma_crc64)
 set_target_properties(sevenzip_squashfs PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
 if(UNIX AND NOT APPLE)

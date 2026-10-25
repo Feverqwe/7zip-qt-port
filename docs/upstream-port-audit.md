@@ -57,6 +57,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Общий CRC64](upstream-port-audit/shared-crc64.md)
+  — liblzma для SDK, native runtime и вложенных XZ-потоков.
+
 - [Общие XXHash и Adler32](upstream-port-audit/shared-checksums.md)
   — повторное использование libzstd xxHash и zlib с сохранением контрактов SDK.
 

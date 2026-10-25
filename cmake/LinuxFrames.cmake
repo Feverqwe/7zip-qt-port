@@ -33,7 +33,7 @@ add_library(sevenzip_linux_frames MODULE
     third_party/7zip/C/7zCrc.c third_party/7zip/C/7zCrcOpt.c
     third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c third_party/7zip/C/LzmaDec.c
     third_party/7zip/C/Lzma2Dec.c third_party/7zip/C/Xz.c src/C/XzDec.c
-    third_party/7zip/C/XzCrc64.c third_party/7zip/C/XzCrc64Opt.c
+    src/C/XzCrc64.c
     src/C/Sha256.c third_party/7zip/C/Sha256Opt.c
     third_party/7zip/C/Bra.c third_party/7zip/C/Bra86.c third_party/7zip/C/BraIA64.c
     third_party/7zip/C/Delta.c src/C/ZstdDec.c src/C/Xxh64.c
@@ -55,7 +55,8 @@ target_compile_definitions(sevenzip_linux_frames PRIVATE Z7_ST)
 set_source_files_properties(src/CPP/7zip/Archive/GzHandler.cpp
     src/CPP/7zip/Archive/LzmaHandler.cpp PROPERTIES
     COMPILE_DEFINITIONS SEVENZIP_INITRAMFS_FRAME_ONLY)
-target_link_libraries(sevenzip_linux_frames PRIVATE sevenzip_linux_frames_core sevenzip_zstd)
+target_link_libraries(sevenzip_linux_frames PRIVATE sevenzip_linux_frames_core sevenzip_zstd
+    sevenzip_liblzma_crc64)
 set_target_properties(sevenzip_linux_frames PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX "")
 if(UNIX AND NOT APPLE)
     target_link_options(sevenzip_linux_frames PRIVATE "-Wl,-Bsymbolic")

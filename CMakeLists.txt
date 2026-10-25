@@ -142,7 +142,7 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     src/C/Sha1.c
     src/C/Sha256.c
     src/C/Sha512.c third_party/7zip/C/Sha3.c
-    src/C/Md5.c third_party/7zip/C/XzCrc64.c third_party/7zip/C/XzCrc64Opt.c
+    src/C/Md5.c src/C/XzCrc64.c
     src/C/Xxh64.c third_party/7zip/CPP/7zip/Compress/BZip2Crc.cpp
     third_party/7zip/C/Blake2s.c
     third_party/7zip/CPP/7zip/Common/CreateCoder.cpp
@@ -200,6 +200,7 @@ target_link_libraries(sevenzip_common PUBLIC sevenzip_hash_registration)
 target_link_libraries(sevenzip_common PUBLIC ${CMAKE_DL_LIBS})
 target_link_libraries(sevenzip_common PUBLIC Threads::Threads)
 target_link_libraries(sevenzip_common PUBLIC sevenzip_zstd)
+include(cmake/LiblzmaCrc.cmake)
 target_sources(sevenzip_common PRIVATE
     src/CPP/Common/CommandLineParser.cpp
     third_party/7zip/CPP/Common/ListFileUtils.cpp
