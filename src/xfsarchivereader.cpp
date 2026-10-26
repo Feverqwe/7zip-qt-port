@@ -3,25 +3,43 @@
 #include "7zip/Common/StreamUtils.h"
 #include <algorithm>
 #include <limits>
+#include <new>
+#include <string_view>
 
-int XfsArchiveReader::ReadSource(void *context, uint64_t offset, void *data, size_t size) {
-    auto &self = *static_cast<XfsArchiveReader *>(context);
-    if (self.transport_ != S_OK)
+#ifdef SEVENZIP_USE_GRUB_XFS_MODULE
+import sevenzip.dependencies.grub_xfs;
+#else
+#include "dependencies/grub_xfs.h"
+#endif
+
+int XfsArchiveReader::read_source(uint64_t offset, std::span<std::byte> data) noexcept {
+    if (transport_ != S_OK)
         return 1;
-    self.transport_ = InStream_SeekSet(self.source_, offset);
-    if (self.transport_ == S_OK)
-        self.transport_ = ReadStream_FALSE(self.source_, data, size);
-    return self.transport_ == S_OK ? 0 : 1;
+    try {
+        transport_ = InStream_SeekSet(source_, offset);
+        if (transport_ == S_OK)
+            transport_ = ReadStream_FALSE(source_, data.data(), data.size());
+    } catch (const std::bad_alloc &) {
+        transport_ = E_OUTOFMEMORY;
+    } catch (...) {
+        transport_ = E_FAIL;
+    }
+    return transport_ == S_OK ? 0 : 1;
 }
-int XfsArchiveReader::Poll(void *context) {
-    auto &self = *static_cast<XfsArchiveReader *>(context);
-    if (self.transport_ != S_OK)
+int XfsArchiveReader::checkpoint() noexcept {
+    if (transport_ != S_OK)
         return 1;
-    if (self.opening)
-        self.transport_ = self.opening->SetCompleted(&self.files, nullptr);
-    else if (self.extracting)
-        self.transport_ = self.extracting->SetCompleted(&self.completed);
-    return self.transport_ == S_OK ? 0 : 1;
+    try {
+        if (opening)
+            transport_ = opening->SetCompleted(&files, nullptr);
+        else if (extracting)
+            transport_ = extracting->SetCompleted(&completed);
+    } catch (const std::bad_alloc &) {
+        transport_ = E_OUTOFMEMORY;
+    } catch (...) {
+        transport_ = E_FAIL;
+    }
+    return transport_ == S_OK ? 0 : 1;
 }
 HRESULT XfsArchiveReader::Result(int error) const {
     if (transport_ != S_OK)
@@ -42,20 +60,41 @@ HRESULT XfsArchiveReader::Open(IArchiveOpenCallback *callback) {
         IArchiveOpenCallback *&callback;
         ~Reset() { callback = nullptr; }
     } reset{opening};
-    xfs_source source{this, size, ReadSource, Poll};
-    xfs_volume *opened = nullptr;
-    const int error = xfs_open(&source, &opened);
-    volume.reset(opened);
-    return Result(error);
+    auto opened = sevenzip::grub_xfs::open(*this, size);
+    if (!opened) {
+        volume.reset();
+        return Result(opened.error());
+    }
+    volume = std::move(*opened);
+    return Result(0);
 }
 HRESULT XfsArchiveReader::List(UInt64 inode, xfs_visit visit, void *context) {
     std::lock_guard<std::recursive_mutex> lock(mutex);
     transport_ = S_OK;
-    return Result(xfs_list(volume.get(), inode, visit, context));
+    auto visitor = [this, visit, context](std::string_view name, const xfs_entry &entry) noexcept {
+        try {
+            return visit(context, name.data(), &entry);
+        } catch (const std::bad_alloc &) {
+            transport_ = E_OUTOFMEMORY;
+        } catch (...) {
+            transport_ = E_FAIL;
+        }
+        return 1;
+    };
+    const auto result = sevenzip::grub_xfs::list(*volume, inode, visitor);
+    return Result(result ? 0 : result.error());
 }
 HRESULT XfsArchiveReader::Read(UInt64 inode, UInt64 offset, void *buffer, size_t size,
                                size_t *processed) {
     std::lock_guard<std::recursive_mutex> lock(mutex);
     transport_ = S_OK;
-    return Result(xfs_read(volume.get(), inode, offset, buffer, size, processed));
+    if (!processed)
+        return Result(XFS_BAD_FS);
+    *processed = 0;
+    if (!buffer && size)
+        return Result(XFS_RANGE);
+    const auto result =
+        sevenzip::grub_xfs::read(*volume, inode, offset, {static_cast<std::byte *>(buffer), size});
+    *processed = result ? *result : result.error().processed;
+    return Result(result ? 0 : result.error().code);
 }

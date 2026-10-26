@@ -7,6 +7,16 @@ mounts, journal replay, repair or independent archive engine are introduced.
 
 ## Source selection and reproducible baselines
 
+The C++23 GRUB XFS facade adds RAII volume ownership, borrowed span-based source
+services, synchronous directory visitors and `std::expected` results. Read errors
+retain their processed-byte count. The mounted volume borrows its archive reader
+until it closes; names and directory entries are borrowed during each visit.
+C++ source/progress exceptions become transport errors before returning to C,
+allowing GRUB's normal error cleanup to run. The original C mount/directory/read
+bodies, filesystem validation and source-language boundary are unchanged.
+Existing XFS module/backend scenarios cover read results, damaged metadata,
+cancellation, transport failure and retained streams.
+
 The selected implementation is GNU GRUB's C read-only XFS driver:
 `https://git.savannah.gnu.org/git/grub.git`, commit
 `b07cc37ca64fe99260884e7325abc333374e098b`.

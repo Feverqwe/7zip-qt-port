@@ -72,6 +72,8 @@
     ]
   },
   "local": [
+    "src/dependencies/grub_xfs.h",
+    "src/dependencies/grub_xfs.cppm",
     "src/xfsreader.h",
     "src/xfsreader.c",
     "src/xfsarchivereader.h",

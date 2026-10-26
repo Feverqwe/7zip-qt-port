@@ -4,16 +4,18 @@
 #include "7zip/Archive/IArchive.h"
 #include "Common/MyCom.h"
 #include "xfsreader.h"
+#include <cstddef>
 #include <memory>
 #include <mutex>
+#include <span>
 
 class XfsArchiveReader {
-    static int ReadSource(void *, uint64_t, void *, size_t);
-    static int Poll(void *);
     CMyComPtr<IInStream> source_;
     HRESULT transport_ = S_OK;
 
   public:
+    int read_source(uint64_t, std::span<std::byte>) noexcept;
+    int checkpoint() noexcept;
     std::recursive_mutex mutex;
     std::unique_ptr<xfs_volume, decltype(&xfs_close)> volume{nullptr, xfs_close};
     IArchiveOpenCallback *opening = nullptr;

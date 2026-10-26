@@ -64,12 +64,13 @@ sevenzip_add_dependency_facade(brotli sevenzip_brotli_core)
 sevenzip_add_dependency_facade(lz4 sevenzip_lz4_frame_core)
 sevenzip_add_dependency_facade(lzlib sevenzip_lzlib_core)
 sevenzip_add_dependency_facade(smb2 smb2)
+sevenzip_add_dependency_facade(grub_xfs sevenzip_xfs_core)
 if(SEVENZIP_ENABLE_DEPENDENCY_MODULES)
     # Qt disables automatic scanning on qt_add_executable targets. This shared
     # source imports the facade in both the plugin and its Qt test executable.
     set_source_files_properties(src/squashfszlib.cpp
         src/CPP/7zip/Compress/BrotliDecoder.cpp src/CPP/7zip/Archive/BrotliHandler.cpp
-        src/lz4framestream.cpp src/lzipstream.cpp src/smbreadonlyserver.cpp
+        src/lz4framestream.cpp src/lzipstream.cpp src/smbreadonlyserver.cpp src/xfsarchivereader.cpp
         tests/lz4_frame_tests.cpp tests/lzip_tests.cpp tests/smb_readonly_server_tests.cpp
         PROPERTIES CXX_SCAN_FOR_MODULES ON)
     sevenzip_configure_module_cache(sevenzip_squashfs)
@@ -77,6 +78,7 @@ if(SEVENZIP_ENABLE_DEPENDENCY_MODULES)
     sevenzip_configure_module_cache(sevenzip_lz4_frame)
     sevenzip_configure_module_cache(sevenzip_lzip)
     sevenzip_configure_module_cache(sevenzip_smb)
+    sevenzip_configure_module_cache(sevenzip_xfs)
     if(BUILD_TESTING)
         sevenzip_configure_module_cache(filesystem_zlib_tests)
         sevenzip_configure_module_cache(lz4_frame_tests)
@@ -88,6 +90,7 @@ target_link_libraries(sevenzip_brotli PRIVATE sevenzip_brotli_facade)
 target_link_libraries(sevenzip_lz4_frame PRIVATE sevenzip_lz4_facade)
 target_link_libraries(sevenzip_lzip PRIVATE sevenzip_lzlib_facade)
 target_link_libraries(sevenzip_smb PRIVATE sevenzip_smb2_facade)
+target_link_libraries(sevenzip_xfs PRIVATE sevenzip_grub_xfs_facade)
 if(BUILD_TESTING)
     target_link_libraries(filesystem_zlib_tests PRIVATE sevenzip_zlib_facade)
     target_link_libraries(lz4_frame_tests PRIVATE sevenzip_lz4_facade)

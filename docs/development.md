@@ -229,22 +229,18 @@ MSVC module consumers retain ccache through a launcher that hashes the imported
 BMI files. This accounts for interface changes that ccache does not track from
 MSVC module references itself. Build trees and compiler caches remain incremental.
 
-The C++23 module example is a separate target
-enabled on compilers for which CMake can scan module imports. The current
-AppleClang toolchain cannot build that example because it lacks a module scanner.
-On macOS, Homebrew GCC provides the compiler, module scanner and C++23 ranges
-used by the example. Keep the ordinary app build tree on the selected Qt kit
-and use the separate module preset:
+The separate C++23 module example requires module scanning, `std::views::chunk`
+and `std::println`. On macOS, use Homebrew GCC through `modules-gcc-dev` for
+these library features. The build scripts select the compiler and shared Qt kit:
 
 ```sh
 brew install gcc
-harness_root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
-CC="$(brew --prefix gcc)/bin/gcc-16" \
-CXX="$(brew --prefix gcc)/bin/g++-16" \
-CMAKE_PREFIX_PATH="$harness_root/build/qt/6.12.0/macos" \
 ./scripts/build.sh modules-gcc-dev sevenzip_cpp23_example
 ./build/modules-gcc-dev/sevenzip_cpp23_example
 ```
+
+On Windows, sanitizer builds stage the example's compiler runtime DLLs beside
+the executable, allowing it to run outside the developer prompt.
 
 On Linux, install CMake, Ninja, Qt 6 base development files, clang-format,
 pkg-config and GLib/GIO development files (`libglib2.0-dev` on Ubuntu). The native

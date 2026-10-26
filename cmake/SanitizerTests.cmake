@@ -1,5 +1,5 @@
 # Apply after every test has received its ordinary deadline and environment.
-if(NOT BUILD_TESTING OR NOT SEVENZIP_ENABLE_SANITIZERS OR
+if(NOT SEVENZIP_ENABLE_SANITIZERS OR
         NOT CMAKE_BUILD_TYPE MATCHES "^(Debug|RelWithDebInfo)$")
     return()
 endif()
@@ -17,6 +17,12 @@ if(MSVC)
         set(${output} "${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS};${asan_runtime}" PARENT_SCOPE)
     endfunction()
     sevenzip_find_test_runtime_files(sevenzip_msvc_runtime_files)
+    if(TARGET sevenzip_cpp23_example)
+        add_custom_command(TARGET sevenzip_cpp23_example POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${sevenzip_msvc_runtime_files}
+                "$<TARGET_FILE_DIR:sevenzip_cpp23_example>"
+            VERBATIM)
+    endif()
     string(JOIN "|" sevenzip_test_runtime_libraries ${sevenzip_msvc_runtime_files})
     # The official console restricts DLL search to application/system folders.
     # Keep the instrumented deployment self-contained instead of weakening it.

@@ -18,7 +18,7 @@ add_library(sevenzip_xfs MODULE src/xfshandler.cpp src/xfsarchivereader.cpp src/
     third_party/7zip/CPP/Common/UTFConvert.cpp
     third_party/7zip/C/Alloc.c)
 target_include_directories(sevenzip_xfs PRIVATE src third_party/7zip/CPP)
-target_link_libraries(sevenzip_xfs PRIVATE sevenzip_xfs_core Threads::Threads)
+target_link_libraries(sevenzip_xfs PRIVATE Threads::Threads)
 set_target_properties(sevenzip_xfs PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX "")
 if(UNIX AND NOT APPLE)
     target_link_options(sevenzip_xfs PRIVATE "-Wl,-Bsymbolic")
