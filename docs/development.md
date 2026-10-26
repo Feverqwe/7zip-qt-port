@@ -148,6 +148,22 @@ UndefinedBehaviorSanitizer on macOS/Linux by default. Use
 `-DSEVENZIP_ENABLE_SANITIZERS=OFF` only when investigating a toolchain or runtime
 incompatibility. Clang-Tidy is opt-in with `-DSEVENZIP_ENABLE_CLANG_TIDY=ON` and
 requires `clang-tidy` on `PATH`.
+On macOS, build, check, verify and runtime-preparation scripts automatically
+select installed Homebrew LLVM 23+ for C, C++ and Objective-C++, including its
+module scanner and analysis tools. `modules-gcc-dev` selects Homebrew GCC.
+Explicit `CC`, `CXX`, `OBJCXX` and toolchain settings take priority. Linked
+worktrees reuse the main checkout's Qt kit; their build outputs remain local.
+The ordinary commands need no manual compiler or Qt path exports.
+AppleClang 21's ASan retains global registrations after `dlclose`; a standalone
+library reload reproduces an ODR failure, and codec snapshots can crash during
+later loads. Configuration rejects this affected sanitizer toolchain.
+Development runtime preparation links the Unix console host with sanitizer
+runtimes so instrumented format plugins can initialize safely. For a release
+runtime use `prepare-runtime.py --sanitizer-runtime off`; `build-app.sh` selects
+that mode automatically. This startup linkage does not instrument the separate
+upstream engine's algorithm bodies.
+The CTest wrapper defaults UBSan to stop on the first finding; an explicit
+`UBSAN_OPTIONS` value can be supplied for a diagnostic run.
 
 The root vcpkg manifest pins its registry and includes the Qt, formatting and
 inference dependencies. To use it, install vcpkg at the pinned registry revision,

@@ -6,7 +6,7 @@ set_target_properties(sevenzip_nls_system PROPERTIES AUTOMOC OFF AUTOUIC OFF
     C_VISIBILITY_PRESET hidden)
 if(NOT WIN32)
     find_package(Iconv REQUIRED)
-    target_link_libraries(sevenzip_nls_system PUBLIC Iconv::Iconv)
+    target_link_libraries(sevenzip_nls_system PRIVATE Iconv::Iconv)
 endif()
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)

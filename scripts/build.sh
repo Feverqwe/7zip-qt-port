@@ -4,6 +4,8 @@ set -euo pipefail
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 preset="${1:-dev}"
+source "$project_root/scripts/lib/toolchain.sh"
+sevenzip_select_toolchain "$preset"
 build_only=0
 if [[ "${2:-}" == --build-only ]]; then
   build_only=1
@@ -41,6 +43,10 @@ configure() {
       exit 2
     fi
     return
+  fi
+  if [[ "$(uname -s)" == Darwin && -n "${CC:-}" && -n "${CXX:-}" ]]; then
+    set -- "-DCMAKE_C_COMPILER=$CC" "-DCMAKE_CXX_COMPILER=$CXX" \
+      "-DCMAKE_OBJCXX_COMPILER=${OBJCXX:-$CXX}" "$@"
   fi
   if [[ "${OS:-}" == Windows_NT && -n "$compiler_cache" ]]; then
     # MSVC shared /Zi databases cannot be cached. Embedded /Z7 retains debug
@@ -116,14 +122,6 @@ if [[ "$(uname -s)" == Darwin ]]; then
     export CPLUS_INCLUDE_PATH="$sdk_cxx_headers${CPLUS_INCLUDE_PATH:+:$CPLUS_INCLUDE_PATH}"
   fi
 
-  if [[ -z "${CMAKE_PREFIX_PATH:-}" && -z "${CMAKE_TOOLCHAIN_FILE:-}" &&
-        "$preset" != vcpkg-* ]]; then
-    export CMAKE_PREFIX_PATH="$project_root/build/qt/6.12.0/macos"
-    if [[ ! -f "$CMAKE_PREFIX_PATH/lib/cmake/Qt6/Qt6Config.cmake" ]]; then
-      printf 'Install the official Qt 6.12.0 macOS kit into build/qt, or set CMAKE_PREFIX_PATH to its macos directory. See docs/development.md.\n' >&2
-      exit 2
-    fi
-  fi
   if [[ -n "${CMAKE_PREFIX_PATH:-}" ]]; then
     # A different SDK must not inherit cached package locations from Homebrew.
     # Keep the build tree and compiler cache; refresh only Qt package discovery.

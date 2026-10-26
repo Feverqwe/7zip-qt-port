@@ -20,7 +20,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def fingerprint(root):
+def fingerprint(root, sanitizer_runtime=True):
     windows = platform.system() == "Windows"
     compiler = shlex.split(os.environ.get("CXX", "cl" if windows else "c++"))
     version = subprocess.run([*compiler, "/Bv" if windows else "--version"],
@@ -39,6 +39,7 @@ def fingerprint(root):
             "builders": {name: sha(root / "scripts" / name) for name in BUILDERS},
             "cache_version": sha(Path(__file__)),
             "system": platform.system(), "architecture": platform.machine(),
+            "sanitizer_runtime": sanitizer_runtime and not windows,
             "compiler": compiler, "compiler_version": hashlib.sha256(version).hexdigest(),
             "environment": {key: os.environ.get(key, "") for key in
                             ("CC", "CXX", "CFLAGS", "CXXFLAGS", "LDFLAGS", "SDKROOT",
@@ -87,13 +88,13 @@ def prepare_upstream(root, upstream, baseline):
     return store
 
 
-def prepare(root, upstream, codec_only=False):
+def prepare(root, upstream, codec_only=False, sanitizer_runtime=True):
     root = root.resolve()
     upstream = (root / upstream).resolve() if not upstream.is_absolute() else upstream.resolve()
     started = time.monotonic()
     build = root / "build"
     stamp = build / ("codec-runtime-cache.json" if codec_only else "runtime-cache.json")
-    key = fingerprint(root)
+    key = fingerprint(root, sanitizer_runtime)
     paths = artifact_paths(platform.system() == "Windows")
     if codec_only:
         paths = [path for path in paths if path.startswith("codec-runtime/")]
@@ -119,7 +120,14 @@ def prepare(root, upstream, codec_only=False):
     else:
         for name in (("build-codec-runtime.sh",) if codec_only else
                      ("build-codec-runtime.sh", "build-sfx.sh")):
-            subprocess.run(["bash", str(root / "scripts" / name), str(upstream)], cwd=root, check=True)
+            environment = dict(os.environ)
+            environment["SEVENZIP_RUNTIME_TOOLCHAIN"] = hashlib.sha256(json.dumps(
+                {field: key.get(field) for field in
+                 ("compiler", "compiler_version", "environment")}, sort_keys=True).encode()).hexdigest()
+            environment["SEVENZIP_RUNTIME_SANITIZERS"] = str(int(
+                sanitizer_runtime and name == "build-codec-runtime.sh"))
+            subprocess.run(["bash", str(root / "scripts" / name), str(upstream)],
+                           cwd=root, env=environment, check=True)
     record = {"fingerprint": key, "artifacts": {name: sha(build / name) for name in paths}}
     temporary = stamp.with_suffix(".tmp")
     temporary.write_text(json.dumps(record, indent=2) + "\n")
@@ -128,11 +136,15 @@ def prepare(root, upstream, codec_only=False):
 
 
 def main():
+    from lib.toolchain import apply_environment, harness_root
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--upstream", type=Path, default=ROOT.parent / "7zip-upstream")
+    parser.add_argument("--upstream", type=Path, default=harness_root(ROOT).parent / "7zip-upstream")
     parser.add_argument("--codec-only", action="store_true", help="Prepare engine variants without SFX")
+    parser.add_argument("--sanitizer-runtime", choices=["on", "off"], default="on",
+                        help="Link the Unix console host with sanitizer runtimes for instrumented plugins")
     args = parser.parse_args()
-    prepare(ROOT, args.upstream, args.codec_only)
+    apply_environment(ROOT, require_qt=False)
+    prepare(ROOT, args.upstream, args.codec_only, args.sanitizer_runtime == "on")
 
 
 if __name__ == "__main__":

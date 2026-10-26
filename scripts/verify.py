@@ -177,6 +177,8 @@ def main(argv=None):
             command.append("--skip-runtime")
         environment = dict(os.environ, SEVENZIP_INVOCATION_STARTED=str(INVOCATION_STARTED))
         return subprocess.run(command, cwd=ROOT, env=environment).returncode
+    from lib.toolchain import apply_environment
+    apply_environment(ROOT, args.preset)
     verify(ROOT, args, profile)
     return 0
 

@@ -3,6 +3,8 @@ set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
+source "$project_root/scripts/lib/toolchain.sh"
+sevenzip_select_toolchain dev
 
 case "${CODEX_SANDBOX:-}" in
   ''|none|off|disabled|0) ;;
@@ -30,7 +32,7 @@ check_formatting() {
     if [[ -d "$source_dir" ]]; then
       while IFS= read -r -d '' source_file; do
         clang-format --dry-run --Werror "$source_file" || return
-      done < <(find "$source_dir" -type f \( -name '*.cpp' -o -name '*.mm' -o -name '*.h' -o -name '*.hpp' \) -print0)
+      done < <(find "$source_dir" -type f \( -name '*.cpp' -o -name '*.cppm' -o -name '*.mm' -o -name '*.h' -o -name '*.hpp' \) -print0)
     fi
   done
 

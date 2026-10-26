@@ -179,6 +179,9 @@ class RuntimeCacheTests(unittest.TestCase):
             probe = subprocess.CompletedProcess("compiler", 0, b"compiler1", b"")
             with patch.object(runtime.subprocess, "run", return_value=probe):
                 original = runtime.fingerprint(root)
+                with patch.object(runtime.platform, "system", return_value="Linux"):
+                    self.assertNotEqual(runtime.fingerprint(root, sanitizer_runtime=True),
+                                        runtime.fingerprint(root, sanitizer_runtime=False))
                 (root / "scripts" / runtime.BUILDERS[0]).write_text("changed")
                 self.assertNotEqual(original, runtime.fingerprint(root))
                 (root / "scripts" / runtime.BUILDERS[0]).write_text("original")

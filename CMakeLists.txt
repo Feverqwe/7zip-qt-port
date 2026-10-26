@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.28)
 
+if(CMAKE_HOST_APPLE AND NOT CMAKE_OSX_SYSROOT)
+    execute_process(COMMAND xcrun --show-sdk-path
+        OUTPUT_VARIABLE sevenzip_macos_sdk OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY)
+    set(CMAKE_OSX_SYSROOT "${sevenzip_macos_sdk}" CACHE PATH "macOS SDK" FORCE)
+endif()
+
 project(sevenzip_desktop VERSION 0.1.7 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -25,6 +32,17 @@ endif()
 
 option(SEVENZIP_ENABLE_SANITIZERS "Instrument Debug and RelWithDebInfo builds" ON)
 if(SEVENZIP_ENABLE_SANITIZERS)
+    if(APPLE AND CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
+            AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 22
+            AND CMAKE_BUILD_TYPE MATCHES "^(Debug|RelWithDebInfo)$")
+        # On an intentional compiler switch CMake still exposes the old cached
+        # compiler ID until it restarts configuration. Check the actual driver.
+        execute_process(COMMAND "${CMAKE_CXX_COMPILER}" --version
+            OUTPUT_VARIABLE sevenzip_actual_compiler_version)
+        if(sevenzip_actual_compiler_version MATCHES "Apple clang version")
+            message(FATAL_ERROR "AppleClang 21 ASan retains stale globals after dlclose; use a consistent Homebrew LLVM 23+ C/C++/Objective-C++ toolchain for instrumented codec loading")
+        endif()
+    endif()
     if(MSVC)
         foreach(sevenzip_config DEBUG RELWITHDEBINFO)
             # MSVC's Debug /RTC checks cannot be combined with AddressSanitizer.
@@ -34,7 +52,7 @@ if(SEVENZIP_ENABLE_SANITIZERS)
                 string(APPEND CMAKE_${sevenzip_language}_FLAGS_${sevenzip_config} " /fsanitize=address")
             endforeach()
             foreach(sevenzip_link_kind EXE SHARED MODULE)
-                string(APPEND CMAKE_${sevenzip_link_kind}_LINKER_FLAGS_${sevenzip_config} " /fsanitize=address")
+                string(APPEND CMAKE_${sevenzip_link_kind}_LINKER_FLAGS_${sevenzip_config} " /INCREMENTAL:NO")
             endforeach()
         endforeach()
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(AppleClang|Clang|GNU)$")

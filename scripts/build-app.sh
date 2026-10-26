@@ -4,10 +4,9 @@ set -euo pipefail
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 
-if [[ "$(uname -s)" == Darwin && -z "${CMAKE_PREFIX_PATH:-}" ]]; then
-  export CMAKE_PREFIX_PATH="$project_root/build/qt/6.12.0/macos"
-fi
-python3 scripts/prepare-runtime.py
+source "$project_root/scripts/lib/toolchain.sh"
+sevenzip_select_toolchain release
+python3 scripts/prepare-runtime.py --sanitizer-runtime off
 ./scripts/build.sh release
 python3 scripts/package.py --install-only "$project_root/dist"
 printf 'Application output: %s/dist\n' "$project_root"

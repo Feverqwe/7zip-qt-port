@@ -151,8 +151,14 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                 lines += ["SEVENZIP_RUNTIME_SOURCES = $(filteri %.c %.cpp %.asm %.s %.rc,$**)",
                           "CFLAGS = $(CFLAGS) -I../../../.."]
             lines.append(f'!include "{original}"' if windows else f'include {original}')
+            lines.append("# Toolchain: " + os.environ.get("SEVENZIP_RUNTIME_TOOLCHAIN", "direct"))
             if not windows:
                 lines.append("LOCAL_FLAGS += -I../../../..")
+                if os.environ.get("SEVENZIP_RUNTIME_SANITIZERS") == "1":
+                    # An unsanitized console can load instrumented format
+                    # plugins only if the sanitizer runtime starts with it.
+                    lines.append("MY_LIBS += -fsanitize=address,undefined")
+                lines.append("$(PROGPATH): sevenzip-runtime.gcc.mak")
                 if sys.platform == "darwin":
                     lines += ["LOCAL_FLAGS += -mmacosx-version-min=14.4",
                               "MY_LIBS += -mmacosx-version-min=14.4"]
