@@ -68,7 +68,7 @@ HRESULT ArchiveProgressOperation::ProcessVirt() {
         }
         HRESULT result = S_OK;
         if (!cancelled && _passwordRequested.exchange(false)) {
-            BSTR password = nullptr;
+            CMyComBSTR password;
             result = static_cast<ICryptoGetTextPassword *>(_callbackImpl)
                          ->CryptoGetTextPassword(&password);
             if (result == S_OK) {
@@ -76,7 +76,6 @@ HRESULT ArchiveProgressOperation::ProcessVirt() {
                 QMetaObject::invokeMethod(
                     this, [this, value] { _backend.providePassword(value); }, Qt::QueuedConnection);
             }
-            SysFreeString(password);
         }
         if (!cancelled && result == S_OK && Sync.Get_Stopped())
             result = E_ABORT;
