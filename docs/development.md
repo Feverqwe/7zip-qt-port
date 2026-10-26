@@ -154,6 +154,8 @@ module scanner and analysis tools. `modules-gcc-dev` selects Homebrew GCC.
 Explicit `CC`, `CXX`, `OBJCXX` and toolchain settings take priority. Linked
 worktrees reuse the main checkout's Qt kit; their build outputs remain local.
 The ordinary commands need no manual compiler or Qt path exports.
+Native Make/NMake runtime and SFX builds also select C++23 for C++ sources;
+upstream C and assembly sources retain their original language.
 AppleClang 21's ASan retains global registrations after `dlclose`; a standalone
 library reload reproduces an ODR failure, and codec snapshots can crash during
 later loads. Configuration rejects this affected sanitizer toolchain.

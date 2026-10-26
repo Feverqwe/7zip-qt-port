@@ -1,5 +1,16 @@
 # Qt adaptation boundary review — 2026-10-18
 
+## Native build language boundary — 2026-10-27
+
+The pinned SDK's `CPP/Build.mak`, `CPP/7zip/7zip_gcc.mak` and compiler-warning
+makefiles were compared with the runtime snapshot builder. GNU Make wrappers
+override the upstream C++11/default mode with C++23. The existing NMake recipe
+adaptation adds the MSVC C++23 mode only to C++ compilation macros and extra C++
+units. C and assembly recipes retain their source language. Generated build rules
+are object prerequisites so changed compiler settings invalidate existing outputs
+through normal incremental builds and the shared compiler cache. Original SDK
+inventory hashes remain unchanged; no algorithm bodies were adapted.
+
 ## Extraction callback initialization — 2026-10-26
 
 The sanitizer-enabled C++23 build found an uninitialized archive-path diagnostic

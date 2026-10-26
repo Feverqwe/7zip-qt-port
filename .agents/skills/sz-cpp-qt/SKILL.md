@@ -1,6 +1,6 @@
 ---
 name: sz-cpp-qt
-description: Implement or review Sevenzip Desktop C++17 and Qt 6 Widgets code, including UI state, asynchronous archive operations, and CMake integration.
+description: Implement or review Sevenzip Desktop C++23 and Qt 6 Widgets code, including UI state, asynchronous archive operations, and CMake integration.
 ---
 
 # C++ and Qt in Sevenzip Desktop

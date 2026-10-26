@@ -100,6 +100,10 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
     if native_rules.is_file():
         original = native_rules.read_bytes()
         adapted = original.replace(b"$**", b"$(SEVENZIP_RUNTIME_SOURCES)")
+        # Keep the standard on C++ recipes only: upstream shares CFLAGS with C.
+        adapted = re.sub(
+            rb'^(COMPL(?:_O1|_O2|_PCH|B|B_O2)?\s*=\s*\$\(CC\)) ',
+            rb'\1 $(SEVENZIP_RUNTIME_CXXFLAGS) ', adapted, flags=re.MULTILINE)
         if adapted != original:
             native_rules.write_bytes(adapted)
     sources = {name for name in members if pathlib.PurePosixPath(name).suffix in
@@ -149,6 +153,7 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
             lines = (["LIBS = $(LIBS) " + " ".join(extra_objects)] if extra_objects else [])
             if windows:
                 lines += ["SEVENZIP_RUNTIME_SOURCES = $(filteri %.c %.cpp %.asm %.s %.rc,$**)",
+                          "SEVENZIP_RUNTIME_CXXFLAGS = /std:c++latest /Zc:__cplusplus /permissive-",
                           "CFLAGS = $(CFLAGS) -I../../../.."]
             lines.append(f'!include "{original}"' if windows else f'include {original}')
             lines.append("# Toolchain: " + os.environ.get("SEVENZIP_RUNTIME_TOOLCHAIN", "direct"))
@@ -157,6 +162,7 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                 if os.environ.get("SEVENZIP_RUNTIME_SANITIZERS") == "1":
                     lines.append('\t$(CC) $(CFLAGS_O2) -DSEVENZIP_RUNTIME_SANITIZERS -Fo"$(O)\\DllSecur.obj" "../../../../C/DllSecur.c"')
             if not windows:
+                lines.append("CXX_STD_FLAGS = -std=c++23")
                 lines.append("LOCAL_FLAGS += -I../../../..")
                 if os.environ.get("SEVENZIP_RUNTIME_SANITIZERS") == "1":
                     # An unsanitized console can load instrumented format
@@ -180,7 +186,7 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                 source = posixpath.relpath(name, directory)
                 needed = sorted(posixpath.relpath(header, directory)
                                 for header in dependencies.get(pathlib.PurePosixPath(name).stem, set()))
-                lines.append(target + ": " + " ".join([source, *needed]))
+                lines.append(target + ": " + " ".join([source, *needed, generated]))
                 cpp = name.endswith(".cpp")
                 # Keep unchanged third-party C at CMake/MSVC's normal warning
                 # level rather than the 7-Zip-specific /Wall pragma contract.
@@ -195,7 +201,7 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                     if sys.byteorder == 'big':
                         xz_flags += ' -DWORDS_BIGENDIAN'
                     flags = '$(subst -Gr,-Gd,$(CFLAGS_O2:-Wall=-W3)) -std:c11 ' + xz_flags
-                lines.append(('\t$(CC) ' + flags + ' ' + ('-TP' if cpp else '-TC') + ' -Fo"' + target + '" "' + source + '"')
+                lines.append(('\t$(CC) ' + flags + ' ' + ('$(SEVENZIP_RUNTIME_CXXFLAGS) -TP' if cpp else '-TC') + ' -Fo"' + target + '" "' + source + '"')
                              if windows else ('\t$(CXX) $(CXXFLAGS) ' if cpp else
                                               '\t$(CC) $(CFLAGS) ' + ('-DZSTD_DISABLE_ASM ' if name.startswith("zstd/") else
                                                                       '-DZ_PREFIX ' if name.startswith("zlib/") else '')) +
@@ -209,8 +215,7 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                 lines.append("$(PROGPATH): " + " ".join(extra_objects))
                 if not windows:
                     lines.append("$(PROGPATH_STATIC): " + " ".join(extra_objects))
-            if not windows and sys.platform == "darwin":
-                lines.append("$(OBJS): sevenzip-runtime.gcc.mak")
+            lines.append("$(OBJS): " + generated)
             content = "\n".join(lines) + "\n"
             output = bundle / generated
             if output.is_symlink():

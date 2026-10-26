@@ -32,7 +32,7 @@ snapshot="$artifact_dir/.build-runtime"
 python3 "$project_root/scripts/upstream_baseline.py" runtime-snapshot \
   --snapshot "$snapshot" --upstream "$upstream_checkout"
 if [[ "$(uname -s)" == Darwin ]]; then
-  if ! printf '#include <type_traits>\n' | "${CXX:-c++}" -x c++ -std=c++17 -fsyntax-only - >/dev/null 2>&1; then
+  if ! printf '#include <type_traits>\n' | "${CXX:-c++}" -x c++ -std=c++23 -fsyntax-only - >/dev/null 2>&1; then
     task_codec_sdk="$(xcrun --show-sdk-path)"
     export CPLUS_INCLUDE_PATH="$task_codec_sdk/usr/include/c++/v1${CPLUS_INCLUDE_PATH:+:$CPLUS_INCLUDE_PATH}"
   fi
