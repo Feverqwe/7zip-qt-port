@@ -3,6 +3,7 @@
 #include "smbreadonlyserver.h"
 #include <cstdio>
 #include <cstdlib>
+#include <stdexcept>
 
 int main(int argc, char **argv) {
     if (argc != 2 && argc != 3)
@@ -10,6 +11,11 @@ int main(int argc, char **argv) {
     constexpr quint64 size = (quint64(5) << 30) + 123;
     const bool trace = argc == 3 && QString::fromUtf8(argv[2]) == "--trace";
     const bool caseNames = argc == 3 && QString::fromUtf8(argv[2]) == "--case-names";
+    QString failedTrace;
+    if (argc == 3 && QString::fromUtf8(argv[2]) == "--throw-authorize")
+        failedTrace = QStringLiteral("AUTHORIZE");
+    else if (argc == 3 && QString::fromUtf8(argv[2]) == "--throw-tree")
+        failedTrace = QStringLiteral("TREE_CONNECT");
     QList<SmbTreeEntry> entries{
         {1, 0, 0, 0, {}, true},
         {2, 1, 65536, 133800000000000007ULL, QStringLiteral("hello.txt"), false},
@@ -35,6 +41,13 @@ int main(int argc, char **argv) {
     if (trace)
         server.setDiagnosticHandler(
             [](const QString &message) { std::fprintf(stderr, "%s\n", qPrintable(message)); });
+    if (!failedTrace.isEmpty())
+        server.setDiagnosticHandler([failedTrace, failed = false](const QString &message) mutable {
+            if (!failed && message.startsWith(failedTrace)) {
+                failed = true;
+                throw std::runtime_error("fixture callback failure");
+            }
+        });
     if (!server.validate(error)) {
         std::fprintf(stderr, "%s\n", qPrintable(error));
         return 2;

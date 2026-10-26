@@ -83,6 +83,7 @@ struct SmbReadOnlyServer::State : smb2_server {
     std::atomic_bool Stop{false};
     bool Reported = false;
     bool Valid = false;
+    bool CallbackFailed = false;
     unsigned Clients = 0;
     quint64 TotalBytes = 0;
     std::function<void(quint16)> Listening;

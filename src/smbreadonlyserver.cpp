@@ -31,16 +31,20 @@ SmbReadOnlyServer::State::State(QList<SmbTreeEntry> entries, QString user, QStri
     std::memcpy(guid, uuid.constData(), sizeof(guid));
     Handlers.authorize_user = [](smb2_server *server, smb2_context *context, const char *name,
                                  const char *, const char *) {
-        auto &owner = *static_cast<State *>(server);
-        owner.trace(QStringLiteral("AUTHORIZE accepted=%1").arg(name && owner.User == name));
-        if (!name || owner.User != name)
-            return -1;
-        smb2_set_password(context, owner.Password.constData());
-        return 0;
+        return Guard([&] {
+            auto &owner = *static_cast<State *>(server);
+            owner.trace(QStringLiteral("AUTHORIZE accepted=%1").arg(name && owner.User == name));
+            if (!name || owner.User != name)
+                return -1;
+            smb2_set_password(context, owner.Password.constData());
+            return 0;
+        });
     };
     Handlers.session_established = [](smb2_server *server, smb2_context *) {
-        static_cast<State *>(server)->trace(QStringLiteral("Authenticated session"));
-        return 0;
+        return Guard([&] {
+            static_cast<State *>(server)->trace(QStringLiteral("Authenticated session"));
+            return 0;
+        });
     };
     Handlers.destruction_event = [](smb2_server *, smb2_context *context) {
         auto *closed = static_cast<Client *>(smb2_get_opaque(context));
@@ -59,23 +63,26 @@ SmbReadOnlyServer::State::State(QList<SmbTreeEntry> entries, QString user, QStri
     Handlers.tree_connect_cmd = [](smb2_server *server, smb2_context *,
                                    smb2_tree_connect_request *request,
                                    smb2_tree_connect_reply *reply) {
-        static_cast<State *>(server)->trace(QStringLiteral("TREE_CONNECT"));
-        if (!request->path || (request->path_length & 1))
-            return status(SMB2_STATUS_INVALID_PARAMETER);
-        const char *decoded = smb2_utf16_to_utf8(request->path, request->path_length / 2);
-        if (!decoded)
-            return status(SMB2_STATUS_INVALID_PARAMETER);
-        QString path = QString::fromUtf8(decoded);
-        std::free(const_cast<char *>(decoded));
-        path.replace(u'\\', u'/');
-        if (path.section(u'/', -1).compare(static_cast<State *>(server)->Share,
-                                           Qt::CaseInsensitive))
-            return status(SMB2_STATUS_BAD_NETWORK_NAME);
-        reply->share_type = SMB2_SHARE_TYPE_DISK;
-        reply->maximal_access = SMB2_FILE_READ_DATA | SMB2_FILE_READ_EA |
-                                SMB2_FILE_READ_ATTRIBUTES | SMB2_FILE_EXECUTE | SMB2_READ_CONTROL |
-                                SMB2_SYNCHRONIZE;
-        return 0;
+        return Guard([&] {
+            static_cast<State *>(server)->trace(QStringLiteral("TREE_CONNECT"));
+            if (!request->path || (request->path_length & 1))
+                return status(SMB2_STATUS_INVALID_PARAMETER);
+            const std::unique_ptr<char, decltype(&std::free)> decoded(
+                const_cast<char *>(smb2_utf16_to_utf8(request->path, request->path_length / 2)),
+                &std::free);
+            if (!decoded)
+                return status(SMB2_STATUS_INVALID_PARAMETER);
+            QString path = QString::fromUtf8(decoded.get());
+            path.replace(u'\\', u'/');
+            if (path.section(u'/', -1).compare(static_cast<State *>(server)->Share,
+                                               Qt::CaseInsensitive))
+                return status(SMB2_STATUS_BAD_NETWORK_NAME);
+            reply->share_type = SMB2_SHARE_TYPE_DISK;
+            reply->maximal_access = SMB2_FILE_READ_DATA | SMB2_FILE_READ_EA |
+                                    SMB2_FILE_READ_ATTRIBUTES | SMB2_FILE_EXECUTE |
+                                    SMB2_READ_CONTROL | SMB2_SYNCHRONIZE;
+            return 0;
+        });
     };
     Handlers.tree_disconnect_cmd = [](smb2_server *, smb2_context *context, uint32_t) {
         client(context).Handles.clear();
@@ -118,21 +125,28 @@ SmbReadOnlyServer::State::State(QList<SmbTreeEntry> entries, QString user, QStri
     Handlers.echo_cmd = [](smb2_server *, smb2_context *) { return 0; };
     extra_service = [](smb2_server *server, fd_set *, fd_set *) {
         auto &state = *static_cast<State *>(server);
-        state.completeReads();
-        if (state.Stop)
-            state.stop_requested = 1;
-        if (state.Reported)
-            return;
-        sockaddr_in address{};
+        const int result = Guard([&] {
+            state.completeReads();
+            if (state.Stop)
+                state.stop_requested = 1;
+            if (state.Reported)
+                return 0;
+            sockaddr_in address{};
 #ifdef _WIN32
-        int size = sizeof(address);
+            int size = sizeof(address);
 #else
-        socklen_t size = sizeof(address);
+            socklen_t size = sizeof(address);
 #endif
-        if (::getsockname(state.fd, reinterpret_cast<sockaddr *>(&address), &size) == 0) {
-            state.Reported = true;
-            if (state.Listening)
-                state.Listening(ntohs(address.sin_port));
+            if (::getsockname(state.fd, reinterpret_cast<sockaddr *>(&address), &size) == 0) {
+                state.Reported = true;
+                if (state.Listening)
+                    state.Listening(ntohs(address.sin_port));
+            }
+            return 0;
+        });
+        if (result) {
+            state.CallbackFailed = true;
+            state.stop_requested = 1;
         }
     };
 }
@@ -236,7 +250,7 @@ int SmbReadOnlyServer::serve(quint16 port, std::function<void(quint16)> listenin
         return -1;
     state_->port = port;
     state_->Listening = std::move(listening);
-    return smb2_serve_port(
+    const int result = smb2_serve_port(
         state_.get(), 16,
         [](smb2_context *context, void *data) {
             auto *state = static_cast<State *>(data);
@@ -244,20 +258,31 @@ int SmbReadOnlyServer::serve(quint16 port, std::function<void(quint16)> listenin
                 smb2_close_context(context);
                 return;
             }
-            auto *client = new (std::nothrow) State::Client{};
-            if (!client) {
+            const int result = Guard([&] {
+                auto client = std::make_unique<State::Client>();
+                client->Owner = state;
+                client->Context = context;
+                state->OpenClients.insert(client.get());
+                ++state->Clients;
+                smb2_set_opaque(context, client.release());
+                return 0;
+            });
+            if (result) {
                 smb2_close_context(context);
                 return;
             }
-            client->Owner = state;
-            client->Context = context;
-            state->OpenClients.insert(client);
-            ++state->Clients;
-            smb2_set_opaque(context, client);
             if (state->Diagnostic)
                 smb2_register_error_callback(context, [](smb2_context *ctx, const char *error) {
-                    if (const auto *session = static_cast<State::Client *>(smb2_get_opaque(ctx)))
-                        session->Owner->trace(QString::fromUtf8(error));
+                    if (const auto *session = static_cast<State::Client *>(smb2_get_opaque(ctx))) {
+                        const int result = Guard([&] {
+                            session->Owner->trace(QString::fromUtf8(error));
+                            return 0;
+                        });
+                        if (result) {
+                            session->Owner->CallbackFailed = true;
+                            session->Owner->stop_requested = 1;
+                        }
+                    }
                 });
             // Only this server dialect is accepted so far. Signing
             // remains mandatory; no client policy is changed.
@@ -265,6 +290,7 @@ int SmbReadOnlyServer::serve(quint16 port, std::function<void(quint16)> listenin
             smb2_set_sign(context, 1);
         },
         state_.get());
+    return state_->CallbackFailed ? -1 : result;
 }
 void SmbReadOnlyServer::requestStop() { state_->Stop = true; }
 void SmbReadOnlyServer::setDiagnosticHandler(std::function<void(QString)> handler) {

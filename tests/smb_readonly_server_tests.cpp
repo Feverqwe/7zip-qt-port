@@ -1,3 +1,4 @@
+#include "smbreadonlyserver.h"
 #include <QProcess>
 #include <QRegularExpression>
 #include <QScopeGuard>
@@ -8,6 +9,7 @@
 #include <QtTest>
 #include <fcntl.h>
 #include <future>
+#include <stdexcept>
 #include <utility>
 #ifdef Q_OS_UNIX
 #include <poll.h>
@@ -118,6 +120,56 @@ class ReadTamperProxy final : public QObject {
 class SmbReadOnlyServerTests final : public QObject {
     Q_OBJECT
   private slots:
+    void listeningExceptionClosesServerSocket() {
+        SmbReadOnlyServer server({{1, 0, 0, 0, {}, true}}, "probe", "password",
+                                 [](quint64, quint64, quint32) { return SmbTreeRead{}; });
+        QString error;
+        QVERIFY(server.validate(error));
+        quint16 port = 0;
+        QVERIFY(server.serve(0, [&](quint16 listening) {
+            port = listening;
+            throw std::runtime_error("fixture listening failure");
+        }) != 0);
+        QVERIFY(port);
+        QTcpServer replacement;
+        QVERIFY(replacement.listen(QHostAddress::LocalHost, port));
+    }
+    void callbackFailureRejectsOnlyCurrentConnection_data() {
+        QTest::addColumn<QString>("failure");
+        QTest::newRow("authorize") << QStringLiteral("--throw-authorize");
+        QTest::newRow("tree connect") << QStringLiteral("--throw-tree");
+    }
+    void callbackFailureRejectsOnlyCurrentConnection() {
+        QFETCH(QString, failure);
+        QProcess server;
+        server.start(QStringLiteral(SEVENZIP_SMB_PROBE), {"0", failure});
+        QVERIFY(server.waitForStarted(10000));
+        const auto cleanup = qScopeGuard([&] {
+            server.terminate();
+            if (!server.waitForFinished(5000)) {
+                server.kill();
+                server.waitForFinished(5000);
+            }
+        });
+        QByteArray diagnostics;
+        const QRegularExpression ready("loopback SMB fixture ready on port ([0-9]+)");
+        QRegularExpressionMatch match;
+        QTRY_VERIFY_WITH_TIMEOUT((diagnostics += server.readAllStandardError(),
+                                  match = ready.match(QString::fromUtf8(diagnostics)),
+                                  match.hasMatch()),
+                                 10000);
+        const quint16 port = match.captured(1).toUShort();
+        {
+            Client rejected;
+            QVERIFY(rejected.connect(port) < 0);
+        }
+        QCOMPARE(server.state(), QProcess::Running);
+        Client accepted;
+        QCOMPARE(accepted.connect(port), 0);
+        auto *file = ClientWork([&] { return smb2_open(accepted.Context, "hello.txt", O_RDONLY); });
+        QVERIFY(file);
+        QCOMPARE(ClientWork([&] { return smb2_close(accepted.Context, file); }), 0);
+    }
     void cancelHasNoReplyAndPreservesOutstandingRead() {
 #ifndef Q_OS_UNIX
         QSKIP("This wire-client driver uses POSIX poll; native Windows lifecycle is checked "
