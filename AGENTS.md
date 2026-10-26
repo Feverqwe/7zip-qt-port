@@ -1,6 +1,6 @@
 # Sevenzip Desktop agent guide
 
-This repository owns a C++17 / Qt 6 Widgets port of Windows 7-Zip File Manager
+This repository owns a C++23 / Qt 6 Widgets port of Windows 7-Zip File Manager
 for Windows, macOS, and Linux. The official source checkout is `../7zip-upstream`.
 
 ## Source-port requirements
@@ -24,7 +24,7 @@ for Windows, macOS, and Linux. The official source checkout is `../7zip-upstream
   modules separate; full GPL readers are not overlaid into the core runtime.
   Record extractions and their original inventory units in the existing baseline.
 - Preserve the source language: upstream `C/` stays C and is compiled as C;
-  `CPP/` stays C++. Local UI/integration uses C++17 / Qt 6; necessary platform
+  `CPP/` stays C++. Local UI/integration uses C++23 / Qt 6; necessary platform
   bridges may use their native language, with the reason recorded in the audit.
   Use existing upstream headers and their C linkage at C/C++ boundaries.
 - New functional code requires evidence that no usable upstream implementation

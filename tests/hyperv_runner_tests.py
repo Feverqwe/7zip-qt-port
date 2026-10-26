@@ -174,6 +174,15 @@ class RunnerTests(unittest.TestCase):
             tool_asset = project / "tools/cp2/fixture.json"
             tool_asset.parent.mkdir(parents=True)
             tool_asset.write_text('{"tool": "current resource"}')
+            build_manifest = project / "vcpkg.json"
+            build_manifest.write_text('{"name":"fixture"}')
+            registry_config = project / "vcpkg-configuration.json"
+            registry_config.write_text('{"overlay-ports":["ports"]}')
+            tidy_config = project / ".clang-tidy"
+            tidy_config.write_text("Checks: 'bugprone-*'\n")
+            overlay_patch = project / "ports/fixture/fix.patch"
+            overlay_patch.parent.mkdir(parents=True)
+            overlay_patch.write_text("fixture patch")
             (project / "src/ignored-secret").write_text("excluded")
             (project / "build").mkdir()
             (project / "build/secret").write_text("excluded")
@@ -189,6 +198,8 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual((destination / "src/changed.cpp").read_text(), "new")
             self.assertEqual((destination / "translations/fixture.ts").read_text(), catalog.read_text())
             self.assertEqual((destination / "tools/cp2/fixture.json").read_text(), tool_asset.read_text())
+            for source in (build_manifest, registry_config, tidy_config, overlay_patch):
+                self.assertEqual((destination / source.relative_to(project)).read_text(), source.read_text())
             self.assertTrue((destination / "src/Юникод $(touch injected).cpp").exists())
             self.assertFalse((destination / "src/deleted.cpp").exists())
             self.assertFalse((destination / "src/ignored-secret").exists())

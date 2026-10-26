@@ -10,10 +10,12 @@ import tempfile
 
 from .source_snapshot_time import version_time_ns
 
-SOURCE_DIRS = {".agents", "cmake", "docs", "scripts", "src", "tests", "third_party", "resources",
+SOURCE_DIRS = {".agents", "cmake", "docs", "ports", "scripts", "src", "tests", "third_party", "resources",
                "translations", "tools"}
-SOURCE_FILES = {".clang-format", ".gitattributes", ".gitignore", "AGENTS.md", "CMakeLists.txt",
-                "CMakePresets.json", "LICENSE", "README.md", "upstream.lock.json", "windows-runtime.lock.json"}
+SOURCE_FILES = {".clang-format", ".clang-tidy", ".gitattributes", ".gitignore", "AGENTS.md",
+                "CMakeLists.txt", "CMakePresets.json", "LICENSE", "README.md",
+                "upstream.lock.json", "vcpkg-configuration.json", "vcpkg.json",
+                "windows-runtime.lock.json"}
 MANIFEST = ".runner-source.json"
 CONTEXT = ".runner-context.json"
 

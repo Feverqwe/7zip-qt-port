@@ -21,13 +21,44 @@
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTING": "OFF"
       }
+    },
+    {
+      "name": "modules-gcc-dev",
+      "inherits": "dev",
+      "displayName": "Development with GCC and C++23 library features",
+      "binaryDir": "${sourceDir}/build/modules-gcc-dev"
+    },
+    {
+      "name": "vcpkg-dev",
+      "inherits": "dev",
+      "displayName": "Development with vcpkg",
+      "binaryDir": "${sourceDir}/build/vcpkg-dev",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/build/vcpkg_installed"
+      }
+    },
+    {
+      "name": "vcpkg-release",
+      "inherits": "release",
+      "displayName": "Release with vcpkg",
+      "binaryDir": "${sourceDir}/build/vcpkg-release",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/build/vcpkg_installed"
+      }
     }
   ],
   "buildPresets": [
     { "name": "dev", "configurePreset": "dev" },
-    { "name": "release", "configurePreset": "release" }
+    { "name": "release", "configurePreset": "release" },
+    { "name": "modules-gcc-dev", "configurePreset": "modules-gcc-dev" },
+    { "name": "vcpkg-dev", "configurePreset": "vcpkg-dev" },
+    { "name": "vcpkg-release", "configurePreset": "vcpkg-release" }
   ],
   "testPresets": [
-    { "name": "dev", "configurePreset": "dev", "output": { "outputOnFailure": true } }
+    { "name": "dev", "configurePreset": "dev", "output": { "outputOnFailure": true } },
+    { "name": "modules-gcc-dev", "configurePreset": "modules-gcc-dev", "output": { "outputOnFailure": true } },
+    { "name": "vcpkg-dev", "configurePreset": "vcpkg-dev", "output": { "outputOnFailure": true } }
   ]
 }

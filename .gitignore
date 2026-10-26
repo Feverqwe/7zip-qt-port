@@ -1,4 +1,5 @@
 /build/
+/vcpkg_installed/
 /dist/
 /ui-reports/
 /cmake-build-*/

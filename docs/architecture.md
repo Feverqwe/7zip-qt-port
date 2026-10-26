@@ -21,7 +21,7 @@ The [reader ownership audit](upstream-port-audit/license-variants.md) records th
 shared probes/compression dependencies and engine/module boundaries. The core
 does not retain parallel SDK filesystem readers.
 
-The application is a C++17 / Qt 6 Widgets host for original FileManager/Agent/GUI
+The application is a C++23 / Qt 6 Widgets host for original FileManager/Agent/GUI
 logic. Qt adapters replace Win32 presentation, event delivery and native services.
 The official archive engine remains responsible for formats and compression.
 

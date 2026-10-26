@@ -64,7 +64,7 @@ cd 7zip-qt-port
 git clone https://github.com/ip7z/7zip.git ../7zip-upstream
 ```
 
-You need C and C++17 compilers, CMake, Ninja, Qt 6 Widgets, `clang-format`
+You need C and C++23 compilers, CMake 3.28+, Ninja, Qt 6 Widgets, `clang-format`
 and the official 7-Zip sources. macOS builds use the official Qt SDK and target macOS
 14.4 or later. Follow the [dependency setup](docs/development.md#dependencies)
 for your platform.

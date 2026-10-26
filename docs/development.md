@@ -120,7 +120,7 @@ These checks do not establish rendered pixel parity or release acceptance.
 
 ## Dependencies
 
-- C and C++17 compiler, CMake 3.21+, Ninja, Qt 6 Widgets, LinguistTools and
+- C and C++23 compiler, CMake 3.28+, Ninja, Qt 6 Widgets, LinguistTools and
   Qt Base translations, Git, clang-format
 - Python 3.9+ for CTest UI-reference checks (standard library only); clang/GCC
   additionally for extracting resources, not for comparing stored references
@@ -142,10 +142,40 @@ Build and deploy with the same SDK. Homebrew supplies the other local tools:
 brew install cmake ninja sevenzip clang-format ccache
 ```
 
+The application now requires CMake 3.28 or newer and a C++23 compiler. Debug
+and RelWithDebInfo builds enable AddressSanitizer on all platforms and
+UndefinedBehaviorSanitizer on macOS/Linux by default. Use
+`-DSEVENZIP_ENABLE_SANITIZERS=OFF` only when investigating a toolchain or runtime
+incompatibility. Clang-Tidy is opt-in with `-DSEVENZIP_ENABLE_CLANG_TIDY=ON` and
+requires `clang-tidy` on `PATH`.
+
+The root vcpkg manifest pins its registry and includes the Qt, formatting and
+inference dependencies. To use it, install vcpkg at the pinned registry revision,
+set `VCPKG_ROOT` to that checkout and build with the `vcpkg-dev` or
+`vcpkg-release` preset. These presets have their own build trees. The ordinary
+presets continue to use the selected Qt SDK and system dependencies. Custom
+vcpkg ports belong under `ports/`; a patched port must include its complete
+port recipe as required by vcpkg. The C++23 module example is a separate target
+enabled on compilers for which CMake can scan module imports. The current
+AppleClang toolchain cannot build that example because it lacks a module scanner.
+On macOS, Homebrew GCC provides the compiler, module scanner and C++23 ranges
+used by the example. Keep the ordinary app build tree on the selected Qt kit
+and use the separate module preset:
+
+```sh
+brew install gcc
+harness_root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+CC="$(brew --prefix gcc)/bin/gcc-16" \
+CXX="$(brew --prefix gcc)/bin/g++-16" \
+CMAKE_PREFIX_PATH="$harness_root/build/qt/6.12.0/macos" \
+./scripts/build.sh modules-gcc-dev sevenzip_cpp23_example
+./build/modules-gcc-dev/sevenzip_cpp23_example
+```
+
 On Linux, install CMake, Ninja, Qt 6 base development files, clang-format,
 pkg-config and GLib/GIO development files (`libglib2.0-dev` on Ubuntu). The native
 association adapter links `gio-unix-2.0`. On Windows, use a Qt 6 Widgets kit plus
-CMake, Ninja, and a C++17 compiler. The shared Windows runner uses the
+CMake, Ninja, and a C++23 compiler. The shared Windows runner uses the
 MSVC2022/Qt6.12.0 kit; see [runtime artifacts and CI scope](ci.md). Point
 `CMAKE_PREFIX_PATH` to Qt when CMake cannot locate it.
 

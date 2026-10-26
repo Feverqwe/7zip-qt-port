@@ -71,6 +71,7 @@ configure() {
     "${CMAKE_PREFIX_PATH:-}" "${CC:-}" "${CXX:-}" "${OBJCXX:-}" \
     "${CFLAGS:-}" "${CXXFLAGS:-}" "${OBJCXXFLAGS:-}" "${LDFLAGS:-}" \
     "${CMAKE_TOOLCHAIN_FILE:-}" "${SDKROOT:-}" "${CPLUS_INCLUDE_PATH:-}" \
+    "${VCPKG_ROOT:-}" \
     "${SEVENZIP_WINDOWS_RUNNER_HOST:-}" "${COMPUTERNAME:-}" \
     "$(cksum "$project_root/scripts/build.sh" "$project_root/CMakePresets.json")" | cksum)"
   local existing_signature=""
@@ -87,33 +88,50 @@ configure() {
   printf '%s\n%s\n' "$requested_signature" "$(cksum "$cache_file")" > "$signature_file"
 }
 
-if [[ "$preset" != dev && "$preset" != release ]]; then
-    printf 'Usage: %s [dev|release] [target ...]\n' "$0" >&2
+if [[ "$preset" != dev && "$preset" != release && "$preset" != modules-gcc-dev &&
+      "$preset" != vcpkg-dev && "$preset" != vcpkg-release ]]; then
+    printf 'Usage: %s [dev|release|modules-gcc-dev|vcpkg-dev|vcpkg-release] [target ...]\n' "$0" >&2
   exit 2
 fi
 
 if [[ "$(uname -s)" == Darwin ]]; then
-  if ! printf '#include <type_traits>\n' | c++ -x c++ -std=c++17 -fsyntax-only - >/dev/null 2>&1; then
+  compiler_probe="${CXX:-c++}"
+  if [[ "$preset" == modules-gcc-dev ]]; then
+    sdk_path="$(xcrun --show-sdk-path)"
+    export CFLAGS="${CFLAGS:+$CFLAGS }-isysroot $sdk_path"
+    export CXXFLAGS="${CXXFLAGS:+$CXXFLAGS }-isysroot $sdk_path"
+    export LDFLAGS="${LDFLAGS:+$LDFLAGS }-isysroot $sdk_path"
+    if ! printf '#include <expected>\n' | "$compiler_probe" -isysroot "$sdk_path" \
+        -x c++ -std=c++23 -fsyntax-only - >/dev/null 2>&1; then
+      printf 'The selected compiler cannot use the macOS SDK C++23 headers.\n' >&2
+      exit 1
+    fi
+  elif ! printf '#include <expected>\n' | "$compiler_probe" -x c++ -std=c++23 -fsyntax-only - >/dev/null 2>&1; then
     sdk_path="$(xcrun --show-sdk-path)"
     sdk_cxx_headers="$sdk_path/usr/include/c++/v1"
-    if [[ ! -f "$sdk_cxx_headers/type_traits" ]]; then
-      printf 'C++ standard headers were not found in the macOS SDK.\n' >&2
+    if [[ ! -f "$sdk_cxx_headers/expected" ]]; then
+      printf 'C++23 standard headers were not found in the macOS SDK.\n' >&2
       exit 1
     fi
     export CPLUS_INCLUDE_PATH="$sdk_cxx_headers${CPLUS_INCLUDE_PATH:+:$CPLUS_INCLUDE_PATH}"
   fi
 
-  if [[ -z "${CMAKE_PREFIX_PATH:-}" ]]; then
+  if [[ -z "${CMAKE_PREFIX_PATH:-}" && -z "${CMAKE_TOOLCHAIN_FILE:-}" &&
+        "$preset" != vcpkg-* ]]; then
     export CMAKE_PREFIX_PATH="$project_root/build/qt/6.12.0/macos"
     if [[ ! -f "$CMAKE_PREFIX_PATH/lib/cmake/Qt6/Qt6Config.cmake" ]]; then
       printf 'Install the official Qt 6.12.0 macOS kit into build/qt, or set CMAKE_PREFIX_PATH to its macos directory. See docs/development.md.\n' >&2
       exit 2
     fi
   fi
-  # A different SDK must not inherit cached package locations from Homebrew.
-  # Keep the build tree and compiler cache; refresh only Qt package discovery.
-  configure -U 'Qt6*_DIR' "-DCMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" \
-    -DCMAKE_OSX_DEPLOYMENT_TARGET=14.4
+  if [[ -n "${CMAKE_PREFIX_PATH:-}" ]]; then
+    # A different SDK must not inherit cached package locations from Homebrew.
+    # Keep the build tree and compiler cache; refresh only Qt package discovery.
+    configure -U 'Qt6*_DIR' "-DCMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" \
+      -DCMAKE_OSX_DEPLOYMENT_TARGET=14.4
+  else
+    configure -DCMAKE_OSX_DEPLOYMENT_TARGET=14.4
+  fi
 else
   configure
 fi

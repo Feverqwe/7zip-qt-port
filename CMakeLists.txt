@@ -1,6 +1,55 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.28)
 
 project(sevenzip_desktop VERSION 0.1.7 LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+if(MSVC)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/W4> $<$<COMPILE_LANGUAGE:CXX>:/permissive->)
+else()
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wall>
+        $<$<COMPILE_LANGUAGE:CXX>:-Wextra>
+        $<$<COMPILE_LANGUAGE:CXX>:-Wpedantic>
+        $<$<COMPILE_LANGUAGE:OBJCXX>:-Wall>
+        $<$<COMPILE_LANGUAGE:OBJCXX>:-Wextra>
+        $<$<COMPILE_LANGUAGE:OBJCXX>:-Wpedantic>)
+endif()
+
+option(SEVENZIP_ENABLE_CLANG_TIDY "Run clang-tidy while compiling C++" OFF)
+if(SEVENZIP_ENABLE_CLANG_TIDY)
+    find_program(SEVENZIP_CLANG_TIDY_EXECUTABLE NAMES clang-tidy REQUIRED)
+    set(CMAKE_CXX_CLANG_TIDY "${SEVENZIP_CLANG_TIDY_EXECUTABLE};--config-file=${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy")
+endif()
+
+option(SEVENZIP_ENABLE_SANITIZERS "Instrument Debug and RelWithDebInfo builds" ON)
+if(SEVENZIP_ENABLE_SANITIZERS)
+    if(MSVC)
+        foreach(sevenzip_config DEBUG RELWITHDEBINFO)
+            # MSVC's Debug /RTC checks cannot be combined with AddressSanitizer.
+            foreach(sevenzip_language C CXX)
+                string(REPLACE "/RTC1" "" CMAKE_${sevenzip_language}_FLAGS_${sevenzip_config}
+                    "${CMAKE_${sevenzip_language}_FLAGS_${sevenzip_config}}")
+                string(APPEND CMAKE_${sevenzip_language}_FLAGS_${sevenzip_config} " /fsanitize=address")
+            endforeach()
+            foreach(sevenzip_link_kind EXE SHARED MODULE)
+                string(APPEND CMAKE_${sevenzip_link_kind}_LINKER_FLAGS_${sevenzip_config} " /fsanitize=address")
+            endforeach()
+        endforeach()
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(AppleClang|Clang|GNU)$")
+        foreach(sevenzip_config DEBUG RELWITHDEBINFO)
+            foreach(sevenzip_language C CXX)
+                string(APPEND CMAKE_${sevenzip_language}_FLAGS_${sevenzip_config} " -fsanitize=address,undefined -fno-omit-frame-pointer")
+            endforeach()
+            foreach(sevenzip_link_kind EXE SHARED MODULE)
+                string(APPEND CMAKE_${sevenzip_link_kind}_LINKER_FLAGS_${sevenzip_config} " -fsanitize=address,undefined")
+            endforeach()
+        endforeach()
+    else()
+        message(FATAL_ERROR "Sanitizers are not configured for ${CMAKE_CXX_COMPILER_ID}")
+    endif()
+endif()
 
 set(sevenzip_version_header "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/C/7zVersion.h")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${sevenzip_version_header}")
@@ -14,8 +63,6 @@ set_property(SOURCE src/main.cpp src/CPP/7zip/UI/FileManager/AboutDialog.cpp
     APPEND PROPERTY COMPILE_DEFINITIONS
     SEVENZIP_DESKTOP_DISPLAY_VERSION="${SEVENZIP_DESKTOP_DISPLAY_VERSION}")
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(CTest)
 
 # Relocated source headers must also resolve from unchanged upstream headers
@@ -85,8 +132,14 @@ qt_standard_project_setup()
 
 if(APPLE)
     enable_language(OBJCXX)
-    set(CMAKE_OBJCXX_STANDARD 17)
+    set(CMAKE_OBJCXX_STANDARD 23)
     set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+    if(SEVENZIP_ENABLE_SANITIZERS)
+        foreach(sevenzip_config DEBUG RELWITHDEBINFO)
+            string(APPEND CMAKE_OBJCXX_FLAGS_${sevenzip_config}
+                " -fsanitize=address,undefined -fno-omit-frame-pointer")
+        endforeach()
+    endif()
     add_library(sevenzip_device_access STATIC
         src/deviceaccess.h src/deviceaccess_mac.h src/deviceaccess_mac.mm
         src/deviceaccess_posix.cpp src/deviceaccess_posix.h
@@ -4941,3 +4994,43 @@ qt_add_resources(sevenzip_filesystem sevenzip_filesystem_translations
     PREFIX "/translations"
     BASE "${CMAKE_CURRENT_BINARY_DIR}"
     FILES ${sevenzip_translated_qm_files} ${sevenzip_english_qm_files})
+
+# Keep the module example separate from the Qt/7-Zip application. Check both
+# module scanning and the standard-library features used by the example.
+set(sevenzip_modules_supported OFF)
+if(MSVC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.34)
+    set(sevenzip_modules_supported ON)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+        AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 14)
+    set(sevenzip_modules_supported ON)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+        AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16)
+    find_program(sevenzip_clang_scan_deps NAMES clang-scan-deps)
+    if(sevenzip_clang_scan_deps)
+        set(sevenzip_modules_supported ON)
+    endif()
+endif()
+if(sevenzip_modules_supported)
+    include(CheckCXXSourceCompiles)
+    check_cxx_source_compiles("#include <array>
+#include <print>
+#include <ranges>
+int main() {
+    std::array values{1, 2};
+    for (auto part : values | std::views::chunk(1))
+        std::println(\"{}\", part.size());
+}" sevenzip_cpp23_library_supported)
+    if(NOT sevenzip_cpp23_library_supported)
+        set(sevenzip_modules_supported OFF)
+    endif()
+endif()
+option(SEVENZIP_BUILD_CPP23_MODULE_EXAMPLE "Build the C++23 module example"
+    ${sevenzip_modules_supported})
+if(SEVENZIP_BUILD_CPP23_MODULE_EXAMPLE)
+    if(NOT sevenzip_modules_supported)
+        message(FATAL_ERROR "The selected compiler does not support CMake C++23 module scanning")
+    endif()
+    add_executable(sevenzip_cpp23_example src/ai/main.cpp)
+    target_sources(sevenzip_cpp23_example PRIVATE
+        FILE_SET CXX_MODULES FILES src/ai/foundation.cppm)
+endif()
