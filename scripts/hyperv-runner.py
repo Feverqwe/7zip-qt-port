@@ -132,7 +132,8 @@ df -Pk .
 """
         if prepare_runtime:
             script += (timing_command + ' runtime_start\n' + shlex.quote(config['python']) +
-                       ' scripts/prepare-runtime.py --upstream "$PWD/upstream"\n' +
+                       ' scripts/prepare-runtime.py --upstream "$PWD/upstream" --preset ' +
+                       shlex.quote(preset) + '\n' +
                        timing_command + ' runtime_end\nexport SEVENZIP_RUNTIME_PREPARED=1\n')
         script += ('export PATH="$PWD/build/codec-runtime:$PATH"\n'
                    'export SEVENZIP_CODEC_MODULE_DIR="$PWD/build/codec-runtime"\n' + payload)
@@ -154,7 +155,7 @@ df -Pk .
                     f'cd /d "{root}"']
         if prepare_runtime:
             commands += [f'"{config["python"]}" scripts/lib/runner_timing.py runtime_start',
-                         f'"{config["python"]}" scripts/prepare-runtime.py --upstream upstream',
+                         f'"{config["python"]}" scripts/prepare-runtime.py --upstream upstream --preset {preset}',
                          'if errorlevel 1 exit /b %errorlevel%',
                          f'"{config["python"]}" scripts/lib/runner_timing.py runtime_end',
                          'set "SEVENZIP_RUNTIME_PREPARED=1"']
@@ -389,6 +390,10 @@ def parse_arguments(argv):
         if action == "check":
             subparser.add_argument("--preset", choices=["dev", "release"], default="dev")
         if action == "run":
+            subparser.add_argument("--preset", choices=["dev", "release", "modules-dev",
+                                   "modules-linux-dev", "modules-gcc-dev", "vcpkg-dev",
+                                   "vcpkg-release"], default="dev",
+                                   help="Build preset used for native runtime toolchain selection")
             subparser.epilog = "Use -- <project-script> [arguments] after runner options; new nonignored scripts are included."
     separator = argv.index("--") if "--" in argv else len(argv)
     args = parser.parse_args(argv[:separator])

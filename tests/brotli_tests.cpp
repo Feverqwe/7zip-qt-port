@@ -1,6 +1,7 @@
 #include "7zip/Common/StreamObjects.h"
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
+#include "fixtures/codec_runtime.h"
 #include <QFile>
 #include <QProcess>
 #include <QSignalSpy>
@@ -95,8 +96,7 @@ class BrotliTests final : public QObject {
 #endif
         engine_ = runtime_.filePath(engineName);
         module_ = runtime_.filePath(moduleName);
-        QVERIFY(QFile::copy(prepared.filePath(engineName), engine_));
-        QVERIFY(QFile::copy(prepared.filePath(moduleName), module_));
+        QVERIFY(CopyCodecRuntime(prepared, QDir(runtime_.path())));
         QVERIFY(QDir(runtime_.path()).mkdir("Formats"));
         QVERIFY(QFile::copy(QString::fromUtf8(SEVENZIP_BROTLI_MODULE),
                             runtime_.filePath(QStringLiteral("Formats/Brotli 空") + suffix)));

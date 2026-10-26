@@ -46,7 +46,8 @@ def collect_logs(record, root, directory, command, token, invoke, output):
     if not command or len(command) < 2 or command[1] != "scripts/verify.py":
         return details
     preset = (command + [""])[command.index("--preset") + 1] if "--preset" in command else "dev"
-    if preset not in ("dev", "release"):
+    if preset not in ("dev", "release", "modules-dev", "modules-linux-dev", "modules-gcc-dev",
+                       "vcpkg-dev", "vcpkg-release"):
         raise ValueError("Invalid verification preset")
     name = "verify-plan.json" if "--plan" in command else "verify-result.json"
     download(f"build/{preset}/{name}", name)

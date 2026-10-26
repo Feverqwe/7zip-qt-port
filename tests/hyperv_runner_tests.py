@@ -475,7 +475,8 @@ raise SystemExit(runner.main())
                     path.write_text(json.dumps({"status": "passed", "run_token": "current"}))
             result = hyperv_transport.collect_logs(
                 {"ssh_argv": ["ssh", "fixture"]}, "/guest", destination,
-                ["python", "scripts/verify.py"], "current", download, None)
+                ["python", "scripts/verify.py", "--preset", "modules-linux-dev"],
+                "current", download, None)
             self.assertEqual(result["verification"]["status"], "passed")
             self.assertIn("timing_error", result)
             self.assertEqual((destination / "check.log").read_text(), "Command diagnostics retained")
@@ -544,6 +545,51 @@ raise SystemExit(runner.main())
             self.assertEqual((root / ".runner-complete").read_text().strip(), "token")
             self.assertFalse((root / "injected").exists())
             self.assertFalse((root / ".git").exists())
+
+    def test_remote_verification_prepares_the_requested_runtime_toolchain(self):
+        # A default runtime with a module preset reproduced incompatible ASan
+        # runtimes. Exercise the actual verify -> runner -> bootstrap handoff;
+        # the fixture command refuses a runtime prepared for another preset.
+        spec = importlib.util.spec_from_file_location("verify_fixture", ROOT / "scripts/verify.py")
+        verify = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(verify)
+        with tempfile.TemporaryDirectory(prefix="runtime toolchain ") as temporary:
+            root = Path(temporary)
+            (root / "scripts/lib").mkdir(parents=True)
+            shutil.copy2(ROOT / "scripts/lib/runner_timing.py", root / "scripts/lib/runner_timing.py")
+            (root / "scripts/prepare-runtime.py").write_text('''import argparse
+from pathlib import Path
+parser = argparse.ArgumentParser()
+parser.add_argument('--preset', default='dev')
+args, _ = parser.parse_known_args()
+Path('runtime-toolchain').write_text(args.preset)
+''')
+            (root / "scripts/verify.py").write_text('''import argparse
+from pathlib import Path
+parser = argparse.ArgumentParser()
+parser.add_argument('--preset', required=True)
+args, _ = parser.parse_known_args()
+raise SystemExit(0 if Path('runtime-toolchain').read_text() == args.preset else 9)
+''')
+            original_run = subprocess.run
+
+            def local_remote(record, script, **kwargs):
+                return original_run(["bash", "-se"], input=script, text=True,
+                                    check=True, capture_output=True)
+
+            def dispatch(command, **kwargs):
+                if len(command) < 2 or Path(command[1]).name != "hyperv-runner.py":
+                    return original_run(command, **kwargs)
+                args = runner.parse_arguments(command[2:])
+                args.command[0] = sys.executable
+                runner.execute_check({}, "linux", args.preset, root.as_posix(), "token",
+                                     args.command, not args.skip_runtime)
+                return subprocess.CompletedProcess(command, 0)
+
+            with patch.object(runner, "remote", local_remote), \
+                    patch.object(verify.subprocess, "run", dispatch):
+                self.assertEqual(verify.main(["--platform", "linux", "--preset", "modules-linux-dev",
+                                              "--tests", "^scenario$"]), 0)
 
     def test_invalid_build_parallelism_is_rejected_before_remote_execution(self):
         for platform in ("linux", "windows"):

@@ -1,5 +1,36 @@
 # Read-only Brotli
 
+## C++23 dependency facade — 2026-10-26
+
+The pinned fork's complete handler, decoder declarations/implementation and raw
+`st_decompress`/`st_finish_decompress` bodies were compared with the existing port,
+including probe, extraction, output flush, progress/cancellation, EOF and trailing
+data paths. Original inventory hashes were verified before editing.
+
+The existing C API boundary now goes through `sevenzip.dependencies.brotli`:
+an owning, noncopyable decoder accepts bounded input/output spans and reports
+consumed/produced lengths and the original result categories. Both the format
+probe and stream decoder use it. The same facade is available through a header
+on toolchains without module scanning. Stream-loop ordering, buffer sizes,
+allocation-error classification, callbacks and read-only scope are preserved.
+No Google algorithm or fork feature is imported or rewritten in this change.
+
+Google common/decoder sources now belong to a separate C99 static target linked
+by the facade and format plugin. Original bytes, MIT notices and the existing
+fork baseline remain intact; local integration owners are listed in
+`third_party/brotli/upstream.json`. The existing `brotli` suite exercises the
+facade through native and isolated official-console consumers, including
+multiple input/output batches, errors, cancellation and repeat extraction.
+
+Validation: macOS LLVM 23 and Windows MSVC module consumers passed the existing
+`brotli` suite; Linux GCC header consumers and Clang 18 module consumers passed.
+The facade also compiled with GCC 16 and LLVM 23 Clang-Tidy/lifetime diagnostics.
+Linux module validation reproduced incompatible ASan runtimes when the runner
+bootstrap prepared the host with the default compiler. The selected preset now
+reaches native preparation and CMake consistently; the matching Clang host and
+module consumers passed. This is focused dependency acceptance, not a new full
+application or performance acceptance.
+
 ## Исходники и baseline
 
 Дата: 2026-10-17. Официальный runtime проекта остаётся

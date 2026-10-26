@@ -1,10 +1,13 @@
 # Decoder sources retain Google's C language and source layout. No encoder is built.
 file(GLOB brotli_common_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/brotli/c/common/*.c")
 file(GLOB brotli_decoder_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/brotli/c/dec/*.c")
+add_library(sevenzip_brotli_core STATIC ${brotli_common_sources} ${brotli_decoder_sources})
+target_include_directories(sevenzip_brotli_core PUBLIC third_party/brotli/c/include)
+set_target_properties(sevenzip_brotli_core PROPERTIES AUTOMOC OFF AUTOUIC OFF
+    POSITION_INDEPENDENT_CODE ON C_STANDARD 99 C_STANDARD_REQUIRED ON)
 add_library(sevenzip_brotli MODULE
     src/CPP/7zip/Archive/BrotliHandler.cpp
     src/CPP/7zip/Compress/BrotliDecoder.cpp src/brotlimodule.cpp
-    ${brotli_common_sources} ${brotli_decoder_sources}
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Archive/Common/DummyOutStream.cpp
     third_party/7zip/CPP/7zip/Common/ProgressUtils.cpp

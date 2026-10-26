@@ -28,9 +28,10 @@ The official archive engine remains responsible for formats and compression.
 External C libraries keep their original compilation language and provenance.
 C++ dependency facades own resource lifetimes and bounded buffer interfaces;
 named modules expose those facades to C++ consumers on supporting toolchains.
-The zlib facade is connected to the SquashFS stream adapter and its direct
-behavior tests. Build selection and toolchain requirements are documented in
-[development](development.md#dependencies).
+The zlib facade is connected to the SquashFS stream adapter, and the Brotli
+facade to format probing and stream decoding. Their behavior tests exercise
+the production consumers. Build selection and toolchain requirements are
+documented in [development](development.md#dependencies).
 
 Archive resource targets carry the typed backend implementation in their link
 closure, including consumers that only present options. Shared object libraries

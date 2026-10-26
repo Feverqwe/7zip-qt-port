@@ -44,9 +44,13 @@ configure() {
     fi
     return
   fi
-  if [[ "$(uname -s)" == Darwin && -n "${CC:-}" && -n "${CXX:-}" ]]; then
-    set -- "-DCMAKE_C_COMPILER=$CC" "-DCMAKE_CXX_COMPILER=$CXX" \
-      "-DCMAKE_OBJCXX_COMPILER=${OBJCXX:-$CXX}" "$@"
+  if [[ -z "${CMAKE_TOOLCHAIN_FILE:-}" && -n "${CC:-}" && -n "${CXX:-}" ]]; then
+    if [[ "$(uname -s)" == Darwin || "$(uname -s)" == Linux ]]; then
+      set -- "-DCMAKE_C_COMPILER=$CC" "-DCMAKE_CXX_COMPILER=$CXX" "$@"
+    fi
+    if [[ "$(uname -s)" == Darwin ]]; then
+      set -- "-DCMAKE_OBJCXX_COMPILER=${OBJCXX:-$CXX}" "$@"
+    fi
   fi
   if [[ "${OS:-}" == Windows_NT && -n "$compiler_cache" ]]; then
     # MSVC shared /Zi databases cannot be cached. Embedded /Z7 retains debug

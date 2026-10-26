@@ -143,10 +143,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--upstream", type=Path, default=harness_root(ROOT).parent / "7zip-upstream")
     parser.add_argument("--codec-only", action="store_true", help="Prepare engine variants without SFX")
+    parser.add_argument("--preset", default="dev", help="Use the build preset's shared toolchain")
     parser.add_argument("--sanitizer-runtime", choices=["on", "off"], default="on",
                         help="Link the Unix console host with sanitizer runtimes for instrumented plugins")
     args = parser.parse_args()
-    apply_environment(ROOT, require_qt=False)
+    apply_environment(ROOT, args.preset, require_qt=False)
     prepare(ROOT, args.upstream, args.codec_only, args.sanitizer_runtime == "on")
 
 

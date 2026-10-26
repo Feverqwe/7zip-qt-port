@@ -7,8 +7,13 @@
 #include "CPP/7zip/Compress/BrotliDecoder.h"
 #include "Common/ComTry.h"
 #include "Windows/PropVariant.h"
-#include <brotli/decode.h>
-#include <memory>
+#include <span>
+
+#ifdef SEVENZIP_USE_BROTLI_MODULE
+import sevenzip.dependencies.brotli;
+#else
+#include "dependencies/brotli.h"
+#endif
 
 using namespace NWindows;
 namespace NArchive {
@@ -66,18 +71,15 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32, PROPID propID, PROPVARIANT *value)) {
 API_FUNC_static_IsArc IsArc_Brotli(const Byte *p, size_t size) {
     if (size == 0)
         return k_IsArc_Res_NEED_MORE;
-    std::unique_ptr<BrotliDecoderState, decltype(&BrotliDecoderDestroyInstance)> state(
-        BrotliDecoderCreateInstance(nullptr, nullptr, nullptr), BrotliDecoderDestroyInstance);
+    sevenzip::brotli::Decoder state;
     if (!state)
         return k_IsArc_Res_NO;
-    const uint8_t *nextIn = p;
-    size_t availableIn = size;
     uint8_t output[256];
-    uint8_t *nextOut = output;
-    size_t availableOut = sizeof(output);
-    const auto result = BrotliDecoderDecompressStream(state.get(), &availableIn, &nextIn,
-                                                      &availableOut, &nextOut, nullptr);
-    return result == BROTLI_DECODER_RESULT_ERROR ? k_IsArc_Res_NO : k_IsArc_Res_YES;
+    const auto result = state.decode({p, size}, output).status;
+    return result == sevenzip::brotli::Status::data_error ||
+                   result == sevenzip::brotli::Status::memory_error
+               ? k_IsArc_Res_NO
+               : k_IsArc_Res_YES;
 }
 }
 

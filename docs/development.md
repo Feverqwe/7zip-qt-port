@@ -204,7 +204,9 @@ brew install llvm
 ```
 
 On Ubuntu 24.04, install `clang-18`, `clang-tools-18`, `libclang-rt-18-dev` and use
-`modules-linux-dev` to select that C/C++ compiler and its scanner. GCC 14.2
+`modules-linux-dev` to select that C/C++ compiler and its scanner. The wrappers
+also select it for native runtime preparation; direct preparation accepts
+`prepare-runtime.py --preset modules-linux-dev`. GCC 14.2
 crashes while serializing the sanitized zlib facade; GCC module builds require
 GCC 16 or newer. Focused runner checks accept the same preset:
 

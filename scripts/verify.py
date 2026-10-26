@@ -79,7 +79,8 @@ def verify(root, args, profile):
     try:
         if not args.plan and not args.skip_runtime and profile.get("runtime", True) and \
                 os.environ.get("SEVENZIP_RUNTIME_PREPARED") != "1":
-            run([sys.executable, str(root / "scripts/prepare-runtime.py")], root, timings, "runtime")
+            run([sys.executable, str(root / "scripts/prepare-runtime.py"), "--preset", args.preset],
+                root, timings, "runtime")
         run(["bash", str(root / "scripts/build.sh"), args.preset, "--configure-only"],
             root, timings, "configure")
         run(["cmake", f"-DSEVENZIP_TEST_DIR={build}", "-P",
@@ -160,7 +161,8 @@ def main(argv=None):
         return 0
     profile = profiles.get(args.profile, {"tests": args.tests, "runtime": True})
     if args.platform != "local":
-        command = [sys.executable, str(ROOT / "scripts/hyperv-runner.py"), "run", args.platform]
+        command = [sys.executable, str(ROOT / "scripts/hyperv-runner.py"), "run", args.platform,
+                   "--preset", args.preset]
         if args.platform in ("windows", "all") and (args.interactive or args.elevated or profile.get("interactive")):
             command.append("--interactive")
         if args.elevated:

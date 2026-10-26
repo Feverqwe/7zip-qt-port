@@ -37,6 +37,12 @@
     "c/include/brotli/shared_dictionary.h": "3bc1a02686d25765a27ee24c7de6136287e944dc7fe8c7deb89ed91d5d2f69ca",
     "c/include/brotli/types.h": "ebbd136dc411cc8167636d6f54b66ad0c234dc18989265c37a28c242eaae2efd"
   },
+  "local_integration": [
+    "cmake/Brotli.cmake",
+    "cmake/DependencyModules.cmake",
+    "src/dependencies/brotli.h",
+    "src/dependencies/brotli.cppm"
+  ],
   "adapter_baseline": {
     "repository": "https://github.com/mcmilk/7-Zip-zstd.git",
     "revision": "964ba6a645545f47edc26452a35a18c726a5f1c4",

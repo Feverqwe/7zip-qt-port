@@ -1,6 +1,7 @@
-"""Select one local macOS toolchain for builds and native runtime preparation."""
+"""Select a shared toolchain for builds and native runtime preparation."""
 
 import argparse
+import json
 import os
 from pathlib import Path
 import platform
@@ -32,7 +33,19 @@ def companion(compiler, cxx):
 
 def environment(root, preset="dev", current=None, require_qt=True):
     current = dict(os.environ if current is None else current)
-    if platform.system() != "Darwin":
+    system = platform.system()
+    if system == "Linux" and preset == "modules-linux-dev" and not current.get("CMAKE_TOOLCHAIN_FILE"):
+        presets = json.loads((root / "CMakePresets.json").read_text())["configurePresets"]
+        configured = next(item for item in presets if item["name"] == preset)["cacheVariables"]
+        cc, cxx = current.get("CC"), current.get("CXX")
+        if not cc and not cxx:
+            cc, cxx = configured["CMAKE_C_COMPILER"], configured["CMAKE_CXX_COMPILER"]
+        cc, cxx = cc or companion(cxx, False), cxx or companion(cc, True)
+        selected = {"CC": shutil.which(cc), "CXX": shutil.which(cxx)}
+        if not all(selected.values()):
+            raise ValueError(f"Install the {preset} compilers ({cc}, {cxx}), or set CC and CXX")
+        return selected
+    if system != "Darwin":
         return {}
     selected = {}
     if not current.get("CMAKE_TOOLCHAIN_FILE"):
