@@ -1,5 +1,6 @@
 #include "qtnativeclientcontrol.h"
 #ifdef Q_OS_WIN
+#include <QScopeGuard>
 // clang-format off
 #include <windows.h>
 #include <sddl.h>
@@ -13,19 +14,18 @@ QString QtNativeClientOwnerIdentity() {
     HANDLE token = nullptr;
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token))
         return {};
+    const auto closeToken = qScopeGuard([token] { CloseHandle(token); });
     DWORD size = 0;
     GetTokenInformation(token, TokenUser, nullptr, 0, &size);
     QByteArray buffer(qsizetype(size), Qt::Uninitialized);
     const bool queried = GetTokenInformation(token, TokenUser, buffer.data(), size, &size);
-    CloseHandle(token);
     if (!queried)
         return {};
     LPWSTR sid = nullptr;
     if (!ConvertSidToStringSidW(reinterpret_cast<TOKEN_USER *>(buffer.data())->User.Sid, &sid))
         return {};
-    const QString result = QString::fromWCharArray(sid);
-    LocalFree(sid);
-    return result;
+    const auto releaseSid = qScopeGuard([sid] { LocalFree(sid); });
+    return QString::fromWCharArray(sid);
 #else
     return QString::number(getuid());
 #endif

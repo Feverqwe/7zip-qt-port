@@ -27,9 +27,8 @@ QString UserSid() {
     LPWSTR text = nullptr;
     if (!ConvertSidToStringSidW(reinterpret_cast<TOKEN_USER *>(data.data())->User.Sid, &text))
         return {};
-    const QString result = QString::fromWCharArray(text);
-    LocalFree(text);
-    return result;
+    const auto releaseText = qScopeGuard([text] { LocalFree(text); });
+    return QString::fromWCharArray(text);
 }
 
 HANDLE MakePipe(const QString &name) {
@@ -42,14 +41,13 @@ HANDLE MakePipe(const QString &name) {
     if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(dacl.c_str(), SDDL_REVISION_1,
                                                               &descriptor, nullptr))
         return INVALID_HANDLE_VALUE;
+    const auto releaseDescriptor = qScopeGuard([descriptor] { LocalFree(descriptor); });
     SECURITY_ATTRIBUTES security{sizeof(security), descriptor, FALSE};
-    HANDLE result = CreateNamedPipeW(
+    return CreateNamedPipeW(
         name.toStdWString().c_str(),
         PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
         PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS, 1, 65536,
         65536, 0, &security);
-    LocalFree(descriptor);
-    return result;
 }
 
 DWORD LaunchAndConnect(HANDLE pipe, const QString &pipeName, NWindows::CHandle &helper,

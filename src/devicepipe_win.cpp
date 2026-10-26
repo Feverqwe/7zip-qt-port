@@ -2,6 +2,7 @@
 #include "Windows/Handle.h"
 #include <QMutex>
 #include <QMutexLocker>
+#include <QScopeGuard>
 
 DWORD WindowsDeviceTransfer(HANDLE pipe, void *data, DWORD size, bool writing, bool overlapped,
                             const std::function<bool()> &cancelled) {
@@ -24,18 +25,26 @@ DWORD WindowsDeviceTransfer(HANDLE pipe, void *data, DWORD size, bool writing, b
             if (!overlapped || error != ERROR_IO_PENDING)
                 return error;
             DWORD result = WAIT_TIMEOUT;
-            for (unsigned attempt = 0; attempt < 200 && result == WAIT_TIMEOUT; ++attempt) {
-                if (cancelled && cancelled())
-                    break;
-                result = WaitForSingleObject(event, 50);
+            {
+                auto cancelPending = qScopeGuard([&] {
+                    DWORD ignored = 0;
+                    CancelIoEx(pipe, &operation);
+                    GetOverlappedResult(pipe, &operation, &ignored, TRUE);
+                });
+                for (unsigned attempt = 0; attempt < 200 && result == WAIT_TIMEOUT; ++attempt) {
+                    if (cancelled && cancelled())
+                        break;
+                    result = WaitForSingleObject(event, 50);
+                }
+                if (result == WAIT_OBJECT_0) {
+                    if (!GetOverlappedResult(pipe, &operation, &count, FALSE))
+                        return GetLastError();
+                    cancelPending.dismiss();
+                }
             }
             if (result != WAIT_OBJECT_0) {
-                CancelIoEx(pipe, &operation);
-                GetOverlappedResult(pipe, &operation, &count, TRUE);
                 return cancelled && cancelled() ? ERROR_CANCELLED : ERROR_TIMEOUT;
             }
-            if (!GetOverlappedResult(pipe, &operation, &count, FALSE))
-                return GetLastError();
         }
         if (!count || count > size)
             return ERROR_BROKEN_PIPE;

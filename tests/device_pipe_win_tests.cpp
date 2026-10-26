@@ -5,6 +5,7 @@
 #include <QUuid>
 #include <QtTest>
 #include <future>
+#include <stdexcept>
 
 namespace {
 bool Connect(HANDLE server, OVERLAPPED &operation) {
@@ -99,7 +100,13 @@ class DevicePipeWinTests final : public QObject {
         reader.reset();
         QVERIFY(peer.get());
     }
+    void cancellationInterruptsPendingRead_data() {
+        QTest::addColumn<bool>("throws");
+        QTest::newRow("cancel") << false;
+        QTest::newRow("exception") << true;
+    }
     void cancellationInterruptsPendingRead() {
+        QFETCH(bool, throws);
         const auto name = (QStringLiteral("\\\\.\\pipe\\sevenzip-device-cancel-") +
                            QUuid::createUuid().toString(QUuid::Id128))
                               .toStdWString();
@@ -122,8 +129,24 @@ class DevicePipeWinTests final : public QObject {
         QVERIFY(raw != INVALID_HANDLE_VALUE);
         client.Attach(raw);
         char byte = 0;
-        QCOMPARE(WindowsDeviceTransfer(server, &byte, 1, false, true, [] { return true; }),
-                 DWORD(ERROR_CANCELLED));
+        if (throws) {
+            QVERIFY_EXCEPTION_THROWN(
+                WindowsDeviceTransfer(
+                    server, &byte, 1, false, true,
+                    []() -> bool { throw std::runtime_error("cancel callback"); }),
+                std::runtime_error);
+        } else {
+            QCOMPARE(WindowsDeviceTransfer(server, &byte, 1, false, true, [] { return true; }),
+                     DWORD(ERROR_CANCELLED));
+        }
+        const BOOL pendingCancelled = CancelIoEx(server, nullptr);
+        const DWORD cancelError = GetLastError();
+        QVERIFY(!pendingCancelled);
+        QCOMPARE(cancelError, DWORD(ERROR_NOT_FOUND));
+        char sent = 'x';
+        QCOMPARE(WindowsDeviceTransfer(client, &sent, 1, true, false), DWORD(ERROR_SUCCESS));
+        QCOMPARE(WindowsDeviceTransfer(server, &byte, 1, false, true), DWORD(ERROR_SUCCESS));
+        QCOMPARE(byte, sent);
     }
 };
 
