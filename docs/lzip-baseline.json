@@ -69,6 +69,10 @@
     }
   },
   "local_integration": [
+    "src/dependencies/lzlib.h",
+    "src/dependencies/lzlib.cppm",
+    "src/dependencies/stream_callbacks.h",
+    "cmake/DependencyModules.cmake",
     "src/lzipio.h",
     "src/lzipstream.cpp",
     "src/lzipstream.h",

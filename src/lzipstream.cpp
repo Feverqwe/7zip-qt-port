@@ -3,8 +3,14 @@
 #include "lzipstream.h"
 #include "7zip/Archive/IArchive.h"
 #include "7zip/Common/StreamUtils.h"
-#include "lzipio.h"
 #include <new>
+#include <span>
+
+#ifdef SEVENZIP_USE_LZLIB_MODULE
+import sevenzip.dependencies.lzlib;
+#else
+#include "dependencies/lzlib.h"
+#endif
 
 namespace {
 struct FrameIo {
@@ -23,20 +29,16 @@ struct FrameIo {
         }
         return result != S_OK;
     }
-    static int read(void *opaque, void *data, size_t *size) noexcept {
-        auto &io = *static_cast<FrameIo *>(opaque);
-        return io.invoke([&] { return ReadStream(io.source, data, size); });
+    int read(std::span<std::byte> data, size_t &size) noexcept {
+        return invoke([&] { return ReadStream(source, data.data(), &size); });
     }
-    static int write(void *opaque, const void *data, size_t size) noexcept {
-        auto &io = *static_cast<FrameIo *>(opaque);
-        return io.invoke([&] { return WriteStream(io.output, data, size); });
+    int write(std::span<const std::byte> data) noexcept {
+        return invoke([&] { return WriteStream(output, data.data(), data.size()); });
     }
-    static int checkpoint(void *opaque, uint64_t consumed, uint64_t produced) noexcept {
-        auto &io = *static_cast<FrameIo *>(opaque);
+    int checkpoint(uint64_t consumed, uint64_t produced) noexcept {
         const UInt64 inputSize = consumed, outputSize = produced;
-        return io.invoke([&] {
-            return io.progress ? io.progress->SetRatioInfo(&inputSize, &outputSize) : S_OK;
-        });
+        return invoke(
+            [&] { return progress ? progress->SetRatioInfo(&inputSize, &outputSize) : S_OK; });
     }
 };
 } // namespace
@@ -51,22 +53,22 @@ HRESULT SevenzipDecodeLzip(IInStream *source, UInt64 offset, UInt64 sourceSize,
         return E_INVALIDARG;
     RINOK(InStream_SeekSet(source, offset))
     FrameIo state{source, output, progress};
-    sevenzip_lzip_io io{&state, FrameIo::read, FrameIo::write, FrameIo::checkpoint};
-    uint64_t inputSize = 0, outputSize = produced;
-    const int result = SevenzipLzipDecompress(&io, offset, sourceSize, &inputSize, &outputSize);
-    consumed = inputSize;
-    produced = outputSize;
+    const auto result =
+        sevenzip::lzlib::decode(state, {.offset = offset, .size = sourceSize}, produced);
+    using sevenzip::lzlib::Status;
+    consumed = result.consumed;
+    produced = result.produced;
     if (state.result != S_OK)
         return state.result;
-    if (result == SEVENZIP_LZIP_MEMORY_ERROR)
+    if (result.status == Status::memory_error)
         return E_OUTOFMEMORY;
-    if (result == SEVENZIP_LZIP_IO_ERROR)
+    if (result.status == Status::io_error)
         return E_FAIL;
-    if (result == SEVENZIP_LZIP_OK)
+    if (result.status == Status::ok)
         operationResult = kOK;
-    else if (result == SEVENZIP_LZIP_UNEXPECTED_END)
+    else if (result.status == Status::unexpected_end)
         operationResult = kUnexpectedEnd;
-    else if (result == SEVENZIP_LZIP_TRAILING_DATA)
+    else if (result.status == Status::trailing_data)
         operationResult = kDataAfterEnd;
     return S_OK;
 }

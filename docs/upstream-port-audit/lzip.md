@@ -1,5 +1,30 @@
 # Read-only Lzip
 
+## C++23 dependency facade — 2026-10-26
+
+The pinned complete `ffdecompress` body, current C adaptation, native stream
+services, handler caller and direct tests were compared before changing the
+boundary; the original inventory hash was verified. The C loop and lzlib source
+bytes are unchanged. They now belong to one separate C99 static target shared
+by the format plugin and direct consumers.
+
+`sevenzip.dependencies.lzlib` invokes that synchronous loop through nonthrowing
+span-based services and typed input extent/results. The same header API supports
+toolchains without scanning. Native HRESULT/cancellation precedence, fed and
+consumed counters, cumulative output, finish signal, member completion and
+trailing-data mapping retain their existing owners and ordering. The common C
+callback bridge rejects oversized read counts before the decoder sees them;
+existing behavior suites retain stream errors and partial-output checks.
+No C algorithm is converted to C++ and no additional output copy is introduced.
+
+Focused acceptance: `lzip` passed on macOS LLVM 23, Windows MSVC, Linux GCC header
+consumers and Linux Clang 18 module consumers. GCC 16 built the module and
+importing plugin. Clang-Tidy lifetime checks passed; C bridge prototypes retain
+their C-compatible syntax despite trailing-return style suggestions. The added
+oversized service-read regression checks rejection before decoder output and
+preserves the cumulative output counter. Full application/performance acceptance
+is separate from these dependency checks.
+
 The native module exposes `.lz` as a single unpacked file. `.tar.lz` uses the
 existing nested TAR workflow. Listing, testing and extraction are supported;
 creation and updates are omitted. Sources remain read-only. Partial output is

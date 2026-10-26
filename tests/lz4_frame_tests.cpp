@@ -1,6 +1,8 @@
 #include "7zip/Common/StreamObjects.h"
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
+#include "fixtures/codec_runtime.h"
+#include "fixtures/frame_io.h"
 #include "lz4framestream.h"
 #include <QFile>
 #include <QProcess>
@@ -11,6 +13,12 @@
 #include <QtEndian>
 #include <lz4.h>
 #include <lz4frame.h>
+
+#ifdef SEVENZIP_USE_LZ4_MODULE
+import sevenzip.dependencies.lz4;
+#else
+#include "dependencies/lz4.h"
+#endif
 
 namespace {
 class Input final : public IInStream, public CMyUnknownImp {
@@ -171,8 +179,7 @@ class Lz4FrameTests final : public QObject {
 #endif
         engine_ = runtime_.filePath(engineName);
         module_ = runtime_.filePath(moduleName);
-        QVERIFY(QFile::copy(prepared.filePath(engineName), engine_));
-        QVERIFY(QFile::copy(prepared.filePath(moduleName), module_));
+        QVERIFY(CopyCodecRuntime(prepared, QDir(runtime_.path())));
         QVERIFY(QDir(runtime_.path()).mkdir("Formats"));
         QVERIFY(QFile::copy(QString::fromUtf8(SEVENZIP_LZ4_MODULE),
                             runtime_.filePath(QStringLiteral("Formats/Lz4 空") + suffix)));
@@ -287,6 +294,13 @@ class Lz4FrameTests final : public QObject {
         callback->Output->Bytes.clear();
         QCOMPARE(archive.GetArc()->Archive->Extract(nullptr, UInt32(-1), 0, callback), S_OK);
         QCOMPARE(callback->Output->Bytes, Payload());
+    }
+    void rejectsOversizedReadBeforeDecoding() {
+        OversizedFrameRead source;
+        const auto result = sevenzip::lz4::decode(source, {.offset = 0, .size = 128}, 17);
+        QCOMPARE(result.status, sevenzip::lz4::Status::io_error);
+        QCOMPARE(result.produced, std::uint64_t(17));
+        QVERIFY(!source.wrote);
     }
     void boundedSourceAndFailures() {
         const QByteArray frame = Frame(Payload());

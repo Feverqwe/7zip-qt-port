@@ -1,5 +1,30 @@
 # Modern LZ4 Frame
 
+## C++23 dependency facade — 2026-10-26
+
+The pinned complete single-threaded `LZ4IO_decompressLZ4F` body, current C loop,
+native services, handler callers and direct tests were compared before changing
+the boundary. The original inventory hash was verified. The C loop and all
+library/framing/cleanup algorithms remain unchanged.
+
+`sevenzip.dependencies.lz4` exposes the existing synchronous C loop through
+nonthrowing services that read/write bounded spans. A typed source extent and
+result carry input/output counters; native HRESULT and cancellation precedence
+remain with the existing service owner. The shared callback bridge rejects a
+read count larger than its supplied buffer before returning control to C.
+The C++ stream adapter and its direct tests import the facade, with the same
+header API for compilers without scanning. No virtual dispatch, intermediate
+buffer allocation or additional copying is introduced. Existing C consumers
+continue to link the same authoritative raw decoder.
+
+Focused acceptance: the existing `lz4_frame` suite passed on macOS LLVM 23,
+Windows MSVC, Linux GCC through the header facade and Linux Clang 18 through
+the named module. GCC 16 built the facade and importing plugin. Clang-Tidy
+lifetime checks passed; its remaining trailing-return suggestions concern the
+C-compatible bridge declarations. A malformed service read-count regression
+checks rejection before decoding/output and preservation of cumulative output.
+This does not establish a new full application or performance acceptance.
+
 ## Sources and integration
 
 Official library: <https://github.com/lz4/lz4.git>, v1.10.0, commit

@@ -56,6 +56,10 @@
     "lib/LICENSE": "third_party/lz4/lib/LICENSE"
   },
   "local_integration": [
+    "src/dependencies/lz4.h",
+    "src/dependencies/lz4.cppm",
+    "src/dependencies/stream_callbacks.h",
+    "cmake/DependencyModules.cmake",
     "src/lz4frameio.h",
     "src/lz4framestream.cpp",
     "src/lz4framestream.h",

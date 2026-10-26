@@ -30,7 +30,8 @@ C++ dependency facades own resource lifetimes and bounded buffer interfaces;
 named modules expose those facades to C++ consumers on supporting toolchains.
 The zlib facade is connected to the SquashFS stream adapter, and the Brotli
 facade to format probing and stream decoding. Their behavior tests exercise
-the production consumers. Build selection and toolchain requirements are
+the production consumers. LZ4/lzlib facades connect the existing C frame loops
+to bounded native stream services. Build selection and toolchain requirements are
 documented in [development](development.md#dependencies).
 
 Archive resource targets carry the typed backend implementation in their link

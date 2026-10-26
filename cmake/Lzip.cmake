@@ -1,5 +1,10 @@
+add_library(sevenzip_lzlib_core STATIC src/lzipio.c third_party/lzlib/lzlib.c)
+target_include_directories(sevenzip_lzlib_core PUBLIC src third_party/lzlib)
+set_target_properties(sevenzip_lzlib_core PROPERTIES AUTOMOC OFF AUTOUIC OFF
+    POSITION_INDEPENDENT_CODE ON C_STANDARD 99 C_STANDARD_REQUIRED ON)
+
 add_library(sevenzip_lzip MODULE
-    src/lziphandler.cpp src/lzipstream.cpp src/lzipio.c src/brotlimodule.cpp
+    src/lziphandler.cpp src/lzipstream.cpp src/brotlimodule.cpp
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Archive/Common/DummyOutStream.cpp
     third_party/7zip/CPP/7zip/Common/ProgressUtils.cpp
@@ -12,7 +17,6 @@ add_library(sevenzip_lzip MODULE
     third_party/7zip/CPP/Common/StringConvert.cpp
     third_party/7zip/CPP/Common/UTFConvert.cpp
     third_party/7zip/C/Alloc.c)
-target_sources(sevenzip_lzip PRIVATE third_party/lzlib/lzlib.c)
 target_include_directories(sevenzip_lzip PRIVATE src third_party/7zip/CPP
     third_party/lzlib)
 set_target_properties(sevenzip_lzip PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
@@ -36,7 +40,7 @@ function(sevenzip_deploy_lzip)
 endfunction()
 
 if(BUILD_TESTING)
-    qt_add_executable(lzip_tests tests/lzip_tests.cpp src/lzipstream.cpp src/lzipio.c third_party/lzlib/lzlib.c)
+    qt_add_executable(lzip_tests tests/lzip_tests.cpp src/lzipstream.cpp)
     set_target_properties(lzip_tests PROPERTIES AUTOMOC ON C_STANDARD 99 C_STANDARD_REQUIRED ON)
     target_include_directories(lzip_tests PRIVATE src third_party/7zip/CPP third_party/lzlib)
     target_link_libraries(lzip_tests PRIVATE sevenzip_panel Qt6::Test)

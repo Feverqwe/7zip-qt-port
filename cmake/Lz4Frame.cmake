@@ -12,7 +12,6 @@ add_library(sevenzip_lz4_frame MODULE
     third_party/7zip/CPP/Common/StringConvert.cpp
     third_party/7zip/CPP/Common/UTFConvert.cpp
     third_party/7zip/C/Alloc.c)
-target_link_libraries(sevenzip_lz4_frame PRIVATE sevenzip_lz4_frame_core)
 target_include_directories(sevenzip_lz4_frame PRIVATE src third_party/7zip/CPP
     third_party/lz4/lib)
 set_target_properties(sevenzip_lz4_frame PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
@@ -39,7 +38,7 @@ if(BUILD_TESTING)
     qt_add_executable(lz4_frame_tests tests/lz4_frame_tests.cpp src/lz4framestream.cpp)
     set_target_properties(lz4_frame_tests PROPERTIES AUTOMOC ON)
     target_include_directories(lz4_frame_tests PRIVATE src third_party/7zip/CPP third_party/lz4/lib)
-    target_link_libraries(lz4_frame_tests PRIVATE sevenzip_panel Qt6::Test sevenzip_lz4_frame_core)
+    target_link_libraries(lz4_frame_tests PRIVATE sevenzip_panel Qt6::Test)
     target_compile_definitions(lz4_frame_tests PRIVATE
         "SEVENZIP_LZ4_MODULE=\"$<TARGET_FILE:sevenzip_lz4_frame>\""
         "SEVENZIP_LZ4_LEGACY_MODULE=\"$<TARGET_FILE:sevenzip_linux_frames>\""
