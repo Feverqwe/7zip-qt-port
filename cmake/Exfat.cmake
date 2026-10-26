@@ -37,7 +37,7 @@ if(BUILD_TESTING)
     target_link_libraries(exfat_tests PRIVATE Qt6::Test)
     target_compile_definitions(exfat_tests PRIVATE
         "SEVENZIP_EXFAT_MODULE=\"$<TARGET_FILE:sevenzip_exfat>\""
-        "SEVENZIP_EXFAT_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\"")
+        "SEVENZIP_EXFAT_RUNTIME=\"${SEVENZIP_CODEC_RUNTIME_DIR}\"")
     if(WIN32)
         target_link_libraries(exfat_tests PRIVATE oleaut32)
     endif()
@@ -50,7 +50,7 @@ if(BUILD_TESTING)
     target_link_libraries(exfat_backend_tests PRIVATE sevenzip_panel Qt6::Test)
     target_compile_definitions(exfat_backend_tests PRIVATE
         "SEVENZIP_EXFAT_MODULE=\"$<TARGET_FILE:sevenzip_exfat>\""
-        "SEVENZIP_EXFAT_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\"")
+        "SEVENZIP_EXFAT_RUNTIME=\"${SEVENZIP_CODEC_RUNTIME_DIR}\"")
     add_dependencies(exfat_backend_tests sevenzip_exfat)
     add_test(NAME exfat_backend COMMAND exfat_backend_tests -silent)
     set_tests_properties(exfat_backend PROPERTIES TIMEOUT 45)
@@ -63,9 +63,9 @@ endif()
 function(sevenzip_deploy_exfat)
     add_custom_target(sevenzip_exfat_runtime ALL
         COMMAND "${CMAKE_COMMAND}" -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:sevenzip_exfat>"
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats/$<TARGET_FILE_NAME:sevenzip_exfat>"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats/$<TARGET_FILE_NAME:sevenzip_exfat>"
         DEPENDS sevenzip_exfat VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_exfat_runtime)
 endfunction()

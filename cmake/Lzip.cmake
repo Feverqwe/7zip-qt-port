@@ -32,9 +32,9 @@ endif()
 function(sevenzip_deploy_lzip)
     add_custom_target(sevenzip_lzip_runtime ALL
         COMMAND "${CMAKE_COMMAND}" -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:sevenzip_lzip>"
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats/$<TARGET_FILE_NAME:sevenzip_lzip>"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats/$<TARGET_FILE_NAME:sevenzip_lzip>"
         DEPENDS sevenzip_lzip VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_lzip_runtime)
 endfunction()
@@ -46,7 +46,7 @@ if(BUILD_TESTING)
     target_link_libraries(lzip_tests PRIVATE sevenzip_panel Qt6::Test)
     target_compile_definitions(lzip_tests PRIVATE
         "SEVENZIP_LZIP_MODULE=\"$<TARGET_FILE:sevenzip_lzip>\""
-        "SEVENZIP_LZIP_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_LZIP_RUNTIME=\"${SEVENZIP_CODEC_RUNTIME_DIR}\""
         "SEVENZIP_LZIP_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/lzip\"")
     add_dependencies(lzip_tests sevenzip_lzip_runtime)
     add_test(NAME lzip COMMAND lzip_tests -silent)

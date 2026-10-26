@@ -9,6 +9,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "SEVENZIP_CODEC_RUNTIME_DIR": "${sourceDir}/build/codec-runtime",
+        "SEVENZIP_SFX_RUNTIME_DIR": "${sourceDir}/build/sfx",
         "BUILD_TESTING": "ON"
       }
     },
@@ -28,7 +30,9 @@
       "displayName": "Development with C++23 dependency modules",
       "binaryDir": "${sourceDir}/build/modules-dev",
       "cacheVariables": {
-        "SEVENZIP_ENABLE_DEPENDENCY_MODULES": "ON"
+        "SEVENZIP_ENABLE_DEPENDENCY_MODULES": "ON",
+        "SEVENZIP_CODEC_RUNTIME_DIR": "${sourceDir}/build/${presetName}/codec-runtime",
+        "SEVENZIP_SFX_RUNTIME_DIR": "${sourceDir}/build/${presetName}/sfx"
       }
     },
     {
@@ -59,7 +63,9 @@
       "binaryDir": "${sourceDir}/build/vcpkg-dev",
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
-        "VCPKG_INSTALLED_DIR": "${sourceDir}/build/vcpkg_installed"
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/build/vcpkg_installed",
+        "SEVENZIP_CODEC_RUNTIME_DIR": "${sourceDir}/build/${presetName}/codec-runtime",
+        "SEVENZIP_SFX_RUNTIME_DIR": "${sourceDir}/build/${presetName}/sfx"
       }
     },
     {

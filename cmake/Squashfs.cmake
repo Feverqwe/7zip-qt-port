@@ -62,9 +62,9 @@ endif()
 function(sevenzip_deploy_squashfs)
     add_custom_target(sevenzip_squashfs_runtime ALL
         COMMAND "${CMAKE_COMMAND}" -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:sevenzip_squashfs>"
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats/$<TARGET_FILE_NAME:sevenzip_squashfs>"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats/$<TARGET_FILE_NAME:sevenzip_squashfs>"
         DEPENDS sevenzip_squashfs VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_squashfs_runtime)
 endfunction()

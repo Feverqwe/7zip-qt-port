@@ -38,9 +38,9 @@ endif()
 function(sevenzip_deploy_mbr)
     add_custom_target(sevenzip_mbr_runtime ALL
         COMMAND "${CMAKE_COMMAND}" -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:sevenzip_mbr>"
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats/$<TARGET_FILE_NAME:sevenzip_mbr>"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats/$<TARGET_FILE_NAME:sevenzip_mbr>"
         DEPENDS sevenzip_mbr VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_mbr_runtime)
 endfunction()

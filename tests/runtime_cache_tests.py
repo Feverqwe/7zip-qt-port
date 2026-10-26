@@ -4,11 +4,13 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/prepare-runtime.py"
+sys.path.insert(0, str(SCRIPT.parent))
 spec = importlib.util.spec_from_file_location("runtime", SCRIPT)
 runtime = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runtime)
@@ -23,6 +25,52 @@ class RuntimeCacheTests(unittest.TestCase):
             probe = patch.object(runtime.platform, name, return_value=value)
             probe.start()
             self.addCleanup(probe.stop)
+
+    def test_switching_presets_preserves_other_deployment_and_warm_cache(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            compiler = [b"first compiler"]
+
+            def command(args, **kwargs):
+                directory = Path(args[args.index("-OutputDirectory") + 1]
+                                 if "-OutputDirectory" in args else args[-1])
+                directory.mkdir(parents=True, exist_ok=True)
+                name = "module" if any("build-sfx" in str(arg) for arg in args) else "engine"
+                (directory / name).write_bytes(compiler[0])
+                return subprocess.CompletedProcess(args, 0)
+
+            def fingerprint(*args):
+                return {"baseline": {"revision": "one"}, "compiler": [compiler[0].decode()]}
+
+            with patch.object(runtime, "fingerprint", side_effect=fingerprint), \
+                    patch.object(runtime, "prepare_upstream", return_value=root / "upstream"), \
+                    patch.object(runtime, "artifact_paths", side_effect=lambda windows, prefix, sfx:
+                                 [prefix + "/engine", sfx + "/module"]), \
+                    patch.object(runtime.subprocess, "run", side_effect=command) as build:
+                runtime.prepare(root, root / "upstream")
+                first = runtime.codec_runtime(root)
+                (first / "Formats").mkdir()
+                plugin = first / "Formats/owned-plugin"
+                plugin.write_bytes(b"first compiler plugin")
+                first_engine = (first / "engine").read_bytes()
+                first_sfx = runtime.sfx_runtime(root) / "module"
+
+                compiler[0] = b"second compiler"
+                runtime.prepare(root, root / "upstream", preset="modules-linux-dev")
+                second = runtime.codec_runtime(root, "modules-linux-dev")
+                second_engine = (second / "engine").read_bytes()
+                self.assertNotEqual(first_engine, second_engine)
+                self.assertEqual((first / "engine").read_bytes(), first_engine)
+                self.assertEqual(plugin.read_bytes(), b"first compiler plugin")
+                self.assertEqual(first_sfx.read_bytes(), first_engine)
+                second_sfx = runtime.sfx_runtime(root, "modules-linux-dev") / "module"
+                self.assertEqual(second_sfx.read_bytes(), second_engine)
+
+                compiler[0] = first_engine
+                builds = build.call_count
+                runtime.prepare(root, root / "upstream")
+                self.assertEqual(build.call_count, builds)
+                self.assertEqual((second / "engine").read_bytes(), second_engine)
 
     def test_codec_only_preserves_sfx_and_full_runtime_cache(self):
         with tempfile.TemporaryDirectory() as temporary:

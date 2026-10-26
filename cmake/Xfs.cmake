@@ -29,9 +29,9 @@ if(WIN32)
 endif()
 function(sevenzip_deploy_xfs)
     add_custom_target(sevenzip_xfs_runtime ALL
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:sevenzip_xfs>"
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats/$<TARGET_FILE_NAME:sevenzip_xfs>"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats/$<TARGET_FILE_NAME:sevenzip_xfs>"
         DEPENDS sevenzip_xfs VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_xfs_runtime)
 endfunction()
@@ -65,7 +65,7 @@ if(BUILD_TESTING)
     target_link_libraries(xfs_backend_tests PRIVATE sevenzip_panel Qt6::Test)
     target_compile_definitions(xfs_backend_tests PRIVATE
         "SEVENZIP_XFS_MODULE=\"$<TARGET_FILE:sevenzip_xfs>\""
-        "SEVENZIP_XFS_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_XFS_RUNTIME=\"${SEVENZIP_CODEC_RUNTIME_DIR}\""
         "SEVENZIP_XFS_PYTHON=\"${Python3_EXECUTABLE}\""
         "SEVENZIP_XFS_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/xfs\"")
     add_dependencies(xfs_backend_tests sevenzip_xfs_runtime)

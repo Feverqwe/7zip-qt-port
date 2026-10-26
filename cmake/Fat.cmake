@@ -37,9 +37,9 @@ endif()
 function(sevenzip_deploy_fat)
     add_custom_target(sevenzip_fat_runtime ALL
         COMMAND "${CMAKE_COMMAND}" -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:sevenzip_fat>"
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats/$<TARGET_FILE_NAME:sevenzip_fat>"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats/$<TARGET_FILE_NAME:sevenzip_fat>"
         DEPENDS sevenzip_fat VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_fat_runtime)
 endfunction()
@@ -51,7 +51,7 @@ if(BUILD_TESTING)
     target_link_libraries(fat_module_tests PRIVATE sevenzip_panel Qt6::Test)
     target_compile_definitions(fat_module_tests PRIVATE
         "SEVENZIP_FAT_MODULE=\"$<TARGET_FILE:sevenzip_fat>\""
-        "SEVENZIP_FAT_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_FAT_RUNTIME=\"${SEVENZIP_CODEC_RUNTIME_DIR}\""
         "SEVENZIP_FAT_PYTHON=\"${Python3_EXECUTABLE}\""
         "SEVENZIP_FAT_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fat_fixture.py\"")
     if(WIN32)
@@ -126,7 +126,7 @@ if(BUILD_TESTING)
     # Compound is the other handler using the shared CClusterInStream reader.
     add_test(NAME compound_stream COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/compound_stream_tests.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+        ${SEVENZIP_CODEC_RUNTIME_DIR})
     set_tests_properties(compound_stream PROPERTIES TIMEOUT 45)
 endif()
 

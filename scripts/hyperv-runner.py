@@ -23,6 +23,7 @@ from lib.hyperv_workspace import current_branch, load_workspaces, mount_guard, w
 from lib.runner_config import load_config, runner_config
 from lib.project_paths import harness_root
 from lib.runner_timing import summarize
+from lib.runtime_layout import codec_runtime
 
 INVOCATION_STARTED = float(os.environ.get("SEVENZIP_INVOCATION_STARTED", time.monotonic()))
 ROOT = Path(__file__).resolve().parents[1]
@@ -105,6 +106,7 @@ def execute_check(record, platform, preset, root, token, command=None,
     if build_jobs <= 0:
         raise ValueError("CMAKE_BUILD_PARALLEL_LEVEL must be a positive integer")
     payload = command_payload(preset, command)
+    runtime_directory = codec_runtime(Path(root), preset).as_posix()
     timing_command = shlex.join([config['python'], 'scripts/lib/runner_timing.py'])
     payload = timing_command + " command_start\n" + payload
     if platform == "linux":
@@ -135,20 +137,20 @@ df -Pk .
                        ' scripts/prepare-runtime.py --upstream "$PWD/upstream" --preset ' +
                        shlex.quote(preset) + '\n' +
                        timing_command + ' runtime_end\nexport SEVENZIP_RUNTIME_PREPARED=1\n')
-        script += ('export PATH="$PWD/build/codec-runtime:$PATH"\n'
-                   'export SEVENZIP_CODEC_MODULE_DIR="$PWD/build/codec-runtime"\n' + payload)
+        script += ('export PATH=' + shlex.quote(runtime_directory) + ':"$PATH"\n'
+                   'export SEVENZIP_CODEC_MODULE_DIR=' + shlex.quote(runtime_directory) + '\n' + payload)
         script += f") > check.log 2>&1\ncode=$?\nprintf '%s\\n' '{token}' > .runner-complete\ntail -n 80 check.log\nexit \"$code\"\n"
     else:
         commands = ['@echo off', *[f'set "{key}={root}/runner-tmp"' for key in ("TEMP", "TMP", "TMPDIR")],
                     f'call "{config["vcvars"]}"', 'if errorlevel 1 exit /b %errorlevel%',
-                    f'set "PATH={root}/build/codec-runtime;{";".join(config["path"])};{config["qt_prefix"]}/bin;%PATH%"',
+                    f'set "PATH={runtime_directory};{";".join(config["path"])};{config["qt_prefix"]}/bin;%PATH%"',
                     f'set "CCACHE_DIR={config["ccache_dir"]}"', 'set "CCACHE_MAXSIZE=2G"',
                     f'set "CMAKE_PREFIX_PATH={config["qt_prefix"]}"', 'set "CC=cl.exe"', 'set "CXX=cl.exe"',
                     f'set "SEVENZIP_WINDOWS_RUNNER_HOST={config["computer_name"]}"',
                     f'set "SEVENZIP_RUNNER_PYTHON={config["python"]}"',
                     f'set "CMAKE_BUILD_PARALLEL_LEVEL={build_jobs}"', 'set "SEVENZIP_COMPACT_TEST_BINARIES=ON"',
                     f'set "SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}"', 'set "SEVENZIP_SCRIPT_OUTPUT=compact"',
-                    'set "SEVENZIP_CTEST_JOBS=1"', f'set "SEVENZIP_CODEC_MODULE_DIR={root}/build/codec-runtime"',
+                    'set "SEVENZIP_CTEST_JOBS=1"', f'set "SEVENZIP_CODEC_MODULE_DIR={runtime_directory}"',
                     'set "PYTHONUTF8=1"', 'set "PYTHONIOENCODING=utf-8"',
                     f'set "SEVENZIP_RUN_TOKEN={token}"',
                     f'set "SEVENZIP_RUNNER_TIMING={root}/runner-tmp/timing.jsonl"',

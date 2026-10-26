@@ -164,6 +164,16 @@ class BrotliTests final : public QObject {
         callback->Output->Fail = true;
         QCOMPARE(large.GetArc()->Archive->Extract(nullptr, UInt32(-1), 0, callback), E_FAIL);
     }
+    void managedConsoleDeployment() {
+        const QDir runtime(QString::fromUtf8(SEVENZIP_BROTLI_RUNTIME));
+        QProcess process;
+        process.start(runtime.filePath(QFileInfo(engine_).fileName()),
+                      {"x", "-so", "-tbrotli", fixture("small")});
+        QVERIFY2(process.waitForFinished(30000), qPrintable(process.errorString()));
+        QCOMPARE(process.exitStatus(), QProcess::NormalExit);
+        QCOMPARE(process.exitCode(), 0);
+        QCOMPARE(process.readAllStandardOutput(), Expected("small"));
+    }
     void backendAndConsole() {
         QTemporaryDir files;
         const QString path = files.filePath(QStringLiteral("стили 空.css.br"));

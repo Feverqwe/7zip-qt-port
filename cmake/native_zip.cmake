@@ -105,7 +105,7 @@ if(BUILD_TESTING)
     target_include_directories(crypto_zip_tests PRIVATE tests)
     target_link_libraries(crypto_zip_tests PRIVATE sevenzip_zip Qt6::Test)
     target_compile_definitions(crypto_zip_tests PRIVATE
-        "SEVENZIP_CRYPTO_REFERENCE_7Z=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z${CMAKE_EXECUTABLE_SUFFIX}\"")
+        "SEVENZIP_CRYPTO_REFERENCE_7Z=\"${SEVENZIP_CODEC_RUNTIME_DIR}/7z${CMAKE_EXECUTABLE_SUFFIX}\"")
     add_test(NAME crypto_zip COMMAND crypto_zip_tests -silent)
     set_tests_properties(crypto_zip PROPERTIES TIMEOUT 45)
     qt_add_executable(shared_checksum_tests tests/shared_checksum_tests.cpp src/lib/xxhash.c

@@ -29,9 +29,9 @@ endif()
 function(sevenzip_deploy_f2fs)
     add_custom_target(sevenzip_f2fs_runtime ALL
         COMMAND "${CMAKE_COMMAND}" -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:sevenzip_f2fs>"
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats/$<TARGET_FILE_NAME:sevenzip_f2fs>"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats/$<TARGET_FILE_NAME:sevenzip_f2fs>"
         DEPENDS sevenzip_f2fs VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_f2fs_runtime)
 endfunction()
@@ -61,7 +61,7 @@ if(BUILD_TESTING)
     target_include_directories(f2fs_native_tests PRIVATE src tests)
     target_link_libraries(f2fs_native_tests PRIVATE sevenzip_filesystem Qt6::Test)
     target_compile_definitions(f2fs_native_tests PRIVATE
-        "SEVENZIP_F2FS_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_F2FS_RUNTIME=\"${SEVENZIP_CODEC_RUNTIME_DIR}\""
         "SEVENZIP_F2FS_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/f2fs\"")
     add_dependencies(f2fs_native_tests sevenzip_f2fs_runtime)
     add_test(NAME f2fs_native COMMAND f2fs_native_tests -silent)

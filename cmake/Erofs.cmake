@@ -62,9 +62,9 @@ endif()
 function(sevenzip_deploy_erofs)
     add_custom_target(sevenzip_erofs_runtime ALL
         COMMAND "${CMAKE_COMMAND}" -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:sevenzip_erofs>"
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats/$<TARGET_FILE_NAME:sevenzip_erofs>"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats/$<TARGET_FILE_NAME:sevenzip_erofs>"
         DEPENDS sevenzip_erofs VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_erofs_runtime)
 endfunction()
@@ -94,7 +94,7 @@ if(BUILD_TESTING)
     target_link_libraries(erofs_module_tests PRIVATE sevenzip_panel Qt6::Test)
     target_compile_definitions(erofs_module_tests PRIVATE
         "SEVENZIP_EROFS_MODULE=\"$<TARGET_FILE:sevenzip_erofs>\""
-        "SEVENZIP_EROFS_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_EROFS_RUNTIME=\"${SEVENZIP_CODEC_RUNTIME_DIR}\""
         "SEVENZIP_EROFS_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/erofs\"")
     if(WIN32)
         target_link_libraries(erofs_module_tests PRIVATE oleaut32)

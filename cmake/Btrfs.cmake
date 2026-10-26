@@ -67,9 +67,9 @@ endif()
 function(sevenzip_deploy_btrfs)
     add_custom_target(sevenzip_btrfs_runtime ALL
         COMMAND "${CMAKE_COMMAND}" -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:sevenzip_btrfs>"
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats/$<TARGET_FILE_NAME:sevenzip_btrfs>"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats/$<TARGET_FILE_NAME:sevenzip_btrfs>"
         DEPENDS sevenzip_btrfs VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_btrfs_runtime)
 endfunction()
@@ -91,7 +91,7 @@ if(BUILD_TESTING)
     target_compile_definitions(btrfs_module_tests PRIVATE
         "SEVENZIP_BTRFS_MODULE=\"$<TARGET_FILE:sevenzip_btrfs>\""
         "SEVENZIP_MBR_MODULE=\"$<TARGET_FILE:sevenzip_mbr>\""
-        "SEVENZIP_BTRFS_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_BTRFS_RUNTIME=\"${SEVENZIP_CODEC_RUNTIME_DIR}\""
         "SEVENZIP_BTRFS_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/btrfs\"")
     if(WIN32)
         target_link_libraries(btrfs_module_tests PRIVATE oleaut32)

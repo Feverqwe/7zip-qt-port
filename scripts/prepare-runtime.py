@@ -10,6 +10,7 @@ import platform
 import shlex
 import subprocess
 import time
+from lib.runtime_layout import codec_runtime, sanitizer_startup, sfx_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILDERS = ("build-codec-runtime.sh", "build-codec-runtime.ps1", "build-sfx.sh", "build-sfx.ps1",
@@ -47,12 +48,12 @@ def fingerprint(root, sanitizer_runtime=True):
                              "VSCMD_ARG_TGT_ARCH")}}
 
 
-def artifact_paths(windows):
+def artifact_paths(windows, runtime_prefix="codec-runtime", sfx_prefix="sfx"):
     runtime = ["7z.exe", "7z.dll"] if windows else ["7z", "7z.so"]
     sfx = ["7z.sfx", "7z.sfx.json", "7z-LICENSE.txt"] if windows else [
         "7zCon.sfx", "7zCon.sfx.json", "7zCon-LICENSE.txt"]
-    return ["codec-runtime/" + name for name in runtime + ["runtime.json", "LICENSE.txt"]] + [
-        "sfx/" + name for name in sfx]
+    return [runtime_prefix + "/" + name for name in runtime + ["runtime.json", "LICENSE.txt"]] + [
+        sfx_prefix + "/" + name for name in sfx]
 
 
 def cache_valid(build, record, key, paths):
@@ -88,16 +89,21 @@ def prepare_upstream(root, upstream, baseline):
     return store
 
 
-def prepare(root, upstream, codec_only=False, sanitizer_runtime=True):
+def prepare(root, upstream, codec_only=False, sanitizer_runtime=True, preset="dev"):
     root = root.resolve()
     upstream = (root / upstream).resolve() if not upstream.is_absolute() else upstream.resolve()
     started = time.monotonic()
     build = root / "build"
-    stamp = build / ("codec-runtime-cache.json" if codec_only else "runtime-cache.json")
+    directory = codec_runtime(root, preset)
+    sfx_directory = sfx_runtime(root, preset)
+    directory.parent.mkdir(parents=True, exist_ok=True)
+    stamp = directory.parent / ("codec-runtime-cache.json" if codec_only else "runtime-cache.json")
     key = fingerprint(root, sanitizer_runtime)
-    paths = artifact_paths(platform.system() == "Windows")
+    runtime_prefix = directory.relative_to(build).as_posix()
+    paths = artifact_paths(platform.system() == "Windows", runtime_prefix,
+                           sfx_directory.relative_to(build).as_posix())
     if codec_only:
-        paths = [path for path in paths if path.startswith("codec-runtime/")]
+        paths = [path for path in paths if path.startswith(runtime_prefix + "/")]
     try:
         record = json.loads(stamp.read_text())
     except (OSError, ValueError):
@@ -116,9 +122,12 @@ def prepare(root, upstream, codec_only=False, sanitizer_runtime=True):
             environment = dict(os.environ)
             environment["SEVENZIP_RUNTIME_SANITIZERS"] = str(int(
                 sanitizer_runtime and name == "build-codec-runtime.ps1"))
-            subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "RemoteSigned",
-                            "-File", str(root / "scripts" / name), "-UpstreamCheckout", str(upstream),
-                            "-Architecture", os.environ.get("VSCMD_ARG_TGT_ARCH", "x64")],
+            command = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "RemoteSigned",
+                       "-File", str(root / "scripts" / name), "-UpstreamCheckout", str(upstream),
+                       "-Architecture", os.environ.get("VSCMD_ARG_TGT_ARCH", "x64")]
+            command += ["-OutputDirectory", str(directory if name == "build-codec-runtime.ps1"
+                                                else sfx_directory)]
+            subprocess.run(command,
                            cwd=root, env=environment, check=True)
     else:
         for name in (("build-codec-runtime.sh",) if codec_only else
@@ -129,7 +138,9 @@ def prepare(root, upstream, codec_only=False, sanitizer_runtime=True):
                  ("compiler", "compiler_version", "environment")}, sort_keys=True).encode()).hexdigest()
             environment["SEVENZIP_RUNTIME_SANITIZERS"] = str(int(
                 sanitizer_runtime and name == "build-codec-runtime.sh"))
-            subprocess.run(["bash", str(root / "scripts" / name), str(upstream)],
+            command = ["bash", str(root / "scripts" / name), str(upstream)]
+            command.append(str(directory if name == "build-codec-runtime.sh" else sfx_directory))
+            subprocess.run(command,
                            cwd=root, env=environment, check=True)
     record = {"fingerprint": key, "artifacts": {name: sha(build / name) for name in paths}}
     temporary = stamp.with_suffix(".tmp")
@@ -144,11 +155,13 @@ def main():
     parser.add_argument("--upstream", type=Path, default=harness_root(ROOT).parent / "7zip-upstream")
     parser.add_argument("--codec-only", action="store_true", help="Prepare engine variants without SFX")
     parser.add_argument("--preset", default="dev", help="Use the build preset's shared toolchain")
-    parser.add_argument("--sanitizer-runtime", choices=["on", "off"], default="on",
+    parser.add_argument("--sanitizer-runtime", choices=["auto", "on", "off"], default="auto",
                         help="Link the Unix console host with sanitizer runtimes for instrumented plugins")
     args = parser.parse_args()
     apply_environment(ROOT, args.preset, require_qt=False)
-    prepare(ROOT, args.upstream, args.codec_only, args.sanitizer_runtime == "on")
+    startup = (sanitizer_startup(ROOT, args.preset) if args.sanitizer_runtime == "auto"
+               else args.sanitizer_runtime == "on")
+    prepare(ROOT, args.upstream, args.codec_only, startup, args.preset)
 
 
 if __name__ == "__main__":

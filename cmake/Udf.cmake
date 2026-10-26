@@ -52,9 +52,9 @@ endif()
 function(sevenzip_deploy_udf)
     add_custom_target(sevenzip_udf_runtime ALL
         COMMAND "${CMAKE_COMMAND}" -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:sevenzip_udf>"
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats/$<TARGET_FILE_NAME:sevenzip_udf>"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats/$<TARGET_FILE_NAME:sevenzip_udf>"
         DEPENDS sevenzip_udf VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_udf_runtime)
 endfunction()

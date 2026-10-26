@@ -608,7 +608,7 @@ raise SystemExit(0 if Path('runtime-toolchain').read_text() == args.preset else 
             (root / "bin").mkdir()
             shutil.copy2(ROOT / "scripts/check.sh", root / "scripts/check.sh")
             shutil.copy2(ROOT / "scripts/lib/agent-output.sh", root / "scripts/lib/agent-output.sh")
-            for helper in ("toolchain.py", "toolchain.sh"):
+            for helper in ("toolchain.py", "toolchain.sh", "runtime_layout.py"):
                 shutil.copy2(ROOT / "scripts/lib" / helper, root / "scripts/lib" / helper)
             for name, content in (("bin/git", "exit 73\n"), ("bin/clang-format", "exit 0\n"),
                                   ("scripts/build.sh", "touch built\n"), ("scripts/ctest.sh", "exit 0\n")):

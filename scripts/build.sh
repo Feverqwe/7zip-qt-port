@@ -57,14 +57,18 @@ configure() {
     # information in each object and lets ccache restore complete outputs.
     set -- -DCMAKE_POLICY_DEFAULT_CMP0141=NEW -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded "$@"
   fi
-  local runtime_directory="${SEVENZIP_CODEC_MODULE_DIR:-$project_root/build/codec-runtime}"
+  local managed_runtime
+  managed_runtime="$(python3 scripts/lib/runtime_layout.py --root "$project_root" --preset "$preset")"
+  set -- "-DSEVENZIP_CODEC_RUNTIME_DIR=$managed_runtime" "$@"
+  local managed_sfx
+  managed_sfx="$(python3 scripts/lib/runtime_layout.py --root "$project_root" --preset "$preset" --component sfx)"
+  set -- "-DSEVENZIP_SFX_RUNTIME_DIR=$managed_sfx" "$@"
+  local runtime_directory="${SEVENZIP_CODEC_MODULE_DIR:-$managed_runtime}"
   local runtime_module="$runtime_directory/7z.so"
   if [[ "${OS:-}" == Windows_NT ]]; then
     runtime_module="$runtime_directory/7z.dll"
   fi
-  if [[ -f "$runtime_module" ]]; then
-    set -- "-DSEVENZIP_CODEC_MODULE=$runtime_module" "$@"
-  fi
+  set -- "-DSEVENZIP_CODEC_MODULE=$runtime_module" "$@"
   if [[ -n "${SEVENZIP_COMPACT_TEST_BINARIES:-}" ]]; then
     set -- "-DSEVENZIP_COMPACT_TEST_BINARIES=$SEVENZIP_COMPACT_TEST_BINARIES" "$@"
   fi

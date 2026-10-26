@@ -22,9 +22,9 @@ if(MSVC)
     # Keep the instrumented deployment self-contained instead of weakening it.
     add_custom_target(sevenzip_sanitizer_runtime ALL
         COMMAND ${CMAKE_COMMAND} -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${sevenzip_msvc_runtime_files}
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}"
         VERBATIM)
     get_property(sevenzip_runtime_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
     foreach(runtime_target IN LISTS sevenzip_runtime_targets)

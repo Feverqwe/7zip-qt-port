@@ -23,13 +23,13 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libsmb2/COPYING"
     DESTINATION "${notices_destination}/libsmb2")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib/LICENSE"
     DESTINATION "${notices_destination}/zlib")
-install(PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z"
+install(PROGRAMS "${SEVENZIP_CODEC_RUNTIME_DIR}/7z"
     DESTINATION "${runtime_destination}")
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z.so"
-    "${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/7zCon.sfx"
-    "${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/7zCon.sfx.json"
+install(FILES "${SEVENZIP_CODEC_RUNTIME_DIR}/7z.so"
+    "${SEVENZIP_SFX_RUNTIME_DIR}/7zCon.sfx"
+    "${SEVENZIP_SFX_RUNTIME_DIR}/7zCon.sfx.json"
     DESTINATION "${runtime_destination}")
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/LICENSE.txt"
+install(FILES "${SEVENZIP_CODEC_RUNTIME_DIR}/LICENSE.txt"
     DESTINATION "${notices_destination}/7zip")
 install(TARGETS sevenzip_exfat LIBRARY DESTINATION "${runtime_destination}/Formats")
 install(TARGETS sevenzip_xfs LIBRARY DESTINATION "${runtime_destination}/Formats")

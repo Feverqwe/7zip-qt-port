@@ -31,6 +31,6 @@ if(BUILD_TESTING)
     set_tests_properties(linux_checksum PROPERTIES TIMEOUT 15)
     add_test(NAME native_vhdx_crc COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/native_vhdx_crc_tests.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime")
+        "${SEVENZIP_CODEC_RUNTIME_DIR}")
     set_tests_properties(native_vhdx_crc PROPERTIES TIMEOUT 45)
 endif()

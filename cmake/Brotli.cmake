@@ -35,9 +35,9 @@ endif()
 function(sevenzip_deploy_brotli)
     add_custom_target(sevenzip_brotli_runtime ALL
         COMMAND "${CMAKE_COMMAND}" -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:sevenzip_brotli>"
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats/$<TARGET_FILE_NAME:sevenzip_brotli>"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats/$<TARGET_FILE_NAME:sevenzip_brotli>"
         DEPENDS sevenzip_brotli VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_brotli_runtime)
 endfunction()
@@ -50,9 +50,9 @@ if(BUILD_TESTING)
     target_link_libraries(brotli_tests PRIVATE sevenzip_panel Qt6::Test)
     target_compile_definitions(brotli_tests PRIVATE
         "SEVENZIP_BROTLI_MODULE=\"$<TARGET_FILE:sevenzip_brotli>\""
-        "SEVENZIP_BROTLI_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_BROTLI_RUNTIME=\"${SEVENZIP_CODEC_RUNTIME_DIR}\""
         "SEVENZIP_BROTLI_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/brotli\"")
-    add_dependencies(brotli_tests sevenzip_brotli)
+    add_dependencies(brotli_tests sevenzip_brotli_runtime)
     add_test(NAME brotli COMMAND brotli_tests -silent)
     set_tests_properties(brotli PROPERTIES TIMEOUT 60)
 endif()

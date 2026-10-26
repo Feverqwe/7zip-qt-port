@@ -166,9 +166,16 @@ the selected compiler's CRT/ASan libraries beside the executable, preserving
 the official console's restricted DLL search policy.
 Development runtime preparation links the Unix console host with sanitizer
 runtimes so instrumented format plugins can initialize safely. For a release
-runtime use `prepare-runtime.py --sanitizer-runtime off`; `build-app.sh` selects
+runtime use `prepare-runtime.py --preset release --sanitizer-runtime off`; `build-app.sh` selects
 that mode automatically. This startup linkage does not instrument the separate
 upstream engine's algorithm bodies.
+Each preset deploys its own engine, SFX and format plugins, preventing GCC, Clang,
+debug and release runtimes from overwriting another preset's deployment. The
+ordinary `dev` commands retain their existing runtime location. Native build
+outputs and compiler caches remain incremental. Use the same preset when
+preparing, building and testing a runtime.
+Startup sanitizer linkage follows the preset build type automatically; explicit
+`--sanitizer-runtime on|off` remains available for diagnostics.
 Native catalog discovery allows extra startup time in ASan builds for
 instrumented format modules. Explicit discovery deadlines remain available for
 diagnostics and cancellation checks.

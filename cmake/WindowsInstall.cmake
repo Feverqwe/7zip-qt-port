@@ -1,7 +1,7 @@
 # Qt and the retained Windows entrypoints share one deployment directory.
 # Registration is a separate Menu-page operation; installing files never writes
 # associations or registers the extension on the build machine.
-set(SEVENZIP_WINDOWS_RUNTIME "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime" CACHE PATH
+set(SEVENZIP_WINDOWS_RUNTIME "${SEVENZIP_CODEC_RUNTIME_DIR}" CACHE PATH
     "Official pinned Windows runtime prepared by scripts/build-codec-runtime.ps1")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib/LICENSE"
     DESTINATION "share/licenses/sevenzip-desktop/zlib")
@@ -137,8 +137,8 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lucide/LICENSE"
     DESTINATION share/licenses/sevenzip-desktop/lucide)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/qemu/LICENSE"
     DESTINATION share/licenses/sevenzip-desktop/qemu)
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/7z.sfx"
-    "${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/7z.sfx.json" DESTINATION bin)
+install(FILES "${SEVENZIP_SFX_RUNTIME_DIR}/7z.sfx"
+    "${SEVENZIP_SFX_RUNTIME_DIR}/7z.sfx.json" DESTINATION bin)
 qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT windows_deploy_script
     NO_TRANSLATIONS)
 install(SCRIPT "${windows_deploy_script}")

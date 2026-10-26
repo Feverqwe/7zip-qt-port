@@ -27,9 +27,9 @@ endif()
 function(sevenzip_deploy_lz4_frame)
     add_custom_target(sevenzip_lz4_frame_runtime ALL
         COMMAND "${CMAKE_COMMAND}" -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:sevenzip_lz4_frame>"
-            "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/Formats/$<TARGET_FILE_NAME:sevenzip_lz4_frame>"
+            "${SEVENZIP_CODEC_RUNTIME_DIR}/Formats/$<TARGET_FILE_NAME:sevenzip_lz4_frame>"
         DEPENDS sevenzip_lz4_frame VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_lz4_frame_runtime)
 endfunction()
@@ -42,7 +42,7 @@ if(BUILD_TESTING)
     target_compile_definitions(lz4_frame_tests PRIVATE
         "SEVENZIP_LZ4_MODULE=\"$<TARGET_FILE:sevenzip_lz4_frame>\""
         "SEVENZIP_LZ4_LEGACY_MODULE=\"$<TARGET_FILE:sevenzip_linux_frames>\""
-        "SEVENZIP_LZ4_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\"")
+        "SEVENZIP_LZ4_RUNTIME=\"${SEVENZIP_CODEC_RUNTIME_DIR}\"")
     add_dependencies(lz4_frame_tests sevenzip_lz4_frame_runtime sevenzip_linux_frames_runtime)
     add_test(NAME lz4_frame COMMAND lz4_frame_tests -silent)
     set_tests_properties(lz4_frame PROPERTIES TIMEOUT 60)

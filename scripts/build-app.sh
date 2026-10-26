@@ -6,7 +6,7 @@ cd "$project_root"
 
 source "$project_root/scripts/lib/toolchain.sh"
 sevenzip_select_toolchain release
-python3 scripts/prepare-runtime.py --sanitizer-runtime off
+python3 scripts/prepare-runtime.py --preset release --sanitizer-runtime off
 ./scripts/build.sh release
 python3 scripts/package.py --install-only "$project_root/dist"
 printf 'Application output: %s/dist\n' "$project_root"
