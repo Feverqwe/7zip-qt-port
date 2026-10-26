@@ -253,6 +253,8 @@
     "libsmb2.pc.in": "third_party/libsmb2/libsmb2.pc.in"
   },
   "local_integration": [
+    "src/dependencies/smb2.h",
+    "src/dependencies/smb2.cppm",
     "tests/fixtures/libsmb2_directory_probe.c",
     "tests/fixtures/libsmb2_mount_probe.cpp",
     "cmake/Smb.cmake",

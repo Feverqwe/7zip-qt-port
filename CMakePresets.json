@@ -38,7 +38,7 @@
     {
       "name": "modules-linux-dev",
       "inherits": "modules-dev",
-      "displayName": "Development with Clang 18 dependency modules on Linux",
+      "displayName": "Development with Clang 19 dependency modules on Linux",
       "binaryDir": "${sourceDir}/build/modules-linux-dev",
       "condition": {
         "type": "equals",
@@ -46,8 +46,8 @@
         "rhs": "Linux"
       },
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang-18",
-        "CMAKE_CXX_COMPILER": "clang++-18"
+        "CMAKE_C_COMPILER": "clang-19",
+        "CMAKE_CXX_COMPILER": "clang++-19"
       }
     },
     {

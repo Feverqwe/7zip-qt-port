@@ -212,10 +212,11 @@ brew install llvm
 ./scripts/ctest.sh --preset modules-dev -R '^filesystem_zlib$' --output-on-failure
 ```
 
-On Ubuntu 24.04, install `clang-18`, `clang-tools-18`, `libclang-rt-18-dev` and use
+On Ubuntu 24.04, install `clang-19`, `clang-tools-19`, `libclang-rt-19-dev` and use
 `modules-linux-dev` to select that C/C++ compiler and its scanner. The wrappers
 also select it for native runtime preparation; direct preparation accepts
-`prepare-runtime.py --preset modules-linux-dev`. GCC 14.2
+`prepare-runtime.py --preset modules-linux-dev`. Clang 18 with the system
+libstdc++ does not expose `std::expected`; this preset requires Clang 19. GCC 14.2
 crashes while serializing the sanitized zlib facade; GCC module builds require
 GCC 16 or newer. Focused runner checks accept the same preset:
 

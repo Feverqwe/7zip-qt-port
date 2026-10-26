@@ -7,6 +7,12 @@
 #include <cstring>
 #include <limits>
 
+#ifdef SEVENZIP_USE_SMB2_MODULE
+import sevenzip.dependencies.smb2;
+#else
+#include "dependencies/smb2.h"
+#endif
+
 namespace {
 QString Key(const QString &path) { return path.normalized(QString::NormalizationForm_C); }
 template <typename Work> int Guard(Work work) noexcept {
@@ -67,12 +73,11 @@ SmbReadOnlyServer::State::State(QList<SmbTreeEntry> entries, QString user, QStri
             static_cast<State *>(server)->trace(QStringLiteral("TREE_CONNECT"));
             if (!request->path || (request->path_length & 1))
                 return status(SMB2_STATUS_INVALID_PARAMETER);
-            const std::unique_ptr<char, decltype(&std::free)> decoded(
-                const_cast<char *>(smb2_utf16_to_utf8(request->path, request->path_length / 2)),
-                &std::free);
+            const auto decoded = sevenzip::smb2::decode_name(
+                {request->path, static_cast<std::size_t>(request->path_length / 2)});
             if (!decoded)
                 return status(SMB2_STATUS_INVALID_PARAMETER);
-            QString path = QString::fromUtf8(decoded.get());
+            QString path = QString::fromUtf8(decoded->get());
             path.replace(u'\\', u'/');
             if (path.section(u'/', -1).compare(static_cast<State *>(server)->Share,
                                                Qt::CaseInsensitive))
@@ -250,47 +255,45 @@ int SmbReadOnlyServer::serve(quint16 port, std::function<void(quint16)> listenin
         return -1;
     state_->port = port;
     state_->Listening = std::move(listening);
-    const int result = smb2_serve_port(
-        state_.get(), 16,
-        [](smb2_context *context, void *data) {
-            auto *state = static_cast<State *>(data);
-            if (state->Clients >= 32) {
-                smb2_close_context(context);
-                return;
-            }
-            const int result = Guard([&] {
-                auto client = std::make_unique<State::Client>();
-                client->Owner = state;
-                client->Context = context;
-                state->OpenClients.insert(client.get());
-                ++state->Clients;
-                smb2_set_opaque(context, client.release());
-                return 0;
-            });
-            if (result) {
-                smb2_close_context(context);
-                return;
-            }
-            if (state->Diagnostic)
-                smb2_register_error_callback(context, [](smb2_context *ctx, const char *error) {
-                    if (const auto *session = static_cast<State::Client *>(smb2_get_opaque(ctx))) {
-                        const int result = Guard([&] {
-                            session->Owner->trace(QString::fromUtf8(error));
-                            return 0;
-                        });
-                        if (result) {
-                            session->Owner->CallbackFailed = true;
-                            session->Owner->stop_requested = 1;
-                        }
+    auto connection = [state = state_.get()](smb2_context &session) noexcept {
+        auto *context = &session;
+        if (state->Clients >= 32) {
+            smb2_close_context(context);
+            return;
+        }
+        const int result = Guard([&] {
+            auto client = std::make_unique<State::Client>();
+            client->Owner = state;
+            client->Context = context;
+            state->OpenClients.insert(client.get());
+            ++state->Clients;
+            smb2_set_opaque(context, client.release());
+            return 0;
+        });
+        if (result) {
+            smb2_close_context(context);
+            return;
+        }
+        if (state->Diagnostic)
+            smb2_register_error_callback(context, [](smb2_context *ctx, const char *error) {
+                if (const auto *session = static_cast<State::Client *>(smb2_get_opaque(ctx))) {
+                    const int result = Guard([&] {
+                        session->Owner->trace(QString::fromUtf8(error));
+                        return 0;
+                    });
+                    if (result) {
+                        session->Owner->CallbackFailed = true;
+                        session->Owner->stop_requested = 1;
                     }
-                });
-            // Only this server dialect is accepted so far. Signing
-            // remains mandatory; no client policy is changed.
-            smb2_set_version(context, SMB2_VERSION_0210);
-            smb2_set_sign(context, 1);
-        },
-        state_.get());
-    return state_->CallbackFailed ? -1 : result;
+                }
+            });
+        // Only this server dialect is accepted so far. Signing
+        // remains mandatory; no client policy is changed.
+        smb2_set_version(context, SMB2_VERSION_0210);
+        smb2_set_sign(context, 1);
+    };
+    const auto result = sevenzip::smb2::serve(*state_, 16, connection);
+    return state_->CallbackFailed ? -1 : result ? 0 : result.error();
 }
 void SmbReadOnlyServer::requestStop() { state_->Stop = true; }
 void SmbReadOnlyServer::setDiagnosticHandler(std::function<void(QString)> handler) {

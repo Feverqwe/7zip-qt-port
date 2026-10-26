@@ -13,6 +13,16 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles("#include <expected>
+int main() {
+    std::expected<void, int> result;
+    return result ? 0 : result.error();
+}" sevenzip_cpp23_expected_supported)
+if(NOT sevenzip_cpp23_expected_supported)
+    message(FATAL_ERROR "C++23 std::expected is required; select a compatible compiler and standard library (Clang 19+ with Ubuntu's libstdc++, GCC 14+, or current MSVC)")
+endif()
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "^(AppleClang|Clang|GNU)$")
     # These standard-library definitions are inert in C. Keep them uniform so
     # Qt Remote Objects can generate one moc parameter file for mixed targets.
@@ -1829,7 +1839,10 @@ if(BUILD_TESTING)
     add_test(NAME native_mount_client COMMAND native_mount_client_tests -silent)
     set_tests_properties(native_mount_client PROPERTIES TIMEOUT 150)
     qt_add_executable(smb_readonly_server_tests tests/smb_readonly_server_tests.cpp)
-    target_link_libraries(smb_readonly_server_tests PRIVATE sevenzip_smb smb2 Qt6::Test Qt6::Network)
+    target_link_libraries(smb_readonly_server_tests PRIVATE sevenzip_smb sevenzip_smb2_facade smb2 Qt6::Test Qt6::Network)
+    if(SEVENZIP_ENABLE_DEPENDENCY_MODULES)
+        sevenzip_configure_module_cache(smb_readonly_server_tests)
+    endif()
     target_compile_definitions(smb_readonly_server_tests PRIVATE
         SEVENZIP_SMB_PROBE="$<TARGET_FILE:smb2_mount_probe>")
     add_dependencies(smb_readonly_server_tests smb2_mount_probe)

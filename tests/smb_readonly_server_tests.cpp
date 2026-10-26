@@ -7,6 +7,7 @@
 #include <QTimer>
 #include <QtEndian>
 #include <QtTest>
+#include <array>
 #include <fcntl.h>
 #include <future>
 #include <stdexcept>
@@ -19,6 +20,12 @@
 #include <smb2/libsmb2.h>
 #include <smb2/libsmb2-raw.h>
 // clang-format on
+
+#ifdef SEVENZIP_USE_SMB2_MODULE
+import sevenzip.dependencies.smb2;
+#else
+#include "dependencies/smb2.h"
+#endif
 
 namespace {
 template <typename Work> auto ClientWork(Work work) {
@@ -120,6 +127,18 @@ class ReadTamperProxy final : public QObject {
 class SmbReadOnlyServerTests final : public QObject {
     Q_OBJECT
   private slots:
+    void wireNamesPreserveUnicode() {
+        // SMB names are little-endian UTF-16, including non-BMP pairs.
+        const std::array wire{qToLittleEndian<quint16>(0x0416), qToLittleEndian<quint16>(0xD83D),
+                              qToLittleEndian<quint16>(0xDE00)};
+        const auto decoded = sevenzip::smb2::decode_name(wire);
+        QVERIFY(decoded);
+        QCOMPARE(QString::fromUtf8(decoded->get()), QString::fromUtf8("Ж😀"));
+        const auto empty = sevenzip::smb2::decode_name({});
+        QVERIFY(empty);
+        QCOMPARE(QByteArray(empty->get()), QByteArray());
+    }
+
     void listeningExceptionClosesServerSocket() {
         SmbReadOnlyServer server({{1, 0, 0, 0, {}, true}}, "probe", "password",
                                  [](quint64, quint64, quint32) { return SmbTreeRead{}; });
@@ -266,6 +285,12 @@ class SmbReadOnlyServerTests final : public QObject {
         QCOMPARE(attacker.connect(proxy.port()), 0);
         auto *file = ClientWork([&] { return smb2_open(attacker.Context, "hello.txt", O_RDONLY); });
         QVERIFY(file);
+        const auto closeFile = qScopeGuard([&] {
+            // A rejected signature disconnects this client. Queue CLOSE so
+            // context shutdown releases the handle without awaiting a reply.
+            smb2_close_async(
+                attacker.Context, file, [](smb2_context *, int, void *, void *) {}, nullptr);
+        });
         QByteArray data(128, '\0');
         QVERIFY(ClientWork([&] {
                     return smb2_pread(attacker.Context, file,

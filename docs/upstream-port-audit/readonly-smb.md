@@ -44,6 +44,30 @@ and remaining platform limitations below must be distinguished from source scope
 
 ## Library selection and provenance
 
+The C++23 dependency facade wraps synchronous connection delivery and UTF-16
+name conversion. Callbacks borrow library-owned sessions, cannot unwind across
+the C boundary, and remain alive until the serve loop returns. Conversion uses
+the library's original routine and allocator with RAII ownership; results use
+`std::expected`. Existing raw protocol structures stay at the local integration
+boundary. The library's C protocol implementation and original baseline bytes
+are unchanged. The same facade API is available through a header when named
+modules are unsupported. Unicode and empty names, callback failures, cancellation
+and rejected reads are exercised through the focused SMB checks.
+
+On 2026-10-27 the Linux GCC/UBSan run stopped in `smb2_create_signing_key` during
+the initial NTLM challenge: the original SMB2 branch called `memcpy` with a null
+session-key pointer and zero size. The complete function, session-setup caller,
+context reset and NTLM key allocator were compared with the pinned revision.
+That branch now copies only a nonempty key. Empty-key state, key derivation,
+authentication and signing policy are unchanged; original inventory hashes
+remain pinned. The existing authenticated connection/cancellation/forged-read
+scenarios reproduce the failure under UBSan and validate the correction.
+The forged-read fixture also queues CLOSE for the disconnected attacker's handle,
+so context shutdown can release it; Linux LSan had reported the two omitted
+handles. The Linux module preset uses Clang 19 because Clang 18 with Ubuntu's
+libstdc++ omits `std::expected`. Configuration now checks that required library
+facility before constructing targets.
+
 Selected research candidate: [sahlberg/libsmb2](https://github.com/sahlberg/libsmb2),
 commit `1395c54006f0cfb4da5df4b9fd9bf531feffe56a`. The
 [baseline](../libsmb2-server-baseline.json) pins complete original inventory units,

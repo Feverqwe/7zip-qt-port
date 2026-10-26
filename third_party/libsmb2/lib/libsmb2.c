@@ -746,14 +746,18 @@ static void smb2_create_signing_key(struct smb2_context *smb2)
          */
         if (smb2->dialect == SMB2_VERSION_0202 ||
             smb2->dialect == SMB2_VERSION_0210) {
-                /* For SMB2 session key is the signing key */
-                memcpy(smb2->signing_key,
-                       smb2->session_key,
-                       MIN(smb2->session_key_size, SMB2_KEY_SIZE));
-                /* and the application key */
-                memcpy(smb2->application_key,
-                       smb2->session_key,
-                       MIN(smb2->session_key_size, SMB2_KEY_SIZE));
+                /* The initial NTLM challenge has no session key yet. Even
+                 * a zero-length memcpy requires a nonnull source in C. */
+                if (smb2->session_key_size) {
+                        /* For SMB2 session key is the signing key */
+                        memcpy(smb2->signing_key,
+                               smb2->session_key,
+                               MIN(smb2->session_key_size, SMB2_KEY_SIZE));
+                        /* and the application key */
+                        memcpy(smb2->application_key,
+                               smb2->session_key,
+                               MIN(smb2->session_key_size, SMB2_KEY_SIZE));
+                }
         } else if (smb2->dialect <= SMB2_VERSION_0302) {
                 smb2_derive_key(smb2->session_key,
                                 smb2->session_key_size,
