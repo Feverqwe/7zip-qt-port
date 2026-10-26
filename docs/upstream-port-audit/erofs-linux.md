@@ -1,5 +1,22 @@
 # Read-only EROFS from Linux
 
+## C++23 dependency facade
+
+The local Linux EROFS facade owns mounted volumes and file handles through RAII,
+uses spans for file data and returns `std::expected` results. Read failures retain
+their processed-byte count for the existing archive-stream accounting. Files
+borrow the mounted volume; the reader and its source callbacks outlive it.
+Source callbacks have explicit nonthrowing contracts. Existing missing-device
+fallback, transport errors, cancellation and partial-read policy are preserved.
+The filesystem decoding algorithms and C decompression dependencies are unchanged.
+
+Linux GCC/UBSan found a host-C boundary issue in `erofs_listxattr_foreach`: a
+normal xattr has no long-prefix infix, so the original Linux body calls `memcpy`
+with a null source and zero length. The complete body, caller and prefix setup
+were compared with the pinned Linux unit. The adaptation skips that empty copy;
+xattr assembly, validation and original baseline hashes are preserved. Existing
+module xattr fixtures exercise this path with sanitizers.
+
 ## Raw DEFLATE through official zlib — 2026-10-24
 
 EROFS raw DEFLATE now uses the unchanged zlib 1.3.2 C subset already shared

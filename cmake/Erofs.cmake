@@ -50,7 +50,7 @@ add_library(sevenzip_erofs MODULE
     third_party/7zip/CPP/Common/UTFConvert.cpp)
 target_include_directories(sevenzip_erofs PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
-target_link_libraries(sevenzip_erofs PRIVATE sevenzip_erofs_core Threads::Threads)
+target_link_libraries(sevenzip_erofs PRIVATE Threads::Threads)
 set_target_properties(sevenzip_erofs PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX "")
 if(UNIX AND NOT APPLE)
     target_link_options(sevenzip_erofs PRIVATE "-Wl,-Bsymbolic")

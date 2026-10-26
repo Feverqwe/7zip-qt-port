@@ -108,6 +108,10 @@
     "lib/xz/xz_lzma2.h": "erofs-liblzma-baseline.json: src/liblzma/common/microlzma_decoder.c",
     "lib/xz/xz_private.h": "erofs-liblzma-baseline.json: src/liblzma/common/microlzma_decoder.c"
   },
+  "local_integration": [
+    "src/dependencies/linux_erofs.h",
+    "src/dependencies/linux_erofs.cppm"
+  ],
   "library_adapters": {
     "lib/crc/crc32-main.c": {
       "symbols": [

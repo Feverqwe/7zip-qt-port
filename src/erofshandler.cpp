@@ -17,6 +17,7 @@
 #include <cstring>
 #include <map>
 #include <set>
+#include <span>
 #include <string>
 #include <utility>
 
@@ -74,14 +75,17 @@ class FileStream final : public IInStream, public CMyUnknownImp {
         if (size > size_ - position_)
             size = UInt32(size_ - position_);
         reader_->ResetTransport();
-        size_t count = 0;
-        const int error = erofs_pread_file(file_.get(), position_, data, size, &count);
+        if (!data && size)
+            return E_INVALIDARG;
+        const auto result =
+            sevenzip::linux_erofs::read(*file_, position_, {static_cast<std::byte *>(data), size});
+        const size_t count = result ? *result : result.error().processed;
         position_ += count;
         if (reader_->extractCallback)
             reader_->completed += count;
         if (processed)
             *processed = UInt32(count);
-        return reader_->Result(error);
+        return reader_->Result(result ? 0 : result.error().code);
     }
     Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
         if (origin > STREAM_SEEK_END)
@@ -166,10 +170,11 @@ HRESULT CHandler::AddItem(Tree &tree, const char *name, size_t size, UInt64 nid)
         if (!item.inode.size || item.inode.size >= 65536)
             return S_FALSE;
         std::vector<char> target(size_t(item.inode.size));
-        size_t processed;
-        RINOK(reader_->Result(
-            erofs_pread_file(file.get(), 0, target.data(), target.size(), &processed)))
-        if (processed != target.size() || memchr(target.data(), 0, target.size()))
+        const auto result =
+            sevenzip::linux_erofs::read(*file, 0, std::as_writable_bytes(std::span(target)));
+        if (!result)
+            return reader_->Result(result.error().code);
+        if (*result != target.size() || memchr(target.data(), 0, target.size()))
             return S_FALSE;
         item.symlink = Text(target.data(), target.size());
     }

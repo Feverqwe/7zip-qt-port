@@ -8,7 +8,7 @@
 #include <new>
 
 int ErofsArchiveReader::Read(void *context, unsigned int device, uint64_t offset, void *data,
-                             size_t size) {
+                             size_t size) noexcept {
     auto &self = *static_cast<ErofsArchiveReader *>(context);
     if (self.transport_ != S_OK)
         return -EIO;
@@ -27,7 +27,7 @@ int ErofsArchiveReader::Read(void *context, unsigned int device, uint64_t offset
     return self.transport_ == S_OK ? 0 : -EIO;
 }
 
-int ErofsArchiveReader::Poll(void *context) {
+int ErofsArchiveReader::Poll(void *context) noexcept {
     auto &self = *static_cast<ErofsArchiveReader *>(context);
     if (self.transport_ != S_OK)
         return -EIO;
@@ -44,7 +44,7 @@ int ErofsArchiveReader::Poll(void *context) {
 
 int ErofsArchiveReader::Decode(void *context, unsigned int algorithm, unsigned int dictionary,
                                const void *input, size_t inputSize, void *output, size_t outputSize,
-                               int partial) {
+                               int partial) noexcept {
     auto &self = *static_cast<ErofsArchiveReader *>(context);
     if (self.transport_ != S_OK)
         return -EIO;
@@ -55,7 +55,8 @@ int ErofsArchiveReader::Decode(void *context, unsigned int algorithm, unsigned i
     return error;
 }
 
-int ErofsArchiveReader::OpenDevice(void *context, unsigned int id, const char *tag, uint64_t size) {
+int ErofsArchiveReader::OpenDevice(void *context, unsigned int id, const char *tag,
+                                   uint64_t size) noexcept {
     auto &self = *static_cast<ErofsArchiveReader *>(context);
     try {
         const size_t length = strlen(tag);
@@ -126,22 +127,27 @@ HRESULT ErofsArchiveReader::Open(IInStream *stream, IArchiveOpenCallback *callba
         callback->QueryInterface(IID_IArchiveOpenVolumeCallback,
                                  reinterpret_cast<void **>(&volumes_));
     erofs_source source{this, size - base_, Read, Poll, Decode, OpenDevice, volumes_ ? 1 : 0};
-    erofs_volume *volume = nullptr;
-    int error = erofs_open_volume(&source, &volume);
-    if (error && missingDevice_ && transport_ == S_OK) {
+    auto volume = sevenzip::linux_erofs::open(source);
+    if (!volume && missingDevice_ && transport_ == S_OK) {
         streams_.resize(1);
         source.external_devices = 0;
-        error = erofs_open_volume(&source, &volume);
+        volume = sevenzip::linux_erofs::open(source);
     }
-    volume_.reset(volume);
-    RINOK(Result(error))
+    if (!volume) {
+        volume_.reset();
+        return Result(volume.error());
+    }
+    volume_ = std::move(*volume);
     erofs_get_volume_info(volume_.get(), &info);
     return S_OK;
 }
 
 HRESULT ErofsArchiveReader::OpenFile(uint64_t nid, ErofsFile &file) {
-    erofs_file *raw = nullptr;
-    const int error = erofs_open_file(volume_.get(), nid, &raw);
-    file.reset(raw);
-    return Result(error);
+    auto opened = sevenzip::linux_erofs::open_file(*volume_, nid);
+    if (!opened) {
+        file.reset();
+        return Result(opened.error());
+    }
+    file = std::move(*opened);
+    return S_OK;
 }
