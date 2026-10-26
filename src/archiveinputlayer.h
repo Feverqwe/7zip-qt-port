@@ -4,6 +4,7 @@
 #include "7zip/IStream.h"
 #include "Common/MyCom.h"
 #include "archivelayercontext.h"
+#include "archivereadstream.h"
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -13,6 +14,7 @@
 class ArchiveInputLayer final : public std::enable_shared_from_this<ArchiveInputLayer> {
     CMyComPtr<IInStream> source_;
     CMyComPtr<IStreamGetProp> properties_;
+    CMyComPtr<IArchiveReadStream> requested_;
     UInt64 size_ = 0;
     std::mutex mutex_;
     std::optional<UInt64> containingDepth_;

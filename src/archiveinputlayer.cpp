@@ -124,10 +124,9 @@ HRESULT ArchiveInputLayer::Create(IInStream *source, std::shared_ptr<ArchiveInpu
         else if (result != S_FALSE)
             return result;
     }
-    CMyComPtr<IArchiveReadStream> requested;
-    source->QueryInterface(IID_IArchiveReadStream, (void **)&requested);
-    if (requested) {
-        RINOK(requested->SeekWithRequest(0, STREAM_SEEK_END, &owner->size_, request))
+    source->QueryInterface(IID_IArchiveReadStream, (void **)&owner->requested_);
+    if (owner->requested_) {
+        RINOK(owner->requested_->SeekWithRequest(0, STREAM_SEEK_END, &owner->size_, request))
     } else {
         if (request) {
             RINOK(request->SetCompleted(nullptr))
@@ -158,11 +157,9 @@ HRESULT ArchiveInputLayer::ReadAt(UInt64 offset, void *data, UInt32 size, UInt32
     if (request) {
         RINOK(request->SetCompleted(nullptr))
     }
-    CMyComPtr<IArchiveReadStream> requested;
-    source_->QueryInterface(IID_IArchiveReadStream, (void **)&requested);
-    if (requested) {
-        RINOK(requested->SeekWithRequest(Int64(offset), STREAM_SEEK_SET, nullptr, request))
-        return requested->ReadWithRequest(data, size, processed, request);
+    if (requested_) {
+        RINOK(requested_->SeekWithRequest(Int64(offset), STREAM_SEEK_SET, nullptr, request))
+        return requested_->ReadWithRequest(data, size, processed, request);
     }
     RINOK(InStream_SeekSet(source_, offset))
     return source_->Read(data, size, processed);
