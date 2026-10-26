@@ -1,5 +1,6 @@
 """The production dynamic engine reads boot frames through the GPL module."""
 from pathlib import Path
+from runtime_fixture import copy_codec_runtime
 import shutil
 import subprocess
 import sys
@@ -18,9 +19,7 @@ class LinuxFramesTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-linux-frames-runtime-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX,
-                     "7z.dll" if sys.platform == "win32" else "7z.so"):
-            shutil.copy2(RUNTIME / name, cls.runtime / name)
+        copy_codec_runtime(RUNTIME, cls.runtime)
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 

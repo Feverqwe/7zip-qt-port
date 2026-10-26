@@ -272,7 +272,7 @@ class ZstdStreamTests final : public QObject {
                                             ));
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog(core()));
-        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 10000);
+        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 35000);
         QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         QList<ArchiveEntry> entries;

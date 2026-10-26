@@ -152,6 +152,10 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                           "CFLAGS = $(CFLAGS) -I../../../.."]
             lines.append(f'!include "{original}"' if windows else f'include {original}')
             lines.append("# Toolchain: " + os.environ.get("SEVENZIP_RUNTIME_TOOLCHAIN", "direct"))
+            if windows:
+                lines.append("$(O)\\DllSecur.obj: ../../../../C/DllSecur.c sevenzip-runtime.mak")
+                if os.environ.get("SEVENZIP_RUNTIME_SANITIZERS") == "1":
+                    lines.append('\t$(CC) $(CFLAGS_O2) -DSEVENZIP_RUNTIME_SANITIZERS -Fo"$(O)\\DllSecur.obj" "../../../../C/DllSecur.c"')
             if not windows:
                 lines.append("LOCAL_FLAGS += -I../../../..")
                 if os.environ.get("SEVENZIP_RUNTIME_SANITIZERS") == "1":

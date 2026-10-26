@@ -11,7 +11,7 @@ add_library(sevenzip_zip STATIC
     third_party/7zip/C/Delta.c
     third_party/7zip/C/LzFind.c
     third_party/7zip/C/LzFindMt.c
-    third_party/7zip/C/LzFindOpt.c
+    src/C/LzFindOpt.c
     third_party/7zip/C/Lzma2Dec.c
     third_party/7zip/C/Lzma2DecMt.c
     third_party/7zip/C/Lzma2Enc.c
@@ -55,7 +55,7 @@ add_library(sevenzip_zip STATIC
     src/CPP/7zip/Compress/LzmaDecoder.cpp
     third_party/7zip/CPP/7zip/Compress/LzmaEncoder.cpp
     third_party/7zip/CPP/7zip/Compress/PpmdZip.cpp
-    third_party/7zip/CPP/7zip/Compress/ShrinkDecoder.cpp
+    src/CPP/7zip/Compress/ShrinkDecoder.cpp
     src/CPP/7zip/Compress/XzDecoder.cpp
     third_party/7zip/CPP/7zip/Compress/XzEncoder.cpp
     src/CPP/7zip/Compress/ZstdDecoder.cpp

@@ -148,3 +148,13 @@ sevenzip_share_port_objects(sevenzip_filesystem_scan src/filesystemscanner.h
 sevenzip_share_port_objects(sevenzip_volume_operations src/qtvolumetransaction.h
     src/qtvolumetransaction.cpp src/volumeoperations.h
     src/volumeoperations.cpp)
+
+# Archive resources in this library call the typed backend even when a consumer
+# only opens an options page. Carry that implementation in the resource target
+# instead of requiring each executable to repeat the backend source closure.
+target_sources(sevenzip_location PRIVATE
+    $<TARGET_OBJECTS:sevenzip_archive_backend>
+    $<TARGET_OBJECTS:sevenzip_compress_source>
+    src/archivebackend_guioperations.cpp
+    src/archivebackend_nativeentries.cpp src/archivebackend_nativeentries.h
+    src/archivebackend_test.cpp)

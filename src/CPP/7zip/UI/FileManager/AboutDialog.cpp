@@ -3,9 +3,9 @@
 // Original initialization, help topic and homepage command; Qt presentation/services.
 // Modified 2026-10-18: independent application identity and upstream attribution layout.
 #include "AboutDialog.h"
-#include "../../../../../third_party/7zip/C/CpuArch.h"
 #include "../Common/LoadCodecs.h"
 #include "7zip/MyVersion.h"
+#include "C/CpuArch.h"
 #include "HelpUtils.h"
 #include "qtdialoglayout.h"
 #include "qtdialogunits.h"

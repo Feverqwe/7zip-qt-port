@@ -39,7 +39,7 @@ def fingerprint(root, sanitizer_runtime=True):
             "builders": {name: sha(root / "scripts" / name) for name in BUILDERS},
             "cache_version": sha(Path(__file__)),
             "system": platform.system(), "architecture": platform.machine(),
-            "sanitizer_runtime": sanitizer_runtime and not windows,
+            "sanitizer_runtime": bool(sanitizer_runtime),
             "compiler": compiler, "compiler_version": hashlib.sha256(version).hexdigest(),
             "environment": {key: os.environ.get(key, "") for key in
                             ("CC", "CXX", "CFLAGS", "CXXFLAGS", "LDFLAGS", "SDKROOT",
@@ -113,10 +113,13 @@ def prepare(root, upstream, codec_only=False, sanitizer_runtime=True):
     if platform.system() == "Windows":
         for name in (("build-codec-runtime.ps1",) if codec_only else
                      ("build-codec-runtime.ps1", "build-sfx.ps1")):
+            environment = dict(os.environ)
+            environment["SEVENZIP_RUNTIME_SANITIZERS"] = str(int(
+                sanitizer_runtime and name == "build-codec-runtime.ps1"))
             subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "RemoteSigned",
                             "-File", str(root / "scripts" / name), "-UpstreamCheckout", str(upstream),
                             "-Architecture", os.environ.get("VSCMD_ARG_TGT_ARCH", "x64")],
-                           cwd=root, check=True)
+                           cwd=root, env=environment, check=True)
     else:
         for name in (("build-codec-runtime.sh",) if codec_only else
                      ("build-codec-runtime.sh", "build-sfx.sh")):

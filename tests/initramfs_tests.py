@@ -1,5 +1,6 @@
 """Production dynamic engine: complete initramfs images and strict part boundaries."""
 from pathlib import Path
+from runtime_fixture import copy_codec_runtime
 import shutil
 import subprocess
 import sys
@@ -17,8 +18,7 @@ class InitramfsTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-initramfs-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.root = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX, "7z.dll" if sys.platform == "win32" else "7z.so"):
-            shutil.copy2(RUNTIME / name, cls.root / name)
+        copy_codec_runtime(RUNTIME, cls.root)
         (cls.root / "Formats").mkdir()
         shutil.copy2(MODULE, cls.root / "Formats" / MODULE.name)
 

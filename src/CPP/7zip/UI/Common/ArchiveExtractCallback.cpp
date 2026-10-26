@@ -11,7 +11,7 @@
 // #include <stdio.h>
 
 #include "../../../../../third_party/7zip/C/Alloc.h"
-#include "../../../../../third_party/7zip/C/CpuArch.h"
+#include "C/CpuArch.h"
 
 #include "../../../Common/Wildcard.h"
 #include "Common/ComTry.h"

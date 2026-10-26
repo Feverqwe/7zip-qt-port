@@ -32,6 +32,11 @@ root/section projection `inode.c`, Rock Ridge и zisofs, а также
 полного compression block. Их причины и намеренные расхождения с Linux malformed
 input policy описаны в соответствующих разделах ниже.
 
+В санитайзерной сборке C++23 host UTF-16/unaligned helpers принимают byte
+addresses как `const void *`, затем копируют в выровненные значения. Исходные
+Joliet/NLS bodies сохранены; входной адрес больше не получает неверного
+требования выравнивания до копирования.
+
 Эта сверка уточняет source completeness, а не расширяет runtime acceptance.
 Код не менялся; прежние проверки и их платформенные ограничения приведены ниже.
 Standalone SDK engine сохраняет отдельно описанный набор возможностей без GPL

@@ -5,7 +5,7 @@
 #include "7zip/UI/Common/StdAfx.h"
 
 #include "../../../../../third_party/7zip/C/Alloc.h"
-#include "../../../../../third_party/7zip/C/CpuArch.h"
+#include "C/CpuArch.h"
 
 #include "Common/DynLimBuf.h"
 #include "Common/IntToString.h"

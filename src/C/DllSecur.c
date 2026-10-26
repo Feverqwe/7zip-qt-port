@@ -56,6 +56,28 @@ static const char * const g_Dlls =
 void My_SetDefaultDllDirectories(void)
 {
   #ifndef UNDER_CE
+  #if defined(SEVENZIP_RUNTIME_SANITIZERS) || defined(__SANITIZE_ADDRESS__)
+  {
+    typedef PVOID (WINAPI *Func_AddDllDirectory)(PCWSTR);
+    const Func_AddDllDirectory addDllDirectory =
+        (Func_AddDllDirectory) Z7_CAST_FUNC_C GetProcAddress(
+            GetModuleHandle(TEXT("kernel32.dll")), "AddDllDirectory");
+    WCHAR path[32768];
+    DWORD length = GetModuleFileNameW(NULL, path, 32768);
+    if (addDllDirectory && length && length < 32768)
+    {
+      while (length && path[length - 1] != L'\\' && path[length - 1] != L'/')
+        length--;
+      if (length)
+      {
+        path[length] = 0;
+        /* Only the owned deployment directory joins the existing user dirs.
+           PATH and the current working directory remain excluded. */
+        addDllDirectory(path);
+      }
+    }
+  }
+  #endif
   IF_NON_VISTA_SET_DLL_DIRS_AND_RETURN
   #endif
 }

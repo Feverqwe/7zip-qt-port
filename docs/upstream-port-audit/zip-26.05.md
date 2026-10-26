@@ -1,5 +1,30 @@
 # ZIP: актуализация по 7-Zip 26.05 — 2026-10-24
 
+## Defined memory/arithmetic operations — 2026-10-26
+
+ASan/UBSan validation of the C++23 foundation exposed three original optimized
+operations with undefined C/C++ behavior. Complete affected functions, caller
+contracts and their portable paths were compared with the SDK baseline:
+
+- `GetMatchesSpecN_2` doubles a possibly negative relative tree offset using
+  multiplication instead of signed left shift. The same pair address, match
+  lengths, traversal and output sequence are retained; it remains C.
+- Shrink's little-endian buffered bit load uses the shared alias-safe `GetUi32`
+  primitive. The original four-byte lookahead guard, masks and decoder state
+  transitions are unchanged.
+- RAR5's scalar match-copy loads/stores use `GetUi32/64` and `SetUi32/64`.
+  Copy order, chunk sizes, overlap behavior, padding and NEON/SSE paths retain
+  the original implementation. The unRAR notice remains intact.
+
+These complete original units now have adapted owners under `src/`; the existing
+SDK manifest pins their original hashes and includes them in runtime overlays.
+C++ formatting is accounted for separately from those functional substitutions.
+Existing compression dictionary/limit, Shrink and native RAR tests reproduce
+the pre-fix sanitizer failures. Performance acceptance is separate from these
+correctness checks.
+
+## Original refresh scope
+
 После первоначального точечного обновления пользователь запросил
 [полный переход на 26.05](upstream-26.05.md). Ниже сохранены scope и результаты
 именно первоначальной ZIP-проверки; текущая общая baseline описана там.

@@ -45,6 +45,19 @@ std::shared_ptr<const ArchiveCodecCatalog> ArchiveCodecProbe::LoadCatalog(const 
 
 ArchiveCodecProbe::ArchiveCodecProbe(QObject *parent) : QObject(parent) {}
 
+int ArchiveCodecProbe::DefaultTimeoutMs() {
+    // Instrumented format modules incur extra initialization and I/O work.
+    // The default must accept a successfully loaded development catalog.
+#if defined(__clang__)
+    constexpr bool instrumented = __has_feature(address_sanitizer);
+#elif defined(__SANITIZE_ADDRESS__)
+    constexpr bool instrumented = true;
+#else
+    constexpr bool instrumented = false;
+#endif
+    return instrumented ? 30000 : 5000;
+}
+
 ArchiveCodecProbe::~ArchiveCodecProbe() {
     Cancel();
     if (loader_) {

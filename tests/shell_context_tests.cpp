@@ -275,9 +275,9 @@ class ShellContextTests final : public QObject {
         paths.Add(us(z));
         paths.Add(us(a));
         CWorkflow service;
-        QCOMPARE(
-            ::ExtractArchives(paths, us(fixture.filePath("output/*")), false, true, 7, service),
-            S_OK);
+        QCOMPARE(::ExtractArchives(paths, us(fixture.filePath("output/*")), false, true,
+                                   UInt32(NExtract::NZoneIdMode::kOffice), service),
+                 S_OK);
         QCOMPARE(service.guiCalls, 1);
         QCOMPARE(service.paths.Size(), 2u);
         QCOMPARE(QDir::fromNativeSeparators(QString::fromWCharArray(service.paths[0].Ptr())), a);
@@ -285,7 +285,7 @@ class ShellContextTests final : public QObject {
         QVERIFY(service.multi && !service.shown);
         QVERIFY(service.extraction.ElimDup.Val && service.extraction.ElimDup.Def);
         QCOMPARE(service.extraction.OutDirMode, NExtractOutDirMode::k_ReplaceAsterisk);
-        QCOMPARE(UInt32(service.extraction.ZoneMode), UInt32(7));
+        QCOMPARE(service.extraction.ZoneMode, NExtract::NZoneIdMode::kOffice);
         QCOMPARE(::TestArchives(paths, true, service), S_OK);
         QVERIFY(service.hashType && service.extraction.TestMode);
         service.guiResult = E_ABORT;

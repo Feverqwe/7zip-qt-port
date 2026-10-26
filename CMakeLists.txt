@@ -13,6 +13,13 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "^(AppleClang|Clang|GNU)$")
+    # These standard-library definitions are inert in C. Keep them uniform so
+    # Qt Remote Objects can generate one moc parameter file for mixed targets.
+    add_compile_definitions(_GLIBCXX_ASSERTIONS=1 _LIBCPP_ENABLE_HARDENING=1
+        _LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_EXTENSIVE)
+endif()
+
 if(MSVC)
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/W4> $<$<COMPILE_LANGUAGE:CXX>:/permissive->)
 else()
@@ -28,6 +35,12 @@ option(SEVENZIP_ENABLE_CLANG_TIDY "Run clang-tidy while compiling C++" OFF)
 if(SEVENZIP_ENABLE_CLANG_TIDY)
     find_program(SEVENZIP_CLANG_TIDY_EXECUTABLE NAMES clang-tidy REQUIRED)
     set(CMAKE_CXX_CLANG_TIDY "${SEVENZIP_CLANG_TIDY_EXECUTABLE};--config-file=${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy")
+    execute_process(COMMAND "${SEVENZIP_CLANG_TIDY_EXECUTABLE}" --version
+        OUTPUT_VARIABLE sevenzip_clang_tidy_version OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY)
+    if(sevenzip_clang_tidy_version MATCHES "LLVM version ([0-9]+)" AND CMAKE_MATCH_1 GREATER_EQUAL 23)
+        list(APPEND CMAKE_CXX_CLANG_TIDY --extra-arg=-Wlifetime-safety-permissive)
+    endif()
 endif()
 
 option(SEVENZIP_ENABLE_SANITIZERS "Instrument Debug and RelWithDebInfo builds" ON)
@@ -85,7 +98,8 @@ include(CTest)
 
 # Relocated source headers must also resolve from unchanged upstream headers
 # spelling MyVector.h, ../Common/MyVector.h or ../../Common/MyVector.h.
-include_directories(src/CPP src/CPP/Common src/CPP/Windows src/CPP/7zip/Common src/CPP/7zip/UI/Common)
+include_directories(src src/C third_party/7zip/C src/CPP src/CPP/Common
+    src/CPP/Windows src/CPP/7zip/Common src/CPP/7zip/UI/Common)
 set_source_files_properties(src/CPP/7zip/Common/LimitedStreams.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Common")
 
@@ -112,6 +126,7 @@ include(cmake/LinuxFrames.cmake)
 include(cmake/Brotli.cmake)
 include(cmake/Lz4Frame.cmake)
 include(cmake/Lzip.cmake)
+include(cmake/DependencyModules.cmake)
 
 # Retire the former project-built plugin when reusing an existing runtime.
 # Otherwise external-module discovery could restore CramFS after its removal.
@@ -281,7 +296,7 @@ target_sources(sevenzip_common PRIVATE
 target_include_directories(sevenzip_common PRIVATE
     src/CPP/Common src/CPP/7zip/UI/Common)
 if(WIN32)
-    target_sources(sevenzip_common PRIVATE third_party/7zip/C/DllSecur.c)
+    target_sources(sevenzip_common PRIVATE src/C/DllSecur.c)
     target_sources(sevenzip_common PRIVATE third_party/7zip/CPP/Windows/FileSystem.cpp
         third_party/7zip/CPP/Windows/FileSystem.h)
     target_sources(sevenzip_common PRIVATE third_party/7zip/CPP/Common/Random.cpp)
@@ -800,6 +815,18 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/PackageInfo.json"
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(file_list_hover_tests tests/file_list_hover_tests.cpp
+        src/qtfilelisthover.cpp src/qtfilelisthover.h)
+    target_link_libraries(file_list_hover_tests PRIVATE Qt6::Widgets Qt6::Test)
+    if(SEVENZIP_ENABLE_SANITIZERS AND NOT MSVC)
+        target_compile_options(file_list_hover_tests PRIVATE
+            $<$<CONFIG:Debug,RelWithDebInfo>:-fsanitize=vptr>)
+        target_link_options(file_list_hover_tests PRIVATE
+            $<$<CONFIG:Debug,RelWithDebInfo>:-fsanitize=vptr>)
+    endif()
+    add_test(NAME file_list_hover COMMAND file_list_hover_tests -silent)
+    set_tests_properties(file_list_hover PROPERTIES TIMEOUT 10
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     qt_add_executable(operation_process_tests tests/operation_process_tests.cpp)
     target_include_directories(operation_process_tests PRIVATE src)
     target_link_libraries(operation_process_tests PRIVATE sevenzip_filesystem Qt6::Test)
@@ -1405,6 +1432,17 @@ if(BUILD_TESTING)
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_ext>")
     set_tests_properties(ext PROPERTIES TIMEOUT 45)
+    if(MSVC AND SEVENZIP_ENABLE_SANITIZERS AND
+            CMAKE_BUILD_TYPE MATCHES "^(Debug|RelWithDebInfo)$")
+        # The full CLI matrix exceeds the ordinary deadline with Windows ASan.
+        # Keep it opt-in and retain focused malformed-inode coverage by default.
+        set_property(TEST ext APPEND PROPERTY LABELS slow)
+        add_test(NAME ext_inode_safety COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_tests.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_ext>"
+            ExtTests.test_named_inodes_require_linux_read_acceptance)
+        set_tests_properties(ext_inode_safety PROPERTIES TIMEOUT 30)
+    endif()
     qt_add_executable(ext_stream_tests tests/ext_stream_tests.cpp)
     target_include_directories(ext_stream_tests PRIVATE src third_party/7zip/CPP)
     target_link_libraries(ext_stream_tests PRIVATE sevenzip_filesystem Qt6::Test)
@@ -5013,42 +5051,35 @@ qt_add_resources(sevenzip_filesystem sevenzip_filesystem_translations
     BASE "${CMAKE_CURRENT_BINARY_DIR}"
     FILES ${sevenzip_translated_qm_files} ${sevenzip_english_qm_files})
 
-# Keep the module example separate from the Qt/7-Zip application. Check both
-# module scanning and the standard-library features used by the example.
-set(sevenzip_modules_supported OFF)
-if(MSVC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.34)
-    set(sevenzip_modules_supported ON)
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
-        AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 14)
-    set(sevenzip_modules_supported ON)
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
-        AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16)
-    find_program(sevenzip_clang_scan_deps NAMES clang-scan-deps)
-    if(sevenzip_clang_scan_deps)
-        set(sevenzip_modules_supported ON)
-    endif()
-endif()
+# The example also needs library features beyond module scanning support.
+set(sevenzip_cpp23_example_supported ${sevenzip_modules_supported})
 if(sevenzip_modules_supported)
     include(CheckCXXSourceCompiles)
     check_cxx_source_compiles("#include <array>
+#include <expected>
 #include <print>
 #include <ranges>
 int main() {
     std::array values{1, 2};
     for (auto part : values | std::views::chunk(1))
         std::println(\"{}\", part.size());
+    return std::expected<int, int>(0).transform([](int value) { return value; })
+        .and_then([](int value) { return std::expected<int, int>(value); }).value_or(1);
 }" sevenzip_cpp23_library_supported)
     if(NOT sevenzip_cpp23_library_supported)
-        set(sevenzip_modules_supported OFF)
+        set(sevenzip_cpp23_example_supported OFF)
     endif()
 endif()
 option(SEVENZIP_BUILD_CPP23_MODULE_EXAMPLE "Build the C++23 module example"
-    ${sevenzip_modules_supported})
+    ${sevenzip_cpp23_example_supported})
 if(SEVENZIP_BUILD_CPP23_MODULE_EXAMPLE)
-    if(NOT sevenzip_modules_supported)
-        message(FATAL_ERROR "The selected compiler does not support CMake C++23 module scanning")
+    if(NOT sevenzip_cpp23_example_supported)
+        message(FATAL_ERROR "The module example requires module scanning, std::views::chunk and std::println")
     endif()
     add_executable(sevenzip_cpp23_example src/ai/main.cpp)
     target_sources(sevenzip_cpp23_example PRIVATE
         FILE_SET CXX_MODULES FILES src/ai/foundation.cppm)
+    sevenzip_configure_module_cache(sevenzip_cpp23_example)
 endif()
+
+include(cmake/SanitizerTests.cmake)

@@ -50,6 +50,9 @@
     "LICENSE": "third_party/zlib/LICENSE"
   },
   "local_integration": [
+    "cmake/DependencyModules.cmake",
+    "src/dependencies/zlib.h",
+    "src/dependencies/zlib.cppm",
     "cmake/Iso.cmake",
     "src/fs/isofs/zisofscompat.h",
     "cmake/Squashfs.cmake",

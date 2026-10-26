@@ -15,6 +15,29 @@ were reviewed before adaptation. `docs/upstream-baseline.json` maps the
 adapted C and C++ owners and pins SHA256 of both original implementation units.
 The original header and hash registration remain unchanged.
 
+## Portable SDK memory access — 2026-10-26
+
+The complete `C/CpuArch.h` at the SDK revision above moves from an unchanged
+dependency to the adapted owner `src/C/CpuArch.h`. The existing manifest pins
+its original SHA256 and includes it in the console/core runtime overlay. One
+authoritative header serves C and C++ consumers; explicit include paths now
+resolve that owner. Notices, source language and CPU detection are retained.
+
+Source comparison covered its native/portable LE and BE load/store branches,
+aligned variants and consumers. UBSan found native integer-pointer loads on
+unaligned SquashFS/Zstandard fields and format probes. The adaptation selects
+the original byte-access fallbacks for unaligned LE/BE operations, omitting
+their native-pointer fast branches. Portable bodies and aligned APIs retain
+their upstream definitions. No decoder/parser algorithms are replaced. There
+are no side-effecting pointer arguments to the affected macros in the imported
+scope. Formatting is accounted for separately in the source comparison.
+
+Use the existing SDK `verify/review` commands below to reproduce the baseline
+and compare future updates with this adaptation. Source comparison is separate
+from runtime acceptance; big-endian execution and performance are unverified.
+
+## Shared checksum ownership
+
 - `src/C/Xxh64.c` retains SDK symbols, state layouts, seed zero and the
   original streaming block/tail orchestration. Hash arithmetic and finalization
   use the existing pinned libzstd xxHash. A narrow adapter translates four SDK

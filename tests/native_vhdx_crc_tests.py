@@ -1,5 +1,6 @@
 """Read a small VHDX and reject damaged header/region CRC32C fields."""
 from pathlib import Path
+from runtime_fixture import copy_codec_runtime
 import shutil
 import struct
 import subprocess
@@ -73,8 +74,7 @@ class VhdxCrcTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-vhdx-crc-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX, "7z.dll" if SUFFIX else "7z.so"):
-            shutil.copy2(RUNTIME / name, cls.runtime / name)
+        copy_codec_runtime(RUNTIME, cls.runtime)
         cls.valid, cls.payload = image()
 
     def extract(self, data):

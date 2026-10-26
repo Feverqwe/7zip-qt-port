@@ -167,7 +167,8 @@ class LauncherProgressTests : public QObject {
         QCOMPARE(progress.SetProgressValue(0, 4), S_OK);
         QCOMPARE(progress.SetProgressValue(1, 0), E_INVALIDARG);
         QVERIFY(progress.SetProgressState(TBPF_INDETERMINATE) != S_OK);
-        QCOMPARE(progress.SetProgressState(TBPFLAG(16)), E_INVALIDARG);
+        QCOMPARE(progress.SetProgressState(TBPFLAG(TBPF_INDETERMINATE | TBPF_NORMAL)),
+                 E_INVALIDARG);
         const QDBusMessage reply = Query(listener, source.baseService(), path);
         QCOMPARE(reply.type(), QDBusMessage::ReplyMessage);
         const auto properties = qdbus_cast<QVariantMap>(reply.arguments()[1]);

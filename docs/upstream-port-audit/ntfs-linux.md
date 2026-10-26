@@ -973,6 +973,15 @@ standard-information owner, последующие EA/reparse consumers и
 `xattr.c:ntfs_getxattr`; SDK `ParseDataNames`, base/extension merge и публикация
 `kpidAttrib`. Все 30 baseline hashes совпадают с указанным выше Linux snapshot.
 
+Санитайзерная проверка C++23 foundation уточнила уже существующую alignment
+границу: UTF-16 helper принимает `const void *` до копирования в выровненный
+buffer. Это исключает предположение о выравнивании внешнего byte span на входе;
+исходный NLS converter и правила reparse parsing сохранены.
+LeakSanitizer также обнаружил потерю COM stream при переходе от prefix к полному
+reparse payload: предыдущий stream освобождается перед повторным out-parameter
+вызовом. Выбор metadata, bounds и fallback ветви не меняются; существующие
+`reparseListSelection` fixtures воспроизводят утечку.
+
 Оригинальные три set/clear ветви ATTR_DATA перенесены в C `inode.c`, predicates
 из `ntfs.h` — в GPL boundary `ntfslinkcompat.h`, selected little-endian flags —
 в `ntfs.h`. Узкий вызов передаёт standard attributes и DATA flags; private

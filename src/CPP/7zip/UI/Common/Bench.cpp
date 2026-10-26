@@ -34,8 +34,8 @@
 #endif
 
 #include "../../../../../third_party/7zip/C/7zCrc.h"
-#include "../../../../../third_party/7zip/C/CpuArch.h"
 #include "../../../../../third_party/7zip/C/RotateDefs.h"
+#include "C/CpuArch.h"
 
 #ifndef Z7_ST
 #include "Windows/Synchronization.h"

@@ -149,8 +149,10 @@ class CDirectoryExtract final : public IQtArchiveExtractService {
 
 void AddLiteral(NWildcard::CCensorNode &censor, const QString &path, bool include) {
     NWildcard::CItem item;
-    SplitPathToParts(UString(QDir::fromNativeSeparators(path).toStdWString().c_str()),
-                     item.PathParts);
+    // SDK archive names use UTF-16 units even when the host wchar_t is 32-bit.
+    SplitPathToParts(
+        MultiByteToUnicodeString(QDir::fromNativeSeparators(path).toUtf8().constData(), CP_UTF8),
+        item.PathParts);
     item.ForFile = item.ForDir = true;
     item.Recursive = false;
     item.WildcardMatching = false;
@@ -222,7 +224,7 @@ HRESULT ExtractQtArchiveDirectory(QtArchiveReadOperation &operation,
         QString folder =
             streamFolder ? request.Options.currentFolder.chopped(1) : request.Options.currentFolder;
         folder.replace('\\', '/');
-        SplitPathToParts(UString(folder.toStdWString().c_str()), parts);
+        SplitPathToParts(MultiByteToUnicodeString(folder.toUtf8().constData(), CP_UTF8), parts);
     }
     CMyComPtr2<IArchiveExtractCallback, CArchiveExtractCallback> callback;
     callback.Create_if_Empty();

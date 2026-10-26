@@ -1,5 +1,28 @@
 # SquashFS: metadata, streams и Linux-декодеры
 
+## C++23 facade над zlib — 2026-10-26
+
+`sevenzip.dependencies.zlib` экспортирует local C++ facade: RAII-владение raw
+inflate state, `std::span` для bounded input/output и Adler update. Он вызывает
+тот же pinned C API; исходные zlib units, их hashes и C compilation сохраняются.
+Новых заимствованных реализаций нет. `src/dependencies/zlib.h` — local
+integration; header и module используют одну реализацию. Unsupported module
+toolchains подключают тот же API через header.
+
+До и после подключения сверены complete SquashFS stream adapter, `NZlib::IsZlib`,
+SDK read/flush helpers и handler consumers. Сохранены размеры read-ahead/window,
+проверка заголовка, guard byte, checksum/trailer, first-stream acceptance и
+приоритет I/O/decode ошибок. Библиотека удерживает только состояние inflate;
+caller продолжает владеть буферами и publication policy.
+
+ASan/UBSan validation выявила невыровненные integer loads в inode/directory
+records: SDK `CpuArch.h` выбирает native pointer dereference на arm64/x64.
+Сверены его fast/portable branches и все чтения `GetUi16/32/64` в handler.
+Общая граница этих load primitives использует исходные portable byte-access
+branches SDK; [аудит общих primitives](shared-checksums.md#portable-sdk-memory-access--2026-10-26)
+фиксирует полный original unit и его нового владельца. Endian result, размеры
+чтения и существующие проверки границ сохранены.
+
 ## Официальный zlib вместо SDK Deflate — 2026-10-24
 
 Zlib blocks теперь используют unchanged portable C subset zlib 1.3.2 из

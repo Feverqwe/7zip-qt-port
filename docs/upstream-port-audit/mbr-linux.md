@@ -131,6 +131,12 @@ buffer. Source callback status хранится в контексте: исхо�
 Запрос за физическим концом не выполняет I/O; пригодные соседние labels остаются
 доступными. Kernel-only logging не влияет на результат format reader.
 
+При включении ASan освобождение сектора в `parse_bsd` перенесено после
+последнего чтения `d_npartitions` для диагностического сообщения. Userspace
+adapter освобождает buffer немедленно, поэтому исходное расположение release
+оставляло обращение к освобождённой памяти. Структуры, обход и исходный baseline
+сохранены; существующие BSD fixtures воспроизводят ошибку с ASan.
+
 7-Zip MBR handler получает C output через узкий adapter. Разные структуры
 используют разные sector units: parent geometry масштабируется из известного
 logical sector в Linux 512-byte units, а label sectors/slices не переводятся

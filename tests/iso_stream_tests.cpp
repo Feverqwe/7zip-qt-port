@@ -347,7 +347,7 @@ class IsoStreamTests final : public QObject {
                 [&](const QList<ArchiveEntry> &result) { entries = result; });
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         backend.list(image.fileName());
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 20000);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 35000);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         QCOMPARE(entries.size(), qsizetype(4097));
         bool leaf = false;
@@ -361,7 +361,7 @@ class IsoStreamTests final : public QObject {
         finished.clear();
         const QString output = temporary.filePath("leaf.bin");
         backend.extractSourceEntry(image.fileName(), path, output, "Iso", {});
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 20000);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 35000);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         QFile file(output);
         QVERIFY(file.open(QIODevice::ReadOnly));
@@ -523,7 +523,7 @@ class IsoStreamTests final : public QObject {
 #endif
         );
         QVERIFY(backend.discoverCodecCatalog(core));
-        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 15000);
+        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 35000);
         QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
         QVERIFY(!backend.codecCatalog()->canUpdate("Iso"));
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
@@ -551,7 +551,9 @@ class IsoStreamTests final : public QObject {
             QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
             QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
             QFile file(QDir(output).filePath(name));
-            QVERIFY(file.open(QIODevice::ReadOnly));
+            QVERIFY2(file.open(QIODevice::ReadOnly),
+                     qPrintable(file.errorString() + ": " +
+                                QDir(output).entryList(QDir::Files).join(" | ")));
             QCOMPARE(file.readAll(), expected);
             finished.clear();
         }

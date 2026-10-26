@@ -1,5 +1,6 @@
 """XZ framing, filters, blocks, padding and integrity failures."""
 from pathlib import Path
+from runtime_fixture import copy_codec_runtime
 import lzma
 import shutil
 import subprocess
@@ -18,9 +19,7 @@ class XzTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-xz-runtime-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX,
-                     "7z.dll" if sys.platform == "win32" else "7z.so"):
-            shutil.copy2(RUNTIME / name, cls.runtime / name)
+        copy_codec_runtime(RUNTIME, cls.runtime)
 
     def command(self, engine, path, command, *args, forced=True):
         return subprocess.run(

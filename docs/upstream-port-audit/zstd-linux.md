@@ -4,6 +4,16 @@
 libzstd block decoder с сохранённым upstream frame parser и recovery contracts
 описан в [продолжении аудита](zip-zstd.md#общий-libzstd-encoderdecoder--2026-10-24).
 
+## UBSan и невыровненные frame headers — 2026-10-26
+
+Проверка SquashFS/Zstandard с UBSan обнаружила невыровненный `GetUi64` при
+чтении frame content size. Сверены все четыре вызова `GetUi32/64` в текущем
+SDK frame parser и fast/portable branches закреплённого `C/CpuArch.h`.
+Общий [SDK memory-access adapter](shared-checksums.md#portable-sdk-memory-access--2026-10-26)
+выбирает исходные portable byte-access branches. Размеры чтения,
+dictionary/content-size masks, parser state и result сохраняются. Сам decoder
+не требует локального обхода; C sources остаются C, baseline не меняется.
+
 ## Source comparison
 
 7-Zip: <https://github.com/ip7z/7zip.git>, commit

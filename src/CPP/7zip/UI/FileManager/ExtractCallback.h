@@ -214,7 +214,7 @@ class CExtractCallbackImp Z7_final
     Z7_IFACE_COM7_IMP(ICryptoGetTextPassword)
 #endif
 
-    bool _needWriteArchivePath;
+    bool _needWriteArchivePath = false;
     bool _isFolder;
     bool _totalFiles_Defined;
     bool _totalBytes_Defined;

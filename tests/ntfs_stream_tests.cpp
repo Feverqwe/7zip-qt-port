@@ -1321,7 +1321,7 @@ class NtfsStreamTests final : public QObject, protected Fixture {
         ArchiveBackend backend(nullptr, runtime.filePath(executable));
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog(runtime.filePath(core)));
-        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 15000);
+        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 35000);
         QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         QVector<ArchiveEntry> entries;

@@ -1,5 +1,43 @@
 # Qt adaptation boundary review — 2026-10-18
 
+## Extraction callback initialization — 2026-10-26
+
+The sanitizer-enabled C++23 build found an uninitialized archive-path diagnostic
+flag when an already-open native handler called the extraction callback. The
+original constructor, `BeforeOpen`, `OpenResult`, error reporting and callers
+were compared with the pinned SDK. `_needWriteArchivePath` now starts false;
+the original open callbacks still enable it when they establish an archive path.
+No extraction or error-classification algorithm changes. Existing checksum,
+volume-error and encrypted extraction cases reproduce the UBSan failure.
+
+## Original review
+
+### Non-BMP archive selections — 2026-10-26
+
+The existing ISO/UDF backend extraction fixtures exposed a Qt-to-censor mismatch
+for emoji names on hosts with 32-bit `wchar_t`: `toStdWString` supplied UTF-32
+points, while SDK archive names and UTF conversion use UTF-16 units. Literal
+selection/current-folder paths now pass through the existing SDK UTF-8-to-Unicode
+converter before the unchanged censor/parser. No decoder or wildcard algorithm
+is reimplemented. The official console extracted the same ISO fixture correctly
+before this adapter correction, isolating the discrepancy to the host boundary.
+
+### Windows development DLL dependencies — 2026-10-26
+
+The complete SDK `C/DllSecur.c` and Console `MainAr.cpp` startup were compared.
+The original default permits System32 and explicitly registered user directories;
+it excludes PATH and the executable directory. Instrumented format plugins need
+the compiler's CRT/ASan libraries even when the official console itself uses a
+static CRT. CMake stages those dependencies in the owned deployment, and isolated
+console fixtures copy them with the engine.
+
+The adapted `src/C/DllSecur.c` registers only that executable's absolute directory
+through `AddDllDirectory` for sanitizer development builds. Original default
+directory flags and release behavior remain intact; PATH/current-directory lookup
+is not enabled. The native Windows builder sets the development flag only for
+this C inventory unit. Its original hash and runtime owner are pinned in the
+existing SDK manifest. No archive algorithms or source language change.
+
 Исходная точка проверки — `5c57c65`, upstream baseline
 `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` из
 <https://github.com/ip7z/7zip.git>. Проверка началась с последних исправлений

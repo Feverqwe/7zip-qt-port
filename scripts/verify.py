@@ -134,7 +134,8 @@ def parse_args(argv, profiles):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("profile", nargs="?", choices=sorted(profiles))
     parser.add_argument("--tests", help="CTest regex; CMake supplies actual executable targets")
-    parser.add_argument("--preset", choices=["dev"], default="dev",
+    parser.add_argument("--preset", choices=["dev", "modules-dev", "modules-gcc-dev",
+                                           "modules-linux-dev", "vcpkg-dev"], default="dev",
                         help="test-enabled preset; build the application with scripts/build.sh release")
     parser.add_argument("--platform", choices=["local", "linux", "windows", "all"], default="local")
     parser.add_argument("--plan", action="store_true", help="configure and show tests/targets without building or testing")

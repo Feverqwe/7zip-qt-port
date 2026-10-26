@@ -37,6 +37,15 @@ passed `temp_cleanup`. Both guests reused `current` and compiler caches.
 These are focused behavior checks, without a full gate, slow suites or a
 rendered Windows comparison.
 
+## Destruction lifetime check — 2026-10-26
+
+The sanitizer-enabled C++23 build exposed a `QPointer<QAbstractItemView>`
+downcast during base-widget destruction. The timer adapter now resolves the
+live parent with `qobject_cast` before using view services. QObject parenting
+remains the sole owner; selection policy and timing are unchanged. The focused
+`file_list_hover` regression destroys a view with pending hover work. It failed
+under the vptr sanitizer before the fix and passed after it.
+
 ## Shift selection and subsequent keys
 
 Reviewed complete `PanelSelect.cpp::OnArrowWithShift/OnShiftSelectMessage`,

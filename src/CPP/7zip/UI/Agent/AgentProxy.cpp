@@ -11,7 +11,7 @@
 #include <ctype.h>
 #endif
 
-#include "../../../../../third_party/7zip/C/CpuArch.h"
+#include "C/CpuArch.h"
 
 #include "CPP/Common/Wildcard.h"
 #include "Common/UTFConvert.h"

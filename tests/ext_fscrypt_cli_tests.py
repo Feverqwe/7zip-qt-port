@@ -1,5 +1,6 @@
 """Native encrypted ext4 reads through the dynamic engine."""
 from pathlib import Path
+from runtime_fixture import copy_codec_runtime
 import base64
 import json
 import shutil
@@ -22,8 +23,7 @@ class FscryptCliTests(unittest.TestCase):
         cls.root = Path(cls.temporary.name)
         core = "7z.dll" if sys.platform == "win32" else "7z.so"
         cls.suffix = ".exe" if sys.platform == "win32" else ""
-        for name in ("7z" + cls.suffix, core):
-            shutil.copy2(RUNTIME / name, cls.root / name)
+        copy_codec_runtime(RUNTIME, cls.root)
         (cls.root / "Formats").mkdir()
         shutil.copy2(MODULE, cls.root / "Formats" / MODULE.name)
         fixtures = Path(__file__).parent / "fixtures" / "fscrypt"

@@ -6,7 +6,7 @@
 #include "7zip/Archive/Rar/StdAfx.h"
 
 #include "../../../../../third_party/7zip/C/7zCrc.h"
-#include "../../../../../third_party/7zip/C/CpuArch.h"
+#include "C/CpuArch.h"
 
 #include "Common/ComTry.h"
 #include "Common/IntToString.h"

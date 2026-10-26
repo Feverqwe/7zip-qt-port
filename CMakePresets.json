@@ -23,8 +23,32 @@
       }
     },
     {
-      "name": "modules-gcc-dev",
+      "name": "modules-dev",
       "inherits": "dev",
+      "displayName": "Development with C++23 dependency modules",
+      "binaryDir": "${sourceDir}/build/modules-dev",
+      "cacheVariables": {
+        "SEVENZIP_ENABLE_DEPENDENCY_MODULES": "ON"
+      }
+    },
+    {
+      "name": "modules-linux-dev",
+      "inherits": "modules-dev",
+      "displayName": "Development with Clang 18 dependency modules on Linux",
+      "binaryDir": "${sourceDir}/build/modules-linux-dev",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang-18",
+        "CMAKE_CXX_COMPILER": "clang++-18"
+      }
+    },
+    {
+      "name": "modules-gcc-dev",
+      "inherits": "modules-dev",
       "displayName": "Development with GCC and C++23 library features",
       "binaryDir": "${sourceDir}/build/modules-gcc-dev"
     },
@@ -52,12 +76,16 @@
   "buildPresets": [
     { "name": "dev", "configurePreset": "dev" },
     { "name": "release", "configurePreset": "release" },
+    { "name": "modules-dev", "configurePreset": "modules-dev" },
+    { "name": "modules-linux-dev", "configurePreset": "modules-linux-dev" },
     { "name": "modules-gcc-dev", "configurePreset": "modules-gcc-dev" },
     { "name": "vcpkg-dev", "configurePreset": "vcpkg-dev" },
     { "name": "vcpkg-release", "configurePreset": "vcpkg-release" }
   ],
   "testPresets": [
     { "name": "dev", "configurePreset": "dev", "output": { "outputOnFailure": true } },
+    { "name": "modules-dev", "configurePreset": "modules-dev", "output": { "outputOnFailure": true } },
+    { "name": "modules-linux-dev", "configurePreset": "modules-linux-dev", "output": { "outputOnFailure": true } },
     { "name": "modules-gcc-dev", "configurePreset": "modules-gcc-dev", "output": { "outputOnFailure": true } },
     { "name": "vcpkg-dev", "configurePreset": "vcpkg-dev", "output": { "outputOnFailure": true } }
   ]

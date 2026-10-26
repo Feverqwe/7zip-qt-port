@@ -12,7 +12,7 @@
 #endif
 
 #ifdef QT_CORE_LIB
-#include "../../../../../third_party/7zip/C/CpuArch.h"
+#include "C/CpuArch.h"
 
 #include "Common/ComTry.h"
 #include "Common/IntToString.h"

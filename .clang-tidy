@@ -4,6 +4,7 @@ Checks: >
   modernize-*,
   performance-*,
   cppcoreguidelines-owning-memory,
+  cppcoreguidelines-pro-type-member-init,
   cppcoreguidelines-pro-bounds-array-to-pointer-decay,
   cppcoreguidelines-pro-bounds-constant-array-index,
   cppcoreguidelines-pro-bounds-pointer-arithmetic,
@@ -12,10 +13,18 @@ Checks: >
   cppcoreguidelines-pro-type-static-cast-downcast,
   cppcoreguidelines-pro-type-vararg,
   cppcoreguidelines-slicing,
+  clang-diagnostic-dangling*,
+  clang-diagnostic-return-stack-address,
+  clang-diagnostic-lifetime-safety*,
   clang-analyzer-core.*,
   clang-analyzer-cplusplus.NewDelete,
   clang-analyzer-cplusplus.Move,
   clang-analyzer-unix.Malloc
-WarningsAsErrors: ''
+WarningsAsErrors: 'bugprone-dangling-handle,clang-diagnostic-dangling*,clang-diagnostic-return-stack-address,clang-diagnostic-lifetime-safety*'
+ExtraArgs:
+  - '-Wdangling-gsl'
+  - '-Wreturn-stack-address'
+CheckOptions:
+  bugprone-dangling-handle.HandleClasses: 'std::basic_string_view;std::experimental::basic_string_view;std::span;gsl::span'
 HeaderFilterRegex: '^.*/src/.*'
 FormatStyle: file

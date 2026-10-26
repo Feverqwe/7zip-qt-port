@@ -11,13 +11,13 @@
 #define PAGE_SIZE 4096
 typedef uint16_t __be16;
 #define be16_to_cpu __be16_to_cpu
-static inline __be16 isofs_get_unaligned(const __be16 *p) {
+static inline __be16 isofs_get_unaligned(const void *p) {
     __be16 value;
     memcpy(&value, p, sizeof(value));
     return value;
 }
 #define get_unaligned(p) isofs_get_unaligned(p)
-static inline int isofs_utf16s_to_utf8s(const fat_wchar_t *source, int length,
+static inline int isofs_utf16s_to_utf8s(const void *source, int length,
                                         enum utf16_endian endian, u8 *output, int capacity) {
     fat_wchar_t aligned[128];
     if (length < 0 || length > 127)

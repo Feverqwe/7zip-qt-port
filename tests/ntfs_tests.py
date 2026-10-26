@@ -1,5 +1,6 @@
 """Read results and rejection of malformed NTFS through the delivered dynamic engine."""
 from pathlib import Path
+from runtime_fixture import copy_codec_runtime
 import shutil
 import subprocess
 import sys
@@ -23,8 +24,7 @@ class NtfsTests(unittest.TestCase):
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
         core = "7z.dll" if sys.platform == "win32" else "7z.so"
-        for name in ("7z" + SUFFIX, core):
-            shutil.copy2(RUNTIME / name, cls.runtime / name)
+        copy_codec_runtime(RUNTIME, cls.runtime)
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 

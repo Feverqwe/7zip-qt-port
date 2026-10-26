@@ -1,5 +1,5 @@
-#include "../third_party/7zip/C/CpuArch.h"
 #include "7zip/PropID.h"
+#include "C/CpuArch.h"
 #include "Windows/PropVariant.h"
 #include "archivecodecprobe.h"
 #include "archivedevice.h"

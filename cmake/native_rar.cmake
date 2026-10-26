@@ -4,12 +4,14 @@
 add_library(sevenzip_rar STATIC
     third_party/7zip/CPP/7zip/Archive/Common/FindSignature.cpp
     src/CPP/7zip/Archive/HandlerCont.cpp
-    third_party/7zip/CPP/7zip/Compress/Rar5Decoder.cpp
+    src/CPP/7zip/Compress/Rar5Decoder.cpp
     third_party/7zip/CPP/7zip/Crypto/Rar5Aes.cpp
     third_party/7zip/CPP/7zip/Crypto/HmacSha256.cpp)
 set_target_properties(sevenzip_rar PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_include_directories(sevenzip_rar PUBLIC src/CPP src third_party/7zip/CPP)
 target_include_directories(sevenzip_rar PRIVATE third_party/7zip/CPP/7zip/Archive)
+set_source_files_properties(src/CPP/7zip/Compress/Rar5Decoder.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Compress")
 target_compile_definitions(sevenzip_rar PUBLIC Z7_EXTERNAL_CODECS)
 target_link_libraries(sevenzip_rar PUBLIC sevenzip_zip)
 target_link_libraries(sevenzip_common PUBLIC sevenzip_rar)

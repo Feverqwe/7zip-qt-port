@@ -1,5 +1,6 @@
 """Production ext sparse reads, extent boundaries and malformed directories."""
 from pathlib import Path
+from runtime_fixture import copy_codec_runtime, run_codec_command
 import shutil
 import struct
 import subprocess
@@ -36,8 +37,7 @@ class ExtTests(unittest.TestCase):
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
         core = "7z.dll" if sys.platform == "win32" else "7z.so"
-        for name in ("7z" + SUFFIX, core):
-            shutil.copy2(RUNTIME / name, cls.runtime / name)
+        copy_codec_runtime(RUNTIME, cls.runtime)
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
@@ -55,11 +55,7 @@ class ExtTests(unittest.TestCase):
             args += ["--", str(path)]
             if name is not None:
                 args += [name]
-            def set_limit():
-                import resource
-                resource.setrlimit(resource.RLIMIT_AS, (memory_limit, memory_limit))
-            result = subprocess.run(args, stdin=subprocess.DEVNULL, capture_output=True, timeout=10,
-                                    preexec_fn=set_limit if memory_limit is not None else None)
+            result = run_codec_command(args, timeout=10, memory_limit=memory_limit)
             self.assertEqual(path.read_bytes(), v.data)
             return result
 

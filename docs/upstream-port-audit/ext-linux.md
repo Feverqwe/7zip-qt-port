@@ -1,6 +1,13 @@
 # ext2/3/4 read-path review against Linux
 
 Part of the [Linux format review](filesystems-linux.md), started 2026-10-19.
+
+Sanitizer validation on 2026-10-26 found a signed left-shift overflow when
+`ext4_isize` assembled a deliberately invalid negative inode size. The copied
+Linux helper now assembles the same bits as `u64` before conversion to `loff_t`;
+the existing negative-size rejection remains authoritative. Source structures,
+size interpretation and baseline hashes are unchanged. The existing malformed
+inode fixture detects the pre-fix UBSan abort.
 The final source-scope comparison below supersedes historical open-scope notes
 in the dated implementation evidence. Individual sections retain their original
 source, adaptation and runtime boundaries.
@@ -2541,6 +2548,10 @@ Dependencies are transferred at their original paths:
   Generated machine/callback tables match the original compiler. Host changes
   cover CRT binary I/O, compiler annotations/GNU expressions, byte offsets and
   equivalent sequential C11 table initialization.
+  C++23 foundation validation on 2026-10-26 also found an input-buffer leak in
+  the host compiler under LeakSanitizer. The buffer is freed after rendering
+  and closing both outputs; tokenization, parser state and emitted tables are
+  unchanged. This remains a C host tool at the same pinned baseline.
 - `lib/oid_registry.c`, original OID definitions and `lib/build_OID_registry`.
   The checked C11 generator retains every original index, encoded byte and
   search entry. Ordinary builds need no Perl/bc. Scalar bitfields, byte-pointer

@@ -69,7 +69,7 @@ static inline char *hex_byte_pack(char *out, unsigned value) {
     *out++ = digits[(value >> 4) & 15]; *out++ = digits[value & 15]; return out;
 }
 /* Kernel paths can use unaligned byte offsets; keep the NLS input aligned. */
-static inline int ntfs_link_utf16s_to_utf8s(const fat_wchar_t *input, int length,
+static inline int ntfs_link_utf16s_to_utf8s(const void *input, int length,
         enum utf16_endian endian, u8 *output, int capacity) {
     fat_wchar_t aligned[8192];
     if (length < 0 || length > (int)ARRAY_SIZE(aligned)) return 0;

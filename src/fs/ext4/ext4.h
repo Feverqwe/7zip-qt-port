@@ -384,8 +384,8 @@ static inline loff_t ext4_isize(struct super_block *sb,
 {
 	if (ext4_has_feature_largedir(sb) ||
 	    S_ISREG(le16_to_cpu(raw_inode->i_mode)))
-		return ((loff_t)le32_to_cpu(raw_inode->i_size_high) << 32) |
-			le32_to_cpu(raw_inode->i_size_lo);
+		return (loff_t)(((u64)le32_to_cpu(raw_inode->i_size_high) << 32) |
+			le32_to_cpu(raw_inode->i_size_lo));
 
 	return (loff_t) le32_to_cpu(raw_inode->i_size_lo);
 }

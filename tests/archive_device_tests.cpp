@@ -1,7 +1,7 @@
-#include "../third_party/7zip/C/CpuArch.h"
 #include "7zip/Common/StreamObjects.h"
 #include "7zip/Common/StreamUtils.h"
 #include "7zip/PropID.h"
+#include "C/CpuArch.h"
 #include "Windows/PropVariant.h"
 #include "archivecodeccatalog.h"
 #include "archivecodecprobe.h"

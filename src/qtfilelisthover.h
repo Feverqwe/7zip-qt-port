@@ -2,7 +2,6 @@
 
 #include <QAbstractItemView>
 #include <QPersistentModelIndex>
-#include <QPointer>
 #include <QTimer>
 
 // Qt presentation adapter for 7zFM LVS_EX_TRACKSELECT in lists and dialogs.
@@ -20,7 +19,6 @@ class QtFileListHover final : public QObject {
 
   private:
     void Cancel();
-    QPointer<QAbstractItemView> view_;
     QTimer timer_;
     QPersistentModelIndex index_;
     QPoint position_;

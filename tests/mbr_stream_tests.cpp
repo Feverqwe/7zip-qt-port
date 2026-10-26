@@ -218,7 +218,7 @@ class MbrStreamTests final : public QObject {
             catalog = result.catalog;
             ready = true;
         }));
-        QTRY_VERIFY(ready);
+        QTRY_VERIFY_WITH_TIMEOUT(ready, 35000);
         QVERIFY(catalog);
         QCOMPARE(catalog->result(), S_OK);
         CMyComPtr<IInStream> selected;

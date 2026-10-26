@@ -157,13 +157,29 @@ The ordinary commands need no manual compiler or Qt path exports.
 AppleClang 21's ASan retains global registrations after `dlclose`; a standalone
 library reload reproduces an ODR failure, and codec snapshots can crash during
 later loads. Configuration rejects this affected sanitizer toolchain.
+The CTest wrapper defaults UBSan to stop on the first finding; an explicit
+`UBSAN_OPTIONS` value can be supplied for a diagnostic run.
+Instrumented tests receive three times their ordinary CTest deadline and
+reserve two parallel scheduler slots to accommodate sanitizer overhead on
+small runners. Windows development runtimes and isolated CLI fixtures receive
+the selected compiler's CRT/ASan libraries beside the executable, preserving
+the official console's restricted DLL search policy.
 Development runtime preparation links the Unix console host with sanitizer
 runtimes so instrumented format plugins can initialize safely. For a release
 runtime use `prepare-runtime.py --sanitizer-runtime off`; `build-app.sh` selects
 that mode automatically. This startup linkage does not instrument the separate
 upstream engine's algorithm bodies.
-The CTest wrapper defaults UBSan to stop on the first finding; an explicit
-`UBSAN_OPTIONS` value can be supplied for a diagnostic run.
+Native catalog discovery allows extra startup time in ASan builds for
+instrumented format modules. Explicit discovery deadlines remain available for
+diagnostics and cancellation checks.
+
+GCC/libstdc++ assertions and libc++ extensive hardening are enabled for C++
+and Objective-C++ sources in every configuration. Clang-Tidy treats detected
+dangling handles, GSL lifetime and escaping-stack diagnostics as errors; LLVM 23+
+also enables its data-flow lifetime analysis. These checks find defects but do
+not establish Rust's ownership guarantees. See the official
+[Clang lifetime analysis](https://clang.llvm.org/docs/LifetimeSafety.html) and
+[libc++ hardening](https://libcxx.llvm.org/Hardening.html) documentation.
 
 The root vcpkg manifest pins its registry and includes the Qt, formatting and
 inference dependencies. To use it, install vcpkg at the pinned registry revision,
@@ -171,7 +187,37 @@ set `VCPKG_ROOT` to that checkout and build with the `vcpkg-dev` or
 `vcpkg-release` preset. These presets have their own build trees. The ordinary
 presets continue to use the selected Qt SDK and system dependencies. Custom
 vcpkg ports belong under `ports/`; a patched port must include its complete
-port recipe as required by vcpkg. The C++23 module example is a separate target
+port recipe as required by vcpkg.
+
+Dependency facades use C++23 named modules when the selected compiler supplies
+a scanner. Enable `SEVENZIP_ENABLE_DEPENDENCY_MODULES` explicitly to require
+them; unsupported compilers then fail configuration. Otherwise those compilers
+use the same facade API through headers. Vendored C libraries retain C compilation.
+The `modules-dev` preset requires module support. On macOS the build scripts
+select one installed Homebrew LLVM toolchain for C, C++ and Objective-C++ so
+sanitizer runtimes match, and reuse the harness Qt kit:
+
+```sh
+brew install llvm
+./scripts/build.sh modules-dev filesystem_zlib_tests sevenzip_squashfs
+./scripts/ctest.sh --preset modules-dev -R '^filesystem_zlib$' --output-on-failure
+```
+
+On Ubuntu 24.04, install `clang-18`, `clang-tools-18`, `libclang-rt-18-dev` and use
+`modules-linux-dev` to select that C/C++ compiler and its scanner. GCC 14.2
+crashes while serializing the sanitized zlib facade; GCC module builds require
+GCC 16 or newer. Focused runner checks accept the same preset:
+
+```sh
+python3 scripts/verify.py --preset modules-linux-dev --platform linux \
+  --tests '^filesystem_zlib$' --skip-runtime
+```
+
+MSVC module consumers retain ccache through a launcher that hashes the imported
+BMI files. This accounts for interface changes that ccache does not track from
+MSVC module references itself. Build trees and compiler caches remain incremental.
+
+The C++23 module example is a separate target
 enabled on compilers for which CMake can scan module imports. The current
 AppleClang toolchain cannot build that example because it lacks a module scanner.
 On macOS, Homebrew GCC provides the compiler, module scanner and C++23 ranges

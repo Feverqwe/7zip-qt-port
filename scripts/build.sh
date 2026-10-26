@@ -94,9 +94,10 @@ configure() {
   printf '%s\n%s\n' "$requested_signature" "$(cksum "$cache_file")" > "$signature_file"
 }
 
-if [[ "$preset" != dev && "$preset" != release && "$preset" != modules-gcc-dev &&
+if [[ "$preset" != dev && "$preset" != release && "$preset" != modules-dev &&
+      "$preset" != modules-gcc-dev && "$preset" != modules-linux-dev &&
       "$preset" != vcpkg-dev && "$preset" != vcpkg-release ]]; then
-    printf 'Usage: %s [dev|release|modules-gcc-dev|vcpkg-dev|vcpkg-release] [target ...]\n' "$0" >&2
+    printf 'Usage: %s [dev|release|modules-dev|modules-gcc-dev|modules-linux-dev|vcpkg-dev|vcpkg-release] [target ...]\n' "$0" >&2
   exit 2
 fi
 

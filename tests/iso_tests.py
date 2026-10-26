@@ -1,5 +1,6 @@
 """ISO descriptor, extent and source boundaries through both shipped engines."""
 from pathlib import Path
+from runtime_fixture import copy_codec_runtime
 import subprocess
 import shutil
 import re
@@ -20,9 +21,7 @@ class IsoTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-iso-runtime-")
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.runtime = Path(cls.temporary.name)
-        for name in ("7z" + SUFFIX,
-                     "7z.dll" if sys.platform == "win32" else "7z.so"):
-            shutil.copy2(RUNTIME / name, cls.runtime / name)
+        copy_codec_runtime(RUNTIME, cls.runtime)
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 

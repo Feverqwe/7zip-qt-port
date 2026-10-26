@@ -562,13 +562,17 @@ raise SystemExit(runner.main())
             (root / "bin").mkdir()
             shutil.copy2(ROOT / "scripts/check.sh", root / "scripts/check.sh")
             shutil.copy2(ROOT / "scripts/lib/agent-output.sh", root / "scripts/lib/agent-output.sh")
+            for helper in ("toolchain.py", "toolchain.sh"):
+                shutil.copy2(ROOT / "scripts/lib" / helper, root / "scripts/lib" / helper)
             for name, content in (("bin/git", "exit 73\n"), ("bin/clang-format", "exit 0\n"),
                                   ("scripts/build.sh", "touch built\n"), ("scripts/ctest.sh", "exit 0\n")):
                 path = root / name
                 path.write_text("#!/usr/bin/env bash\n" + content)
                 path.chmod(0o755)
             environment = dict(os.environ, PATH=str(root / "bin") + os.pathsep + os.environ["PATH"],
-                               CODEX_SANDBOX="none", SEVENZIP_RUN_TOKEN="")
+                               CODEX_SANDBOX="none", SEVENZIP_RUN_TOKEN="",
+                               CMAKE_PREFIX_PATH=str(root), CC=shutil.which("cc") or "cc",
+                               CXX=shutil.which("c++") or "c++")
             local = subprocess.run(["bash", "scripts/check.sh"], cwd=root, env=environment,
                                    text=True, capture_output=True)
             self.assertEqual(local.returncode, 73, local.stdout + local.stderr)

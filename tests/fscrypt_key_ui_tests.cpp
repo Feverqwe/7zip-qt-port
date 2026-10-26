@@ -1,5 +1,5 @@
 #include "../third_party/7zip/C/7zVersion.h"
-#include "../third_party/7zip/C/CpuArch.h"
+#include "C/CpuArch.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "archivebackend.h"
 #include "deviceselectiondialog.h"

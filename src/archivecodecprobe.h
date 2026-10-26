@@ -19,6 +19,7 @@ class ArchiveCodecProbe final : public QObject {
     std::shared_ptr<Work> work_;
     std::function<void(ArchiveCodecProbeResult)> completion_;
     bool active_ = false;
+    static int DefaultTimeoutMs();
     static ArchiveCodecProbeResult Discover(const QString &module,
                                             const std::shared_ptr<Work> &work);
     void Complete(ArchiveCodecProbeResult result);
@@ -30,7 +31,7 @@ class ArchiveCodecProbe final : public QObject {
     ~ArchiveCodecProbe() override;
     // Reject active or failed startup without publishing a partial operation.
     bool Start(const QString &module, std::function<void(ArchiveCodecProbeResult)> completion,
-               int timeoutMs = 5000);
+               int timeoutMs = DefaultTimeoutMs());
     void Cancel();
     bool active() const { return active_; }
 };

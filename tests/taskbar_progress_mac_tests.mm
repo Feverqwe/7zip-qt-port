@@ -94,7 +94,8 @@ class TaskbarProgressMacTests : public QObject {
             QCOMPARE(Badge(), QStringLiteral("existing"));
             QCOMPARE(progress.HrInit(), S_OK);
             QCOMPARE(progress.SetProgressState(nullptr, TBPF_NORMAL), E_INVALIDARG);
-            QCOMPARE(progress.SetProgressState(&window, TBPFLAG(16)), E_INVALIDARG);
+            QCOMPARE(progress.SetProgressState(&window, TBPFLAG(TBPF_INDETERMINATE | TBPF_NORMAL)),
+                     E_INVALIDARG);
             QCOMPARE(progress.SetProgressValue(&window, 0, 0), E_INVALIDARG);
             QCOMPARE(Badge(), QStringLiteral("existing"));
             QCOMPARE(progress.SetProgressValue(&window, 0, 4), S_OK);

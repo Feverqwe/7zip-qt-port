@@ -2577,6 +2577,7 @@ HRESULT CDatabase::ReadReparsePayload(UInt32 baseIndex, const CAttr &primary,
                 return S_FALSE;
             if (size > data.Size() && size <= ReparseMaxSize && size <= SIZE_MAX) {
                 CByteBuffer full;
+                stream.Release();
                 result = GetRawMetadataStream(reader, false, &stream);
                 if (result == S_OK) {
                     full.Alloc((size_t)size);

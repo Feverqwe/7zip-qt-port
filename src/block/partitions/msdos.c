@@ -259,10 +259,10 @@ static void parse_bsd(struct parsed_partitions *state,
 		}
 		put_partition(state, state->next++, bsd_start, bsd_size);
 	}
-	put_dev_sector(sect);
 	if (le16_to_cpu(l->d_npartitions) > max_partitions)
 		seq_buf_printf(&state->pp_buf, " (ignored %d more)",
 			       le16_to_cpu(l->d_npartitions) - max_partitions);
+	put_dev_sector(sect);
 	seq_buf_puts(&state->pp_buf, " >\n");
 }
 #endif

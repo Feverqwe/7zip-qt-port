@@ -138,6 +138,7 @@ class PanelDeletedDrawTests final : public QObject, protected MainWindowTestSupp
         SaveRegLang(UString(russian ? L"ru" : L"-"), settings);
         ReloadLang(settings);
         CFmSettings preferences;
+        preferences.Load(settings);
         preferences.AlternativeSelection = alternative;
         preferences.Save(settings);
         ControlledBackend backend;

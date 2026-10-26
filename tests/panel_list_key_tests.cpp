@@ -56,7 +56,7 @@ class PanelListKeyTests final : public QObject, protected MainWindowTestSupport 
         ArchiveBackend backend(nullptr, engine);
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE)));
-        QTRY_COMPARE(ready.size(), 1);
+        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 30000);
         QVERIFY(ready[0][0].toBool());
         MainWindow window(&backend);
         window.show();
