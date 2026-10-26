@@ -373,26 +373,26 @@ struct CAttr {
     bool Partial = false;
     bool MetadataUnverified = false;
     bool NameValid = true;
-    unsigned NextAttrIndex; /* DataAttrs[NextAttrIndex] is nearest
+    unsigned NextAttrIndex = 0; /* DataAttrs[NextAttrIndex] is nearest
           item with a different name, skipping items with identical names. */
-    Byte NonResident;
+    Byte NonResident = 0;
 
     // Non-Resident
-    UInt16 CompressionUnit;
+    UInt16 CompressionUnit = 0;
 
     // UInt32 Len;
     UString2 Name;
-    UInt16 Flags;
-    UInt16 Instance;
+    UInt16 Flags = 0;
+    UInt16 Instance = 0;
     CByteBuffer Data;
 
     // Non-Resident
     UInt64 LowVcn;
-    UInt64 HighVcn;
-    UInt64 AllocatedSize;
-    UInt64 Size;
-    UInt64 PackSize;
-    UInt64 InitializedSize;
+    UInt64 HighVcn = 0;
+    UInt64 AllocatedSize = 0;
+    UInt64 Size = 0;
+    UInt64 PackSize = 0;
+    UInt64 InitializedSize = 0;
 
     // Resident
     // UInt16 ResidentFlags;
@@ -420,8 +420,7 @@ struct CAttr {
         return AllocatedSize;
     }
     CAttr()
-        :                       // NextAttrIndex(0), // optional
-          LowVcn((UInt64)0 - 1) // used by CompareAttr()
+        : LowVcn((UInt64)0 - 1) // used by CompareAttr()
     {}
 };
 
@@ -2730,8 +2729,6 @@ static CAttr UnavailableDataAttribute(const UString2 &name) {
     CAttr attr;
     if (!name.IsEmpty())
         attr.Name = name;
-    attr.NonResident = 0;
-    attr.Flags = attr.Instance = attr.CompressionUnit = 0;
     attr.Unavailable = true;
     return attr;
 }
