@@ -35,8 +35,9 @@ normal SSH setup. Verify the host keys and connectivity before running checks.
 This mode connects to an already running machine and does not require Codex
 skills or Hyper-V management access.
 
-Set the Qt prefix, Python executable, additional tool directories, rsync and
-compiler cache location for each machine. Windows also needs its MSVC setup
+Set the Qt prefix, Python executable, additional tool directories and
+compiler cache location for each machine. The optional `rsync` setting selects
+the executable for the fallback transport. Windows also needs its MSVC setup
 batch file and actual computer name. Native registration/reference commands
 check that name before running. Other tools, including CMake, Ninja, Git,
 ccache, clang-format and Bash, must be available on the configured PATH.
@@ -61,6 +62,34 @@ python3 scripts/verify.py navigation --platform all
 Use only configured platforms. Windows UI checks need an active desktop session;
 see [runner workflows](hyperv-runners.md) for interactive execution, locking,
 recovery and artifact retention.
+
+### Source synchronization
+
+`check` and `run` use cp2 over the configured SSH connection. The pinned tool
+is installed automatically when absent, both locally and on the selected runner.
+Installation builds the pinned source with a private Rust toolchain if needed;
+it does not change system PATH. The runner's existing compiler is required.
+The version, source checksum and toolchain are pinned in `tools/cp2/cp2.lock.json`.
+
+To install ahead of a check, or reuse a matching binary already on that machine:
+
+```sh
+python3 scripts/install-runner-cp2.py local
+python3 scripts/install-runner-cp2.py all
+python3 scripts/install-runner-cp2.py windows --binary C:/tools/cp2.exe
+```
+
+cp2 compares actual receiver files by size and modification time. Use
+`--sync-checksum` for content comparison and verification of transferred bytes.
+Its signature cache can be retained;
+deleted receiver files are still restored. A local timestamp cache keeps repeated
+synchronization inexpensive while preserving incremental-build freshness,
+including edits made during the preceding build and backdated checkouts.
+Deleting that cache causes retransfers, not missing source. Original checkout
+timestamps are unchanged. Windows synchronization omits Unix permissions.
+
+`--transport rsync` selects the previous checksum-based transport explicitly;
+that choice requires local and configured remote rsync executables.
 
 ## Optional VM discovery
 

@@ -1,4 +1,4 @@
-"""Materialize current source for rsync without build or private state."""
+"""Materialize current source without build outputs or private state."""
 
 import json
 import os
@@ -8,8 +8,10 @@ import shutil
 import subprocess
 import tempfile
 
+from .source_snapshot_time import version_time_ns
+
 SOURCE_DIRS = {".agents", "cmake", "docs", "scripts", "src", "tests", "third_party", "resources",
-               "translations"}
+               "translations", "tools"}
 SOURCE_FILES = {".clang-format", ".gitattributes", ".gitignore", "AGENTS.md", "CMakeLists.txt",
                 "CMakePresets.json", "LICENSE", "README.md", "upstream.lock.json", "windows-runtime.lock.json"}
 MANIFEST = ".runner-source.json"
@@ -24,7 +26,7 @@ def source_name(name):
             and (path.parts[0] in SOURCE_DIRS or name in SOURCE_FILES or name == "upstream.bundle"))
 
 
-def stage_tree(root, upstream, destination, cache):
+def stage_tree(root, upstream, destination, cache, source_times=False):
     for args in (["git", "diff", "--check"], ["git", "diff", "--cached", "--check"]):
         subprocess.run(args, cwd=root, check=True)
     files = subprocess.check_output(["git", "ls-files", "-z", "--cached", "--others",
@@ -49,7 +51,18 @@ def stage_tree(root, upstream, destination, cache):
         if link_target is not None:
             target.symlink_to(link_target)
         else:
-            shutil.copy2(source, target)
+            for attempt in range(3):
+                before = source.stat()
+                stamp = version_time_ns(source, before) if source_times else before.st_mtime_ns
+                shutil.copy2(source, target)
+                after = source.stat()
+                latest = version_time_ns(source, after) if source_times else after.st_mtime_ns
+                if (before.st_ino, before.st_size, stamp) == (after.st_ino, after.st_size, latest):
+                    if source_times:
+                        os.utime(target, ns=(before.st_atime_ns, stamp))
+                    break
+            else:
+                raise ValueError(f"Source kept changing while creating snapshot: {name}")
         names_copied.append(name)
     baseline = json.loads((destination / "docs/upstream-baseline.json").read_text())
     revision = baseline["revision"]

@@ -1,0 +1,28 @@
+{
+  "repository": "https://github.com/elemeng/cp2.git",
+  "revision": "528e846f5c0d823ed41e045e1ff66a7d7456c9cb",
+  "banner": "cp2 0.3.0 (build ad99ff8075ce9508)",
+  "archive": {
+    "url": "https://codeload.github.com/elemeng/cp2/tar.gz/528e846f5c0d823ed41e045e1ff66a7d7456c9cb",
+    "sha256": "ee063c52e1c1fc7660d19aeb983c19b7ad1837c87add09ea39fa4dc80f83076e"
+  },
+  "rust": "1.93.0",
+  "rustup": {
+    "url": "https://static.rust-lang.org/rustup/archive/1.28.2/{triple}/rustup-init{suffix}",
+    "sha256": {
+      "aarch64-apple-darwin": "20ef5516c31b1ac2290084199ba77dbbcaa1406c45c1d978ca68558ef5964ef5",
+      "x86_64-unknown-linux-gnu": "20a06e644b0d9bd2fbdbfd52d42540bdde820ea7df86e92e533c073da0cdd43c",
+      "x86_64-pc-windows-msvc": "88d8258dcf6ae4f7a80c7d1088e1f36fa7025a1cfd1343731b4ee6f385121fc0"
+    }
+  },
+  "edits": [
+    {
+      "path": "tools/cp2/cp2-destination-filter.json",
+      "sha256": "8bbb40ce5a01c59011bfa6958d4b2e6687f73293a20a82c5324529bae642cb8c"
+    },
+    {
+      "path": "tools/cp2/cp2-signature-cache.json",
+      "sha256": "a4f4d0441416fdd28504dae02ad7843c0647489c015a028990d85c6edf0ce824"
+    }
+  ]
+}

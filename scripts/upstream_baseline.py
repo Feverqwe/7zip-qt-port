@@ -14,6 +14,7 @@ import sys
 import tarfile
 
 
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "docs/upstream-baseline.json"
 
@@ -374,6 +375,21 @@ def review(data, upstream, new_revision, paths):
     return "\n".join(rows) + "\n"
 
 
+def reference_edited_source(data, path, original, root):
+    owner = pathlib.PurePosixPath(data["adapted_edits"][path])
+    if owner.is_absolute() or ".." in owner.parts:
+        raise ValueError("Invalid reference edit owner")
+    edit = json.loads((root / owner).read_text())
+    if edit.get("source") != path or not edit.get("symbols"):
+        raise ValueError("Reference edit requires original path and selected symbols")
+    for change in edit["replacements"]:
+        before, after = change["before"].encode(), change["after"].encode()
+        if not before or original.count(before) != 1:
+            raise ValueError("Source adaptation context does not match exactly once")
+        original = original.replace(before, after, 1)
+    return original
+
+
 def verify_reference(data, upstream, root=ROOT):
     """Check original inventory units from a non-7-Zip source baseline."""
     revision = data.get("revision", "")
@@ -398,6 +414,10 @@ def verify_reference(data, upstream, root=ROOT):
             if (source not in files or relative.is_absolute() or ".." in relative.parts or
                     not (root / relative).is_file()):
                 raise ValueError("Invalid adapted reference owner: " + local)
+    for path in data.get("adapted_edits", {}):
+        if path not in files:
+            raise ValueError("Reference edit absent from original inventory")
+        reference_edited_source(data, path, git(upstream, "show", revision + ":" + path), root)
     return len(files)
 
 
@@ -418,10 +438,20 @@ def review_reference(data, upstream, new_revision, paths, root=ROOT):
         diff = git(upstream, "diff", "--no-ext-diff", "--no-textconv", old, new, "--", path).decode()
         rows += ["```diff", diff.rstrip(), "```", ""] if diff else ["Upstream unchanged.", ""]
         adapted = data.get("adapted", {})
-        if isinstance(adapted, dict) and path in adapted:
-            local = adapted[path]
+        edits = data.get("adapted_edits", {})
+        if (isinstance(adapted, dict) and path in adapted) or path in edits:
             original = git(upstream, "show", old + ":" + path)
-            current = (root / local).read_bytes()
+            if path in edits:
+                local = edits[path]
+                current = reference_edited_source(data, path, original, root)
+                try:
+                    reference_edited_source(data, path, git(upstream, "show", new + ":" + path), root)
+                    rows += ["Recorded edits apply to the proposed original.", ""]
+                except (ValueError, OSError) as error:
+                    rows += ["Recorded edits require review: " + str(error), ""]
+            else:
+                local = adapted[path]
+                current = (root / local).read_bytes()
             try:
                 original_text = original.decode("utf-8")
                 current_text = current.decode("utf-8")

@@ -104,6 +104,30 @@ class UpstreamBaselineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "source hash mismatch"):
             baseline.verify_reference(data, self.upstream, self.port)
 
+    def test_reference_edits_are_checked_and_reviewed_without_changing_originals(self):
+        data = self.reference_manifest()
+        original = baseline.git(self.upstream, "show", self.old + ":" + self.source)
+        data.pop("adapted")
+        owner = self.port / "adaptation.json"
+        owner.write_text(json.dumps({"source": self.source, "symbols": ["fixture"],
+                                    "replacements": [{"before": "source body", "after": "adapted body"}]}))
+        data["adapted_edits"] = {self.source: "adaptation.json"}
+        baseline.verify_reference(data, self.upstream, self.port)
+        report = baseline.review_reference(data, self.upstream, self.old, [], self.port)
+        self.assertIn("+adapted body", report.splitlines())
+        self.assertEqual(baseline.git(self.upstream, "show", self.old + ":" + self.source), original)
+        (self.upstream / self.source).write_text("changed upstream context\n")
+        git(self.upstream, "add", ".")
+        git(self.upstream, "commit", "-qm", "change context")
+        proposed = git(self.upstream, "rev-parse", "HEAD")
+        report = baseline.review_reference(data, self.upstream, proposed, [], self.port)
+        self.assertIn("Recorded edits require review:", report)
+        self.assertEqual((self.upstream / self.source).read_text(), "changed upstream context\n")
+        owner.write_text(json.dumps({"source": self.source, "symbols": ["fixture"],
+                                    "replacements": [{"before": "missing context", "after": "adapted body"}]}))
+        with self.assertRaisesRegex(ValueError, "context does not match"):
+            baseline.verify_reference(data, self.upstream, self.port)
+
     def test_reference_review_reports_changes_and_deletions_without_writing_sources(self):
         data = self.reference_manifest()
         (self.upstream / self.source).write_text("new reference body\n")

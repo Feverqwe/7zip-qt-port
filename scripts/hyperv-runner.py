@@ -18,6 +18,7 @@ import uuid
 from lib.hyperv_interactive import interactive_command
 from lib.hyperv_source import stage_tree
 from lib.hyperv_transport import collect_logs, sync_command
+from lib import hyperv_cp2_sync
 from lib.hyperv_workspace import current_branch, load_workspaces, mount_guard, worktree_root
 from lib.runner_config import load_config, runner_config
 from lib.project_paths import harness_root
@@ -194,14 +195,15 @@ def script_command(arguments, platforms):
 
 
 def run_platform(platform, local, source, preset, command, prepare_runtime,
-                 interactive=False, elevated=False, workspace=None, branch=None):
+                 interactive=False, elevated=False, workspace=None, branch=None,
+                 sync_transport="cp2", sync_checksum=False):
     directory = local / platform
     directory.mkdir()
     workspace = workspace or load_workspaces()[platform]
     branch = branch if branch is not None else current_branch(ROOT)
     root = worktree_root(workspace, branch)
     token = local.name
-    result = {"platform": platform, "status": "running", "transport": "rsync",
+    result = {"platform": platform, "status": "running", "transport": sync_transport,
               "branch": branch, "directory": root, "interactive": interactive and platform == "windows",
               "elevated": elevated and platform == "windows", "seconds": {}}
     acquired = launched = interrupted_sync = False
@@ -229,7 +231,11 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
                         clock_anchor = (before_lock, float(line.split("=", 1)[1]), after_lock)
             result["seconds"]["guard_and_lock"] = round(time.monotonic() - started, 3)
             started = time.monotonic()
-            invoke(sync_command(record, platform, source, root), **transport)
+            if sync_transport == "cp2":
+                hyperv_cp2_sync.synchronize(record, platform, source, root, token, directory,
+                                            remote, powershell, output, sync_checksum)
+            else:
+                invoke(sync_command(record, platform, source, root), **transport)
             result["seconds"]["sync"] = round(time.monotonic() - started, 3)
             resolved = list(command) if command else None
             if resolved and resolved[0] == "python":
@@ -265,7 +271,7 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
                     result["log_error"] = str(error)
                 try:
                     if interrupted_sync:
-                        raise ValueError("Sync interrupted; lock retained until its remote rsync process is checked")
+                        raise ValueError("Sync interrupted; lock retained until its remote sync process is checked")
                     # Hold the lock through log collection, so a new invocation
                     # cannot replace the evidence. Unknown children keep it.
                     lock_command(record, root, token, "release-completed" if launched else "release", **transport)
@@ -288,7 +294,7 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
 
 
 def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=True,
-                  interactive=False, elevated=False):
+                  interactive=False, elevated=False, sync_transport="cp2", sync_checksum=False):
     if elevated and (not interactive or "windows" not in platforms):
         raise ValueError("Elevated fixtures require an interactive Windows guest")
     workspaces = load_workspaces()
@@ -299,7 +305,7 @@ def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=Tru
     local = STATE / (stamp + "-" + uuid.uuid4().hex[:8])
     local.mkdir(parents=True)
     summary = {"run_id": local.name, "command": command, "preset": preset, "prepare_runtime": prepare_runtime,
-               "transport": "rsync", "interactive": interactive, "elevated": elevated, "branch": branch,
+               "transport": sync_transport, "interactive": interactive, "elevated": elevated, "branch": branch,
                "revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                "status": "running", "platforms": []}
     report = local / "run.json"
@@ -307,13 +313,13 @@ def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=Tru
         with tempfile.TemporaryDirectory(prefix="source-", dir=STATE) as temporary:
             started = time.monotonic()
             source = Path(temporary)
-            stage_tree(ROOT, upstream, source, STATE / "cache")
+            stage_tree(ROOT, upstream, source, STATE / "cache", source_times=sync_transport == "cp2")
             summary["source_seconds"] = round(time.monotonic() - started, 3)
             report.write_text(json.dumps(summary, indent=2) + "\n")
             with ThreadPoolExecutor(max_workers=len(platforms)) as executor:
                 futures = [executor.submit(run_platform, platform, local, source,
                                            preset, command, prepare_runtime, interactive, elevated,
-                                           workspaces[platform], branch) for platform in platforms]
+                                           workspaces[platform], branch, sync_transport, sync_checksum) for platform in platforms]
                 summary["platforms"] = [future.result() for future in futures]
             summary["status"] = "passed" if all(p["status"] == "passed" for p in summary["platforms"]) else "failed"
     except BaseException as error:
@@ -375,7 +381,9 @@ def parse_arguments(argv):
         if action in ("check", "run"):
             subparser.add_argument("--interactive", action="store_true")
             subparser.add_argument("--elevated", action="store_true")
-            subparser.add_argument("--transport", choices=["rsync"], default="rsync")
+            subparser.add_argument("--transport", choices=["cp2", "rsync"], default="cp2")
+            subparser.add_argument("--sync-checksum", action="store_true",
+                                   help="Compare contents instead of size/mtime with cp2")
             subparser.add_argument("--upstream", type=Path, default=HARNESS.parent / "7zip-upstream")
             subparser.add_argument("--skip-runtime", action="store_true")
         if action == "check":
@@ -390,6 +398,8 @@ def parse_arguments(argv):
     if getattr(args, "elevated", False) and not getattr(args, "interactive", False):
         parser.error("--elevated requires --interactive")
     args.command = None
+    if getattr(args, "sync_checksum", False) and args.transport == "rsync":
+        parser.error("--sync-checksum applies to cp2; rsync already uses checksums")
     if args.action == "run":
         if separator == len(argv) or not argv[separator + 1:]:
             parser.error("run requires -- <project-script> [arguments]")
@@ -420,7 +430,8 @@ def main():
             lock_command(record, root, "", args.action)
         return 0
     return run_platforms(args.platforms, getattr(args, "preset", "dev"), args.upstream,
-                         args.command, not args.skip_runtime, args.interactive, args.elevated)
+                         args.command, not args.skip_runtime, args.interactive, args.elevated,
+                         args.transport, args.sync_checksum)
 
 
 if __name__ == "__main__":

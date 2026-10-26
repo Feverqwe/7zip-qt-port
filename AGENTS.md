@@ -185,7 +185,7 @@ They synchronize the invoking script's worktree and select its Git branch;
 the local worktree directory does not affect remote workspace identity.
 Explicit configuration/upstream overrides remain supported. Do not run two
 different tasks under the same branch name expecting isolated guest builds.
-Guests execute rsync-managed source copies: do not create/update a project Git
+Guests execute synchronized source copies: do not create/update a project Git
 repository there or add a separate source-hashing pass. Keep the existing local
 Git whitespace checks before synchronization and the branch-scoped runner locks.
 
@@ -207,6 +207,8 @@ Preserve unrelated working-tree changes and other tasks' memory entries.
 
 ## Editing and organization
 
+- Keep the root of `scripts/` limited to runnable entry-point scripts. Tool
+  sources, manifests, patches and notices belong with their owner under `tools/`.
 - Use `apply_patch` for ordinary edits. Scripts are appropriate for generators,
   data processing and bulk transformations with validated matches, safe repeated
   execution and diff inspection. Reuse project automation; keep reusable scripts
@@ -373,7 +375,7 @@ when using its Hyper-V discovery command. Use
 or `check all` with configured guests. Prefer `python3 scripts/verify.py <profile>
 --platform <linux|windows|all>` for focused checks. Each guest uses a locked
 persistent worktree per Git branch, independent of the local source directory;
-rsync includes current
+source synchronization includes current
 tracked and nonignored new source files and deletes removed source files.
 Build selected targets after synchronization before running CTest; do not create
 per-run build directories. Runner docs own transport/readiness/storage details.

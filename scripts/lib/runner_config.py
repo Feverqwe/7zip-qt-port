@@ -77,6 +77,7 @@ def load_config(path=None):
                 raise ValueError("ssh must contain an SSH executable, options and destination")
         else:
             arguments(entry["ready_command"], "ready_command")
+        entry.setdefault("rsync", "rsync")
         for name in ("python", "qt_prefix", "ccache_dir", "rsync"):
             text(entry.get(name), name)
         if not isinstance(entry.get("path"), list):

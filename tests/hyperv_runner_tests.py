@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import uuid
 from unittest.mock import Mock, patch
@@ -19,7 +20,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 spec = importlib.util.spec_from_file_location("hyperv_runner", ROOT / "scripts/hyperv-runner.py")
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
-from lib import hyperv_interactive, hyperv_lock, hyperv_source, hyperv_transport, hyperv_workspace
+from lib import cp2_snapshot, hyperv_interactive, hyperv_lock, hyperv_source, hyperv_transport, hyperv_workspace
 from lib.runner_config import load_config
 from lib.runner_timing import summarize
 
@@ -29,6 +30,77 @@ def git(root, *args):
 
 
 class RunnerTests(unittest.TestCase):
+    def test_cp2_snapshot_rebuilds_edits_made_during_previous_build_and_recovers_lost_cache(self):
+        if not shutil.which("cmake") or not shutil.which("ninja"):
+            self.skipTest("CMake/Ninja unavailable")
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            project, upstream = self.source_fixture(base)
+            (project / "CMakeLists.txt").write_text(
+                'cmake_minimum_required(VERSION 3.20)\nproject(Freshness NONE)\n'
+                'add_custom_command(OUTPUT result.txt COMMAND "${CMAKE_COMMAND}" -E copy '
+                '"${CMAKE_SOURCE_DIR}/src/changed.cpp" result.txt DEPENDS "${CMAKE_SOURCE_DIR}/src/changed.cpp")\n'
+                'add_custom_target(copy ALL DEPENDS result.txt)\n')
+            cache = base / "time-cache.json"
+            first, guest = base / "first", base / "guest"
+            first.mkdir()
+            hyperv_source.stage_tree(project, upstream, first, base / "bundles", source_times=True)
+            entries = cp2_snapshot.prepare(first, guest, cache, time.time_ns())
+            cp2_snapshot.commit(cache, entries)
+            # The real source changes after the old snapshot, before the old
+            # build finishes. Its old restored mtime must not hide that edit.
+            original = project / "src/changed.cpp"
+            kept_time = original.stat().st_mtime_ns
+            original.write_text("new")
+            os.utime(original, ns=(kept_time, kept_time))
+            def build(*args):
+                subprocess.run(["cmake", *args], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            build("-G", "Ninja", "-S", str(guest), "-B", str(guest / "build"))
+            build("--build", str(guest / "build"))
+            output = guest / "build/result.txt"
+            self.assertEqual(output.read_text(), "old")
+            second = base / "second"
+            second.mkdir()
+            hyperv_source.stage_tree(project, upstream, second, base / "bundles", source_times=True)
+            def sync(name):
+                staged = base / name
+                entries = cp2_snapshot.prepare(second, staged, cache, time.time_ns())
+                shutil.copytree(staged, guest, dirs_exist_ok=True)
+                cp2_snapshot.commit(cache, entries)
+                build("--build", str(guest / "build"))
+                self.assertEqual(output.read_text(), "new")
+            sync("new-version")
+            before = output.stat().st_mtime_ns
+            sync("unchanged-version")
+            self.assertEqual(output.stat().st_mtime_ns, before)
+            (guest / "src/changed.cpp").unlink()
+            sync("externally-deleted")
+            cache.unlink()
+            sync("lost-cache")
+            cache.write_text("damaged cache")
+            sync("damaged-cache")
+            self.assertEqual(original.stat().st_mtime_ns, kept_time)
+
+    def test_snapshot_retries_a_source_edit_during_copy(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            project, upstream = self.source_fixture(base)
+            staged = base / "snapshot"
+            staged.mkdir()
+            original = shutil.copy2
+            changed = project / "src/changed.cpp"
+            edited = False
+            def racing_copy(source, target):
+                nonlocal edited
+                result = original(source, target)
+                if Path(source) == changed and not edited:
+                    changed.write_text("updated during snapshot")
+                    edited = True
+                return result
+            with patch.object(hyperv_source.shutil, "copy2", side_effect=racing_copy):
+                hyperv_source.stage_tree(project, upstream, staged, base / "cache", source_times=True)
+            self.assertEqual((staged / "src/changed.cpp").read_text(), "updated during snapshot")
+
     def test_test_start_timing_uses_guest_clock_and_rejects_previous_run(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "timing.jsonl"
@@ -99,6 +171,9 @@ class RunnerTests(unittest.TestCase):
             (project / "translations").mkdir()
             catalog = project / "translations/fixture.ts"
             catalog.write_text("current translation input")
+            tool_asset = project / "tools/cp2/fixture.json"
+            tool_asset.parent.mkdir(parents=True)
+            tool_asset.write_text('{"tool": "current resource"}')
             (project / "src/ignored-secret").write_text("excluded")
             (project / "build").mkdir()
             (project / "build/secret").write_text("excluded")
@@ -113,6 +188,7 @@ class RunnerTests(unittest.TestCase):
             hyperv_source.stage_tree(project, upstream, destination, root / "cache")
             self.assertEqual((destination / "src/changed.cpp").read_text(), "new")
             self.assertEqual((destination / "translations/fixture.ts").read_text(), catalog.read_text())
+            self.assertEqual((destination / "tools/cp2/fixture.json").read_text(), tool_asset.read_text())
             self.assertTrue((destination / "src/Юникод $(touch injected).cpp").exists())
             self.assertFalse((destination / "src/deleted.cpp").exists())
             self.assertFalse((destination / "src/ignored-secret").exists())
@@ -320,7 +396,7 @@ runner.invoke = sync
 runner.lock_command = lock
 runner.execute_check = execute
 runner.collect_logs = lambda *args: {}
-sys.argv = ['runner', 'run', 'linux', '--skip-runtime', '--', 'scripts/fixture.py']
+sys.argv = ['runner', 'run', 'linux', '--transport', 'rsync', '--skip-runtime', '--', 'scripts/fixture.py']
 raise SystemExit(runner.main())
 ''')
             environment = dict(os.environ)
@@ -531,6 +607,7 @@ raise SystemExit(runner.main())
                 return hyperv_lock.operate(current, token, action)
             with patch.object(runner, "discover", return_value=record), \
                     patch.object(runner, "invoke"), patch.object(runner, "lock_command", side_effect=local_lock), \
+                    patch.object(runner.hyperv_cp2_sync, "synchronize"), \
                     patch.object(runner, "execute_check", side_effect=KeyboardInterrupt()):
                 with self.assertRaises(KeyboardInterrupt):
                     runner.run_platform("linux", Path(temporary), Path(temporary), "dev", None, False,

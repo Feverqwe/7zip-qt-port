@@ -1,0 +1,13 @@
+{
+  "source": "src/sync/executor.rs",
+  "symbols": [
+    "scan_dest"
+  ],
+  "reason": "Prune protected/excluded destination subtrees before metadata traversal; receiver wrapper supplies the same exclusions as the sender. Transfer/deletion logic remains upstream.",
+  "replacements": [
+    {
+      "before": "    let scanner = Scanner::new(scanner_options(\n        options,\n        root,\n        None,\n        false,\n        false,\n        (!source_links.is_empty()).then_some(source_links),\n    ));",
+      "after": "    let scanner = Scanner::new(scanner_options(\n        options,\n        root,\n        Some(crate::sync::FilterSet {\n            includes: options.include.clone(),\n            excludes: options.exclude.clone(),\n        }),\n        false,\n        false,\n        (!source_links.is_empty()).then_some(source_links),\n    ));"
+    }
+  ]
+}

@@ -36,25 +36,23 @@ including synchronization, build/tests and log retrieval. A second invocation
 fails with the owner run ID before touching source. An existing nonempty
 worktree without the project ownership marker is refused.
 
-`rsync --checksum --compress --compress-level=1 --delete-delay --delay-updates`
-reconciles an immutable local
+cp2 reconciles an immutable local
 copy of the current worktree. It includes modified tracked files and nonignored
 new files in the allowlisted source/resource/test/doc/script directories and
 top-level build configuration. Translation catalogs travel with the application
 sources so localized checks use the same build inputs on every platform.
 Deleted files disappear remotely. No staging or
 commit is required. Local `.git`, `.codex`, credentials, build outputs and other
-ignored state are not sent. The guest's `.git/`, `build/`, `ui-reports/`,
-`runner-tmp/`, `upstream/` and runner control/log files are protected from deletion.
-Do not use `--delete-excluded`. Unsafe external source links are refused.
-Rsync checks and reconciles the supplied files; there is no additional source
+ignored state are not sent. Existing build outputs, prepared dependencies,
+reports and runner control files are protected from deletion.
+Unsafe external source links are refused.
+cp2 checks and reconciles the supplied files; there is no additional source
 hash pass. The source copy describes code at invocation start, not edits made during the run.
-Matching files are skipped, including on repeated runs. The archive-mode subset
-`-rlp` preserves recursive content, links and permissions; owner/group
-and special-device replication are deliberately omitted across Linux/Windows.
-Changed files receive the guest's current modification time so incremental
-builds detect edits made before an earlier snapshot finished compiling.
-Unchanged contents retain their existing guest timestamps and build outputs.
+Matching files are skipped, including on repeated runs. Linux permissions and
+relative source links are preserved; Windows omits Unix permission replication.
+Edits made while an earlier snapshot builds still trigger compilation on the
+next run. Repeated runs preserve incremental outputs. Installation, caches and the
+explicit rsync fallback are described in [configuration](runner-configuration.md#source-synchronization).
 
 After confirmed command exit the lock is released, including on a normal test
 failure. An interrupted or disconnected invocation retains it if execution
@@ -96,11 +94,11 @@ It does not authorize compaction or VM storage reconfiguration.
 Identify completed runs from their metadata and check running processes,
 interactive scheduled tasks and workspace references before deleting anything.
 Keep the three newest runs per project workspace, every active or referenced
-run (including an rsync basis in use), and artifacts needed for current review
+run (including delta bases in use), and artifacts needed for current review
 or failure diagnosis. In older inactive runs, retain small logs and metadata;
 remove reproducible source snapshots, runtime/build trees and run-local temp
 files. Apply this to both legacy and configured project workspaces. Preserve
-toolchains, installed Qt/formatter/rsync, other projects and unrelated data.
+toolchains, installed build/synchronization tools, other projects and unrelated data.
 Record removed paths and free space before/after. If safely removable data is
 insufficient, report the remaining capacity requirement; do not add a disk.
 
@@ -235,14 +233,14 @@ the script arguments. `scripts/build.sh` takes `dev` or `release` positionally.
 `check --preset release` runs the development gate followed by a Release build;
 it does not run CTest against Release, where test targets are disabled.
 
-The source transport is directory rsync over the verified SSH connection, with
+The source transport is cp2 over the verified SSH connection, with
 deletion/protection and locking as described [above](#persistent-worktree).
-Archive/scp source transport is removed. Scp is used only to retrieve logs.
+Scp retrieves logs.
 
-Install rsync on the client and both guests, then select the guest executable
-paths in [local configuration](runner-configuration.md). Windows transport uses
-MSYS-compatible destination paths; builds use the configured Bash and MSVC tools.
-Checks do not install or upgrade packages automatically.
+cp2 is installed on demand as described in
+[local configuration](runner-configuration.md#source-synchronization).
+Windows builds use the configured Bash and MSVC tools. Prepare the other build
+dependencies before checks.
 
 `all` materializes current source once, then runs the two guests in
 parallel. Failure on one guest does not prevent the other from completing.
@@ -326,11 +324,11 @@ checks reference-builder reuse/rebuild and refusal of unowned output using a
 synthetic compiler fixture, without launching the actual native reference UI.
 These checks cover a first build with
 missing executables, fixture closure, incremental reuse, empty/slow selections,
-Unicode/current/untracked/deleted source, actual rsync deletion and protected
-outputs, lock ownership/completion and failure/context/quoting behavior. These
+Unicode/current/untracked/deleted source, fallback rsync deletion and protected
+outputs, snapshot build freshness, lock ownership/completion and failure/context/quoting behavior. These
 tests use temporary deterministic local fixtures and no VM/network access;
-they require Bash, Git, CMake/Ninja, a compiler and rsync, plus Windows PowerShell
-for the Windows builder fixture.
+they require Bash, Git, CMake/Ninja and a compiler, plus Windows PowerShell
+for the Windows builder fixture. The rsync-specific case skips when rsync is unavailable.
 
 SSH checks cover the project gate, not interactive desktop/Finder behavior,
 distribution or rendered Windows 7zFM parity. Historical ARM64 QEMU checks
