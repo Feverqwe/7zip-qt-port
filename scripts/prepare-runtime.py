@@ -17,7 +17,7 @@ BUILDERS = ("build-codec-runtime.sh", "build-codec-runtime.ps1", "build-sfx.sh",
             "upstream_baseline.py", "build-native-dependencies.py")
 MODULE_BUILD_INPUTS = ("tools/native-dependencies/CMakeLists.txt", "cmake/ModuleToolchain.cmake",
                        "cmake/StaticAnalysis.cmake", ".clang-tidy",
-                       "scripts/lib/module_cache_launcher.py")
+                       "scripts/lib/module_cache_launcher.py", "scripts/lib/clang_tidy_launcher.py")
 
 
 def sha(path):

@@ -1,6 +1,7 @@
 include_guard(GLOBAL)
 
 set(SEVENZIP_CLANG_TIDY_CONFIG "${CMAKE_CURRENT_LIST_DIR}/../.clang-tidy")
+set(SEVENZIP_CLANG_TIDY_LAUNCHER "${CMAKE_CURRENT_LIST_DIR}/../scripts/lib/clang_tidy_launcher.py")
 option(SEVENZIP_ENABLE_CLANG_TIDY "Run clang-tidy while compiling C++" OFF)
 if(SEVENZIP_ENABLE_CLANG_TIDY)
     set(sevenzip_clang_tidy_names clang-tidy)
@@ -10,8 +11,9 @@ if(SEVENZIP_ENABLE_CLANG_TIDY)
     endif()
     find_program(SEVENZIP_CLANG_TIDY_EXECUTABLE
         NAMES ${sevenzip_clang_tidy_names} REQUIRED)
+    find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
     set(CMAKE_CXX_CLANG_TIDY
-        "${SEVENZIP_CLANG_TIDY_EXECUTABLE};--config-file=${SEVENZIP_CLANG_TIDY_CONFIG}")
+        "${Python3_EXECUTABLE};${SEVENZIP_CLANG_TIDY_LAUNCHER};${SEVENZIP_CLANG_TIDY_EXECUTABLE};--config-file=${SEVENZIP_CLANG_TIDY_CONFIG}")
     execute_process(COMMAND "${SEVENZIP_CLANG_TIDY_EXECUTABLE}" --version
         OUTPUT_VARIABLE sevenzip_clang_tidy_version OUTPUT_STRIP_TRAILING_WHITESPACE
         COMMAND_ERROR_IS_FATAL ANY)
@@ -51,6 +53,6 @@ function(sevenzip_track_analysis_inputs)
     if(sevenzip_analysis_sources)
         list(REMOVE_DUPLICATES sevenzip_analysis_sources)
         set_property(SOURCE ${sevenzip_analysis_sources} APPEND PROPERTY
-            OBJECT_DEPENDS "${SEVENZIP_CLANG_TIDY_CONFIG}")
+            OBJECT_DEPENDS "${SEVENZIP_CLANG_TIDY_CONFIG};${SEVENZIP_CLANG_TIDY_LAUNCHER}")
     endif()
 endfunction()

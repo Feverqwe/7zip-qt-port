@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import re
 import subprocess
 import sys
 import tempfile
@@ -124,6 +125,71 @@ include(cmake/DeveloperWorkflow.cmake)
                 self.assertIn("analysis rejected fixture", rejected.stdout + rejected.stderr)
                 os.environ["SEVENZIP_ENABLE_CLANG_TIDY"] = "OFF"
                 self.run_verify(root, "^scenario$")
+
+    def test_clang_analysis_imports_a_module_and_rejects_a_dangling_view(self):
+        compiler = shutil.which(os.environ.get("CXX", "clang++"))
+        if not compiler:
+            self.skipTest("Clang module toolchain unavailable")
+        version = subprocess.run([compiler, "--version"], text=True, capture_output=True)
+        match = re.search(r"clang version (\d+)", version.stdout)
+        if not match or int(match[1]) < 19:
+            self.skipTest("Clang 19 or newer required")
+        analyzer = (shutil.which("clang-tidy-" + match[1]) or
+                    shutil.which("clang-tidy", path=str(Path(compiler).parent)))
+        if not analyzer:
+            self.skipTest("Matching clang-tidy unavailable")
+        with tempfile.TemporaryDirectory(prefix="module analysis ") as temporary:
+            root = Path(temporary)
+            self.fixture(root)
+            shutil.copy2(ROOT / "cmake/StaticAnalysis.cmake", root / "cmake/StaticAnalysis.cmake")
+            shutil.copy2(ROOT / ".clang-tidy", root / ".clang-tidy")
+            shutil.copy2(ROOT / "scripts/lib/clang_tidy_launcher.py",
+                         root / "scripts/lib/clang_tidy_launcher.py")
+            (root / "answer.cppm").write_text(
+                "export module answer;\nexport int answer() { return 42; }\n")
+            (root / "main.cpp").write_text("import answer;\nint main() { return answer() == 42 ? 0 : 1; }\n")
+            (root / "CMakeLists.txt").write_text('''cmake_minimum_required(VERSION 3.28)
+project(module_analysis LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 23)
+set(SEVENZIP_CLANG_TIDY_EXECUTABLE "''' + Path(analyzer).as_posix() + '''" CACHE FILEPATH "")
+include(cmake/StaticAnalysis.cmake)
+enable_testing()
+add_executable(subject main.cpp)
+target_sources(subject PRIVATE FILE_SET CXX_MODULES FILES answer.cppm)
+sevenzip_track_analysis_inputs()
+add_test(NAME scenario COMMAND subject)
+include(cmake/DeveloperWorkflow.cmake)
+''')
+            with patch.dict(os.environ, {"CC": compiler, "CXX": compiler,
+                                         "SEVENZIP_ENABLE_CLANG_TIDY": "ON"}):
+                self.run_verify(root, "^scenario$")
+                (root / "main.cpp").write_text(
+                    '#include <string>\n#include <string_view>\nimport answer;\n'
+                    'std::string_view dangling() { return std::string("temporary"); }\n'
+                    'int main() { return answer() == 42 ? 0 : 1; }\n')
+                rejected = self.run_verify(root, "^scenario$", succeeds=False)
+                self.assertIn("clang-diagnostic-return-stack-address", rejected.stdout + rejected.stderr)
+
+
+    def test_analysis_launcher_preserves_quoted_module_paths(self):
+        # Windows response parsing must also treat line breaks as separators;
+        # spaces inside BMI paths must reach the tooling driver unchanged.
+        with tempfile.TemporaryDirectory(prefix="module paths Юникод ") as temporary:
+            root = Path(temporary)
+            (root / "clang.modmap").write_text(
+                '-fmodule-file=answer="module with spaces.pcm"\n'
+                '-fmodule-output="compiled module.pcm"\n')
+            (root / "msvc.modmap").write_text('-reference answer=answer.ifc\n')
+            (root / "capture.py").write_text(
+                'import json,sys\nfrom pathlib import Path\n'
+                'Path("arguments.json").write_text(json.dumps(sys.argv[1:]))\n')
+            subprocess.run([sys.executable, str(ROOT / "scripts/lib/clang_tidy_launcher.py"),
+                            sys.executable, "capture.py", "--", "@clang.modmap", "@msvc.modmap"],
+                           cwd=root, check=True)
+            self.assertEqual(json.loads((root / "arguments.json").read_text()),
+                             ["--", "-fmodule-file=answer=module with spaces.pcm",
+                              "-fmodule-output=compiled module.pcm", "@msvc.modmap"])
+
 
     def run_verify(self, root, selection, plan=False, succeeds=True):
         command = [sys.executable, str(root / "scripts/verify.py"), "--tests", selection, "--skip-runtime"]
