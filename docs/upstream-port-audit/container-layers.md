@@ -1309,6 +1309,13 @@ fixture. Final diff whitespace check passed. No Windows/Linux rerun, full/slow
 gate or rendered UI comparison was performed; platform-specific process code and
 dialog layout are unchanged.
 
+The C++23 validation on 2026-10-27 found that `source_drop_add` still expected
+the obsolete parent-process Create dialog. It now shares the existing child
+launcher fixture and checks 7z/ZIP output bytes, cancellation without output,
+and failure without modifying a damaged destination. Those four cases and the
+three existing drag/drop suites pass on macOS with the development sanitizers.
+No production source changed; Linux/Windows checks await runner access.
+
 ## 2026-10-24 — retire console transport, retain official `7z` sidecar
 
 This iteration removes the old `ArchiveBackend` console creation/mutation,

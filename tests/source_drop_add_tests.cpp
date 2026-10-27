@@ -1,19 +1,16 @@
-#include "7zip/UI/FileManager/ProgressDialog2Res.h"
-#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
-#include "createarchivedialog.h"
+#include "fixtures/drag_drop_backend.h"
 #include "fixtures/drag_event_position.h"
-#include "fixtures/widget_dialogs.h"
+#include "fixtures/operation_temp_cleanup.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
-#include <QScopeGuard>
 
 class SourceDropAddTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
-    WidgetDialogFixture dialogs_;
     QString module_, engine_;
     quint32 version_ = 0;
   private slots:
+    void cleanup() { QVERIFY(CleanupOperationTestTemps()); }
     void initTestCase() {
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official native module required for source drop Add");
@@ -48,7 +45,10 @@ class SourceDropAddTests final : public QObject, protected MainWindowTestSupport
         QVERIFY(QDir().mkpath(QFileInfo(output).absolutePath()));
         if (broken)
             QVERIFY(SourceExtractFixture::writeFile(output, "sentinel"));
-        ArchiveBackend backend(nullptr, engine_);
+        DropBackend backend;
+        backend.Cancel = cancel;
+        ScopedTestEnvironment formatChoice("SEVENZIP_OPERATION_CREATE_FORMAT", format);
+        ScopedTestEnvironment targetChoice("SEVENZIP_OPERATION_CREATE_TARGET", output);
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
         MainWindow window(&backend);
         window.show();
@@ -58,31 +58,12 @@ class SourceDropAddTests final : public QObject, protected MainWindowTestSupport
         address->setText(QFileInfo(output).absolutePath());
         emit address->returnPressed();
         QTRY_VERIFY(table(window)->isEnabled());
-        bool shown = false;
         QStringList errors;
         QTimer answer;
-        dialogs_.connectResponder(answer, &window, [&] {
-            if (auto *dialog = qobject_cast<CreateArchiveDialog *>(dialogs_.activeDialog())) {
-                shown = true;
-                const auto reject = qScopeGuard([&] {
-                    if (dialog->isVisible())
-                        dialog->reject();
-                });
-                QCOMPARE(dialog->sources(), QStringList{input});
-                if (cancel)
-                    dialog->reject();
-                else {
-                    dialog->findChild<QComboBox *>("archiveFormat")->setCurrentText(format);
-                    dialog->findChild<QLineEdit *>("archiveName")->setText(output);
-                    dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
-                }
-            } else if (auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog())) {
+        connect(&answer, &QTimer::timeout, &window, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
                 errors.append(box->text());
                 box->accept();
-            } else if (auto *progress = dynamic_cast<CProgressDialog *>(dialogs_.activeDialog())) {
-                auto *button = progress->findChild<QPushButton *>("IDCANCEL");
-                if (button && button->property("languageID").toUInt() == IDS_CLOSE)
-                    button->click();
             }
         });
         answer.start(1);
@@ -94,17 +75,20 @@ class SourceDropAddTests final : public QObject, protected MainWindowTestSupport
         QVERIFY(enter.isAccepted());
         QDropEvent drop(QPointF(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
         QCoreApplication::sendEvent(table(window)->viewport(), &drop);
+        QTRY_COMPARE_WITH_TIMEOUT(backend.Results.size(), 1, 30000);
         answer.stop();
-        QVERIFY(shown);
+        QCOMPARE(backend.Accepted, 1u);
         QCOMPARE(SourceExtractFixture::readFile(input), QByteArray("source drop bytes"));
         QVERIFY(!backend.busy());
         if (cancel) {
+            QCOMPARE(backend.Results.first().Status, QtOperationResult::Outcome::Cancelled);
             QVERIFY(errors.isEmpty());
             QVERIFY(!QFileInfo::exists(output));
         } else if (broken) {
-            QCOMPARE(errors.size(), 1);
+            QCOMPARE(backend.Results.first().Status, QtOperationResult::Outcome::Failure);
             QCOMPARE(SourceExtractFixture::readFile(output), QByteArray("sentinel"));
         } else {
+            QCOMPARE(backend.Results.first().Status, QtOperationResult::Outcome::Success);
             QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
             QProcess verify;
             const QString extracted = fixture.filePath("extracted");

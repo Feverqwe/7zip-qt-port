@@ -4218,12 +4218,15 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/modal_refresh_window.ini")
     target_include_directories(source_drop_add_tests PRIVATE src tests)
     target_link_libraries(source_drop_add_tests PRIVATE ${options_window_libraries})
+    target_compile_definitions(source_drop_add_tests PRIVATE
+        "SEVENZIP_OPERATION_HOST=\"$<TARGET_FILE:operation_host>\"")
+    add_dependencies(source_drop_add_tests operation_host)
     if(SEVENZIP_CODEC_MODULE)
         target_compile_definitions(source_drop_add_tests PRIVATE
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
     endif()
     add_test(NAME source_drop_add COMMAND source_drop_add_tests -silent)
-    set_tests_properties(source_drop_add PROPERTIES TIMEOUT 60 ENVIRONMENT
+    set_tests_properties(source_drop_add PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_native_ui ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/source_drop_add.ini")
     qt_add_executable(benchmark_command_tests tests/benchmark_command_tests.cpp ${options_window_sources})
     qt_add_executable(link_command_tests tests/link_command_tests.cpp ${options_window_sources})
