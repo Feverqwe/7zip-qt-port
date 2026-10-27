@@ -95,6 +95,16 @@ def command_payload(preset, command):
     return "set -euo pipefail\n" + "".join(shlex.join(item) + "\n" for item in commands)
 
 
+def clang_tidy_mode():
+    value = os.environ.get("SEVENZIP_ENABLE_CLANG_TIDY")
+    if value is None:
+        return None
+    value = value.upper()
+    if value not in ("ON", "OFF"):
+        raise ValueError("SEVENZIP_ENABLE_CLANG_TIDY must be ON or OFF")
+    return value
+
+
 def execute_check(record, platform, preset, root, token, command=None,
                   prepare_runtime=True, output=None, interactive=False, elevated=False):
     import os
@@ -105,6 +115,7 @@ def execute_check(record, platform, preset, root, token, command=None,
     build_jobs = int(os.environ.get("CMAKE_BUILD_PARALLEL_LEVEL", "4"))
     if build_jobs <= 0:
         raise ValueError("CMAKE_BUILD_PARALLEL_LEVEL must be a positive integer")
+    analysis_mode = clang_tidy_mode()
     payload = command_payload(preset, command)
     use_vcpkg = preset.startswith("vcpkg-")
     qt_prefix = "" if use_vcpkg else config['qt_prefix']
@@ -119,13 +130,15 @@ def execute_check(record, platform, preset, root, token, command=None,
     timing_command = shlex.join([config['python'], 'scripts/lib/runner_timing.py'])
     payload = timing_command + " command_start\n" + payload
     if platform == "linux":
+        analysis_environment = (f"export SEVENZIP_ENABLE_CLANG_TIDY={analysis_mode}\n"
+                                if analysis_mode is not None else "")
         script = f"""set -euo pipefail
 cd {shlex.quote(root)}
 mkdir -p runner-tmp
 export TMPDIR="$PWD/runner-tmp" TMP="$PWD/runner-tmp" TEMP="$PWD/runner-tmp"
 export QT_QPA_PLATFORM="${{QT_QPA_PLATFORM:-offscreen}}"
 export CMAKE_BUILD_PARALLEL_LEVEL={build_jobs} SEVENZIP_SCRIPT_OUTPUT=compact
-export SEVENZIP_COMPACT_TEST_BINARIES=ON SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}
+{analysis_environment}export SEVENZIP_COMPACT_TEST_BINARIES=ON SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}
 export CMAKE_PREFIX_PATH={shlex.quote(qt_prefix)}
 export PATH={shlex.quote(':'.join(tool_paths))}:"$PATH"
 export LIBGL_ALWAYS_SOFTWARE=1 SEVENZIP_CTEST_JOBS=1
@@ -164,6 +177,8 @@ df -Pk .
                     f'set "SEVENZIP_RUN_TOKEN={token}"',
                     f'set "SEVENZIP_RUNNER_TIMING={root}/runner-tmp/timing.jsonl"',
                     f'cd /d "{root}"']
+        if analysis_mode is not None:
+            commands.insert(1, f'set "SEVENZIP_ENABLE_CLANG_TIDY={analysis_mode}"')
         if prepare_runtime:
             commands += [f'"{config["python"]}" scripts/lib/runner_timing.py runtime_start',
                          f'"{config["python"]}" scripts/prepare-runtime.py --upstream upstream --preset {preset}',
@@ -307,6 +322,7 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
 
 def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=True,
                   interactive=False, elevated=False, sync_transport="cp2", sync_checksum=False):
+    clang_tidy_mode()
     if elevated and (not interactive or "windows" not in platforms):
         raise ValueError("Elevated fixtures require an interactive Windows guest")
     workspaces = load_workspaces()

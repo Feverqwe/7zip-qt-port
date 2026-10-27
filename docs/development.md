@@ -157,6 +157,10 @@ For the independent native runtime's dependency modules, set
 codec-runtime builder. They use the same analysis configuration; switching this
 mode revalidates the runtime while retaining incremental objects and compiler caches.
 Changes to `.clang-tidy` are checked on the next analysis-enabled build.
+Set `SEVENZIP_ENABLE_CLANG_TIDY=ON` when invoking build, verify or runner scripts
+to select analysis for both the application and native dependency build. Use
+`OFF` to disable it explicitly in an existing build tree. The same variable is
+forwarded to Linux and Windows runners; their toolchains must provide Clang-Tidy.
 On macOS, build, check, verify and runtime-preparation scripts automatically
 select installed Homebrew LLVM 23+ for C, C++ and Objective-C++, including its
 module scanner and analysis tools. `modules-gcc-dev` selects Homebrew GCC.

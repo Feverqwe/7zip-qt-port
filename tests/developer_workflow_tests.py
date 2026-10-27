@@ -98,6 +98,33 @@ endif()
             result = json.loads((root / "build/dev/verify-result.json").read_text())
             self.assertEqual(result["status"], "passed")
 
+    def test_analysis_mode_rechecks_an_unchanged_incremental_build(self):
+        # Enabling analysis must run its diagnostics even when the executable
+        # was already built, and disabling it must recover the same build tree.
+        with tempfile.TemporaryDirectory(prefix="analysis workflow ") as temporary:
+            root = Path(temporary)
+            self.fixture(root)
+            (root / "analyze.py").write_text('raise SystemExit("analysis rejected fixture")\n')
+            python = Path(sys.executable).as_posix()
+            (root / "CMakeLists.txt").write_text('''cmake_minimum_required(VERSION 3.21)
+project(analysis_workflow LANGUAGES CXX)
+option(SEVENZIP_ENABLE_CLANG_TIDY "Analyze the fixture" OFF)
+if(SEVENZIP_ENABLE_CLANG_TIDY)
+    set(CMAKE_CXX_CLANG_TIDY "''' + python + ''';${CMAKE_SOURCE_DIR}/analyze.py")
+endif()
+enable_testing()
+add_executable(subject main.cpp)
+add_test(NAME scenario COMMAND subject)
+include(cmake/DeveloperWorkflow.cmake)
+''')
+            with patch.dict(os.environ, {"SEVENZIP_ENABLE_CLANG_TIDY": "OFF"}):
+                self.run_verify(root, "^scenario$")
+                os.environ["SEVENZIP_ENABLE_CLANG_TIDY"] = "ON"
+                rejected = self.run_verify(root, "^scenario$", succeeds=False)
+                self.assertIn("analysis rejected fixture", rejected.stdout + rejected.stderr)
+                os.environ["SEVENZIP_ENABLE_CLANG_TIDY"] = "OFF"
+                self.run_verify(root, "^scenario$")
+
     def run_verify(self, root, selection, plan=False, succeeds=True):
         command = [sys.executable, str(root / "scripts/verify.py"), "--tests", selection, "--skip-runtime"]
         if plan:
@@ -110,6 +137,7 @@ endif()
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         else:
             self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        return result
 
 if __name__ == "__main__":
     unittest.main()

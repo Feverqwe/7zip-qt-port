@@ -4,6 +4,14 @@ set -euo pipefail
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 preset="${1:-dev}"
+analysis_mode=""
+if [[ -n "${SEVENZIP_ENABLE_CLANG_TIDY+x}" ]]; then
+  case "$SEVENZIP_ENABLE_CLANG_TIDY" in
+    [Oo][Nn]) analysis_mode=ON ;;
+    [Oo][Ff][Ff]) analysis_mode=OFF ;;
+    *) printf 'SEVENZIP_ENABLE_CLANG_TIDY must be ON or OFF.\n' >&2; exit 2 ;;
+  esac
+fi
 if [[ "$preset" == vcpkg-* && ! -f "${VCPKG_ROOT:-}/scripts/buildsystems/vcpkg.cmake" ]]; then
   printf 'Set VCPKG_ROOT to a vcpkg checkout containing scripts/buildsystems/vcpkg.cmake.\n' >&2
   exit 2
@@ -52,6 +60,9 @@ configure() {
       exit 2
     fi
     return
+  fi
+  if [[ -n "$analysis_mode" ]]; then
+    set -- "-DSEVENZIP_ENABLE_CLANG_TIDY=$analysis_mode" "$@"
   fi
   if [[ -z "${CMAKE_TOOLCHAIN_FILE:-}" && -n "${CC:-}" && -n "${CXX:-}" ]]; then
     if [[ "$(uname -s)" == Darwin || "$(uname -s)" == Linux ]]; then

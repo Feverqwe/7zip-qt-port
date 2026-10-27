@@ -595,19 +595,23 @@ Path('selected.json').write_text(json.dumps({key: os.environ.get(key) for key in
             root = Path(temporary)
             (root / "scripts/lib").mkdir(parents=True)
             shutil.copy2(ROOT / "scripts/lib/runner_timing.py", root / "scripts/lib/runner_timing.py")
-            (root / "scripts/prepare-runtime.py").write_text('''import argparse
+            (root / "scripts/prepare-runtime.py").write_text('''import argparse, os
 from pathlib import Path
 parser = argparse.ArgumentParser()
 parser.add_argument('--preset', default='dev')
 args, _ = parser.parse_known_args()
 Path('runtime-toolchain').write_text(args.preset)
+Path('runtime-analysis').write_text(os.environ.get('SEVENZIP_ENABLE_CLANG_TIDY', 'unset'))
 ''')
-            (root / "scripts/verify.py").write_text('''import argparse
+            (root / "scripts/verify.py").write_text('''import argparse, os
 from pathlib import Path
 parser = argparse.ArgumentParser()
 parser.add_argument('--preset', required=True)
 args, _ = parser.parse_known_args()
-raise SystemExit(0 if Path('runtime-toolchain').read_text() == args.preset else 9)
+matches = (Path('runtime-toolchain').read_text() == args.preset and
+           Path('runtime-analysis').read_text() == Path('requested-analysis').read_text() and
+           os.environ.get('SEVENZIP_ENABLE_CLANG_TIDY') == Path('requested-analysis').read_text())
+raise SystemExit(0 if matches else 9)
 ''')
             original_run = subprocess.run
 
@@ -626,8 +630,12 @@ raise SystemExit(0 if Path('runtime-toolchain').read_text() == args.preset else 
 
             with patch.object(runner, "remote", local_remote), \
                     patch.object(verify.subprocess, "run", dispatch):
-                self.assertEqual(verify.main(["--platform", "linux", "--preset", "modules-linux-dev",
-                                              "--tests", "^scenario$"]), 0)
+                for mode in ("ON", "OFF"):
+                    (root / "requested-analysis").write_text(mode)
+                    with self.subTest(mode=mode), \
+                            patch.dict(os.environ, {"SEVENZIP_ENABLE_CLANG_TIDY": mode}):
+                        self.assertEqual(verify.main(["--platform", "linux", "--preset", "modules-linux-dev",
+                                                      "--tests", "^scenario$"]), 0)
 
     def test_invalid_build_parallelism_is_rejected_before_remote_execution(self):
         for platform in ("linux", "windows"):
@@ -638,6 +646,15 @@ raise SystemExit(0 if Path('runtime-toolchain').read_text() == args.preset else 
                     with self.assertRaises(ValueError):
                         runner.execute_check({}, platform, "dev", "/unused", "token", prepare_runtime=False)
                     remote.assert_not_called()
+
+    def test_invalid_analysis_mode_does_not_launch_remote_commands(self):
+        for platform in ("linux", "windows"):
+            with self.subTest(platform=platform), \
+                    patch.dict(os.environ, {"SEVENZIP_ENABLE_CLANG_TIDY": 'ON" & echo injected'}), \
+                    patch.object(runner, "remote") as remote:
+                with self.assertRaises(ValueError):
+                    runner.execute_check({}, platform, "dev", "/unused", "token", prepare_runtime=False)
+                remote.assert_not_called()
 
     def test_gate_accepts_runner_snapshot_without_project_git_and_keeps_local_diff_check(self):
         with tempfile.TemporaryDirectory(prefix="gate snapshot ") as temporary:
