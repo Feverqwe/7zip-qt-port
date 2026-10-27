@@ -122,23 +122,33 @@ def execute_check(record, platform, preset, root, token, command=None,
     tool_paths = [*config['path']]
     if qt_prefix:
         tool_paths.insert(0 if platform == 'linux' else len(tool_paths), qt_prefix + '/bin')
+    build_environment = {}
     if use_vcpkg:
-        vcpkg_root = config.get('vcpkg_root', root + '/build/vcpkg')
-        payload = ('export VCPKG_ROOT=' + shlex.quote(vcpkg_root) + '\n'
-                   f'export VCPKG_MAX_CONCURRENCY={build_jobs}\n' + payload)
+        build_environment.update(VCPKG_ROOT=config.get('vcpkg_root', root + '/build/vcpkg'),
+                                 VCPKG_MAX_CONCURRENCY=str(build_jobs))
+        if platform == 'linux':
+            build_environment['SEVENZIP_VCPKG_QT_PCH'] = 'OFF'
+    if config.get('vcpkg_root'):
+        storage = Path(config['vcpkg_root']).parent.as_posix()
+        branch_directory = Path(root).name
+        build_environment['SEVENZIP_OUTPUT_ROOT'] = f'{storage}/artifacts/{branch_directory}'
+        if use_vcpkg:
+            build_environment['VCPKG_INSTALLED_DIR'] = f'{storage}/installed/{branch_directory}'
     runtime_directory = codec_runtime(Path(root), preset).as_posix()
     timing_command = shlex.join([config['python'], 'scripts/lib/runner_timing.py'])
     payload = timing_command + " command_start\n" + payload
     if platform == "linux":
+        storage_environment = ''.join(f'export {key}={shlex.quote(value)}\n'
+                                      for key, value in build_environment.items())
         analysis_environment = (f"export SEVENZIP_ENABLE_CLANG_TIDY={analysis_mode}\n"
                                 if analysis_mode is not None else "")
         script = f"""set -euo pipefail
 cd {shlex.quote(root)}
-mkdir -p runner-tmp
+mkdir -p runner-tmp/ccache
 export TMPDIR="$PWD/runner-tmp" TMP="$PWD/runner-tmp" TEMP="$PWD/runner-tmp"
 export QT_QPA_PLATFORM="${{QT_QPA_PLATFORM:-offscreen}}"
 export CMAKE_BUILD_PARALLEL_LEVEL={build_jobs} SEVENZIP_SCRIPT_OUTPUT=compact
-{analysis_environment}export SEVENZIP_COMPACT_TEST_BINARIES=ON SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}
+{storage_environment}{analysis_environment}export SEVENZIP_COMPACT_TEST_BINARIES=ON SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}
 export CMAKE_PREFIX_PATH={shlex.quote(qt_prefix)}
 export PATH={shlex.quote(':'.join(tool_paths))}:"$PATH"
 export LIBGL_ALWAYS_SOFTWARE=1 SEVENZIP_CTEST_JOBS=1
@@ -148,6 +158,7 @@ export SEVENZIP_RUNNER_PYTHON={shlex.quote(config['python'])}
 export SEVENZIP_RUNNER_TIMING="$PWD/runner-tmp/timing.jsonl"
 : > "$SEVENZIP_RUNNER_TIMING"
 export CCACHE_DIR={shlex.quote(config['ccache_dir'])}
+export CCACHE_TEMPDIR="$PWD/runner-tmp/ccache"
 export CCACHE_MAXSIZE=2G
 set +e
 (
@@ -166,7 +177,8 @@ df -Pk .
         commands = ['@echo off', *[f'set "{key}={root}/runner-tmp"' for key in ("TEMP", "TMP", "TMPDIR")],
                     f'call "{config["vcvars"]}"', 'if errorlevel 1 exit /b %errorlevel%',
                     f'set "PATH={runtime_directory};{";".join(tool_paths)};%PATH%"',
-                    f'set "CCACHE_DIR={config["ccache_dir"]}"', 'set "CCACHE_MAXSIZE=2G"',
+                    f'set "CCACHE_DIR={config["ccache_dir"]}"',
+                    f'set "CCACHE_TEMPDIR={root}/runner-tmp/ccache"', 'set "CCACHE_MAXSIZE=2G"',
                     f'set "CMAKE_PREFIX_PATH={qt_prefix}"', 'set "CC=cl.exe"', 'set "CXX=cl.exe"',
                     f'set "SEVENZIP_WINDOWS_RUNNER_HOST={config["computer_name"]}"',
                     f'set "SEVENZIP_RUNNER_PYTHON={config["python"]}"',
@@ -179,6 +191,7 @@ df -Pk .
                     f'cd /d "{root}"']
         if analysis_mode is not None:
             commands.insert(1, f'set "SEVENZIP_ENABLE_CLANG_TIDY={analysis_mode}"')
+        commands[1:1] = [f'set "{key}={value}"' for key, value in build_environment.items()]
         if prepare_runtime:
             commands += [f'"{config["python"]}" scripts/lib/runner_timing.py runtime_start',
                          f'"{config["python"]}" scripts/prepare-runtime.py --upstream upstream --preset {preset}',
@@ -191,7 +204,7 @@ df -Pk .
         launch = interactive_command(root, elevated) if interactive else (
             "& cmd.exe /d /c 'check.cmd > check.log 2>&1'\n$code=$LASTEXITCODE\n")
         script = f"""Set-Location '{root}'
-New-Item -ItemType Directory '{root}/runner-tmp' -Force | Out-Null
+New-Item -ItemType Directory '{root}/runner-tmp/ccache' -Force | Out-Null
 [IO.File]::WriteAllText('{root}/runner-tmp/timing.jsonl', '')
 $env:TEMP=$env:TMP=$env:TMPDIR='{root}/runner-tmp'
 [IO.File]::WriteAllBytes('{root}/check.cmd', [Convert]::FromBase64String('{batch}'))

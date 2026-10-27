@@ -45,6 +45,17 @@ Install the dependencies described in [development](development.md#dependencies)
 For `vcpkg-*` presets, install the pinned vcpkg checkout in the branch workspace's
 `build/vcpkg`, or set the optional `vcpkg_root` to its absolute guest path.
 These presets obtain Qt from the manifest and do not select `qt_prefix`.
+For a RAM-backed workspace, set `vcpkg_root` on persistent storage. Its parent
+also holds branch-specific installed packages and final build outputs; sources,
+objects and temporary build data remain in the workspace. Keep `ccache_dir` on
+persistent storage as well. This layout preserves dependencies and binaries
+across a RAM-disk reset; source synchronization and compilation restore the
+disposable workspace. The build wrapper also accepts `VCPKG_INSTALLED_DIR` and
+`SEVENZIP_OUTPUT_ROOT` for equivalent local setups.
+Linux manifest builds disable Qt precompiled headers to bound dependency-build
+disk usage. This uses a generated overlay from the pinned registry, retains
+the manifest's features and builds both configurations. Local manifest builds
+can select the same behavior with `SEVENZIP_VCPKG_QT_PCH=OFF`.
 The helper forwards the selected `computer_name` as `SEVENZIP_WINDOWS_RUNNER_HOST`;
 native registration/reference fixtures require a matching actual computer name.
 Changing this environment selection refreshes the build wrapper's configuration.
@@ -93,6 +104,10 @@ timestamps are unchanged. Windows synchronization omits Unix permissions.
 
 `--transport rsync` selects the previous checksum-based transport explicitly;
 that choice requires local and configured remote rsync executables.
+Use this transport for an ImDisk workspace if cp2 reports `Incorrect function`:
+the observed driver rejects Windows handle-based path canonicalization on both
+the drive and its junction. Changing the junction alone does not resolve that
+failure. Source reconciliation and incremental-build retention still apply.
 
 ## Optional VM discovery
 

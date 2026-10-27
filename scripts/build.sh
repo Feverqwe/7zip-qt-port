@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+project_root="$(python3 "$(dirname "${BASH_SOURCE[0]}")/lib/project_paths.py" \
+  "$(dirname "${BASH_SOURCE[0]}")/..")"
 cd "$project_root"
 preset="${1:-dev}"
 analysis_mode=""
@@ -21,6 +22,13 @@ sevenzip_select_toolchain "$preset"
 build_only=0
 if [[ "${2:-}" == --build-only ]]; then
   build_only=1
+fi
+if [[ "$preset" == vcpkg-* && "${SEVENZIP_VCPKG_QT_PCH:-ON}" == OFF ]]; then
+  qt_overlay="$(python3 scripts/prepare-vcpkg-overlay.py --vcpkg "$VCPKG_ROOT" \
+    --output "$VCPKG_ROOT/../overlays/qt-no-pch")"
+  overlay_separator=:
+  if [[ "${OS:-}" == Windows_NT ]]; then overlay_separator=';'; fi
+  export VCPKG_OVERLAY_PORTS="$qt_overlay${VCPKG_OVERLAY_PORTS:+$overlay_separator$VCPKG_OVERLAY_PORTS}"
 fi
 
 # Keep MSVC /showIncludes encoding consistent even without English language resources.
@@ -64,6 +72,16 @@ configure() {
   if [[ -n "$analysis_mode" ]]; then
     set -- "-DSEVENZIP_ENABLE_CLANG_TIDY=$analysis_mode" "$@"
   fi
+  if [[ "$preset" == vcpkg-* && -n "${VCPKG_INSTALLED_DIR:-}" ]]; then
+    set -- "-DVCPKG_INSTALLED_DIR=$VCPKG_INSTALLED_DIR" "$@"
+  fi
+  if [[ -n "${SEVENZIP_OUTPUT_ROOT:-}" ]]; then
+    local output_directory="$SEVENZIP_OUTPUT_ROOT/$preset"
+    set -- "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$output_directory" \
+      "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$output_directory" \
+      "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=$output_directory" \
+      "-DCMAKE_PDB_OUTPUT_DIRECTORY=$output_directory" "$@"
+  fi
   if [[ -z "${CMAKE_TOOLCHAIN_FILE:-}" && -n "${CC:-}" && -n "${CXX:-}" ]]; then
     if [[ "$(uname -s)" == Darwin || "$(uname -s)" == Linux ]]; then
       set -- "-DCMAKE_C_COMPILER=$CC" "-DCMAKE_CXX_COMPILER=$CXX" "$@"
@@ -105,7 +123,7 @@ configure() {
     "${CMAKE_PREFIX_PATH:-}" "${CC:-}" "${CXX:-}" "${OBJCXX:-}" \
     "${CFLAGS:-}" "${CXXFLAGS:-}" "${OBJCXXFLAGS:-}" "${LDFLAGS:-}" \
     "${CMAKE_TOOLCHAIN_FILE:-}" "${SDKROOT:-}" "${CPLUS_INCLUDE_PATH:-}" \
-    "${VCPKG_ROOT:-}" \
+    "${VCPKG_ROOT:-}" "${VCPKG_OVERLAY_PORTS:-}" \
     "${SEVENZIP_WINDOWS_RUNNER_HOST:-}" "${COMPUTERNAME:-}" \
     "$(cksum "$project_root/scripts/build.sh" "$project_root/CMakePresets.json")" | cksum)"
   local existing_signature=""

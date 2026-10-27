@@ -559,8 +559,11 @@ raise SystemExit(runner.main())
             (root / "scripts/probe.py").write_text('''import json, os
 from pathlib import Path
 Path('selected.json').write_text(json.dumps({key: os.environ.get(key) for key in
-    ('VCPKG_ROOT', 'VCPKG_MAX_CONCURRENCY', 'CMAKE_PREFIX_PATH', 'PATH')}))
+    ('VCPKG_ROOT', 'VCPKG_MAX_CONCURRENCY', 'VCPKG_INSTALLED_DIR',
+     'SEVENZIP_OUTPUT_ROOT', 'CMAKE_PREFIX_PATH', 'PATH')}))
 ''')
+            (root / "scripts/prepare-runtime.py").write_text(
+                (root / "scripts/probe.py").read_text().replace("selected.json", "prepared.json"))
             config = load_config()["linux"]
 
             def local_remote(record, script, **kwargs):
@@ -576,13 +579,23 @@ Path('selected.json').write_text(json.dumps({key: os.environ.get(key) for key in
                             patch.dict(os.environ, {"CMAKE_BUILD_PARALLEL_LEVEL": "2"}):
                         runner.execute_check({"config": settings}, "linux", "vcpkg-dev",
                                              root.as_posix(), "token",
-                                             [sys.executable, "scripts/probe.py"], False)
+                                             [sys.executable, "scripts/probe.py"], True)
                     selected = json.loads((root / "selected.json").read_text())
-                    self.assertEqual(selected["VCPKG_ROOT"], configured_root or str(root / "build/vcpkg"))
+                    prepared = json.loads((root / "prepared.json").read_text())
+                    self.assertEqual({key: value for key, value in selected.items() if key != 'PATH'},
+                                     {key: value for key, value in prepared.items() if key != 'PATH'})
+                    self.assertEqual(Path(selected["VCPKG_ROOT"]),
+                                     Path(configured_root) if configured_root else root / "build/vcpkg")
                     self.assertEqual(selected["VCPKG_MAX_CONCURRENCY"], "2")
                     self.assertFalse(selected["CMAKE_PREFIX_PATH"])
                     self.assertNotIn(config["qt_prefix"] + "/bin", selected["PATH"].split(os.pathsep))
                     self.assertFalse((root / "injected").exists())
+                    if configured_root:
+                        storage = Path(configured_root).parent
+                        self.assertEqual(Path(selected['VCPKG_INSTALLED_DIR']),
+                                         storage / 'installed' / root.name)
+                        self.assertEqual(Path(selected['SEVENZIP_OUTPUT_ROOT']),
+                                         storage / 'artifacts' / root.name)
 
     def test_remote_verification_prepares_the_requested_runtime_toolchain(self):
         # A default runtime with a module preset reproduced incompatible ASan

@@ -15,12 +15,21 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class WorkflowTests(unittest.TestCase):
+    def setUp(self):
+        environment = patch.dict(os.environ)
+        environment.start()
+        self.addCleanup(environment.stop)
+        # Each miniature project owns its outputs; inheriting the outer
+        # runner's destination would mix fixtures and bypass their cleanup.
+        os.environ.pop("SEVENZIP_OUTPUT_ROOT", None)
+
     def fixture(self, root):
         (root / "scripts/config").mkdir(parents=True)
         (root / "cmake").mkdir()
         (root / "scripts/lib").mkdir(parents=True, exist_ok=True)
         for name in ("build.sh", "ctest.sh", "verify.py", "config/verify-profiles.json",
-                     "lib/runner_timing.py", "lib/toolchain.py", "lib/toolchain.sh", "lib/runtime_layout.py"):
+                     "lib/runner_timing.py", "lib/toolchain.py", "lib/toolchain.sh", "lib/runtime_layout.py",
+                     "lib/project_paths.py"):
             shutil.copy2(ROOT / "scripts" / name, root / "scripts" / name)
         shutil.copy2(ROOT / "cmake/DeveloperWorkflow.cmake", root / "cmake/DeveloperWorkflow.cmake")
         shutil.copy2(ROOT / "cmake/ReadCTestCommands.cmake", root / "cmake/ReadCTestCommands.cmake")
@@ -86,6 +95,51 @@ endif()
                 os.environ["SEVENZIP_WINDOWS_RUNNER_HOST"] = "fixture-B"
                 # A stale configure would still select a test for the wrong host.
                 self.run_verify(root, "^configured_native$", plan=True, succeeds=False)
+
+    def test_relocated_outputs_run_and_remain_incremental(self):
+        # CTest target discovery must execute persistent binaries even when
+        # source and object files are on a separate, disposable filesystem.
+        with tempfile.TemporaryDirectory(prefix="split output ") as temporary:
+            root = Path(temporary) / "ram"
+            root.mkdir()
+            self.fixture(root)
+            outputs = Path(temporary) / "persistent outputs"
+            with patch.dict(os.environ, {"SEVENZIP_OUTPUT_ROOT": str(outputs)}):
+                self.run_verify(root, "^scenario$")
+                binary = outputs / "dev" / ("subject.exe" if os.name == "nt" else "subject")
+                before = binary.stat().st_mtime_ns
+                self.run_verify(root, "^scenario$")
+                self.assertEqual(binary.stat().st_mtime_ns, before)
+
+    def test_linked_checkout_and_verification_reuse_the_same_objects(self):
+        with tempfile.TemporaryDirectory(prefix="linked checkout ") as temporary:
+            base = Path(temporary)
+            root, alias = base / "source", base / "linked source"
+            root.mkdir()
+            self.fixture(root)
+            if os.name == "nt":
+                subprocess.run(["cmd", "/d", "/c", "mklink", "/J", str(alias), str(root)],
+                               check=True, capture_output=True)
+            else:
+                alias.symlink_to(root, target_is_directory=True)
+            try:
+                result = subprocess.run(
+                    ["bash", str(alias / "scripts/build.sh"), "dev", "subject"], cwd=alias,
+                    env=dict(os.environ, CMAKE_PREFIX_PATH=str(root)), text=True, capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                binary = root / "build/dev" / ("subject.exe" if os.name == "nt" else "subject")
+                before = binary.stat().st_mtime_ns
+                commands = (root / 'build/dev/compile_commands.json').read_text()
+                verified = self.run_verify(root, "^scenario$")
+                self.assertEqual(binary.stat().st_mtime_ns, before,
+                                 commands + '\nAFTER\n' +
+                                 (root / 'build/dev/compile_commands.json').read_text() +
+                                 result.stdout + verified.stdout)
+            finally:
+                if os.name == "nt":
+                    alias.rmdir()
+                else:
+                    alias.unlink()
 
     def test_unwritable_optional_timing_does_not_fail_verification(self):
         with tempfile.TemporaryDirectory(prefix="optional timing ") as temporary:
@@ -170,7 +224,6 @@ include(cmake/DeveloperWorkflow.cmake)
                 rejected = self.run_verify(root, "^scenario$", succeeds=False)
                 self.assertIn("clang-diagnostic-return-stack-address", rejected.stdout + rejected.stderr)
 
-
     def test_analysis_launcher_preserves_quoted_module_paths(self):
         # Windows response parsing must also treat line breaks as separators;
         # spaces inside BMI paths must reach the tooling driver unchanged.
@@ -189,7 +242,6 @@ include(cmake/DeveloperWorkflow.cmake)
             self.assertEqual(json.loads((root / "arguments.json").read_text()),
                              ["--", "-fmodule-file=answer=module with spaces.pcm",
                               "-fmodule-output=compiled module.pcm", "@msvc.modmap"])
-
 
     def run_verify(self, root, selection, plan=False, succeeds=True):
         command = [sys.executable, str(root / "scripts/verify.py"), "--tests", selection, "--skip-runtime"]
