@@ -25,7 +25,7 @@ bool RelativeHashPath(QString path) {
 }
 } // namespace
 
-bool ValidateOperationJob(const QtOperationJob &job, QString &error) {
+std::expected<void, QString> ValidateOperationJob(const QtOperationJob &job) {
     using Command = QtOperationJob::Command;
     bool valid = true;
     switch (job.Operation) {
@@ -68,10 +68,10 @@ bool ValidateOperationJob(const QtOperationJob &job, QString &error) {
                               : PathIsRepresentable(path));
     }
     if (!valid || size > 64 * 1024 * 1024) {
-        error = QCoreApplication::translate("QtOperation", "Invalid operation message.");
-        return false;
+        return std::unexpected(
+            QCoreApplication::translate("QtOperation", "Invalid operation message."));
     }
-    return true;
+    return {};
 }
 
 OperationRequest OperationRequestFromJob(const QtOperationJob &job) {
@@ -115,7 +115,8 @@ bool ValidateOperationOutputs(const QStringList &directories, const QStringList 
     return true;
 }
 
-bool OperationResultFromReport(const OperationReport &report, QtOperationResult &result) {
+std::expected<QtOperationResult, QtOperationResult::Outcome>
+OperationResultFromReport(const OperationReport &report) {
     using Outcome = QtOperationResult::Outcome;
     const auto status = Outcome(report.outcome());
     const int code = report.exitCode();
@@ -137,7 +138,7 @@ bool OperationResultFromReport(const OperationReport &report, QtOperationResult 
         break;
     }
     if (!valid || !ValidateOperationOutputs(report.changedDirectories(), report.changedArchives()))
-        return false;
-    result = {status, code, {}, report.changedDirectories(), report.changedArchives()};
-    return true;
+        return std::unexpected(Outcome::ProtocolFailed);
+    return QtOperationResult{
+        status, code, {}, report.changedDirectories(), report.changedArchives()};
 }

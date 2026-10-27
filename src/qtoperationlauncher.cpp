@@ -12,6 +12,7 @@
 #include <QUuid>
 #include <functional>
 #include <optional>
+#include <utility>
 
 namespace {
 class OperationChannel final : public OperationSource {
@@ -90,14 +91,15 @@ QtOperationLauncher::QtOperationLauncher(QObject *parent)
                 state_->changedArchives_.append(archive);
     };
     state_->channel_.Complete = [this](const OperationReport &report) {
-        QtOperationResult result;
-        if (!state_->accepted_ || state_->result_ || state_->terminal_ ||
-            !OperationResultFromReport(report, result)) {
+        auto result = state_->accepted_ && !state_->result_ && !state_->terminal_
+                          ? OperationResultFromReport(report)
+                          : std::unexpected(QtOperationResult::Outcome::ProtocolFailed);
+        if (!result) {
             protocolFailure(QCoreApplication::translate("QtOperation",
                                                         "Unexpected operation protocol message."));
             return false;
         }
-        state_->result_ = result;
+        state_->result_ = std::move(*result);
         return true;
     };
     connect(&state_->poll_, &QTimer::timeout, this, &QtOperationLauncher::observe);
@@ -145,9 +147,13 @@ bool QtOperationLauncher::start(const QString &program, const QtOperationJob &jo
             QCoreApplication::translate("QtOperation", "An operation observer cannot be reused.");
         return false;
     }
-    if (!ValidateOperationJob(job, error))
+    const auto request =
+        ValidateOperationJob(job).transform([&] { return OperationRequestFromJob(job); });
+    if (!request) {
+        error = request.error();
         return false;
-    state_->channel_.Request = OperationRequestFromJob(job);
+    }
+    state_->channel_.Request = *request;
     QString channel;
 #ifdef Q_OS_WIN
     channel = QStringLiteral("sevenzip-") + QUuid::createUuid().toString(QUuid::Id128);

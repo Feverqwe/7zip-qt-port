@@ -568,10 +568,15 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(sevenzip_panel PUBLIC sevenzip_linux_taskbar)
 endif()
 
+add_library(sevenzip_operation_contract STATIC src/qtoperationprotocol.cpp src/qtoperationprotocol.h)
+target_compile_features(sevenzip_operation_contract PUBLIC cxx_std_23)
+target_include_directories(sevenzip_operation_contract PUBLIC src "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(sevenzip_operation_contract PUBLIC Qt6::Core Qt6::Network Qt6::RemoteObjects)
+qt_add_repc_merged(sevenzip_operation_contract src/operation.rep)
+
 add_library(sevenzip_filesystem STATIC
     src/qtarchivewritelease.cpp src/qtarchivewritelease.h
     src/qtoperationprocess.cpp src/qtoperationprocess.h
-    src/qtoperationprotocol.cpp src/qtoperationprotocol.h
     src/qtoperationendpoint.cpp src/qtoperationendpoint.h
     src/qtoperationlauncher.cpp src/qtoperationlauncher.h
     src/archivesfxmodule.cpp src/archivesfxmodule.h
@@ -631,10 +636,9 @@ if(WIN32)
     target_link_libraries(sevenzip_filesystem PUBLIC mpr)
 endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
-qt_add_repc_merged(sevenzip_filesystem src/operation.rep)
 target_include_directories(sevenzip_filesystem PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
-target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core Qt6::Network Qt6::RemoteObjects sevenzip_common sevenzip_zip sevenzip_progress_sync)
+target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_operation_contract sevenzip_common sevenzip_zip sevenzip_progress_sync)
 target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_system_icons sevenzip_name_sort)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/docs/upstream-baseline.json")
@@ -864,7 +868,7 @@ if(BUILD_TESTING)
     set_tests_properties(operation_process PROPERTIES TIMEOUT 30)
     qt_add_executable(operation_protocol_tests tests/operation_protocol_tests.cpp)
     target_include_directories(operation_protocol_tests PRIVATE src)
-    target_link_libraries(operation_protocol_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    target_link_libraries(operation_protocol_tests PRIVATE sevenzip_operation_contract Qt6::Test)
     add_test(NAME operation_protocol COMMAND operation_protocol_tests -silent)
     set_tests_properties(operation_protocol PROPERTIES TIMEOUT 30)
     qt_add_executable(operation_launcher_tests tests/operation_launcher_tests.cpp tests/fixtures/operation_parent.cpp)

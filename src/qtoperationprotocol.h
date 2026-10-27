@@ -2,6 +2,7 @@
 #pragma once
 #include <QMetaType>
 #include <QStringList>
+#include <expected>
 
 class OperationRequest;
 class OperationReport;
@@ -44,9 +45,10 @@ struct QtOperationJob {
     bool TotalMode = false;
 };
 
-bool ValidateOperationJob(const QtOperationJob &job, QString &error);
+std::expected<void, QString> ValidateOperationJob(const QtOperationJob &job);
 OperationRequest OperationRequestFromJob(const QtOperationJob &job);
 QtOperationJob OperationJobFromRequest(const OperationRequest &request);
 OperationReport OperationReportFromResult(const QtOperationResult &result);
-bool OperationResultFromReport(const OperationReport &report, QtOperationResult &result);
+std::expected<QtOperationResult, QtOperationResult::Outcome>
+OperationResultFromReport(const OperationReport &report);
 bool ValidateOperationOutputs(const QStringList &directories, const QStringList &archives);

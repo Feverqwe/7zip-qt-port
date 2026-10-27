@@ -16,8 +16,7 @@ class SelectionSource final : public OperationSource {
     void reject(QString) override {}
     void outputs(QStringList, QStringList) override {}
     bool complete(OperationReport report) override {
-        QtOperationResult result;
-        return Accepted && OperationResultFromReport(report, result);
+        return Accepted && OperationResultFromReport(report);
     }
 };
 } // namespace
@@ -40,8 +39,7 @@ class OperationProtocolTests final : public QObject {
         for (int i = 0; i < 10000; ++i)
             job.Paths.append(
                 root.filePath(QStringLiteral("空 файл %1 \"quotes\" [literal].zip").arg(i)));
-        QString error;
-        QVERIFY2(ValidateOperationJob(job, error), qPrintable(error));
+        QVERIFY(ValidateOperationJob(job));
         SelectionSource source;
         source.Request = OperationRequestFromJob(job);
         QRemoteObjectHost host(url);
@@ -52,7 +50,7 @@ class OperationProtocolTests final : public QObject {
         QTRY_VERIFY_WITH_TIMEOUT(replica->isInitialized(), 5000);
         const auto received = OperationJobFromRequest(replica->request());
         QCOMPARE(received.Paths, job.Paths);
-        QVERIFY2(ValidateOperationJob(received, error), qPrintable(error));
+        QVERIFY(ValidateOperationJob(received));
         QVERIFY(!source.Accepted);
         replica->accept();
         QTRY_VERIFY(source.Accepted);
@@ -65,24 +63,22 @@ class OperationProtocolTests final : public QObject {
         QtOperationJob job;
         job.Operation = QtOperationJob::Command::Benchmark;
         job.TotalMode = true;
-        QString error;
-        QVERIFY(ValidateOperationJob(job, error));
+        QVERIFY(ValidateOperationJob(job));
         job.Paths = {"/unrelated-file"};
-        QVERIFY(!ValidateOperationJob(job, error));
+        QVERIFY(!ValidateOperationJob(job));
     }
     void unavailableSelectionIsRejected() {
         QtOperationJob job;
-        QString error;
-        QVERIFY(!ValidateOperationJob(job, error));
+        QVERIFY(!ValidateOperationJob(job));
         job.Paths = {"relative/file.zip"};
-        QVERIFY(!ValidateOperationJob(job, error));
+        QVERIFY(!ValidateOperationJob(job));
         QTemporaryDir root;
         QVERIFY(root.isValid());
         job.Paths = {root.filePath("archive.zip") + QChar::Null + "hidden"};
-        QVERIFY(!ValidateOperationJob(job, error));
+        QVERIFY(!ValidateOperationJob(job));
         job.Paths = {root.filePath("archive.zip")};
         job.Operation = QtOperationJob::Command(-1);
-        QVERIFY(!ValidateOperationJob(job, error));
+        QVERIFY(!ValidateOperationJob(job));
     }
     void panelHashSelectionRejectsTraversalAndKeepsLiteralNames() {
         QTemporaryDir root;
@@ -91,17 +87,16 @@ class OperationProtocolTests final : public QObject {
         job.Operation = QtOperationJob::Command::Hash;
         job.HashMethod = "SHA256";
         job.HashBasePrefix = root.path() + '/';
-        QString error;
         QStringList invalidPaths{"../outside", root.filePath("absolute"), "sub/../../outside"};
 #ifdef Q_OS_WIN
         invalidPaths.append({"..\\outside", "sub\\..\\outside"});
 #endif
         for (const QString &path : invalidPaths) {
             job.Paths = {path};
-            QVERIFY(!ValidateOperationJob(job, error));
+            QVERIFY(!ValidateOperationJob(job));
         }
         job.Paths = {QStringLiteral("nested/literal [*] 空.txt")};
-        QVERIFY(ValidateOperationJob(job, error));
+        QVERIFY(ValidateOperationJob(job));
     }
     void extractionRequiresAbsoluteDestinationAndSupportedZone() {
         QTemporaryDir root;
@@ -110,22 +105,20 @@ class OperationProtocolTests final : public QObject {
         job.Operation = QtOperationJob::Command::Extract;
         job.Paths = {root.filePath("archive.zip")};
         job.Destination = "relative output";
-        QString error;
-        QVERIFY(!ValidateOperationJob(job, error));
+        QVERIFY(!ValidateOperationJob(job));
         job.Destination = root.filePath("output");
         job.WriteZone = 3;
-        QVERIFY(!ValidateOperationJob(job, error));
+        QVERIFY(!ValidateOperationJob(job));
         job.WriteZone = quint32(-1);
-        QVERIFY(ValidateOperationJob(job, error));
+        QVERIFY(ValidateOperationJob(job));
     }
     void contradictoryResultCannotBeReportedAsSuccess() {
-        QtOperationResult result;
         QVERIFY(!OperationResultFromReport(
-            OperationReportFromResult({QtOperationResult::Outcome::Success, 2, {}}), result));
+            OperationReportFromResult({QtOperationResult::Outcome::Success, 2, {}})));
         QVERIFY(!OperationResultFromReport(
-            OperationReportFromResult({QtOperationResult::Outcome::Crashed, 2, {}}), result));
+            OperationReportFromResult({QtOperationResult::Outcome::Crashed, 2, {}})));
         QVERIFY(!OperationResultFromReport(
-            OperationReportFromResult({QtOperationResult::Outcome::Cancelled, 0, {}}), result));
+            OperationReportFromResult({QtOperationResult::Outcome::Cancelled, 0, {}})));
     }
 };
 

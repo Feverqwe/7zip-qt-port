@@ -148,6 +148,10 @@ launch the bundled `7zG`. The child owns native discovery, source GUI dispatch, 
 execution; the manager remains available. A generated Qt Remote Objects interface
 over a private, current-user local channel carries literal selections, typed
 options and outcomes. Both processes use the same build's interface signature.
+The shared C++23 contract has its own build target, independent of filesystem
+implementations. Validation returns a value or a typed error; request publication
+and completion consume that result before changing operation state. Contract
+tests exercise the same generated interface and validation as both processes.
 The child copies and validates the complete request before explicitly acknowledging
 acceptance. Native process launch/observation, startup deadlines and independent
 child lifetime remain application responsibilities. Completion waits briefly for

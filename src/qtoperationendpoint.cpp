@@ -123,10 +123,10 @@ int RunGUIOperationEndpoint(QApplication &application, const QString &channel,
     QObject::connect(replica.get(), &QRemoteObjectReplica::initialized, &context, [&] {
         if (accepted)
             return;
-        const QtOperationJob job = OperationJobFromRequest(replica->request());
-        QString error;
-        if (!ValidateOperationJob(job, error)) {
-            replica->reject(error);
+        const auto request = OperationJobFromRequest(replica->request());
+        const auto validated = ValidateOperationJob(request).transform([&] { return request; });
+        if (!validated) {
+            replica->reject(validated.error());
             application.exit(NExitCode::kUserError);
             return;
         }
@@ -135,7 +135,7 @@ int RunGUIOperationEndpoint(QApplication &application, const QString &channel,
         accepted = true;
         startup.stop();
         replica->accept();
-        QTimer::singleShot(0, &context, [&, job] {
+        QTimer::singleShot(0, &context, [&, job = *validated] {
             QStringList changedDirectories;
             QStringList changedArchives;
             QtGUICommandSource command;
