@@ -34,6 +34,11 @@ def companion(compiler, cxx):
 def environment(root, preset="dev", current=None, require_qt=True):
     current = dict(os.environ if current is None else current)
     system = platform.system()
+    if __package__:
+        from .build_paths import environment as workspace_environment, host_tools
+    else:
+        from build_paths import environment as workspace_environment, host_tools
+    selected = workspace_environment(root, preset)
     if system == "Linux" and preset == "modules-linux-dev" and not current.get("CMAKE_TOOLCHAIN_FILE"):
         presets = json.loads((root / "CMakePresets.json").read_text())["configurePresets"]
         configured = next(item for item in presets if item["name"] == preset)["cacheVariables"]
@@ -41,17 +46,13 @@ def environment(root, preset="dev", current=None, require_qt=True):
         if not cc and not cxx:
             cc, cxx = configured["CMAKE_C_COMPILER"], configured["CMAKE_CXX_COMPILER"]
         cc, cxx = cc or companion(cxx, False), cxx or companion(cc, True)
-        selected = {"CC": shutil.which(cc), "CXX": shutil.which(cxx)}
-        if not all(selected.values()):
+        compilers = {"CC": shutil.which(cc), "CXX": shutil.which(cxx)}
+        if not all(compilers.values()):
             raise ValueError(f"Install the {preset} compilers ({cc}, {cxx}), or set CC and CXX")
+        selected.update(compilers)
         return selected
     if system != "Darwin":
-        return {}
-    if __package__:
-        from .local_ramdisk import environment as scratch_environment
-    else:
-        from local_ramdisk import environment as scratch_environment
-    selected = scratch_environment(root)
+        return selected
     if not current.get("CMAKE_TOOLCHAIN_FILE"):
         cc, cxx = current.get("CC"), current.get("CXX")
         if not cc and not cxx:
@@ -84,9 +85,9 @@ def environment(root, preset="dev", current=None, require_qt=True):
             selected["PATH"] = compiler_bin + os.pathsep + current.get("PATH", "")
     if require_qt and not current.get("CMAKE_PREFIX_PATH") and not current.get("CMAKE_TOOLCHAIN_FILE") and \
             not preset.startswith("vcpkg-"):
-        qt = harness_root(root) / "build/qt/6.12.0/macos"
+        qt = host_tools(root) / "qt/6.12.0/macos"
         if not (qt / "lib/cmake/Qt6/Qt6Config.cmake").is_file():
-            raise ValueError("Install the Qt 6.12.0 macOS kit in the harness build/qt, or set CMAKE_PREFIX_PATH")
+            raise ValueError(f"Install the Qt 6.12.0 macOS kit in {qt}, or set CMAKE_PREFIX_PATH")
         selected["CMAKE_PREFIX_PATH"] = str(qt)
     return selected
 

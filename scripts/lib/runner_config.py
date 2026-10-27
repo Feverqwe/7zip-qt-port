@@ -44,7 +44,7 @@ def workspace(value, platform):
         mount = text(value["mount"], "workspace.mount")
         identifier = value["filesystem_uuid"]
         if (platform != "linux" or not PurePosixPath(mount).is_absolute()
-                or ".." in PurePosixPath(mount).parts or mount == "/"
+                or ".." in PurePosixPath(mount).parts
                 or not path.is_relative_to(mount)):
             raise ValueError("Workspace must be inside its configured Linux mount")
         if not isinstance(identifier, str) or str(uuid.UUID(identifier)) != identifier:
@@ -64,8 +64,7 @@ def load_config(path=None):
     entries = data["runners"]
     if not isinstance(entries, dict) or not entries or set(entries) - {"linux", "windows"}:
         raise ValueError("Configure linux and/or windows runners")
-    common = {"workspace", "ssh", "ready_command", "python", "qt_prefix", "path", "ccache_dir", "rsync",
-              "vcpkg_root"}
+    common = {"workspace", "ssh", "ready_command", "python", "qt_prefix", "path"}
     for platform, entry in entries.items():
         if not isinstance(entry, dict) or set(entry) - common - {"vcvars", "computer_name"}:
             raise ValueError(f"Unknown runner settings for {platform}")
@@ -78,11 +77,8 @@ def load_config(path=None):
                 raise ValueError("ssh must contain an SSH executable, options and destination")
         else:
             arguments(entry["ready_command"], "ready_command")
-        entry.setdefault("rsync", "rsync")
-        for name in ("python", "qt_prefix", "ccache_dir", "rsync"):
+        for name in ("python", "qt_prefix"):
             text(entry.get(name), name)
-        if "vcpkg_root" in entry:
-            text(entry["vcpkg_root"], "vcpkg_root")
         if not isinstance(entry.get("path"), list):
             raise ValueError("Runner path must be a list of tool directories")
         for directory in entry["path"]:

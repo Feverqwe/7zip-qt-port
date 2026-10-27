@@ -9,7 +9,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $scriptDirectory = [IO.Path]::GetDirectoryName($MyInvocation.MyCommand.Path)
 if (-not $UpstreamCheckout) { $UpstreamCheckout = Join-Path $scriptDirectory '../../7zip-upstream' }
-if (-not $OutputDirectory) { $OutputDirectory = Join-Path $scriptDirectory '../build/codec-runtime' }
+. (Join-Path $scriptDirectory 'lib/workspace.ps1')
+Initialize-SevenzipWorkspace (Split-Path -Parent $scriptDirectory)
+if (-not $OutputDirectory) { $OutputDirectory = Join-Path $env:SEVENZIP_ARTIFACT_ROOT 'dev/codec-runtime' }
+Assert-SevenzipOutput (Split-Path -Parent $scriptDirectory) $OutputDirectory
 if ($env:OS -ne 'Windows_NT') { throw 'Run this script on Windows.' }
 if (-not $Architecture -or $env:VSCMD_ARG_TGT_ARCH -ne $Architecture) {
     throw 'Choose a matching MSVC developer environment and -Architecture arm64, x64 or x86.'

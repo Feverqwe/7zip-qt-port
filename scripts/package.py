@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Archive a fresh CMake runtime install, with notices and without sources."""
 import argparse
+import sys
+sys.dont_write_bytecode = True
 import hashlib
 import json
 from pathlib import Path
@@ -10,6 +12,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+from lib.build_paths import build_directory, checked_output, contained_output, directory, environment, scratch_root
 
 ROOT = Path(__file__).resolve().parents[1]
 DEVELOPMENT_SUFFIXES = {".c", ".cpp", ".cc", ".h", ".hpp", ".mm", ".m",
@@ -198,7 +201,7 @@ def install_local_runtime(build_dir, install, system):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--build-dir", type=Path, default=ROOT / "build/release")
+    parser.add_argument("--build-dir", type=Path)
     parser.add_argument("--install-only", type=Path, metavar="DIRECTORY",
                         help="Prepare a local runtime installation without creating an archive")
     parser.add_argument("--qt-source", type=Path)
@@ -207,16 +210,23 @@ def main():
     parser.add_argument("--vc-runtime", type=Path)
     parser.add_argument("--vc-notices", type=Path)
     args = parser.parse_args()
+    import os
+    os.environ.update(environment(ROOT))
+    build_input = args.build_dir or build_directory(ROOT, "release")
+    try:
+        args.build_dir = checked_output(ROOT, build_input)
+    except ValueError:
+        args.build_dir = contained_output(scratch_root(ROOT), build_input)
     system = platform.system()
     if args.install_only is not None:
-        install = args.install_only.resolve()
+        install = checked_output(ROOT, args.install_only)
         install_local_runtime(args.build_dir, install, system)
         print(install)
         return
     if args.qt_source is None or args.qt_sha256 is None:
         parser.error("Archives require --qt-source and --qt-sha256")
     info = json.loads((args.build_dir / "PackageInfo.json").read_text())
-    destination = ROOT / "build/packages"
+    destination = directory(ROOT, "artifacts") / "packages"
     destination.mkdir(parents=True, exist_ok=True)
     if system == "Windows" and (args.vc_runtime is None or args.vc_notices is None):
         parser.error("Windows packages require --vc-runtime and --vc-notices")

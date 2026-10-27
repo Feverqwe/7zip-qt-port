@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 
 project_root="$(python3 "$(dirname "${BASH_SOURCE[0]}")/lib/project_paths.py" \
   "$(dirname "${BASH_SOURCE[0]}")/..")"
@@ -13,12 +14,13 @@ if [[ -n "${SEVENZIP_ENABLE_CLANG_TIDY+x}" ]]; then
     *) printf 'SEVENZIP_ENABLE_CLANG_TIDY must be ON or OFF.\n' >&2; exit 2 ;;
   esac
 fi
-if [[ "$preset" == vcpkg-* && ! -f "${VCPKG_ROOT:-}/scripts/buildsystems/vcpkg.cmake" ]]; then
-  printf 'Set VCPKG_ROOT to a vcpkg checkout containing scripts/buildsystems/vcpkg.cmake.\n' >&2
-  exit 2
-fi
 source "$project_root/scripts/lib/toolchain.sh"
 sevenzip_select_toolchain "$preset"
+if [[ "$preset" == vcpkg-* && ! -f "$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" ]]; then
+  printf 'Install the optional vcpkg checkout in %s before selecting this preset.\n' "$VCPKG_ROOT" >&2
+  exit 2
+fi
+build_directory="$SEVENZIP_BUILD_ROOT/$preset"
 build_only=0
 if [[ "${2:-}" == --build-only ]]; then
   build_only=1
@@ -51,9 +53,6 @@ if command -v ccache >/dev/null 2>&1; then
   if [[ "${OS:-}" == Windows_NT ]]; then
     compiler_cache="$(cygpath -m "$compiler_cache")"
   fi
-  if [[ -z "${CCACHE_DIR:-}" && "$(uname -s)" == Darwin ]]; then
-    export CCACHE_DIR=/private/tmp/sevenzip-desktop-ccache
-  fi
   if [[ "$preset" == vcpkg-* ]]; then
     export CMAKE_C_COMPILER_LAUNCHER="${CMAKE_C_COMPILER_LAUNCHER:-$compiler_cache}"
     export CMAKE_CXX_COMPILER_LAUNCHER="${CMAKE_CXX_COMPILER_LAUNCHER:-$compiler_cache}"
@@ -63,7 +62,7 @@ fi
 
 configure() {
   if [[ "$build_only" == 1 ]]; then
-    if [[ ! -f "$project_root/build/$preset/CMakeCache.txt" ]]; then
+    if [[ ! -f "$build_directory/CMakeCache.txt" ]]; then
       printf 'Configure %s before using --build-only.\n' "$preset" >&2
       exit 2
     fi
@@ -72,6 +71,7 @@ configure() {
   if [[ -n "$analysis_mode" ]]; then
     set -- "-DSEVENZIP_ENABLE_CLANG_TIDY=$analysis_mode" "$@"
   fi
+  set -- "-DCMAKE_INSTALL_PREFIX=$SEVENZIP_ARTIFACT_ROOT/install/$preset" "$@"
   if [[ "$preset" == vcpkg-* ]]; then
     # The pinned vcpkg toolchain caches its root independently of its file path.
     set -- "-DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
@@ -121,8 +121,8 @@ configure() {
       "-DCMAKE_CXX_COMPILER_LAUNCHER=$compiler_cache" \
       "-DCMAKE_OBJCXX_COMPILER_LAUNCHER=$compiler_cache" "$@"
   fi
-  local cache_file="$project_root/build/$preset/CMakeCache.txt"
-  local signature_file="$project_root/build/$preset/.configure-signature"
+  local cache_file="$build_directory/CMakeCache.txt"
+  local signature_file="$build_directory/.configure-signature"
   local requested_signature
   requested_signature="$(printf '%q ' "$preset" "$@" \
     "${CMAKE_PREFIX_PATH:-}" "${CC:-}" "${CXX:-}" "${OBJCXX:-}" \
@@ -132,7 +132,7 @@ configure() {
     "${SEVENZIP_WINDOWS_RUNNER_HOST:-}" "${COMPUTERNAME:-}" \
     "$(cksum "$project_root/scripts/build.sh" "$project_root/CMakePresets.json")" | cksum)"
   local existing_signature=""
-  if [[ -f "$cache_file" && -f "$signature_file" && -f "build/$preset/build.ninja" ]]; then
+  if [[ -f "$cache_file" && -f "$signature_file" && -f "$build_directory/build.ninja" ]]; then
     existing_signature="$(printf '%s\n%s\n' "$requested_signature" "$(cksum "$cache_file")")"
   fi
   if [[ -n "$existing_signature" && "$(cat "$signature_file")" == "$existing_signature" ]]; then
@@ -205,5 +205,5 @@ fi
 if [[ "$#" -gt 0 ]]; then
   cmake --build --preset "$preset" --target "$@" -- --quiet
 else
-  cmake --build --preset "$preset" -- --quiet
+  cmake --build --preset "$preset" --target sevenzip_desktop -- --quiet
 fi

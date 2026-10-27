@@ -10,7 +10,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $scriptDirectory = [IO.Path]::GetDirectoryName($MyInvocation.MyCommand.Path)
 if (-not $UpstreamCheckout) { $UpstreamCheckout = Join-Path $scriptDirectory '../../7zip-upstream' }
-if (-not $OutputDirectory) { $OutputDirectory = Join-Path $scriptDirectory '../build/sfx' }
+. (Join-Path $scriptDirectory 'lib/workspace.ps1')
+Initialize-SevenzipWorkspace (Split-Path -Parent $scriptDirectory)
+if (-not $OutputDirectory) { $OutputDirectory = Join-Path $env:SEVENZIP_ARTIFACT_ROOT 'release/sfx' }
+Assert-SevenzipOutput (Split-Path -Parent $scriptDirectory) $OutputDirectory
 if ($env:OS -ne 'Windows_NT') { throw 'Run this script on Windows.' }
 if (-not $Architecture) { throw 'Choose -Architecture arm64, x64 or x86 in a matching MSVC environment.' }
 if ($env:VSCMD_ARG_TGT_ARCH -ne $Architecture) {

@@ -13,9 +13,13 @@ import re
 import shutil
 import subprocess
 import sys
+sys.dont_write_bytecode = True
 import tempfile
 import threading
 import unicodedata
+from lib.build_paths import build_directory, directory, environment as workspace_environment
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def command(arguments, **kwargs):
@@ -149,7 +153,7 @@ def installed_device_probe(root, test, scenario, environment):
     driver = binary / ('SevenzipMountDeviceTest' if linux else 'SevenzipMountDeviceTest.exe')
     if driver.exists():
         raise RuntimeError('A previous test driver exists; preserve it for inspection')
-    cache = Path('build/dev/CMakeCache.txt').read_text().splitlines()
+    cache = (build_directory(ROOT) / "CMakeCache.txt").read_text().splitlines()
     qt = next(Path(line.split('=', 1)[1]).parents[2]
               for line in cache if line.startswith('Qt6_DIR:PATH='))
     test_libraries = ([qt / 'lib/libQt6Test.so.6'] if linux else
@@ -210,6 +214,7 @@ def main():
                         help='Use a temporary global mapping restricted to the current account')
     parser.add_argument('--trace', action='store_true', help='Log synthetic server diagnostics')
     args = parser.parse_args()
+    os.environ.update(workspace_environment(ROOT))
     if args.installed_root and (not args.product_device or sys.platform not in ('win32', 'linux')):
         parser.error('--installed-root requires --product-device on Windows or Linux')
     if args.product_client or args.product_device or args.product_manager:
@@ -224,10 +229,10 @@ def main():
         scenario = ('nativeMountThroughManager' if args.product_manager else
                     'nativeDeviceRemovalAndRetry' if args.product_device else 'nativeLifecycle')
         subprocess.run(['bash', 'scripts/build.sh', 'dev', target], check=True)
-        test = Path('build/dev/' + target + ('.exe' if os.name == 'nt' else ''))
+        test = directory(ROOT, 'artifacts') / 'dev' / (target + ('.exe' if os.name == 'nt' else ''))
         environment = dict(os.environ, SEVENZIP_NATIVE_SMB_TEST='1')
         if args.product_manager:
-            environment['SEVENZIP_UI_REPORT_DIR'] = str(Path('build/dev/ui-reports').resolve())
+            environment['SEVENZIP_UI_REPORT_DIR'] = str(directory(ROOT, 'artifacts') / 'dev/ui-reports')
         if args.installed_root:
             installed_device_probe(args.installed_root, test, scenario, environment)
         else:

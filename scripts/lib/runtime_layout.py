@@ -5,12 +5,16 @@ import json
 from pathlib import Path
 import re
 
+if __package__:
+    from .build_paths import directory
+else:
+    from build_paths import directory
+
 
 def runtime_root(root, preset="dev"):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", preset):
         raise ValueError("Invalid runtime preset name")
-    build = Path(root) / "build"
-    return build if preset == "dev" else build / preset
+    return directory(root, "artifacts") / preset
 
 
 def codec_runtime(root, preset="dev"):
@@ -47,5 +51,5 @@ if __name__ == "__main__":
     parser.add_argument("--preset", default="dev")
     parser.add_argument("--component", choices=["codec", "sfx"], default="codec")
     args = parser.parse_args()
-    directory = codec_runtime if args.component == "codec" else sfx_runtime
-    print(directory(args.root, args.preset).as_posix())
+    component = codec_runtime if args.component == "codec" else sfx_runtime
+    print(component(args.root, args.preset).as_posix())

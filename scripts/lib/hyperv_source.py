@@ -1,5 +1,6 @@
 """Materialize current source without build outputs or private state."""
 
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 import re
@@ -34,13 +35,12 @@ def stage_tree(root, upstream, destination, cache, source_times=False):
     files = subprocess.check_output(["git", "ls-files", "-z", "--cached", "--others",
                                      "--exclude-standard"], cwd=root)
     names = sorted({os.fsdecode(name) for name in files.split(b"\0") if name})
-    names_copied = []
-    for name in names:
-        if not source_name(name):
-            continue
+    names = [name for name in names if source_name(name)]
+
+    def copy_source(name):
         source = root / name
         if not source.exists() and not source.is_symlink():
-            continue
+            return None
         link_target = None
         if source.is_symlink():
             link_target = os.readlink(source)
@@ -65,7 +65,19 @@ def stage_tree(root, upstream, destination, cache, source_times=False):
                     break
             else:
                 raise ValueError(f"Source kept changing while creating snapshot: {name}")
-        names_copied.append(name)
+        return name
+
+    names_copied = []
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        try:
+            for index, name in enumerate(pool.map(copy_source, names), 1):
+                if name is not None:
+                    names_copied.append(name)
+                if index % 256 == 0 or index == len(names):
+                    print(f"Source snapshot: {index}/{len(names)} files", flush=True)
+        except BaseException:
+            pool.shutdown(wait=True, cancel_futures=True)
+            raise
     baseline = json.loads((destination / "docs/upstream-baseline.json").read_text())
     revision = baseline["revision"]
     if not re.fullmatch(r"[0-9a-f]{40}", revision):
@@ -75,7 +87,13 @@ def stage_tree(root, upstream, destination, cache, source_times=False):
     if not bundle.exists():
         with tempfile.TemporaryDirectory(dir=cache) as temporary:
             mirror = Path(temporary) / "source.git"
-            subprocess.run(["git", "clone", "-q", "--bare", "--shared", str(upstream), str(mirror)], check=True)
+            subprocess.run(["git", "init", "-q", "--bare", str(mirror)], check=True)
+            available = upstream.exists() and subprocess.run(
+                ["git", "-C", str(upstream), "cat-file", "-e", revision + "^{commit}"],
+                env=dict(os.environ, GIT_NO_LAZY_FETCH="1"),
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+            origin = str(upstream) if available else baseline["repository"]
+            subprocess.run(["git", "-C", str(mirror), "fetch", origin, revision], check=True)
             subprocess.run(["git", "-C", str(mirror), "update-ref", "refs/heads/runner-baseline", revision], check=True)
             staged = Path(temporary) / "upstream.bundle"
             subprocess.run(["git", "-C", str(mirror), "bundle", "create", str(staged), "runner-baseline"], check=True)
@@ -83,6 +101,7 @@ def stage_tree(root, upstream, destination, cache, source_times=False):
     shutil.copy2(bundle, destination / "upstream.bundle")
     diff = subprocess.check_output(["git", "diff", "HEAD", "--", "src", "CMakeLists.txt", "cmake"], cwd=root)
     context = {"revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip(),
+               "branch": subprocess.check_output(["git", "symbolic-ref", "--quiet", "--short", "HEAD"], cwd=root, text=True).strip(),
                "sourceState": {"modified": bool(diff)}}
     (destination / CONTEXT).write_text(json.dumps(context) + "\n")
     manifest = destination / MANIFEST

@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Build the official native console SFX from the recorded, immutable source.
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$project_root/scripts/lib/toolchain.sh"
 sevenzip_select_toolchain release runtime
 upstream_checkout="${1:-$(python3 "$project_root/scripts/lib/toolchain.py" --root "$project_root" --upstream)}"
-artifact_dir="${2:-$project_root/build/sfx}"
+artifact_dir="${2:-$SEVENZIP_ARTIFACT_ROOT/release/sfx}"
+python3 -B "$project_root/scripts/lib/build_paths.py" check-output --root "$project_root" --output "$artifact_dir" >/dev/null
 case "$(uname -s)" in
   Darwin|Linux) ;;
   *) printf 'This script builds Unix console SFX. Windows uses the official GUI 7z.sfx module.\n' >&2; exit 1 ;;
@@ -44,9 +46,6 @@ task_sfx_cxx="${CXX:-c++}"
 if command -v ccache >/dev/null 2>&1; then
   task_sfx_cc="ccache $task_sfx_cc"
   task_sfx_cxx="ccache $task_sfx_cxx"
-fi
-if [[ "$(uname -s)" == Darwin ]]; then
-  export CCACHE_DIR="${CCACHE_DIR:-/private/tmp/sevenzip-desktop-ccache}"
 fi
 make -s -C "$snapshot/CPP/7zip/Bundles/SFXCon" -f sevenzip-runtime.gcc.mak \
   CC="$task_sfx_cc" CXX="$task_sfx_cxx" LFLAGS_STRIP= -j4

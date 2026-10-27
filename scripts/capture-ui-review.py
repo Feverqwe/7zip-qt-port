@@ -10,8 +10,11 @@ import platform
 import re
 import subprocess
 import sys
+sys.dont_write_bytecode = True
 from datetime import datetime, timezone
 from lib.hyperv_source import runner_context
+from lib.build_paths import checked_output, directory as workspace_directory, environment as workspace_environment
+from lib.runtime_layout import codec_runtime
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "scripts/config/ui-review.json"
@@ -190,8 +193,10 @@ def main():
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--gallery-only", action="store_true", help="Rebuild gallery from existing manifest without capturing windows")
     args = parser.parse_args()
+    if not args.list:
+        os.environ.update(workspace_environment(ROOT))
     if args.gallery_only:
-        output = (args.output or ROOT / "build/dev/ui-theme-review").resolve()
+        output = checked_output(ROOT, args.output or workspace_directory(ROOT, "artifacts") / "dev/ui-theme-review")
         gallery(output, json.loads((output / "manifest.json").read_text(encoding="utf-8"))["runs"])
         print(f'Review: {output / "index.html"}')
         return 0
@@ -202,7 +207,7 @@ def main():
         return 0
     system = platform.system()
     qpa = {"Darwin": "cocoa", "Windows": "windows", "Linux": "xcb"}[system]
-    output = (args.output or ROOT / "build/dev/ui-theme-review").resolve()
+    output = checked_output(ROOT, args.output or workspace_directory(ROOT, "artifacts") / "dev/ui-theme-review")
     output.mkdir(parents=True, exist_ok=True)
     selected = [row for row in selected if system in row.get("platforms", [system])]
     targets = list(dict.fromkeys(row["target"] for row in selected))
@@ -237,9 +242,9 @@ def main():
                                 "SEVENZIP_CAPTURE_SCREENSHOTS": "1",
                                 "SEVENZIP_UI_REPORT_DIR": str(directory),
                                 "SEVENZIP_SETTINGS_PATH": str(settings)}
-            runtime = os.environ.get("SEVENZIP_CODEC_MODULE_DIR", str(ROOT / "build/codec-runtime"))
+            runtime = os.environ.get("SEVENZIP_CODEC_MODULE_DIR", str(codec_runtime(ROOT)))
             env["PATH"] = runtime + os.pathsep + env.get("PATH", "")
-            executable = ROOT / "build/dev" / row["target"]
+            executable = workspace_directory(ROOT, "artifacts") / "dev" / row["target"]
             if system == "Windows":
                 executable = executable.with_suffix(".exe")
             print(f'Capture {host}/{scheme}/{row["id"]}', flush=True)

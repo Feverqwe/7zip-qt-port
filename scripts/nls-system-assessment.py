@@ -14,6 +14,9 @@ from pathlib import Path
 import platform
 import subprocess
 import sys
+sys.dont_write_bytecode = True
+from lib.build_paths import checked_output, directory
+from lib.toolchain import apply_environment
 
 ROOT = Path(__file__).resolve().parents[1]
 U16 = C.c_uint16
@@ -49,8 +52,6 @@ target_include_directories(nls_probe PRIVATE "{source_root}/src" "{source_root}/
     if not reuse:
         (project / "CMakeLists.txt").write_text(cmake)
         environment = dict(os.environ)
-        if sys.platform == "darwin":
-            environment.setdefault("CCACHE_DIR", "/private/tmp/sevenzip-desktop-ccache")
         subprocess.run(["cmake", "-S", str(project), "-B", str(build), "-G", "Ninja",
                         "-DCMAKE_BUILD_TYPE=Release"], check=True, env=environment)
         subprocess.run(["cmake", "--build", str(build), "--parallel", "2"], check=True, env=environment)
@@ -237,8 +238,6 @@ if(NOT WIN32)
 endif()
 ''')
         environment = dict(os.environ)
-        if sys.platform == "darwin":
-            environment.setdefault("CCACHE_DIR", "/private/tmp/sevenzip-desktop-ccache")
         build = project / "build"
         subprocess.run(["cmake", "-S", str(project), "-B", str(build), "-G", "Ninja",
                         "-DCMAKE_BUILD_TYPE=Release"], check=True, env=environment)
@@ -333,7 +332,7 @@ def compare(table, native):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=ROOT / "build/review/nls-system")
+    parser.add_argument("--output", type=Path)
     parser.add_argument("--backend", choices=["iconv", "windows", "cf", "adapter"])
     parser.add_argument("--charset", action="append")
     reference_mode = parser.add_mutually_exclusive_group(required=True)
@@ -342,7 +341,8 @@ def main():
     reference_mode.add_argument("--reuse-reference", action="store_true",
                                 help="Reuse the reference library already built under --output")
     args = parser.parse_args()
-    args.output = args.output.resolve()
+    apply_environment(ROOT, require_qt=False)
+    args.output = checked_output(ROOT, args.output or directory(ROOT, "artifacts") / "review/nls-system")
     args.output.mkdir(parents=True, exist_ok=True)
     lib = reference(args.output, (args.reference_root or ROOT).resolve(), args.reuse_reference)
     backend = args.backend or ("windows" if os.name == "nt" else "iconv")

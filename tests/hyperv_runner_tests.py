@@ -20,8 +20,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 spec = importlib.util.spec_from_file_location("hyperv_runner", ROOT / "scripts/hyperv-runner.py")
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
-from lib import cp2_snapshot, hyperv_interactive, hyperv_lock, hyperv_source, hyperv_transport, hyperv_workspace
+from lib import hyperv_cp2_sync, cp2_snapshot, hyperv_interactive, hyperv_lock, hyperv_source, hyperv_transport, hyperv_workspace
 from lib.runner_config import load_config
+from lib.build_paths import directory
 from lib.runner_timing import summarize
 
 
@@ -126,12 +127,6 @@ class RunnerTests(unittest.TestCase):
                 hyperv_interactive.interactive_command(unsafe)
 
     def setUp(self):
-        self.rsync = shutil.which("rsync")
-        if os.name == "nt" and not self.rsync:
-            try:
-                self.rsync = load_config()["windows"]["rsync"]
-            except (OSError, ValueError, KeyError):
-                pass
         temporary = tempfile.TemporaryDirectory(prefix="runner config ")
         self.addCleanup(temporary.cleanup)
         self.config_path = Path(temporary.name) / "runners.local.json"
@@ -139,6 +134,19 @@ class RunnerTests(unittest.TestCase):
         environment = patch.dict(os.environ, {"SEVENZIP_RUNNER_CONFIG": str(self.config_path)})
         environment.start()
         self.addCleanup(environment.stop)
+
+    def workspace_fixture(self, root):
+        (root / "tools/build").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / "tools/build/project.json", root / "tools/build/project.json")
+        shutil.copy2(ROOT / "scripts/lib/workspace.ps1", root / "scripts/lib/workspace.ps1")
+        # The command tests execute the guest shell on the current OS. The
+        # storage provider stays real, with fixture-owned durable outputs.
+        (root / "scripts/lib/build_paths.py").write_text(
+            "import os,sys\n" +
+            f"sys.path.insert(0, {str(ROOT / 'scripts')!r})\n" +
+            "from lib.build_paths import main\n" +
+            f"os.environ.update(SEVENZIP_WORKSPACE={str(root)!r}, SEVENZIP_SOURCE_ROOT={str(root)!r})\n" +
+            "main()\n")
 
     def source_fixture(self, root):
         project, upstream = root / "project", root / "upstream"
@@ -153,10 +161,12 @@ class RunnerTests(unittest.TestCase):
         revision = git(upstream, "rev-parse", "HEAD")
         (project / "docs").mkdir()
         (project / "docs/upstream-baseline.json").write_text(json.dumps({"revision": revision}))
+        (project / "tools/build").mkdir(parents=True)
+        shutil.copy2(ROOT / "tools/build/project.json", project / "tools/build/project.json")
         (project / "src").mkdir()
         (project / "src/changed.cpp").write_text("old")
         (project / "src/deleted.cpp").write_text("old")
-        (project / ".gitignore").write_text("build/\nsrc/ignored-secret\n__pycache__/\n")
+        (project / ".gitignore").write_text("/build/\nsrc/ignored-secret\n__pycache__/\n")
         git(project, "add", ".")
         git(project, "commit", "-qm", "baseline")
         return project, upstream
@@ -227,64 +237,6 @@ class RunnerTests(unittest.TestCase):
             destination.mkdir()
             with self.assertRaises(ValueError):
                 hyperv_source.stage_tree(project, upstream, destination, root / "cache")
-
-    def test_rsync_deletes_stale_source_preserves_outputs_and_checks_same_mtime_content(self):
-        if not self.rsync:
-            self.skipTest("rsync is not installed or configured")
-        with tempfile.TemporaryDirectory(prefix="sync Юникод ") as temporary:
-            root = Path(temporary)
-            source, destination = root / "source", root / "current"
-            source.mkdir()
-            destination.mkdir()
-            (source / "src").mkdir()
-            (destination / "src").mkdir()
-            for path in (source / "src/current", destination / "src/current"):
-                path.write_text("old" if destination in path.parents else "new")
-                os.utime(path, (1000000000, 1000000000))
-            (destination / "src/deleted").write_text("stale")
-            for name in ("build/object.o", ".git/index", "runner-tmp/active", "upstream/config"):
-                path = destination / name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text("preserve")
-            # Reproduce a source edit made before an earlier snapshot finished
-            # building. Synchronizing its old mtime must not hide changed code.
-            build = destination / "build"
-            (build / "render.py").write_text(
-                "from pathlib import Path\n"
-                "Path('result').write_text(Path('../src/current').read_text())\n"
-                "with Path('runs').open('a') as log: log.write('built\\n')\n")
-            python = Path(sys.executable).as_posix().replace("$", "$$")
-            (build / "build.ninja").write_text(
-                f'rule render\n  command = "{python}" render.py\n'
-                'build result: render ../src/current\n')
-            def build_result():
-                subprocess.run(["ninja", "-C", str(build)], check=True, capture_output=True)
-                return (build / "result").read_text()
-            self.assertEqual(build_result(), "old")
-            record = {"ssh_argv": ["ssh", "fixture"], "ip": "fixture"}
-            command = hyperv_transport.sync_command(record, "linux", source, str(destination))
-            # Run the production reconciliation flags locally, without SSH.
-            index = command.index("-e")
-            command[index:index + 2] = []
-            command = [arg for arg in command if not arg.startswith("--rsync-path=")]
-            command[-1] = str(destination) + "/"
-            if os.name == "nt":
-                command[0] = self.rsync
-                for index in (-2, -1):
-                    path = Path(command[index]).as_posix()
-                    command[index] = "/" + path[0].lower() + path[2:] + "/"
-            result = subprocess.run(command, check=True, capture_output=True)
-            self.assertEqual((destination / "src/current").read_text(), "new", repr((command, result.stdout, result.stderr)))
-            self.assertFalse((destination / "src/deleted").exists())
-            self.assertEqual(build_result(), "new")
-            for name in ("build/object.o", ".git/index", "runner-tmp/active", "upstream/config"):
-                self.assertEqual((destination / name).read_text(), "preserve")
-            second = subprocess.run(command, check=True, capture_output=True)
-            self.assertRegex(second.stdout.decode("utf-8", errors="replace"),
-                             r"Number of (?:regular )?files transferred: 0")
-            runs = (build / "runs").read_bytes()
-            self.assertEqual(build_result(), "new")
-            self.assertEqual((build / "runs").read_bytes(), runs)
 
     def test_lock_serializes_sync_and_keeps_unconfirmed_or_wrong_owner(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -406,11 +358,11 @@ def lock(record, root, token, action, **kwargs):
 def execute(record, platform, preset, root, token, command, *args):
     subprocess.run(command, cwd=guest_path(root), check=True)
     (guest_path(root) / '.runner-complete').write_text(token)
-runner.invoke = sync
+runner.hyperv_cp2_sync.synchronize = lambda record, platform, source, root, *args: shutil.copytree(source, guest_path(root), dirs_exist_ok=True)
 runner.lock_command = lock
 runner.execute_check = execute
 runner.collect_logs = lambda *args: {}
-sys.argv = ['runner', 'run', 'linux', '--transport', 'rsync', '--skip-runtime', '--', 'scripts/fixture.py']
+sys.argv = ['runner', 'run', 'linux', '--', 'scripts/fixture.py']
 raise SystemExit(runner.main())
 ''')
             environment = dict(os.environ)
@@ -418,15 +370,14 @@ raise SystemExit(runner.main())
             result = subprocess.run([sys.executable, str(driver)], cwd=worktree, env=environment,
                                     text=True, capture_output=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            reports = list((project / "build/runners/hyperv").glob("*/run.json"))
-            self.assertEqual(len(reports), 1)
-            report = json.loads(reports[0].read_text())
+            report_path = Path(next(line.removeprefix("Report: ") for line in result.stdout.splitlines()
+                                    if line.startswith("Report: ")))
+            report = json.loads(report_path.read_text())
             self.assertEqual(report["branch"], "feature/nested")
             guest = base / "guest" / report["platforms"][0]["directory"].rsplit("/", 1)[-1]
             self.assertEqual((guest / "observed").read_text(), "feature edits")
             self.assertFalse(guest.with_name(guest.name + ".lock").exists())
             self.assertFalse((guest / "scripts/config/runners.local.json").exists())
-            self.assertFalse((worktree / "build/runners").exists())
 
     def test_workspace_configuration_and_missing_mount_fail_before_sync(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -477,9 +428,9 @@ raise SystemExit(runner.main())
                 else:
                     path.write_text(json.dumps({"status": "passed", "run_token": "current"}))
             result = hyperv_transport.collect_logs(
-                {"ssh_argv": ["ssh", "fixture"]}, "/guest", destination,
+                {"ssh_argv": ["ssh", "fixture"], "platform": "linux"}, "/guest", destination,
                 ["python", "scripts/verify.py", "--preset", "modules-linux-dev"],
-                "current", download, None)
+                "current", download, None, "fixture")
             self.assertEqual(result["verification"]["status"], "passed")
             self.assertIn("timing_error", result)
             self.assertEqual((destination / "check.log").read_text(), "Command diagnostics retained")
@@ -492,14 +443,14 @@ raise SystemExit(runner.main())
         with patch.object(runner, "STATE", self.config_path.parent / "state"):
             record = runner.discover("windows")
         record["name"] = "custom-builder"
-        command = hyperv_transport.sync_command(record, "windows", Path("source"), "D:/build/custom/runs/current")
-        self.assertEqual(command[-1], "builder@custom-host:/d/build/custom/runs/current/")
+        command = hyperv_cp2_sync.command("cp2", record, Path("source"), "D:/build/custom/runs/current", "cp2-server")
+        self.assertIn("builder@custom-host:D:/build/custom/runs/current", command)
         with patch.object(runner, "invoke") as invoke:
             runner.remote(record, "Write-Output configured")
             self.assertIn("powershell.exe", invoke.call_args.args[0][-1])
         invoke = Mock()
         hyperv_transport.collect_logs(record, "D:/build/custom/runs/current", Path("logs"),
-                                      None, "token", invoke, None)
+                                      None, "token", invoke, None, "fixture")
         command = invoke.call_args_list[0].args[0]
         self.assertEqual(command[:4], ["scp", "-P", "2222", "builder@custom-host:D:/build/custom/runs/current/check.log"])
 
@@ -573,8 +524,8 @@ sys.exit(code)
         self.config_path.write_text(json.dumps(settings))
         with patch.object(runner, "STATE", self.config_path.parent / "state"):
             record = runner.discover("linux")
-        command = hyperv_transport.sync_command(record, "linux", Path("source"), config["workspace"]["root"] + "/current")
-        self.assertTrue(command[-1].startswith("my-dynamic-host:"))
+        command = hyperv_cp2_sync.command("cp2", record, Path("source"), config["workspace"]["root"] + "/current", "cp2-server")
+        self.assertTrue(any(arg.startswith("my-dynamic-host:") for arg in command))
 
     def test_windows_host_guard_uses_configuration_and_rejects_a_different_machine(self):
         expected = load_config()["windows"]["computer_name"]
@@ -591,6 +542,7 @@ sys.exit(code)
             (root / "scripts").mkdir()
             (root / "scripts/lib").mkdir()
             shutil.copy2(ROOT / "scripts/lib/runner_timing.py", root / "scripts/lib/runner_timing.py")
+            self.workspace_fixture(root)
             (root / "scripts/fixture.sh").write_text('printf "%s\\n" "$@" "$TEMP" "$QT_QPA_PLATFORM" "$CMAKE_BUILD_PARALLEL_LEVEL"\nexit 23\n')
             args = ["space name", "Юникод", "$(touch injected)", "a'b", "", "first\nsecond"]
             def local_remote(record, script, **kwargs):
@@ -603,7 +555,7 @@ sys.exit(code)
             self.assertEqual(error.exception.returncode, 23)
             log = (root / "check.log").read_text()
             self.assertIn("\n".join(args) + "\n", log)
-            self.assertTrue(log.endswith("/runner-tmp\noffscreen\n1\n"))
+            self.assertTrue(log.endswith(str(directory(root, "tmp")) + "\noffscreen\n1\n"))
             self.assertEqual((root / ".runner-complete").read_text().strip(), "token")
             self.assertFalse((root / "injected").exists())
             self.assertFalse((root / ".git").exists())
@@ -615,6 +567,7 @@ sys.exit(code)
             root = Path(temporary)
             (root / "scripts/lib").mkdir(parents=True)
             shutil.copy2(ROOT / "scripts/lib/runner_timing.py", root / "scripts/lib/runner_timing.py")
+            self.workspace_fixture(root)
             (root / "scripts/probe.py").write_text('''import json, os, subprocess, sys
 from pathlib import Path
 subprocess.run([sys.executable, str(Path(os.environ['VCPKG_ROOT']) / 'host-tool.py')], check=True)
@@ -630,32 +583,24 @@ Path('selected.json').write_text(json.dumps({key: os.environ.get(key) for key in
                 return subprocess.run(["bash", "-se"], input=script, text=True,
                                       check=True, capture_output=True)
 
-            for configured_root in (None, str(root / "tools/vcpkg user's $(touch injected)")):
-                with self.subTest(vcpkg_root=configured_root):
-                    settings = dict(config, workspace={"root": (root / "runs").as_posix()})
-                    tool_root = Path(configured_root) if configured_root else root / "storage/vcpkg"
-                    tool_root.mkdir(parents=True, exist_ok=True)
-                    (tool_root / "host-tool.py").write_text("raise SystemExit(0)\n")
-                    if configured_root:
-                        settings["vcpkg_root"] = configured_root
-                    with patch.object(runner, "remote", local_remote), \
-                            patch.dict(os.environ, {"CMAKE_BUILD_PARALLEL_LEVEL": "2"}):
-                        runner.execute_check({"config": settings}, "linux", "vcpkg-dev",
-                                             root.as_posix(), "token",
-                                             [sys.executable, "scripts/probe.py"], True)
-                    selected = json.loads((root / "selected.json").read_text())
-                    prepared = json.loads((root / "prepared.json").read_text())
-                    self.assertEqual({key: value for key, value in selected.items() if key != 'PATH'},
-                                     {key: value for key, value in prepared.items() if key != 'PATH'})
-                    self.assertEqual(selected["VCPKG_MAX_CONCURRENCY"], "2")
-                    self.assertFalse(selected["CMAKE_PREFIX_PATH"])
-                    self.assertNotIn(config["qt_prefix"] + "/bin", selected["PATH"].split(os.pathsep))
-                    self.assertFalse((root / "injected").exists())
-                    storage = tool_root.parent
-                    self.assertEqual(Path(selected['VCPKG_INSTALLED_DIR']),
-                                     storage / 'installed' / root.name)
-                    self.assertEqual(Path(selected['SEVENZIP_OUTPUT_ROOT']),
-                                     storage / 'artifacts' / root.name)
+            settings = dict(config, workspace={"root": (root / "sources").as_posix()})
+            tool_root = directory(root, "tools") / "vcpkg"
+            tool_root.mkdir(parents=True, exist_ok=True)
+            (tool_root / "host-tool.py").write_text("raise SystemExit(0)\n")
+            with patch.object(runner, "remote", local_remote), \
+                    patch.dict(os.environ, {"CMAKE_BUILD_PARALLEL_LEVEL": "2"}):
+                runner.execute_check({"config": settings}, "linux", "vcpkg-dev",
+                                     root.as_posix(), "token", [sys.executable, "scripts/probe.py"], True)
+            selected = json.loads((root / "selected.json").read_text())
+            prepared = json.loads((root / "prepared.json").read_text())
+            self.assertEqual({key: value for key, value in selected.items() if key != 'PATH'},
+                             {key: value for key, value in prepared.items() if key != 'PATH'})
+            self.assertEqual(selected["VCPKG_MAX_CONCURRENCY"], "2")
+            self.assertFalse(selected["CMAKE_PREFIX_PATH"])
+            self.assertNotIn(config["qt_prefix"] + "/bin", selected["PATH"].split(os.pathsep))
+            self.assertFalse((root / "injected").exists())
+            self.assertTrue(Path(selected['VCPKG_INSTALLED_DIR']).is_relative_to(root))
+            self.assertTrue(Path(selected['SEVENZIP_OUTPUT_ROOT']).is_relative_to(root))
 
     @unittest.skipUnless(os.name == "nt", "Windows compiler bootstrap environment")
     def test_windows_bootstrap_preserves_selected_vcpkg_for_runtime_and_command(self):
@@ -665,9 +610,10 @@ Path('selected.json').write_text(json.dumps({key: os.environ.get(key) for key in
             root = Path(temporary)
             (root / "scripts/lib").mkdir(parents=True)
             shutil.copy2(ROOT / "scripts/lib/runner_timing.py", root / "scripts/lib/runner_timing.py")
-            selected, bundled = root / "selected tool", root / "bundled tool"
+            self.workspace_fixture(root)
+            selected, bundled = directory(root, "tools") / "vcpkg", root / "bundled tool"
             for directory, status in ((selected, 0), (bundled, 61)):
-                directory.mkdir()
+                directory.mkdir(parents=True)
                 (directory / "vcpkg.py").write_text(f"raise SystemExit({status})\n")
             (root / "vcvars.bat").write_text(
                 '@echo off\nset "VCPKG_ROOT=' + bundled.as_posix() + '"\n')
@@ -678,7 +624,8 @@ subprocess.run([sys.executable, str(Path(os.environ['VCPKG_ROOT']) / 'vcpkg.py')
             (root / "scripts/prepare-runtime.py").write_text(probe)
             (root / "scripts/probe.py").write_text(probe)
             settings = dict(load_config()["windows"], python=Path(sys.executable).as_posix(),
-                            vcvars=(root / "vcvars.bat").as_posix(), vcpkg_root=selected.as_posix(),
+                            vcvars=(root / "vcvars.bat").as_posix(),
+                            workspace={"root": (root / "sources").as_posix()},
                             path=[Path(sys.executable).parent.as_posix(),
                                   Path(shutil.which("bash")).parent.as_posix()])
 
@@ -703,6 +650,7 @@ subprocess.run([sys.executable, str(Path(os.environ['VCPKG_ROOT']) / 'vcpkg.py')
             root = Path(temporary)
             (root / "scripts/lib").mkdir(parents=True)
             shutil.copy2(ROOT / "scripts/lib/runner_timing.py", root / "scripts/lib/runner_timing.py")
+            self.workspace_fixture(root)
             (root / "scripts/prepare-runtime.py").write_text('''import argparse, os
 from pathlib import Path
 parser = argparse.ArgumentParser()
@@ -710,6 +658,7 @@ parser.add_argument('--preset', default='dev')
 args, _ = parser.parse_known_args()
 Path('runtime-toolchain').write_text(args.preset)
 Path('runtime-analysis').write_text(os.environ.get('SEVENZIP_ENABLE_CLANG_TIDY', 'unset'))
+with Path('preparations').open('a') as stream: stream.write(args.preset + '\\n')
 ''')
             (root / "scripts/verify.py").write_text('''import argparse, os
 from pathlib import Path
@@ -733,7 +682,7 @@ raise SystemExit(0 if matches else 9)
                 args = runner.parse_arguments(command[2:])
                 args.command[0] = sys.executable
                 runner.execute_check({}, "linux", args.preset, root.as_posix(), "token",
-                                     args.command, not args.skip_runtime)
+                                     args.command, args.prepare_runtime)
                 return subprocess.CompletedProcess(command, 0)
 
             with patch.object(runner, "remote", local_remote), \
@@ -742,8 +691,12 @@ raise SystemExit(0 if matches else 9)
                     (root / "requested-analysis").write_text(mode)
                     with self.subTest(mode=mode), \
                             patch.dict(os.environ, {"SEVENZIP_ENABLE_CLANG_TIDY": mode}):
+                        self.assertEqual(verify.main(["--platform", "linux", "--prepare-runtime", "--preset", "modules-linux-dev",
+                                                      "--tests", "^scenario$"]), 0)
+                        prepared = (root / "preparations").read_bytes()
                         self.assertEqual(verify.main(["--platform", "linux", "--preset", "modules-linux-dev",
                                                       "--tests", "^scenario$"]), 0)
+                        self.assertEqual((root / "preparations").read_bytes(), prepared)
 
     def test_invalid_build_parallelism_is_rejected_before_remote_execution(self):
         for platform in ("linux", "windows"):
@@ -771,9 +724,11 @@ raise SystemExit(0 if matches else 9)
             (root / "bin").mkdir()
             shutil.copy2(ROOT / "scripts/check.sh", root / "scripts/check.sh")
             shutil.copy2(ROOT / "scripts/lib/agent-output.sh", root / "scripts/lib/agent-output.sh")
-            for helper in ("toolchain.py", "toolchain.sh", "runtime_layout.py", "local_ramdisk.py",
-                           "project_paths.py"):
+            for helper in ("toolchain.py", "toolchain.sh", "runtime_layout.py", "build_paths.py",
+                           "project_paths.py", "local_ramdisk.py", "ramdisk_platforms.py", "cp2_install.py"):
                 shutil.copy2(ROOT / "scripts/lib" / helper, root / "scripts/lib" / helper)
+            (root / "tools/build").mkdir(parents=True)
+            shutil.copy2(ROOT / "tools/build/project.json", root / "tools/build/project.json")
             for name, content in (("bin/git", "exit 73\n"), ("bin/clang-format", "exit 0\n"),
                                   ("scripts/build.sh", "touch built\n"), ("scripts/ctest.sh", "exit 0\n")):
                 path = root / name

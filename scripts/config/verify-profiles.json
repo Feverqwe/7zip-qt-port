@@ -2,49 +2,41 @@
   "crypto": {
     "description": "Upstream crypto primitives, encrypted archives, failure/cancellation and filesystem consumers",
     "tests": "^(crypto_aes|crypto_hash|crypto_pbkdf2|crypto_zip|runtime_cache|fscrypt_crypto|fsverity_signature|native_hash_bundle|native_rar_memory|native_source_extract|source_update_backend|shared_checksum)$",
-    "runtime": true,
     "interactive": false
   },
   "localization": {
     "description": "Qt catalogs, live language changes, localized diagnostics and direct UI consumers",
     "tests": "^(language|language_.*|native_language_host|native_shell_com|native_services|gui_error_policy|panel_cell_text|update_callback|compression_resources|benchmark_lifecycle|native_benchmark|source_properties|archive_error_properties|format_utils|native_extract_callback)$",
-    "runtime": true,
     "interactive": true
   },
   "navigation": {
     "description": "Panel paths, address bar, root commands and their direct window consumers",
     "tests": "^(root_navigation|root_command|persisted_location|address_navigation|address_combo|panel_address_keys|panel_key_source|ui_navigation|native_address_navigation)$",
-    "runtime": true,
     "interactive": true
   },
   "options": {
     "description": "Options pages, keyboard, settings and window consumers",
     "tests": "^(options_integration|options_keyboard|options_dialog|options_window|system_page|mac_system_page|menu_page|language_ui|external_editors_ui|help_ui|association_services|linux_association_clear_[01]|linux_system_page_.*)$",
-    "runtime": true,
     "interactive": true
   },
   "archive-open": {
     "description": "Source archive-open options, extraction and codec creation consumers",
     "tests": "^(archive_open_options|source_extract_backend|source_extract_advanced|shell_archive_services|codec_creation)$",
-    "runtime": true,
     "interactive": false
   },
   "prompts": {
     "description": "Shared source prompts, layout and language consumers",
     "tests": "^(source_prompt_presentation|password_dialog|edit_dialog|overwrite_layout|extract_prompt|memory_limit|language_standard_buttons)$",
-    "runtime": true,
     "interactive": true
   },
   "progress": {
     "description": "Worker synchronization, cancellation and progress presentation",
     "tests": "^(progress_sync|worker_checkpoint|progress_wait|progress_worker|archive_progress|progress_cancel|progress_dialog|progress_format)$",
-    "runtime": true,
     "interactive": true
   },
   "tooling": {
     "description": "Verification, runner sync, source snapshots, runtime cache and agent setup",
     "tests": "^(ctest_selection|developer_workflow|hyperv_runner|upstream_baseline|runtime_cache|agent_output|project_memory_setup|windows_reference_builder)$",
-    "runtime": false,
     "interactive": false
   }
 }

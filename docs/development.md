@@ -22,7 +22,7 @@ same Qt runtime; this adds no separate runtime module.
 
 Native console SFX can be built from the recorded official baseline with
 `./scripts/build-sfx.sh [upstream-checkout] [artifact-directory]` on macOS/Linux.
-Defaults are the read-only sibling checkout and `build/sfx`. The script extracts
+Defaults are the read-only sibling checkout and the preset’s deployment. The script extracts
 an owned source snapshot, builds upstream SFXCon unchanged and writes
 `7zCon.sfx`, its license and a SHA-256/source/host/version JSON record. It refuses
 to replace an unowned module artifact. SFX builds retain their incremental outputs
@@ -51,7 +51,7 @@ Archive operations require the official native codec runtime.
 `./scripts/build-codec-runtime.sh [upstream-checkout] [artifact-directory]`
 builds `UI/Console` and `Bundles/Format7zF` from the pinned source
 with the engine adaptations selected in the [baseline](upstream-baseline.json),
-into `build/codec-runtime` on macOS/Linux. It produces the reference `7z`, `7z.so`,
+into the preset’s runtime deployment on macOS/Linux. It produces the reference `7z`, `7z.so`,
 license and source/version/SHA records, and refuses unowned artifacts. The Debug
 app uses this prepared runtime when present; deployed builds look beside the app
 or in `Resources/7zip`. `SEVENZIP_CODEC_MODULE_PATH` explicitly selects a native
@@ -71,23 +71,32 @@ can select an approved private directory with those capabilities. The isolated
 [runtime check](archive/qt-port/upstream-port-audit.md#p3-04--isolated-linux-runtime-and-temporary-directory-contract-2026-10-10)
 verifies this override, cleanup and unchanged archives; it changes no system policy.
 
-On macOS, `./scripts/ramdisk.sh start` creates or reuses a 4 GiB APFS RAM disk and
-enables it for this repository's local build and test wrappers, including its
-worktrees. Compiler temporary files, ccache temporary files and ordinary temporary
-test fixtures use separate scratch directories for each worktree. Incremental
-build outputs and the persistent compiler cache retain their existing locations.
-Use `./scripts/ramdisk.sh status` to check the volume. RAM contents disappear on
-restart; enabled build and test wrappers automatically recreate a missing RAM
-disk. If creation or identity verification fails, the wrapper stops instead of
-silently writing scratch data to SSD.
-`SEVENZIP_RAMDISK=OFF` bypasses this local setting for an invocation.
+Build wrappers create a 4 GiB RAM workspace when missing: APFS on macOS, tmpfs
+on Linux, and an ImDisk NTFS drive on Windows. Linux requires passwordless mount
+permission; Windows requires the installed ImDisk driver and administrator
+rights for creation. `./scripts/ramdisk.sh start` and `status` allow explicit
+setup and inspection. The wrappers validate the actual backing storage and
+stop on a wrong mount or insufficient free space; they never silently spill
+RAM builds onto disk.
 
-Native regression fixtures also cache `SEVENZIP_CODEC_MODULE` in CMake. When
-preparing a fresh checkout or changing deployments, configure that variable to
-the same pinned module, for example `cmake --preset dev
--DSEVENZIP_CODEC_MODULE="$PWD/build/codec-runtime/7z.so"` on macOS/Linux
-(`7z.dll` on Windows), before building and running the gate. Copying runtime
-artifacts alone does not replace an already cached system-module path.
+Native profiles keep their intermediate build files and temporary data in RAM.
+Finished binaries, runtimes, reports, installed dependencies and persistent
+compiler/download caches stay on the machine's ordinary disk under the main
+checkout's `build/`, separated by branch and platform. RAM contents are lost
+when unmounted or after restart; persistent caches remain usable.
+Use `scripts/lib/build_paths.py path --root "$PWD" --category work --preset dev`
+to locate the selected profile's build trees. `SEVENZIP_BUILD_STORAGE=disk`
+explicitly selects persistent intermediates for large builds. The full
+`check.sh` gate defaults to that mode. vcpkg profiles always use disk for their
+intermediates and remain optional; native builds install no manifest packages.
+
+On macOS, installed host tools and the prebuilt Qt SDK are retained in the main
+checkout's ignored `.codex/tools/` directory. They are installed once and reused
+by worktrees. Project compilation, temporary data and compiler/package caches
+use the RAM/disk split above. The system Ninja is used normally.
+
+Use the build wrapper after preparing a deployment: it selects that preset's
+exact native module and refreshes stale module paths in the existing CMake cache.
 Completed package evidence and its limits are linked from [acceptance](ux-port-audit.md).
 On Windows, `scripts/build-codec-runtime.ps1 -Architecture arm64` (or `x64`/`x86`)
 uses a matching developer environment and the same optional source/output arguments
@@ -108,7 +117,7 @@ builder samples are retained in [the tooling archive](archive/qt-port/workflow-e
 Windows CMake installation places the Qt application, original7zFM/7zG entry
 aliases, project shell DLL, official `7z.dll` and the independent `7z.exe` sidecar
 together in `bin`.
-`cmake --install build/dev --prefix <private-directory>` deploys Qt runtime,
+`scripts/check-windows-package.sh` prepares a private installation of Qt runtime,
 platform plugins and compiler runtime using Qt's own deployment script. It
 first checks the prepared runtime's producer, repository, pinned revision,
 architecture and binary SHA256 values. Runtime provenance and7-Zip license are
@@ -117,7 +126,7 @@ write associations. `SEVENZIP_WINDOWS_RUNTIME` can select another prepared
 runtime directory at configure time.
 
 `scripts/check-windows-package.sh` builds and installs into the snapshot's
-`build/windows-package`, then exercises its actual DLL and GUI helper with
+the branch’s package directory, then exercises its actual DLL and GUI helper with
 only package/system paths in the child process environment. Run it on the
 interactive Windows runner. This private test layout is not a release package
 or final license/distribution acceptance; see [packaging scope](ci.md).
@@ -149,7 +158,9 @@ These checks do not establish rendered pixel parity or release acceptance.
 macOS builds target macOS 14.4+ and use the official shared Qt 6.12.0 kit,
 matching the runner version. Install the macOS desktop Qt Base SDK (including
 private headers) with the [Qt installer](https://www.qt.io/development/download-qt-installer-oss)
-under `build/qt`; the default kit path is `build/qt/6.12.0/macos`.
+under the local host-tools directory. Query it with
+`python3 scripts/lib/build_paths.py path --root "$PWD" --category host-tools`;
+the SDK belongs in its `qt/6.12.0/macos` subdirectory.
 For an SDK installed elsewhere, set `CMAKE_PREFIX_PATH` to its `macos` directory.
 Build and deploy with the same SDK. Homebrew supplies the other local tools:
 
@@ -284,7 +295,7 @@ GCC 16 or newer. Focused runner checks accept the same preset:
 
 ```sh
 python3 scripts/verify.py --preset modules-linux-dev --platform linux \
-  --tests '^filesystem_zlib$' --skip-runtime
+  --tests '^filesystem_zlib$'
 ```
 
 MSVC module consumers retain ccache through a launcher that hashes the imported
@@ -298,7 +309,7 @@ these library features. The build scripts select the compiler and shared Qt kit:
 ```sh
 brew install gcc
 ./scripts/build.sh modules-gcc-dev sevenzip_cpp23_example
-./build/modules-gcc-dev/sevenzip_cpp23_example
+"$(python3 scripts/lib/build_paths.py path --root "$PWD" --category artifacts)/modules-gcc-dev/sevenzip_cpp23_example"
 ```
 
 On Ubuntu 24.04, install `g++-14` for its C++23 standard library and build the
@@ -342,7 +353,8 @@ and is rejected by `verify.py` before configuration.
 Keep command entrypoints in `scripts/`, shared implementation and build helpers
 in `scripts/lib/`, and scenario configuration in `scripts/config/`.
 
-`verify.py` keeps `build/<preset>/verify-result.json` with the selection,
+`verify.py` prints its report path and keeps `verify-result.json` in the selected
+profile's persistent log directory with the selection,
 targets, result and time spent on runtime/configuration/selection/build/tests.
 It uses `build.sh --configure-only`, then `build.sh --build-only <targets>` to
 avoid configuring twice. Both modes retain the build wrapper's toolchain setup;
@@ -357,7 +369,8 @@ Runtime preparation uses `python3 scripts/prepare-runtime.py`: the official
 builders run only when the pinned upstream revision/repository, builder code,
 compiler/toolchain fingerprint or an artifact hash changes. A failed build does
 not publish a cache hit. The builders also prepare the pinned reference client.
-`--skip-runtime` on verify uses the existing runtime instead. When the prepared
+`verify.py` uses the existing runtime by default. Pass `--prepare-runtime`
+to prepare or refresh it before verification. When the prepared
 module exists, `build.sh` configures its exact path, replacing a stale cached
 system module. The sibling upstream checkout stays read-only. If it is missing
 or lacks the pinned revision, preparation downloads that revision from the
@@ -382,18 +395,17 @@ worktree/toolchain. The option does not delete artifacts from older builds.
 Runtime packages use Release builds with testing disabled; local checks remain
 unchanged. GitHub Actions builds release packages; see [CI scope](ci.md).
 For a local application with its runtime dependencies, run `./scripts/build-app.sh`.
-With `VCPKG_ROOT` configured, `./scripts/build-app.sh vcpkg-release` builds and
-installs the manifest-based application instead.
-It installs into `dist/` (`dist/Sevenzip.app` on macOS); intermediate build files
-remain in `build/`. The local runtime receives the same size optimizations as
+With the optional vcpkg checkout installed, `./scripts/build-app.sh vcpkg-release`
+builds and installs the manifest-based application instead.
+It prints the installation directory in the branch's artifacts. The local runtime receives the same size optimizations as
 the archive payload, including native-architecture stripping and verified ad-hoc
 signing on macOS. Its size also depends on the selected Qt kit and its dependencies.
 The installation replaces the previous runtime only after preparation succeeds,
-so dependencies from an older Qt kit do not remain in `dist/`.
+so dependencies from an older Qt kit do not remain in the installation.
 To package an existing Release build, run `python3 scripts/package.py
 --qt-source <matching-qtbase.tar.xz> --qt-sha256 <checksum-file>`; add
 `--icu-license <license-file>` if the deployed Qt kit uses ICU. The script uses
-a fresh CMake installation and writes only runtime archives to `build/packages`.
+a fresh CMake installation and writes only runtime archives to the branch’s package directory.
 Source inputs stay private. macOS packages have verified ad-hoc signatures.
 The install includes the project's MIT notice under `Notices/sevenzip-desktop`
 in the macOS bundle or `share/licenses/sevenzip-desktop/sevenzip-desktop`
@@ -408,6 +420,11 @@ sh .agents/skills/sz-setup/scripts/setup.sh
 ./scripts/build.sh dev <targets>
 ./scripts/ctest.sh --preset dev -R '<test-name-regex>' --output-on-failure
 ```
+
+Without target arguments, `build.sh dev` builds the application and its required
+dependencies, not every test executable. Use `verify.py` for a focused scenario
+or pass explicit targets. `build.sh dev all` is an explicit all-target build;
+use `SEVENZIP_BUILD_STORAGE=disk` when its intermediates exceed the RAM budget.
 
 Focused checks are the default for agent work. Select targets and suites using
 [testing](testing.md); use `./scripts/check.sh` only when the full-gate criteria
@@ -451,7 +468,9 @@ The build script configures the preset and applies platform toolchain workaround
 without targets it builds everything. Requirements for focused/full validation,
 repeat runs and docs-only changes are in [AGENTS.md](../AGENTS.md#validation-and-ui-reference).
 
-Run the built app on macOS from `build/dev/Sevenzip.app/Contents/MacOS/Sevenzip`, on Linux from `build/dev/sevenzip_desktop`, or on Windows from `build/dev/sevenzip_desktop.exe`. Build outputs are ignored. The development preset exports `compile_commands.json` for clangd and editor navigation.
+Use `scripts/build-app.sh dev` to prepare a native development installation;
+it prints the runnable path. Build outputs are ignored. The development preset
+exports `compile_commands.json` in its selected build tree for editor navigation.
 
 Some Apple Command Line Tools installations contain C++ standard headers inside the macOS SDK but omit them from Clang's default include path. `scripts/build.sh` detects this and sets `CPLUS_INCLUDE_PATH` only for that build process; it does not alter system files.
 

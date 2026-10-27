@@ -2,6 +2,8 @@
 # Consume a private native runtime with the existing operation regressions.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+project_root="$PWD"
+source scripts/lib/workspace.sh
 entry_only=false
 if [[ "$#" == 1 && "$1" == --entry-only ]]; then
     entry_only=true
@@ -11,11 +13,11 @@ elif [[ "$#" != 0 ]]; then
 fi
 
 interpreter="${SEVENZIP_RUNNER_PYTHON:-python3}"
-install="$PWD/build/7zg-operation-install"
+install="$SEVENZIP_ARTIFACT_ROOT/7zg-operation-install"
 if [[ "${OS:-}" == Windows_NT ]]; then
     source scripts/lib/windows-runner.sh
     sevenzip_require_windows_runner
-    install="$PWD/build/windows-package"
+    install="$SEVENZIP_ARTIFACT_ROOT/windows-package"
     gui="$install/bin/7zG.exe"
     fm="$install/bin/7zFM.exe"
     console="$install/bin/7z.exe"
@@ -53,9 +55,9 @@ if ! "$entry_only"; then
     tests+='|operation_launcher|operation_extraction|operation_creation|operation_benchmark|benchmark_command|manager_hash_workflow'
 fi
 ./scripts/build.sh dev "${targets[@]}"
-"$interpreter" scripts/package.py --build-dir build/dev --install-only "$install"
+"$interpreter" scripts/package.py --build-dir "$SEVENZIP_BUILD_ROOT/dev" --install-only "$install"
 export SEVENZIP_OPERATION_GUI="$gui" SEVENZIP_OPERATION_QPA="$native"
-export PATH="$PWD/build/codec-runtime:$PATH"
+export PATH="$SEVENZIP_ARTIFACT_ROOT/dev/codec-runtime:$PATH"
 if [[ "$native" == windows ]]; then
     export NATIVE_SHELL_TEST_INSTALL_DIR="$install" NATIVE_SHELL_TEST_REGISTER=1
 fi

@@ -3,6 +3,8 @@
 param([string]$UpstreamCheckout = 'upstream')
 $ErrorActionPreference = 'Stop'
 $project = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+. (Join-Path $PSScriptRoot 'lib/workspace.ps1')
+Initialize-SevenzipWorkspace $project
 $python = if ($env:SEVENZIP_RUNNER_PYTHON) { $env:SEVENZIP_RUNNER_PYTHON } else { 'python' }
 $expectedHost = $env:SEVENZIP_WINDOWS_RUNNER_HOST
 if (-not $expectedHost) {
@@ -20,7 +22,7 @@ $baseline = Get-Content -LiteralPath (Join-Path $project 'docs/upstream-baseline
 $revision = [string]$baseline.revision
 if ($revision -notmatch '^[0-9a-f]{40}$') { throw 'Invalid pinned revision.' }
 $upstream = [IO.Path]::GetFullPath($UpstreamCheckout)
-$output = Join-Path $project 'build/windows-reference'
+$output = Join-Path $env:SEVENZIP_ARTIFACT_ROOT 'windows-reference'
 $manifest = Join-Path $output 'reference.json'
 $owner = $null
 if (Test-Path -LiteralPath $output) {
@@ -65,7 +67,7 @@ function Copy-Changed([string]$From, [string]$To) {
 }
 function Copy-Runtime {
     foreach ($binary in @('7z.dll', '7z.exe')) {
-        Copy-Changed (Join-Path $project "build/codec-runtime/$binary") (Join-Path $output $binary)
+        Copy-Changed (Join-Path $env:SEVENZIP_ARTIFACT_ROOT "dev/codec-runtime/$binary") (Join-Path $output $binary)
     }
 }
 if ($owner -and $owner.inputSignature -eq $signature -and

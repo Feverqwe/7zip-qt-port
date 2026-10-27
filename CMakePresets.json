@@ -5,12 +5,11 @@
       "name": "dev",
       "displayName": "Development",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/dev",
+      "binaryDir": "$env{SEVENZIP_BUILD_ROOT}/dev",
+      "condition": { "type": "notEquals", "lhs": "$env{SEVENZIP_BUILD_ROOT}", "rhs": "" },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "SEVENZIP_CODEC_RUNTIME_DIR": "${sourceDir}/build/codec-runtime",
-        "SEVENZIP_SFX_RUNTIME_DIR": "${sourceDir}/build/sfx",
         "BUILD_TESTING": "ON"
       }
     },
@@ -18,7 +17,8 @@
       "name": "release",
       "displayName": "Release",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/release",
+      "binaryDir": "$env{SEVENZIP_BUILD_ROOT}/release",
+      "condition": { "type": "notEquals", "lhs": "$env{SEVENZIP_BUILD_ROOT}", "rhs": "" },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTING": "OFF"
@@ -28,22 +28,22 @@
       "name": "modules-dev",
       "inherits": "dev",
       "displayName": "Development with C++23 dependency modules",
-      "binaryDir": "${sourceDir}/build/modules-dev",
+      "binaryDir": "$env{SEVENZIP_BUILD_ROOT}/modules-dev",
       "cacheVariables": {
-        "SEVENZIP_ENABLE_DEPENDENCY_MODULES": "ON",
-        "SEVENZIP_CODEC_RUNTIME_DIR": "${sourceDir}/build/${presetName}/codec-runtime",
-        "SEVENZIP_SFX_RUNTIME_DIR": "${sourceDir}/build/${presetName}/sfx"
+        "SEVENZIP_ENABLE_DEPENDENCY_MODULES": "ON"
       }
     },
     {
       "name": "modules-linux-dev",
       "inherits": "modules-dev",
       "displayName": "Development with Clang 19 dependency modules on Linux",
-      "binaryDir": "${sourceDir}/build/modules-linux-dev",
+      "binaryDir": "$env{SEVENZIP_BUILD_ROOT}/modules-linux-dev",
       "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Linux"
+        "type": "allOf",
+        "conditions": [
+          { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
+          { "type": "notEquals", "lhs": "$env{SEVENZIP_BUILD_ROOT}", "rhs": "" }
+        ]
       },
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang-19",
@@ -54,29 +54,23 @@
       "name": "modules-gcc-dev",
       "inherits": "modules-dev",
       "displayName": "Development with GCC and C++23 library features",
-      "binaryDir": "${sourceDir}/build/modules-gcc-dev"
+      "binaryDir": "$env{SEVENZIP_BUILD_ROOT}/modules-gcc-dev"
     },
     {
       "name": "vcpkg-dev",
       "inherits": "dev",
       "displayName": "Development with vcpkg",
-      "binaryDir": "${sourceDir}/build/vcpkg-dev",
+      "binaryDir": "$env{SEVENZIP_BUILD_ROOT}/vcpkg-dev",
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-      "cacheVariables": {
-        "VCPKG_INSTALLED_DIR": "${sourceDir}/build/vcpkg_installed",
-        "SEVENZIP_CODEC_RUNTIME_DIR": "${sourceDir}/build/${presetName}/codec-runtime",
-        "SEVENZIP_SFX_RUNTIME_DIR": "${sourceDir}/build/${presetName}/sfx"
-      }
+      "cacheVariables": {}
     },
     {
       "name": "vcpkg-release",
       "inherits": "release",
       "displayName": "Release with vcpkg",
-      "binaryDir": "${sourceDir}/build/vcpkg-release",
+      "binaryDir": "$env{SEVENZIP_BUILD_ROOT}/vcpkg-release",
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-      "cacheVariables": {
-        "VCPKG_INSTALLED_DIR": "${sourceDir}/build/vcpkg_installed"
-      }
+      "cacheVariables": {}
     }
   ],
   "buildPresets": [

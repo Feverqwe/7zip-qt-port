@@ -12,9 +12,11 @@ import shutil
 import struct
 import subprocess
 import sys
+sys.dont_write_bytecode = True
 import tempfile
 import uuid
 import zlib
+from lib.build_paths import directory as workspace_directory, environment as workspace_environment
 
 ROOT = Path(__file__).resolve().parents[1]
 VARIANTS = {"plain": ("crc32c", None), "xxhash": ("xxhash", None),
@@ -88,7 +90,7 @@ def populate(root):
 def generate(bundle_path):
     if platform.system() != "Linux":
         raise RuntimeError("Generation requires Linux; import the resulting bundle on other hosts")
-    area = ROOT / "build/btrfs-fixture-generation"
+    area = workspace_directory(ROOT, "tmp") / "btrfs-fixture-generation"
     area.mkdir(parents=True, exist_ok=True)
     result = {"creator": run(["mkfs.btrfs", "--version"]).strip(),
               "kernel": platform.release(), "images": {}}
@@ -145,7 +147,7 @@ def generate(bundle_path):
 def generate_multi(bundle_path):
     if platform.system() != "Linux":
         raise RuntimeError("Generation requires Linux")
-    area = ROOT / "build/btrfs-fixture-generation"
+    area = workspace_directory(ROOT, "tmp") / "btrfs-fixture-generation"
     area.mkdir(parents=True, exist_ok=True)
     result = {"creator": run(["mkfs.btrfs", "--version"]).strip(),
               "kernel": platform.release(), "profiles": {}}
@@ -224,7 +226,7 @@ def import_multi(path, output):
             if len(data) != device["size"] or hashlib.sha256(data).hexdigest() != device["sha256"]:
                 raise RuntimeError("Corrupted multi-device fixture bundle")
             (directory / ("devid-" + devid + ".img.qz")).write_bytes(compressed)
-        review = ROOT / "build/review/btrfs"
+        review = workspace_directory(ROOT, "artifacts") / "review/btrfs"
         review.mkdir(parents=True, exist_ok=True)
         (review / (profile + "-linux-chunks.txt")).write_text(record.pop("tree"))
     (output / "manifest.json").write_text(json.dumps(bundle, ensure_ascii=False, indent=2) + "\n")
@@ -242,7 +244,7 @@ def import_bundle(path, output):
             raise RuntimeError("Corrupted fixture bundle")
         (output / (name + ".img.qz")).write_bytes(compressed)
         # Keep the original tool output as review evidence, outside the test data.
-        review = ROOT / "build/review/btrfs"
+        review = workspace_directory(ROOT, "artifacts") / "review/btrfs"
         review.mkdir(parents=True, exist_ok=True)
         (review / (name + "-linux-tree.txt")).write_text(image.pop("tree"))
     (output / "manifest.json").write_text(json.dumps(bundle, ensure_ascii=False, indent=2) + "\n")
@@ -259,6 +261,8 @@ def main():
     parser.add_argument("--import-multi", type=Path)
     parser.add_argument("--output", type=Path, default=ROOT / "tests/fixtures/btrfs")
     args = parser.parse_args()
+    if not (args.probe or args.populate or args.inspect):
+        os.environ.update(workspace_environment(ROOT))
     if args.probe:
         print(json.dumps({"mkfs": shutil.which("mkfs.btrfs"), "btrfs": shutil.which("btrfs"),
                           "sudo": subprocess.run(["sudo", "-n", "true"]).returncode,

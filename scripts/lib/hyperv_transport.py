@@ -1,36 +1,16 @@
-"""Synchronize source into the single locked guest worktree, preserving outputs."""
+"""Shared cp2 exclusions and collection of guest diagnostics."""
 
 import json
-import shlex
 import subprocess
 from .runner_config import runner_config
+from .build_paths import branch_component
 
 PROTECTED = ("/.git/", "/build/", "/ui-reports/", "/runner-tmp/", "/upstream/", "/check.log", "/check.cmd",
              "/runner-command.sh", "/interactive-exit.txt", "/interactive-session.txt",
-             "/.runner-owner.json", "/.runner-complete")
+             "/.runner-owner.json", "/.runner-complete", "/workspace-env.cmd")
 
 
-def sync_command(record, platform, source, root):
-    target = root
-    if platform == "windows":
-        target = "/" + root[0].lower() + root[2:]
-    server = (record.get("config") or runner_config(platform))["rsync"]
-    if platform == "linux":
-        server = shlex.quote(server)
-    elif " " in server:
-        server = '"' + server + '"'
-    # Changed contents acquire the receiver's current modification time. A local
-    # edit can predate the object built from the previous immutable snapshot.
-    return ["rsync", "--recursive", "--links", "--perms", "--checksum",
-            "--compress", "--compress-level=1",
-            "--delete-delay", "--delay-updates", "--stats", "--no-whole-file",
-            *["--exclude=" + name for name in PROTECTED],
-            "--exclude=__pycache__/", "--exclude=*.pyc", "--exclude=.DS_Store",
-            "--rsync-path=" + server, "-e", shlex.join(record["ssh_argv"][:-1]),
-            str(source) + "/", f"{record['ssh_argv'][-1]}:{target}/"]
-
-
-def collect_logs(record, root, directory, command, token, invoke, output):
+def collect_logs(record, root, directory, command, token, invoke, output, branch):
     def download(source, name):
         options = ["-P" if arg == "-p" else arg for arg in record["ssh_argv"][1:-1]]
         invoke(["scp", *options, f"{record['ssh_argv'][-1]}:{root}/{source}",
@@ -50,7 +30,11 @@ def collect_logs(record, root, directory, command, token, invoke, output):
                        "vcpkg-dev", "vcpkg-release"):
         raise ValueError("Invalid verification preset")
     name = "verify-plan.json" if "--plan" in command else "verify-result.json"
-    download(f"build/{preset}/{name}", name)
+    # A synchronized source lives under build/sources/<branch>; reports are
+    # in the persistent branch workspace beside sources, outside volatile RAM.
+    tag = record["platform"] + "-x86_64"
+    relative = f"../../branches/{branch_component(branch)}/logs/{tag}/{preset}/{name}"
+    download(relative, name)
     verification = json.loads((directory / name).read_text())
     if verification.get("run_token") == token:
         return dict(details, verification=verification)

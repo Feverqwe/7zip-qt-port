@@ -20,7 +20,7 @@ The local file is ignored by Git and excluded from runner source transfers.
 Linked worktrees use this file from the main checkout, so feature worktrees
 under `.worktrees/` need no separate machine configuration. Run the scripts in
 the feature worktree to send that branch's current source. Runner logs and the
-upstream bundle cache stay under the main checkout's `build/runners/hyperv/`;
+upstream bundle cache stay on the main checkout's ordinary disk;
 the default upstream checkout remains its sibling `7zip-upstream`.
 Keep passwords and private keys outside it; use SSH's normal authentication and
 host-key verification. An alternative file can be selected with
@@ -32,31 +32,28 @@ or in an ignored `scripts/config/*.local.json` file.
 The `ssh` array contains the SSH executable, options and destination. Prefer
 aliases in your SSH config so the account, address, port and key stay in your
 normal SSH setup. Verify the host keys and connectivity before running checks.
-This mode connects to an already running machine and does not require Codex
-skills or Hyper-V management access.
+VM discovery is configured separately from build storage.
 
-Set the Qt prefix, Python executable, additional tool directories and
-compiler cache location for each machine. The optional `rsync` setting selects
-the executable for the fallback transport. Windows also needs its MSVC setup
-batch file and actual computer name. Native registration/reference commands
-check that name before running. Other tools, including CMake, Ninja, Git,
-ccache, clang-format and Bash, must be available on the configured PATH.
+Set the Qt prefix, Python executable and additional tool directories for each
+machine. Windows also needs its MSVC setup batch file and computer name.
+Native registration/reference commands check that name before running.
+CMake, Ninja, Git, ccache, clang-format and Bash must be available on PATH.
 Install the dependencies described in [development](development.md#dependencies).
-For `vcpkg-*` presets, install the pinned vcpkg checkout in `storage/vcpkg`
-beside the configured workspace, or set the optional `vcpkg_root` to its
-absolute guest path.
-These presets obtain Qt from the manifest and do not select `qt_prefix`.
-On Windows, their configured tool directories are also available to CMake's
-program search inside vcpkg's clean build environment. Add installed host tools,
-such as Perl, to `path` to reuse them instead of downloading another copy.
-The sibling `storage` directory holds branch-specific final build outputs and
-manifest packages. Keep it on persistent storage when the workspace is RAM-backed.
-An explicit `vcpkg_root` moves this storage to that checkout's parent. Sources,
-objects and temporary build data remain in the workspace. Keep `ccache_dir` on
-persistent storage as well. This layout preserves dependencies and binaries
-across a RAM-disk reset; source synchronization and compilation restore the
-disposable workspace. The build wrapper also accepts `VCPKG_INSTALLED_DIR` and
-`SEVENZIP_OUTPUT_ROOT` for equivalent local setups.
+
+Select a dedicated `build/sources` workspace on the runner's ordinary disk.
+Its parent `build` retains installed tools, dependencies, outputs and caches.
+Native build intermediates and temporary data use a verified 4 GiB RAM disk,
+created automatically when missing. Linux uses `build/ram` (tmpfs); Windows
+uses the ImDisk NTFS drive `R:`. Set `SEVENZIP_RAM_MOUNT` to select another
+mount point/drive. The helper refuses a wrong backing store and never formats
+an existing drive. `SEVENZIP_BUILD_STORAGE=disk` explicitly retains large
+build intermediates on the ordinary disk; this setting is forwarded to guests.
+
+The ordinary `dev` preset uses the configured Qt SDK. Optional `vcpkg-*` presets
+use the checkout under the workspace's tools directory and obtain Qt from the
+manifest. On Windows, configured tools such as Perl remain available to CMake
+inside vcpkg's clean build environment. Selecting the native preset does not
+install manifest dependencies.
 Linux manifest builds disable Qt precompiled headers to bound dependency-build
 disk usage. This uses a generated overlay from the pinned registry, retains
 the manifest's features and builds both configurations. Local manifest builds
@@ -107,13 +104,6 @@ including edits made during the preceding build and backdated checkouts.
 Deleting that cache causes retransfers, not missing source. Original checkout
 timestamps are unchanged. Windows synchronization omits Unix permissions.
 
-`--transport rsync` selects the previous checksum-based transport explicitly;
-that choice requires local and configured remote rsync executables.
-Use this transport for an ImDisk workspace if cp2 reports `Incorrect function`:
-the observed driver rejects Windows handle-based path canonicalization on both
-the drive and its junction. Changing the junction alone does not resolve that
-failure. Source reconciliation and incremental-build retention still apply.
-
 ## Optional VM discovery
 
 For managed VMs, replace a runner's `ssh` setting with `ready_command`, an
@@ -126,8 +116,3 @@ The maintainer's local file invokes the separately installed runners skill with
 explicit host, VM, identity-file and known-hosts arguments. Other installations
 can use their own discovery program or plain SSH. No host addresses or local
 profile names are supplied as source-code defaults.
-
-The former `build/runners/hyperv/workspaces.json` setting is replaced by the
-workspace entries in this file. When migrating an existing installation, keep
-its workspace and cache paths. The former shared `current/` is left intact;
-branch worktrees build incrementally after their first use.

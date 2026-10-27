@@ -75,7 +75,7 @@ class RuntimeCacheTests(unittest.TestCase):
     def test_codec_only_preserves_sfx_and_full_runtime_cache(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            build = root / "build"
+            build = runtime.runtime_root(root)
             (build / "codec-runtime").mkdir(parents=True)
             (build / "sfx").mkdir()
             sfx = build / "sfx/module"
@@ -166,14 +166,14 @@ class RuntimeCacheTests(unittest.TestCase):
                 # git command. Missing relative-upstream preparation fails here.
                 engine = real_run(["git", "-C", str(root / "upstream"), "show", revision + ":source"],
                                   check=True, capture_output=True).stdout
-                (root / "build").mkdir(exist_ok=True)
-                (root / "build/engine").write_bytes(engine)
+                runtime.runtime_root(root).mkdir(parents=True, exist_ok=True)
+                (runtime.runtime_root(root) / "engine").write_bytes(engine)
                 return subprocess.CompletedProcess(args, 0)
             with patch.object(runtime, "fingerprint", return_value=key), \
                     patch.object(runtime, "artifact_paths", return_value=["engine"]), \
                     patch.object(runtime.subprocess, "run", side_effect=command) as run:
                 runtime.prepare(root, Path("upstream"))
-                self.assertEqual((root / "build/engine").read_bytes(), b"official engine fixture")
+                self.assertEqual((runtime.runtime_root(root) / "engine").read_bytes(), b"official engine fixture")
                 run.reset_mock()
                 runtime.prepare(root, Path("upstream"))
                 run.assert_not_called()
@@ -198,8 +198,8 @@ class RuntimeCacheTests(unittest.TestCase):
     def test_hit_skips_builders_and_failed_rebuild_does_not_publish_stamp(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            build = root / "build"
-            build.mkdir()
+            build = runtime.runtime_root(root)
+            build.mkdir(parents=True)
             (build / "engine").write_bytes(b"engine")
             key = {"baseline": {"revision": "one"}}
             stamp = build / "runtime-cache.json"

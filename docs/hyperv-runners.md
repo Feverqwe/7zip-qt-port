@@ -21,15 +21,18 @@ outputs; do not create per-run build directories. Branch isolation (user request
 2026-10-24) replaces the former single shared directory. The global runners
 skill's default fresh-directory workflow does not apply.
 
-The selected workspace root contains a persistent directory for each Git branch,
-with build outputs, runtime and temporary files retained there. Only the branch
+The selected workspace root contains a persistent source directory for each Git branch.
+Tools, caches, dependencies, runtime and outputs stay on the ordinary disk;
+native build intermediates, temporary files and local source staging use RAM.
+Only the branch
 name selects the directory; local checkout paths do not affect it. Different
 branches can run concurrently; runs of the same branch share a lock even from
 different local directories. Switch to a named branch before running from a
 detached HEAD. The selected branch and remote directory appear in console output
 and run reports. Preserve branch worktrees, incremental outputs, compiler caches
-and active locks. The former `current/` is left intact; the first run of each
-branch creates its own build tree while reusing the configured compiler cache.
+and active locks. The first run of each branch creates its own build tree while
+reusing the project compiler cache. RAM builds are retained until the RAM disk
+is unmounted; large builds can explicitly use persistent intermediates.
 
 Before transfer, an atomic sibling `.lock` directory reserves the entire cycle,
 including synchronization, build/tests and log retrieval. A second invocation
@@ -51,8 +54,8 @@ hash pass. The source copy describes code at invocation start, not edits made du
 Matching files are skipped, including on repeated runs. Linux permissions and
 relative source links are preserved; Windows omits Unix permission replication.
 Edits made while an earlier snapshot builds still trigger compilation on the
-next run. Repeated runs preserve incremental outputs. Installation, caches and the
-explicit rsync fallback are described in [configuration](runner-configuration.md#source-synchronization).
+next run. Repeated runs preserve incremental outputs. Tool installation and caches
+are described in [configuration](runner-configuration.md#source-synchronization).
 
 After confirmed command exit the lock is released, including on a normal test
 failure. An interrupted or disconnected invocation retains it if execution
@@ -63,7 +66,6 @@ of guest processes. Inspect with:
 python3 scripts/hyperv-runner.py status all
 python3 scripts/hyperv-runner.py recover windows
 python3 scripts/hyperv-runner.py status all --branch feature/example
-python3 scripts/hyperv-runner.py status all --legacy-current
 ```
 
 `recover` only releases the recorded owner's lock when its completion marker
@@ -72,8 +74,7 @@ died before writing completion, inspect guest processes, scheduled tasks and
 the recorded owner before manually releasing that exact abandoned lock; age
 alone is insufficient. The next normal sync repairs a partial source transfer.
 `status` and `recover` default to the current branch; `--branch` selects another
-branch without switching local source. `--legacy-current` accesses the former
-shared worktree for inspection or confirmed recovery.
+branch without switching local source.
 
 ## Storage policy (user instruction, 2026-10-07)
 
@@ -97,7 +98,7 @@ Keep the three newest runs per project workspace, every active or referenced
 run (including delta bases in use), and artifacts needed for current review
 or failure diagnosis. In older inactive runs, retain small logs and metadata;
 remove reproducible source snapshots, runtime/build trees and run-local temp
-files. Apply this to both legacy and configured project workspaces. Preserve
+files. Apply this to configured project workspaces. Preserve
 toolchains, installed build/synchronization tools, other projects and unrelated data.
 Record removed paths and free space before/after. If safely removable data is
 insufficient, report the remaining capacity requirement; do not add a disk.
@@ -221,7 +222,7 @@ The general entry point is `run <linux|windows|all> [runner-options] --
 ```sh
 python3 scripts/hyperv-runner.py run all -- scripts/check.sh
 python3 scripts/hyperv-runner.py run linux -- scripts/build.sh dev
-python3 scripts/hyperv-runner.py run all --skip-runtime -- scripts/check_ui_parity.py --help
+python3 scripts/hyperv-runner.py run all -- scripts/check_ui_parity.py --help
 ```
 
 Scripts must be nonignored project files in the synced directories, with paths
@@ -231,11 +232,11 @@ PowerShell project scripts use process-scoped `RemoteSigned`, like the runtime
 builders; the helper does not change machine/user execution-policy settings.
 Arguments after `--` are passed literally, including spaces, Unicode and shell
 metacharacters. Scripts run from the branch worktree in the existing platform
-toolchain environment. `--skip-runtime` skips engine/SFX preparation when the
-selected script does not need it; by default runtime preparation is retained.
+toolchain environment. Existing engine/SFX artifacts are reused by default.
+Use `--prepare-runtime` to prepare or refresh them explicitly before a command.
 Each action has its own `--help` and accepts only its applicable runner options.
-`--preset` is accepted only by the `check` shortcut; `run` passes build/test options through
-the script arguments. `scripts/build.sh` takes `dev` or `release` positionally.
+`--preset` selects the runtime/build profile; `run` passes the command's build/test
+options through the script arguments. `scripts/build.sh` takes `dev` or `release` positionally.
 `check --preset release` runs the development gate followed by a Release build;
 it does not run CTest against Release, where test targets are disabled.
 
@@ -260,7 +261,7 @@ errors are recorded separately from script results.
 output as one block and returning nonzero if either probe fails. Preparation
 errors captured by discovery are retained in the run record and transport log.
 
-Every invocation reuses the branch worktree's `build/<preset>`. CTest still needs its targets
+Every invocation reuses the selected branch/profile build tree. CTest still needs its targets
 built after synchronization: use `verify.py`, or a script calling `build.sh`
 followed by `ctest.sh`. There is no per-run build mode. Temporary local source
 copies are removed after transfer/execution; only logs and metadata get run IDs.
@@ -330,11 +331,11 @@ checks reference-builder reuse/rebuild and refusal of unowned output using a
 synthetic compiler fixture, without launching the actual native reference UI.
 These checks cover a first build with
 missing executables, fixture closure, incremental reuse, empty/slow selections,
-Unicode/current/untracked/deleted source, fallback rsync deletion and protected
+Unicode/current/untracked/deleted source and protected
 outputs, snapshot build freshness, lock ownership/completion and failure/context/quoting behavior. These
 tests use temporary deterministic local fixtures and no VM/network access;
 they require Bash, Git, CMake/Ninja and a compiler, plus Windows PowerShell
-for the Windows builder fixture. The rsync-specific case skips when rsync is unavailable.
+for the Windows builder fixture.
 
 SSH checks cover the project gate, not interactive desktop/Finder behavior,
 distribution or rendered Windows 7zFM parity. Historical ARM64 QEMU checks

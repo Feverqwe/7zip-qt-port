@@ -9,9 +9,11 @@ import re
 import shutil
 import subprocess
 import sys
+sys.dont_write_bytecode = True
 import time
 
 from lib.runner_timing import mark
+from lib.build_paths import build_directory, directory
 
 INVOCATION_STARTED = time.monotonic()
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,8 +57,6 @@ def cache_stats():
     if not cache:
         return {}
     environment = dict(os.environ)
-    if sys.platform == "darwin":
-        environment.setdefault("CCACHE_DIR", "/private/tmp/sevenzip-desktop-ccache")
     result = subprocess.run([cache, "--print-stats"], text=True, capture_output=True, env=environment)
     if result.returncode:
         return {}
@@ -66,9 +66,11 @@ def cache_stats():
 
 
 def verify(root, args, profile):
-    build = root / "build" / args.preset
+    build = build_directory(root, args.preset)
     build.mkdir(parents=True, exist_ok=True)
-    report = build / ("verify-plan.json" if args.plan else "verify-result.json")
+    reports = directory(root, "logs") / args.preset
+    reports.mkdir(parents=True, exist_ok=True)
+    report = reports / ("verify-plan.json" if args.plan else "verify-result.json")
     timings = {}
     result = {"status": "running", "profile": args.profile, "selection": args.tests or profile["tests"],
               "preset": args.preset, "tests": [], "targets": [], "seconds": timings,
@@ -77,7 +79,7 @@ def verify(root, args, profile):
     before_cache = cache_stats()
     mark("cache_stats_before_end")
     try:
-        if not args.plan and not args.skip_runtime and profile.get("runtime", True) and \
+        if not args.plan and args.prepare_runtime and \
                 os.environ.get("SEVENZIP_RUNTIME_PREPARED") != "1":
             run([sys.executable, str(root / "scripts/prepare-runtime.py"), "--preset", args.preset],
                 root, timings, "runtime")
@@ -141,7 +143,8 @@ def parse_args(argv, profiles):
     parser.add_argument("--platform", choices=["local", "linux", "windows", "all"], default="local")
     parser.add_argument("--plan", action="store_true", help="configure and show tests/targets without building or testing")
     parser.add_argument("--list", action="store_true", help="list scenario profiles")
-    parser.add_argument("--skip-runtime", action="store_true", help="use existing runtime without preparing it")
+    parser.add_argument("--prepare-runtime", action="store_true",
+                        help="prepare or refresh the native engine/SFX before verification")
     parser.add_argument("--interactive", action="store_true", help="use the logged-on Windows desktop")
     parser.add_argument("--elevated", action="store_true", help="run privileged Windows fixtures on that desktop")
     args = parser.parse_args(argv)
@@ -159,7 +162,7 @@ def main(argv=None):
         for name, profile in profiles.items():
             print(f"{name}: {profile['description']}")
         return 0
-    profile = profiles.get(args.profile, {"tests": args.tests, "runtime": True})
+    profile = profiles.get(args.profile, {"tests": args.tests})
     if args.platform != "local":
         command = [sys.executable, str(ROOT / "scripts/hyperv-runner.py"), "run", args.platform,
                    "--preset", args.preset]
@@ -167,8 +170,8 @@ def main(argv=None):
             command.append("--interactive")
         if args.elevated:
             command.append("--elevated")
-        if args.skip_runtime or args.plan or not profile.get("runtime", True):
-            command.append("--skip-runtime")
+        if args.prepare_runtime and not args.plan:
+            command.append("--prepare-runtime")
         command += ["--", "scripts/verify.py", "--preset", args.preset]
         if args.profile:
             command.append(args.profile)
@@ -176,8 +179,8 @@ def main(argv=None):
             command += ["--tests", args.tests]
         if args.plan:
             command.append("--plan")
-        if args.skip_runtime:
-            command.append("--skip-runtime")
+        if args.prepare_runtime:
+            command.append("--prepare-runtime")
         environment = dict(os.environ, SEVENZIP_INVOCATION_STARTED=str(INVOCATION_STARTED))
         return subprocess.run(command, cwd=ROOT, env=environment).returncode
     from lib.toolchain import apply_environment

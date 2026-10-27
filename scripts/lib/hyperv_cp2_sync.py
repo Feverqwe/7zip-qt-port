@@ -11,14 +11,14 @@ import time
 
 from . import cp2_install, cp2_snapshot, hyperv_cp2_install
 from .hyperv_transport import PROTECTED
-from .project_paths import harness_root
+from .build_paths import directory as workspace_directory, host_tools
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def ssh_launcher():
     source = ROOT / "tools/cp2/cp2-ssh.rs"
-    tools = harness_root(ROOT) / "build/runners/tools"
+    tools = host_tools(ROOT)
     digest = hashlib.sha256(source.read_bytes()).hexdigest()[:20]
     directory = tools / "cp2-ssh" / digest
     binary = directory / ("ssh.exe" if os.name == "nt" else "ssh")
@@ -58,8 +58,8 @@ def synchronize(record, platform, source, root, token, directory, remote, powers
     receiver = hyperv_cp2_install.ensure(record, remote, output)
     preparation = time.monotonic() - started
     key = hashlib.sha256(json.dumps([record["ssh_argv"], root]).encode()).hexdigest()
-    cache = harness_root(ROOT) / "build/runners/hyperv/cache/cp2-times" / (key + ".json")
-    with tempfile.TemporaryDirectory(prefix="cp2-", dir=None if os.name == "nt" else "/tmp") as temporary:
+    cache = workspace_directory(ROOT, "cache") / "cp2-times" / (key + ".json")
+    with tempfile.TemporaryDirectory(prefix="cp2-", dir=workspace_directory(ROOT, "tmp")) as temporary:
         temporary = Path(temporary)
         staged = temporary / "source"
         entries = cp2_snapshot.prepare(source, staged, cache, receiver["time_ns"])
@@ -72,18 +72,11 @@ def synchronize(record, platform, source, root, token, directory, remote, powers
         if platform == "windows":
             environment["SEVENZIP_CP2_WINDOWS_PROBE"] = powershell(
                 "[Console]::Out.WriteLine($env:PROCESSOR_ARCHITECTURE)")
-        try:
-            started = time.monotonic()
-            result = subprocess.run(command(client, record, staged, root, receiver["server_path"], checksum),
-                                    env=environment, stdout=output, stderr=subprocess.STDOUT, check=True)
-            transfer = time.monotonic() - started
-            cp2_snapshot.commit(cache, entries)
-        finally:
-            # Close only masters created by this invocation; all sockets are
-            # in its private short path. Native Windows cp2 doesn't multiplex.
-            for socket in temporary.glob("cp2-ssh-*"):
-                subprocess.run([*argv[:-1], "-S", str(socket), "-O", "exit", argv[-1]],
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        started = time.monotonic()
+        result = subprocess.run(command(client, record, staged, root, receiver["server_path"], checksum),
+                                env=environment, stdout=output, stderr=subprocess.STDOUT, check=True)
+        transfer = time.monotonic() - started
+        cp2_snapshot.commit(cache, entries)
     details = {"preparation_seconds": round(preparation, 3), "transfer_seconds": round(transfer, 3),
                "receiver": receiver, "checksum": checksum, "timestamp_cache": str(cache),
                "exit_code": result.returncode}

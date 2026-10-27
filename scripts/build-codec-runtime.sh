@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Prepare the official dynamic console engine and module for external plugins.
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$project_root/scripts/lib/toolchain.sh"
 sevenzip_select_toolchain dev runtime
 upstream_checkout="${1:-$(python3 "$project_root/scripts/lib/toolchain.py" --root "$project_root" --upstream)}"
-artifact_dir="${2:-$project_root/build/codec-runtime}"
+artifact_dir="${2:-$SEVENZIP_ARTIFACT_ROOT/dev/codec-runtime}"
+python3 -B "$project_root/scripts/lib/build_paths.py" check-output --root "$project_root" --output "$artifact_dir" >/dev/null
 case "$(uname -s)" in
   Darwin|Linux) ;;
   *) printf 'Unix runtime builder; Windows uses official 7z.exe and 7z.dll.\n' >&2; exit 1 ;;
@@ -42,9 +44,6 @@ task_runtime_cxx="${CXX:-c++}"
 if command -v ccache >/dev/null 2>&1; then
   task_runtime_cc="ccache $task_runtime_cc"
   task_runtime_cxx="ccache $task_runtime_cxx"
-fi
-if [[ "$(uname -s)" == Darwin ]]; then
-  export CCACHE_DIR="${CCACHE_DIR:-/private/tmp/sevenzip-desktop-ccache}"
 fi
 python3 "$project_root/scripts/build-native-dependencies.py" --snapshot "$snapshot"
 for source in CPP/7zip/UI/Console CPP/7zip/Bundles/Format7zF; do

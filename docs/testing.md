@@ -41,7 +41,7 @@ source snapshots начать с offline-профиля:
 
 ```sh
 python3 scripts/verify.py tooling --plan
-python3 scripts/verify.py tooling --skip-runtime
+python3 scripts/verify.py tooling
 ```
 
 Профиль использует одноразовые локальные fixtures и не требует VM или сети;

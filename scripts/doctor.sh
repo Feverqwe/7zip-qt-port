@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -u
+export PYTHONDONTWRITEBYTECODE=1
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
+if ! python3 -B "$project_root/scripts/lib/build_paths.py" status --root "$project_root"; then
+  exit 1
+fi
 
 failed=0
 check_command() {
@@ -31,11 +35,11 @@ if command -v cmake >/dev/null 2>&1; then
   if [[ -n "${CMAKE_PREFIX_PATH:-}" ]]; then
     printf 'INFO Qt prefix    %s\n' "$CMAKE_PREFIX_PATH"
   elif [[ "$(uname -s)" == Darwin ]]; then
-    qt_prefix="$project_root/build/qt/6.12.0/macos"
+    qt_prefix="$(python3 -B scripts/lib/build_paths.py path --root "$project_root" --category host-tools)/qt/6.12.0/macos"
     if [[ -f "$qt_prefix/lib/cmake/Qt6/Qt6Config.cmake" ]]; then
       printf 'INFO Qt prefix    %s\n' "$qt_prefix"
     else
-      printf 'MISS Qt           install official Qt 6.12.0 into build/qt or set CMAKE_PREFIX_PATH\n'
+      printf 'MISS Qt           install official Qt 6.12.0 into %s or set CMAKE_PREFIX_PATH\n' "$qt_prefix"
       failed=1
     fi
   elif command -v brew >/dev/null 2>&1 && brew --prefix qtbase >/dev/null 2>&1; then

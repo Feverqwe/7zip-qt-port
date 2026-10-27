@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export SEVENZIP_BUILD_STORAGE="${SEVENZIP_BUILD_STORAGE:-disk}"
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
@@ -37,7 +38,7 @@ check_formatting() {
   done
 
   # Runner snapshots already passed both Git whitespace checks locally before
-  # rsync. The guest needs no project Git repository.
+  # source synchronization. The guest needs no project Git repository.
   if [[ -z "${SEVENZIP_RUN_TOKEN:-}" ]]; then
     git diff --check || return
     git diff --cached --check
@@ -50,5 +51,5 @@ if [[ -n "${sevenzip_output_log:-}" ]]; then
   sevenzip_finish_output 0
   exec 1>&3 2>&4
 fi
-./scripts/build.sh dev
+./scripts/build.sh dev all
 ./scripts/ctest.sh --preset dev --output-on-failure

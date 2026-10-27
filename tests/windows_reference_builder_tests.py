@@ -11,6 +11,9 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from lib.build_paths import directory
+from lib.runtime_layout import codec_runtime
 
 
 @unittest.skipUnless(os.name == "nt", "Windows PowerShell builder")
@@ -23,14 +26,20 @@ class ReferenceBuilderTests(unittest.TestCase):
         self.upstream = self.root / "upstream"
         self.bin = self.root / "bin"
         for path in (self.project / "scripts", self.project / "tests/fixtures",
-                     self.project / "docs", self.project / "build/codec-runtime", self.bin, self.upstream):
+                     self.project / "docs", codec_runtime(self.project), self.bin, self.upstream):
             path.mkdir(parents=True, exist_ok=True)
         for name in ("build-windows-reference.ps1", "upstream_baseline.py"):
             shutil.copy2(ROOT / "scripts" / name, self.project / "scripts" / name)
+        (self.project / "scripts/lib").mkdir()
+        for helper in ("build_paths.py", "project_paths.py", "workspace.ps1", "local_ramdisk.py",
+                       "ramdisk_platforms.py", "cp2_install.py"):
+            shutil.copy2(ROOT / "scripts/lib" / helper, self.project / "scripts/lib" / helper)
+        (self.project / "tools/build").mkdir(parents=True)
+        shutil.copy2(ROOT / "tools/build/project.json", self.project / "tools/build/project.json")
         self.adapter = self.project / "tests/fixtures/native_reference_entry.cpp"
         self.adapter.write_bytes(b"private reference wrapper")
         for name in ("7z.dll", "7z.exe"):
-            (self.project / "build/codec-runtime" / name).write_bytes(b"synthetic runtime")
+            (codec_runtime(self.project) / name).write_bytes(b"synthetic runtime")
         self.git("init", "-q")
         self.git("config", "user.name", "Fixture")
         self.git("config", "user.email", "fixture@example.invalid")
@@ -60,7 +69,7 @@ class ReferenceBuilderTests(unittest.TestCase):
         self.environment = dict(os.environ, PATH=str(self.bin) + os.pathsep + os.environ["PATH"],
             SEVENZIP_RUNNER_PYTHON=sys.executable, SEVENZIP_WINDOWS_RUNNER_HOST=os.environ["COMPUTERNAME"],
             VSCMD_ARG_TGT_ARCH="x64", SEVENZIP_REFERENCE_COMPILE=str(compile_script))
-        self.output = self.project / "build/windows-reference"
+        self.output = directory(self.project, "artifacts") / "windows-reference"
 
     def git(self, *args):
         return subprocess.check_output(["git", "-C", str(self.upstream), *args], text=True).strip()
@@ -82,7 +91,7 @@ class ReferenceBuilderTests(unittest.TestCase):
         manifest = json.loads((self.output / "reference.json").read_text(encoding="utf-8-sig"))
         cached = self.output / "source/cached.obj"
         cached.write_bytes(b"retained incremental object")
-        (self.project / "build/codec-runtime/7z.dll").write_bytes(b"updated runtime module")
+        (codec_runtime(self.project) / "7z.dll").write_bytes(b"updated runtime module")
         self.run_builder()
         self.assertEqual(binary.stat().st_mtime_ns, first)
         self.assertEqual((self.output / "7z.dll").read_bytes(), b"updated runtime module")

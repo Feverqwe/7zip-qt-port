@@ -2,8 +2,10 @@
 # Exercise the installed Btrfs module and application with existing regressions.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+project_root="$PWD"
+source scripts/lib/workspace.sh
 interpreter="${SEVENZIP_RUNNER_PYTHON:-python3}"
-install="$PWD/build/btrfs-install"
+install="$SEVENZIP_ARTIFACT_ROOT/btrfs-install"
 targets=(sevenzip_desktop btrfs_module_tests btrfs_multidevice_tests)
 if [[ "${OS:-}" == Windows_NT ]]; then
     source scripts/lib/windows-runner.sh
@@ -29,7 +31,7 @@ if [[ "$native" == xcb && -z "${DISPLAY:-}" ]]; then
     exec xvfb-run -a "$0" "$@"
 fi
 ./scripts/build.sh dev "${targets[@]}"
-"$interpreter" scripts/package.py --build-dir build/dev --install-only "$install"
+"$interpreter" scripts/package.py --build-dir "$SEVENZIP_BUILD_ROOT/dev" --install-only "$install"
 QT_QPA_PLATFORM="$native" "$fm" --smoke-test
 export SEVENZIP_BTRFS_TEST_RUNTIME="$runtime"
 ./scripts/ctest.sh --preset dev -R '^btrfs_(module|multidevice)$' --output-on-failure

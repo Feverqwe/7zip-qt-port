@@ -11,24 +11,26 @@ from pathlib import Path
 import shlex
 import subprocess
 import sys
+sys.dont_write_bytecode = True
 import tempfile
 import time
 import uuid
 
 from lib.hyperv_interactive import interactive_command
 from lib.hyperv_source import stage_tree
-from lib.hyperv_transport import collect_logs, sync_command
+from lib.hyperv_transport import collect_logs
 from lib import hyperv_cp2_sync
 from lib.hyperv_workspace import current_branch, load_workspaces, mount_guard, worktree_root
 from lib.runner_config import load_config, runner_config
 from lib.project_paths import harness_root
 from lib.runner_timing import summarize
 from lib.runtime_layout import codec_runtime
+from lib.build_paths import branch_component, directory, environment as workspace_environment
 
 INVOCATION_STARTED = float(os.environ.get("SEVENZIP_INVOCATION_STARTED", time.monotonic()))
 ROOT = Path(__file__).resolve().parents[1]
 HARNESS = harness_root(ROOT)
-STATE = HARNESS / "build/runners/hyperv"
+STATE = directory(ROOT, "logs") / "runners"
 
 
 def invoke(args, **kwargs):
@@ -114,7 +116,7 @@ def clang_tidy_mode():
 
 
 def execute_check(record, platform, preset, root, token, command=None,
-                  prepare_runtime=True, output=None, interactive=False, elevated=False):
+                  prepare_runtime=False, output=None, interactive=False, elevated=False):
     import os
     config = record.get("config") or runner_config(platform)
     include_slow = os.environ.get("SEVENZIP_INCLUDE_SLOW_TESTS", "0")
@@ -130,18 +132,18 @@ def execute_check(record, platform, preset, root, token, command=None,
     tool_paths = [*config['path']]
     if qt_prefix:
         tool_paths.insert(0 if platform == 'linux' else len(tool_paths), qt_prefix + '/bin')
-    build_environment = {}
-    workspace_parent = Path(config['workspace']['root']).parent.as_posix()
-    vcpkg_root = config.get('vcpkg_root', workspace_parent + '/storage/vcpkg').replace('\\', '/')
-    storage = Path(vcpkg_root).parent.as_posix()
-    branch_directory = Path(root).name
-    build_environment['SEVENZIP_OUTPUT_ROOT'] = f'{storage}/artifacts/{branch_directory}'
+    storage = config['workspace']['root'].rsplit('/', 1)[0]
+    branch = record.get("branch") or current_branch(ROOT)
+    tag = platform + '-x86_64'
+    build_environment = {'SEVENZIP_WORKSPACE': storage, 'SEVENZIP_SOURCE_ROOT': root}
+    for name in ('SEVENZIP_BUILD_STORAGE', 'SEVENZIP_RAMDISK'):
+        if name in os.environ:
+            build_environment[name] = os.environ[name]
     if use_vcpkg:
-        build_environment.update(VCPKG_ROOT=vcpkg_root, VCPKG_MAX_CONCURRENCY=str(build_jobs),
-                                 VCPKG_INSTALLED_DIR=f'{storage}/installed/{branch_directory}')
+        build_environment.update(VCPKG_MAX_CONCURRENCY=str(build_jobs))
         if platform == 'linux':
             build_environment['SEVENZIP_VCPKG_QT_PCH'] = 'OFF'
-    runtime_directory = codec_runtime(Path(root), preset).as_posix()
+    runtime_directory = f'{storage}/branches/{branch_component(branch)}/artifacts/{tag}/{preset}/codec-runtime'
     timing_command = shlex.join([config['python'], 'scripts/lib/runner_timing.py'])
     payload = timing_command + " command_start\n" + payload
     if platform == "linux":
@@ -155,7 +157,9 @@ mkdir -p runner-tmp/ccache
 export TMPDIR="$PWD/runner-tmp" TMP="$PWD/runner-tmp" TEMP="$PWD/runner-tmp"
 export QT_QPA_PLATFORM="${{QT_QPA_PLATFORM:-offscreen}}"
 export CMAKE_BUILD_PARALLEL_LEVEL={build_jobs} SEVENZIP_SCRIPT_OUTPUT=compact
-{storage_environment}{analysis_environment}export SEVENZIP_COMPACT_TEST_BINARIES=ON SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}
+{storage_environment}{analysis_environment}workspace_environment="$({shlex.quote(config['python'])} -B scripts/lib/build_paths.py env --root "$PWD" --preset {shlex.quote(preset)})"
+eval "$workspace_environment"
+export SEVENZIP_COMPACT_TEST_BINARIES=ON SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}
 export CMAKE_PREFIX_PATH={shlex.quote(qt_prefix)}
 export PATH={shlex.quote(':'.join(tool_paths))}:"$PATH"
 export LIBGL_ALWAYS_SOFTWARE=1 SEVENZIP_CTEST_JOBS=1
@@ -164,8 +168,6 @@ export SEVENZIP_RUN_TOKEN={token}
 export SEVENZIP_RUNNER_PYTHON={shlex.quote(config['python'])}
 export SEVENZIP_RUNNER_TIMING="$PWD/runner-tmp/timing.jsonl"
 : > "$SEVENZIP_RUNNER_TIMING"
-export CCACHE_DIR={shlex.quote(config['ccache_dir'])}
-export CCACHE_TEMPDIR="$PWD/runner-tmp/ccache"
 export CCACHE_MAXSIZE=2G
 set +e
 (
@@ -181,8 +183,9 @@ df -Pk .
                    'export SEVENZIP_CODEC_MODULE_DIR=' + shlex.quote(runtime_directory) + '\n' + payload)
         script += f") > check.log 2>&1\ncode=$?\nprintf '%s\\n' '{token}' > .runner-complete\ntail -n 80 check.log\nexit \"$code\"\n"
     else:
-        commands = ['@echo off', *[f'set "{key}={root}/runner-tmp"' for key in ("TEMP", "TMP", "TMPDIR")],
+        commands = ['@echo off', 'chcp 65001 >nul', *[f'set "{key}={root}/runner-tmp"' for key in ("TEMP", "TMP", "TMPDIR")],
                     f'call "{config["vcvars"]}"', 'if errorlevel 1 exit /b %errorlevel%']
+        commands += ['call workspace-env.cmd', 'if errorlevel 1 exit /b %errorlevel%']
         # vcvars supplies its own VCPKG_ROOT; explicit project settings win
         # after compiler bootstrap and before native preparation or commands.
         commands += [f'set "{key}={value}"' for key, value in build_environment.items()]
@@ -193,8 +196,7 @@ df -Pk .
         if analysis_mode is not None:
             commands.append(f'set "SEVENZIP_ENABLE_CLANG_TIDY={analysis_mode}"')
         commands += [f'set "PATH={runtime_directory};{";".join(tool_paths)};%PATH%"',
-                    f'set "CCACHE_DIR={config["ccache_dir"]}"',
-                    f'set "CCACHE_TEMPDIR={root}/runner-tmp/ccache"', 'set "CCACHE_MAXSIZE=2G"',
+                    'set "CCACHE_MAXSIZE=2G"',
                     f'set "CMAKE_PREFIX_PATH={qt_prefix}"', 'set "CC=cl.exe"', 'set "CXX=cl.exe"',
                     f'set "SEVENZIP_WINDOWS_RUNNER_HOST={config["computer_name"]}"',
                     f'set "SEVENZIP_RUNNER_PYTHON={config["python"]}"',
@@ -216,7 +218,18 @@ df -Pk .
         encoded_payload = base64.b64encode(payload.encode()).decode()
         launch = interactive_command(root, elevated, token) if interactive else (
             "& cmd.exe /d /c 'check.cmd > check.log 2>&1'\n$code=$LASTEXITCODE\n")
+        native_environment = '\n'.join(f"$env:{key}='{value}'" for key, value in build_environment.items())
         script = f"""Set-Location '{root}'
+{native_environment}
+$env:PYTHONDONTWRITEBYTECODE='1'
+$env:SEVENZIP_RUNNER_PYTHON='{config['python']}'
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force
+. ./scripts/lib/workspace.ps1
+Initialize-SevenzipWorkspace '{root}'
+$workspace = & '{config['python']}' -B scripts/lib/build_paths.py env --root '{root}' --preset '{preset}' --format json | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0) {{ throw 'Build workspace verification failed' }}
+$lines=@($workspace.PSObject.Properties | ForEach-Object {{ 'set "'+$_.Name+'='+[string]$_.Value+'"' }})
+[IO.File]::WriteAllLines('{root}/workspace-env.cmd', $lines, (New-Object Text.UTF8Encoding($false)))
 New-Item -ItemType Directory '{root}/runner-tmp/ccache' -Force | Out-Null
 [IO.File]::WriteAllText('{root}/runner-tmp/timing.jsonl', '')
 $env:TEMP=$env:TMP=$env:TMPDIR='{root}/runner-tmp'
@@ -249,14 +262,14 @@ def script_command(arguments, platforms):
 
 def run_platform(platform, local, source, preset, command, prepare_runtime,
                  interactive=False, elevated=False, workspace=None, branch=None,
-                 sync_transport="cp2", sync_checksum=False):
+                 sync_checksum=False):
     directory = local / platform
     directory.mkdir()
     workspace = workspace or load_workspaces()[platform]
     branch = branch if branch is not None else current_branch(ROOT)
     root = worktree_root(workspace, branch)
     token = local.name
-    result = {"platform": platform, "status": "running", "transport": sync_transport,
+    result = {"platform": platform, "status": "running", "transport": "cp2",
               "branch": branch, "directory": root, "interactive": interactive and platform == "windows",
               "elevated": elevated and platform == "windows", "seconds": {}}
     acquired = launched = interrupted_sync = False
@@ -268,6 +281,7 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
         try:
             started = time.monotonic()
             record = discover(platform)
+            record["branch"] = branch
             result.update(record)
             result["seconds"]["ready"] = round(time.monotonic() - started, 3)
             started = time.monotonic()
@@ -284,11 +298,8 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
                         clock_anchor = (before_lock, float(line.split("=", 1)[1]), after_lock)
             result["seconds"]["guard_and_lock"] = round(time.monotonic() - started, 3)
             started = time.monotonic()
-            if sync_transport == "cp2":
-                hyperv_cp2_sync.synchronize(record, platform, source, root, token, directory,
-                                            remote, powershell, output, sync_checksum)
-            else:
-                invoke(sync_command(record, platform, source, root), **transport)
+            hyperv_cp2_sync.synchronize(record, platform, source, root, token, directory,
+                                       remote, powershell, output, sync_checksum)
             result["seconds"]["sync"] = round(time.monotonic() - started, 3)
             resolved = list(command) if command else None
             if resolved and resolved[0] == "python":
@@ -316,7 +327,7 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
             if acquired:
                 try:
                     if launched:
-                        result.update(collect_logs(record, root, directory, command, token, invoke, output))
+                        result.update(collect_logs(record, root, directory, command, token, invoke, output, branch))
                         timing = directory / "timing.jsonl"
                         if timing.exists():
                             result.update(summarize(timing, token, clock_anchor, INVOCATION_STARTED))
@@ -346,9 +357,10 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
     return result
 
 
-def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=True,
-                  interactive=False, elevated=False, sync_transport="cp2", sync_checksum=False):
+def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=False,
+                  interactive=False, elevated=False, sync_checksum=False):
     clang_tidy_mode()
+    os.environ.update(workspace_environment(ROOT))
     if elevated and (not interactive or "windows" not in platforms):
         raise ValueError("Elevated fixtures require an interactive Windows guest")
     workspaces = load_workspaces()
@@ -359,21 +371,21 @@ def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=Tru
     local = STATE / (stamp + "-" + uuid.uuid4().hex[:8])
     local.mkdir(parents=True)
     summary = {"run_id": local.name, "command": command, "preset": preset, "prepare_runtime": prepare_runtime,
-               "transport": sync_transport, "interactive": interactive, "elevated": elevated, "branch": branch,
+               "transport": "cp2", "interactive": interactive, "elevated": elevated, "branch": branch,
                "revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                "status": "running", "platforms": []}
     report = local / "run.json"
     try:
-        with tempfile.TemporaryDirectory(prefix="source-", dir=STATE) as temporary:
+        with tempfile.TemporaryDirectory(prefix="source-", dir=directory(ROOT, "tmp")) as temporary:
             started = time.monotonic()
             source = Path(temporary)
-            stage_tree(ROOT, upstream, source, STATE / "cache", source_times=sync_transport == "cp2")
+            stage_tree(ROOT, upstream, source, directory(ROOT, "cache") / "runners", source_times=True)
             summary["source_seconds"] = round(time.monotonic() - started, 3)
             report.write_text(json.dumps(summary, indent=2) + "\n")
             with ThreadPoolExecutor(max_workers=len(platforms)) as executor:
                 futures = [executor.submit(run_platform, platform, local, source,
                                            preset, command, prepare_runtime, interactive, elevated,
-                                           workspaces[platform], branch, sync_transport, sync_checksum) for platform in platforms]
+                                           workspaces[platform], branch, sync_checksum) for platform in platforms]
                 summary["platforms"] = [future.result() for future in futures]
             summary["status"] = "passed" if all(p["status"] == "passed" for p in summary["platforms"]) else "failed"
     except BaseException as error:
@@ -428,18 +440,15 @@ def parse_arguments(argv):
         subparser = actions.add_parser(action)
         subparser.add_argument("platform", choices=["linux", "windows", "all"])
         if action in ("status", "recover"):
-            selection = subparser.add_mutually_exclusive_group()
-            selection.add_argument("--branch", help="Branch to inspect (default: current Git branch)")
-            selection.add_argument("--legacy-current", action="store_true",
-                                   help="Inspect the shared current worktree used by older runners")
+            subparser.add_argument("--branch", help="Branch to inspect (default: current Git branch)")
         if action in ("check", "run"):
             subparser.add_argument("--interactive", action="store_true")
             subparser.add_argument("--elevated", action="store_true")
-            subparser.add_argument("--transport", choices=["cp2", "rsync"], default="cp2")
             subparser.add_argument("--sync-checksum", action="store_true",
                                    help="Compare contents instead of size/mtime with cp2")
             subparser.add_argument("--upstream", type=Path, default=HARNESS.parent / "7zip-upstream")
-            subparser.add_argument("--skip-runtime", action="store_true")
+            subparser.add_argument("--prepare-runtime", action="store_true",
+                                   help="Prepare or refresh the native engine/SFX before the command")
         if action == "check":
             subparser.add_argument("--preset", choices=["dev", "release"], default="dev")
         if action == "run":
@@ -456,8 +465,6 @@ def parse_arguments(argv):
     if getattr(args, "elevated", False) and not getattr(args, "interactive", False):
         parser.error("--elevated requires --interactive")
     args.command = None
-    if getattr(args, "sync_checksum", False) and args.transport == "rsync":
-        parser.error("--sync-checksum applies to cp2; rsync already uses checksums")
     if args.action == "run":
         if separator == len(argv) or not argv[separator + 1:]:
             parser.error("run requires -- <project-script> [arguments]")
@@ -475,21 +482,23 @@ def main():
     if set(args.platforms) - set(load_config()):
         raise ValueError("A selected runner has no local configuration")
     if args.action == "probe":
+        os.environ.update(workspace_environment(ROOT))
         return probe_platforms(args.platforms)
     if args.action in ("status", "recover"):
-        branch = None if args.legacy_current else (args.branch or current_branch(ROOT))
+        os.environ.update(workspace_environment(ROOT))
+        branch = args.branch or current_branch(ROOT)
         for platform in args.platforms:
             record = discover(platform)
             workspace = load_workspaces()[platform]
             if "filesystem_uuid" in workspace:
                 remote(record, mount_guard(workspace))
-            root = workspace["root"] + "/current" if args.legacy_current else worktree_root(workspace, branch)
+            root = worktree_root(workspace, branch)
             print(f"[{platform}] Worktree: {root}", flush=True)
             lock_command(record, root, "", args.action)
         return 0
     return run_platforms(args.platforms, getattr(args, "preset", "dev"), args.upstream,
-                         args.command, not args.skip_runtime, args.interactive, args.elevated,
-                         args.transport, args.sync_checksum)
+                         args.command, args.prepare_runtime, args.interactive, args.elevated,
+                         args.sync_checksum)
 
 
 if __name__ == "__main__":

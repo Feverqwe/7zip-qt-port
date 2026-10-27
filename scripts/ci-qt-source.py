@@ -3,7 +3,11 @@
 
 Qt/ICU source inputs supply the corresponding runtime license notices.
 """
+import sys
+sys.dont_write_bytecode = True
+import os
 import hashlib
+from lib.build_paths import directory, environment
 from pathlib import Path
 import subprocess
 
@@ -25,7 +29,9 @@ def fetch(url, path, expected):
 
 
 def main():
-    destination = Path(__file__).resolve().parents[1] / "build/qt-source"
+    root = Path(__file__).resolve().parents[1]
+    os.environ.update(environment(root))
+    destination = directory(root, "cache") / "qt-source"
     destination.mkdir(parents=True, exist_ok=True)
     archive = destination / f"qtbase-everywhere-src-{VERSION}.tar.xz"
     fetch(f"https://download.qt.io/official_releases/qt/6.12/{VERSION}/submodules/{archive.name}",

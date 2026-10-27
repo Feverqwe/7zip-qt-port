@@ -7,9 +7,12 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+sys.dont_write_bytecode = True
+import os
 
 from lib import hyperv_cp2_install
 from lib.hyperv_workspace import mount_guard
+from lib.build_paths import environment
 
 
 def main():
@@ -19,6 +22,7 @@ def main():
     args = parser.parse_args()
     if args.platform == "all" and args.binary:
         parser.error("--binary requires a single selected machine")
+    os.environ.update(environment(Path(__file__).resolve().parents[1]))
     if args.platform == "local":
         print(json.dumps(hyperv_cp2_install.local(args.binary)))
         return

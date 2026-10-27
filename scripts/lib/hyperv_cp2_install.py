@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 from . import cp2_install
-from .project_paths import harness_root
+from .build_paths import host_tools
 from .hyperv_transport import PROTECTED
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -31,12 +31,12 @@ def installer_source():
 
 
 def local(prebuilt=None):
-    return cp2_install.install(harness_root(ROOT) / "build/runners/tools", pin(), prebuilt)
+    return cp2_install.install(host_tools(ROOT), pin(), prebuilt)
 
 
 def ensure(record, remote, output=None, prebuilt=None):
     config = record["config"]
-    tools = config["workspace"]["root"].rsplit("/", 1)[0] + "/tools"
+    tools = config["workspace"]["root"].rsplit("/", 1)[0] + "/tools/" + record["platform"] + "-x86_64"
     filters = "\n".join((*PROTECTED, "__pycache__/", "*.pyc", ".DS_Store")) + "\n"
     wrapper_key = hashlib.sha256(filters.encode() + Path(__file__).read_bytes()).hexdigest()[:16]
     code = installer_source()

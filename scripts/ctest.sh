@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 
-if [[ "$(uname -s)" == Darwin ]]; then
-  scratch_environment="$(python3 "$project_root/scripts/lib/local_ramdisk.py" env --root "$project_root")"
-  eval "$scratch_environment"
-fi
+ctest_preset=dev
+arguments=("$@")
+for ((index=0; index < ${#arguments[@]}; index++)); do
+  if [[ "${arguments[index]}" == --preset ]]; then ctest_preset="${arguments[index+1]:-dev}"; fi
+  if [[ "${arguments[index]}" == --preset=* ]]; then ctest_preset="${arguments[index]#*=}"; fi
+done
+workspace_environment="$(python3 -B "$project_root/scripts/lib/build_paths.py" env --root "$project_root" --preset "$ctest_preset")"
+eval "$workspace_environment"
 
 export UBSAN_OPTIONS="${UBSAN_OPTIONS:-halt_on_error=1:print_stacktrace=1}"
 

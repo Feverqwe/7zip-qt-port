@@ -5,12 +5,15 @@ import argparse
 import hashlib
 import json
 import os
+import sys
+sys.dont_write_bytecode = True
 from pathlib import Path
 import platform
 import shlex
 import subprocess
 import time
-from lib.runtime_layout import codec_runtime, sanitizer_startup, sfx_runtime
+from lib.runtime_layout import codec_runtime, runtime_root, sanitizer_startup, sfx_runtime
+from lib.build_paths import directory as workspace_directory
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILDERS = ("build-codec-runtime.sh", "build-codec-runtime.ps1", "build-sfx.sh", "build-sfx.ps1",
@@ -78,7 +81,7 @@ def prepare_upstream(root, upstream, baseline):
     if contains_revision(upstream):
         return upstream
     runner_store = upstream == root / "upstream"
-    store = upstream if runner_store else root / "build/upstream.git"
+    store = upstream if runner_store else workspace_directory(root, "cache") / "upstream.git"
     if contains_revision(store):
         return store
     if not store.exists():
@@ -97,7 +100,7 @@ def prepare(root, upstream, codec_only=False, sanitizer_runtime=True, preset="de
     root = root.resolve()
     upstream = (root / upstream).resolve() if not upstream.is_absolute() else upstream.resolve()
     started = time.monotonic()
-    build = root / "build"
+    build = runtime_root(root, preset)
     directory = codec_runtime(root, preset)
     sfx_directory = sfx_runtime(root, preset)
     directory.parent.mkdir(parents=True, exist_ok=True)

@@ -12,6 +12,8 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from lib.build_paths import build_directory, directory
 
 
 class WorkflowTests(unittest.TestCase):
@@ -23,23 +25,46 @@ class WorkflowTests(unittest.TestCase):
         # runner's destination would mix fixtures and bypass their cleanup.
         os.environ.pop("SEVENZIP_OUTPUT_ROOT", None)
 
+    def test_unavailable_ram_stops_before_writing_and_preserves_cached_data(self):
+        with tempfile.TemporaryDirectory(prefix="unavailable RAM ") as temporary:
+            root = Path(temporary)
+            self.fixture(root)
+            retained = root / "retained-cache"
+            retained.write_bytes(b"existing compiler data")
+            unavailable = root / "unavailable"
+            result = subprocess.run(["bash", "scripts/build.sh", "dev", "subject"], cwd=root,
+                                    env=dict(os.environ, SEVENZIP_RAM_MOUNT=str(unavailable)),
+                                    text=True, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(retained.read_bytes(), b"existing compiler data")
+            self.assertFalse(unavailable.exists())
+
     def fixture(self, root):
         (root / "scripts/config").mkdir(parents=True)
         (root / "cmake").mkdir()
         (root / "scripts/lib").mkdir(parents=True, exist_ok=True)
         for name in ("build.sh", "ctest.sh", "verify.py", "config/verify-profiles.json",
                      "lib/runner_timing.py", "lib/toolchain.py", "lib/toolchain.sh", "lib/runtime_layout.py",
-                     "lib/project_paths.py", "lib/local_ramdisk.py"):
+                     "lib/project_paths.py", "lib/build_paths.py", "lib/local_ramdisk.py",
+                     "lib/ramdisk_platforms.py", "lib/cp2_install.py"):
             shutil.copy2(ROOT / "scripts" / name, root / "scripts" / name)
+        (root / "tools/build").mkdir(parents=True)
+        shutil.copy2(ROOT / "tools/build/project.json", root / "tools/build/project.json")
         shutil.copy2(ROOT / "cmake/DeveloperWorkflow.cmake", root / "cmake/DeveloperWorkflow.cmake")
         shutil.copy2(ROOT / "cmake/ReadCTestCommands.cmake", root / "cmake/ReadCTestCommands.cmake")
         shutil.copy2(ROOT / "CMakePresets.json", root / "CMakePresets.json")
         (root / "main.cpp").write_text("int main() { return 0; }\n")
+        (root / "link.py").write_text(
+            "import json,subprocess,sys\nfrom pathlib import Path\n"
+            "with Path(sys.argv[1]).open('a') as stream: stream.write(json.dumps(sys.argv[2:])+'\\n')\n"
+            "raise SystemExit(subprocess.run(sys.argv[2:]).returncode)\n")
         (root / "CMakeLists.txt").write_text('''cmake_minimum_required(VERSION 3.21)
 project(workflow LANGUAGES CXX)
 file(APPEND "${CMAKE_BINARY_DIR}/configure-count" "configured\n")
 enable_testing()
 add_executable(subject main.cpp)
+add_custom_target(sevenzip_desktop DEPENDS subject)
+set_property(TARGET subject PROPERTY CXX_LINKER_LAUNCHER "''' + Path(sys.executable).as_posix() + ''';${CMAKE_SOURCE_DIR}/link.py;${CMAKE_SOURCE_DIR}/subject-links")
 add_executable(producer main.cpp)
 add_executable(unrelated main.cpp)
 add_test(NAME scenario COMMAND subject)
@@ -51,29 +76,43 @@ set_tests_properties(long PROPERTIES LABELS slow)
 include(cmake/DeveloperWorkflow.cmake)
 ''')
 
+    def test_default_debug_build_excludes_unrelated_targets(self):
+        with tempfile.TemporaryDirectory(prefix="focused default ") as temporary:
+            root = Path(temporary)
+            self.fixture(root)
+            built = subprocess.run(["bash", "scripts/build.sh", "dev"], cwd=root,
+                                   env=dict(os.environ, CMAKE_PREFIX_PATH=str(root)),
+                                   text=True, capture_output=True)
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            output = directory(root, "artifacts") / "dev"
+            suffix = ".exe" if os.name == "nt" else ""
+            self.assertTrue((output / ("subject" + suffix)).is_file())
+            self.assertFalse((output / ("producer" + suffix)).exists())
+            self.assertFalse((output / ("unrelated" + suffix)).exists())
+
     def test_first_build_includes_fixture_and_preserves_incremental_output(self):
         with tempfile.TemporaryDirectory(prefix="verify Юникод ") as temporary:
             root = Path(temporary)
             self.fixture(root)
             with patch.dict(os.environ, {"SEVENZIP_INCLUDE_SLOW_TESTS": "0"}):
                 self.run_verify(root, "^scenario$")
-                report = root / "build/dev/verify-result.json"
+                report = directory(root, "logs") / "dev/verify-result.json"
                 result = json.loads(report.read_text())
                 self.assertEqual(result["status"], "passed")
                 suffix = ".exe" if os.name == "nt" else ""
-                binary = root / ("build/dev/subject" + suffix)
-                before = binary.stat().st_mtime_ns
-                self.assertFalse((root / ("build/dev/unrelated" + suffix)).exists())
+                binary = directory(root, "artifacts") / "dev" / ("subject" + suffix)
+                before = (root / "subject-links").read_bytes()
+                self.assertFalse((directory(root, "artifacts") / "dev" / ("unrelated" + suffix)).exists())
                 self.run_verify(root, "^scenario$")
-                self.assertEqual(before, binary.stat().st_mtime_ns)
-                self.assertEqual((root / "build/dev/configure-count").read_text().splitlines(), ["configured"])
+                self.assertEqual(before, (root / "subject-links").read_bytes())
+                self.assertEqual((build_directory(root) / "configure-count").read_text().splitlines(), ["configured"])
                 with (root / "CMakeLists.txt").open("a") as stream:
                     stream.write("add_test(NAME added COMMAND subject)\n")
                 self.run_verify(root, "^added$", plan=True)
-                planned = json.loads((root / "build/dev/verify-plan.json").read_text())
+                planned = json.loads((directory(root, "logs") / "dev/verify-plan.json").read_text())
                 self.assertEqual(planned["status"], "planned")
                 self.assertEqual(json.loads(report.read_text())["status"], "passed")
-                self.assertEqual(len((root / "build/dev/configure-count").read_text().splitlines()), 2)
+                self.assertEqual(len((build_directory(root) / "configure-count").read_text().splitlines()), 2)
                 self.run_verify(root, "^does_not_exist$", succeeds=False)
                 self.assertEqual(json.loads(report.read_text())["status"], "failed")
                 self.run_verify(root, "^long$", succeeds=False)
@@ -96,20 +135,43 @@ endif()
                 # A stale configure would still select a test for the wrong host.
                 self.run_verify(root, "^configured_native$", plan=True, succeeds=False)
 
-    def test_relocated_outputs_run_and_remain_incremental(self):
-        # CTest target discovery must execute persistent binaries even when
-        # source and object files are on a separate, disposable filesystem.
-        with tempfile.TemporaryDirectory(prefix="split output ") as temporary:
-            root = Path(temporary) / "ram"
-            root.mkdir()
+    def test_branches_keep_their_own_binaries_and_reuse_previous_build(self):
+        with tempfile.TemporaryDirectory(prefix="branch storage ") as temporary:
+            root = Path(temporary)
             self.fixture(root)
-            outputs = Path(temporary) / "persistent outputs"
-            with patch.dict(os.environ, {"SEVENZIP_OUTPUT_ROOT": str(outputs)}):
-                self.run_verify(root, "^scenario$")
-                binary = outputs / "dev" / ("subject.exe" if os.name == "nt" else "subject")
-                before = binary.stat().st_mtime_ns
-                self.run_verify(root, "^scenario$")
-                self.assertEqual(binary.stat().st_mtime_ns, before)
+
+            def git(*arguments):
+                subprocess.run(["git", "-C", str(root), *arguments], check=True,
+                               capture_output=True)
+
+            (root / ".gitignore").write_text("branches/\ncache/\ntools/\n")
+            git("init", "-q")
+            git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                "commit", "--allow-empty", "-qm", "fixture")
+            first_binary = None
+            previous_branch = previous_time = None
+            for branch, text in (("feature/a", "first"), ("feature-a", "second"),
+                                 ("feature/a", "first"), ("feature/a", "first")):
+                git("checkout", "-q", "-B", branch)
+                source = root / "main.cpp"
+                content = '#include <cstdio>\nint main() { std::puts("' + text + '"); }\n'
+                if source.read_text() != content:
+                    source.write_text(content)
+                built = subprocess.run(["bash", "scripts/build.sh", "dev", "subject"], cwd=root,
+                                       env=dict(os.environ, CMAKE_PREFIX_PATH=str(root)),
+                                       text=True, capture_output=True)
+                self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+                binary = directory(root, "artifacts") / "dev" / ("subject.exe" if os.name == "nt" else "subject")
+                result = subprocess.check_output([str(binary)], text=True).strip()
+                self.assertEqual(result, text)
+                if first_binary is None:
+                    first_binary = binary
+                elif branch == "feature-a":
+                    self.assertEqual(subprocess.check_output([str(first_binary)], text=True).strip(), "first")
+                if branch == previous_branch:
+                    self.assertEqual((root / "subject-links").read_bytes(), previous_time)
+                previous_branch, previous_time = branch, (root / "subject-links").read_bytes()
+            self.assertEqual(subprocess.check_output([str(first_binary)], text=True).strip(), "first")
 
     def test_linked_checkout_and_verification_reuse_the_same_objects(self):
         with tempfile.TemporaryDirectory(prefix="linked checkout ") as temporary:
@@ -127,13 +189,13 @@ endif()
                     ["bash", str(alias / "scripts/build.sh"), "dev", "subject"], cwd=alias,
                     env=dict(os.environ, CMAKE_PREFIX_PATH=str(root)), text=True, capture_output=True)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                binary = root / "build/dev" / ("subject.exe" if os.name == "nt" else "subject")
-                before = binary.stat().st_mtime_ns
-                commands = (root / 'build/dev/compile_commands.json').read_text()
+                binary = directory(root, "artifacts") / "dev" / ("subject.exe" if os.name == "nt" else "subject")
+                before = (root / "subject-links").read_bytes()
+                commands = (build_directory(root) / "compile_commands.json").read_text()
                 verified = self.run_verify(root, "^scenario$")
-                self.assertEqual(binary.stat().st_mtime_ns, before,
+                self.assertEqual((root / "subject-links").read_bytes(), before,
                                  commands + '\nAFTER\n' +
-                                 (root / 'build/dev/compile_commands.json').read_text() +
+                                 (build_directory(root) / "compile_commands.json").read_text() +
                                  result.stdout + verified.stdout)
             finally:
                 if os.name == "nt":
@@ -150,7 +212,7 @@ endif()
                     "SEVENZIP_RUNNER_TIMING": str(root / "runner-tmp/timing.jsonl"),
                     "SEVENZIP_RUN_TOKEN": "fixture", "SEVENZIP_RUNNER_PYTHON": sys.executable}):
                 self.run_verify(root, "^scenario$")
-            result = json.loads((root / "build/dev/verify-result.json").read_text())
+            result = json.loads((directory(root, "logs") / "dev/verify-result.json").read_text())
             self.assertEqual(result["status"], "passed")
 
     def test_analysis_mode_rechecks_an_unchanged_incremental_build(self):
@@ -256,7 +318,7 @@ include(cmake/DeveloperWorkflow.cmake)
                               "-fmodule-output=compiled module.pcm", "@msvc.modmap"])
 
     def run_verify(self, root, selection, plan=False, succeeds=True):
-        command = [sys.executable, str(root / "scripts/verify.py"), "--tests", selection, "--skip-runtime"]
+        command = [sys.executable, str(root / "scripts/verify.py"), "--tests", selection]
         if plan:
             command.append("--plan")
         # This fixture exercises the wrappers without any Qt dependency.
