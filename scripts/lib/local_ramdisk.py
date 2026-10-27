@@ -123,7 +123,7 @@ def scratch(root):
     root = Path(root).resolve()
     mount = volume(root)
     identity = hashlib.sha256(str(root).encode()).hexdigest()[:16]
-    destination = root / "build/ram" if root.is_relative_to(mount) else mount / "workspaces" / identity
+    destination = root / "b" if root.is_relative_to(mount) else mount / "w" / identity
     destination.mkdir(parents=True, exist_ok=True)
     if shutil.disk_usage(mount).free < 256 * 1024**2:
         raise ValueError("RAM workspace has less than 256 MiB free; remove completed RAM outputs or explicitly set SEVENZIP_RAMDISK=OFF")

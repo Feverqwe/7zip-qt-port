@@ -95,7 +95,9 @@ def ensure(root, create=True):
         if marker.is_symlink():
             raise ValueError("Invalid RAM ownership marker")
         if not marker.exists():
-            if not create or any(p.name not in ("System Volume Information", "$RECYCLE.BIN") for p in mount.iterdir()):
+            # os.listdir also handles an empty ImDisk root on Python 3.13,
+            # where pathlib's scandir-based iterator raises WinError 2.
+            if not create or any(name not in ("System Volume Information", "$RECYCLE.BIN") for name in os.listdir(mount)):
                 raise ValueError("RAM workspace is not owned by this project")
             marker.write_text(json.dumps(identity) + "\n")
         if json.loads(marker.read_text()) != identity:

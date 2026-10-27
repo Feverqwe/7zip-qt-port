@@ -25,19 +25,22 @@ class WorkflowTests(unittest.TestCase):
         # runner's destination would mix fixtures and bypass their cleanup.
         os.environ.pop("SEVENZIP_OUTPUT_ROOT", None)
 
-    def test_unavailable_ram_stops_before_writing_and_preserves_cached_data(self):
+    def test_occupied_non_ram_destination_preserves_cached_data(self):
         with tempfile.TemporaryDirectory(prefix="unavailable RAM ") as temporary:
             root = Path(temporary)
             self.fixture(root)
             retained = root / "retained-cache"
             retained.write_bytes(b"existing compiler data")
             unavailable = root / "unavailable"
+            unavailable.mkdir()
+            sentinel = unavailable / "existing-data"
+            sentinel.write_bytes(b"not a RAM filesystem")
             result = subprocess.run(["bash", "scripts/build.sh", "dev", "subject"], cwd=root,
                                     env=dict(os.environ, SEVENZIP_RAM_MOUNT=str(unavailable)),
                                     text=True, capture_output=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(retained.read_bytes(), b"existing compiler data")
-            self.assertFalse(unavailable.exists())
+            self.assertEqual(sentinel.read_bytes(), b"not a RAM filesystem")
 
     def fixture(self, root):
         (root / "scripts/config").mkdir(parents=True)

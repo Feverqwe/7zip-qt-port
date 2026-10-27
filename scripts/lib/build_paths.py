@@ -76,7 +76,7 @@ def directory(root, category):
         raise ValueError("Unknown workspace category")
     workspace = workspace_root(root)
     if category == "tmp":
-        workspace = scratch_root(root)
+        return scratch_root(root) / "b" / hashlib.sha256(branch_name(root).encode()).hexdigest()[:16] / "t"
     if category in ("work", "artifacts", "logs", "tmp", "packages"):
         workspace = workspace / "branches" / branch_key(root)
     return workspace / category / host_tag()
@@ -96,8 +96,9 @@ def build_root(root, preset="dev"):
     storage = os.environ.get("SEVENZIP_BUILD_STORAGE", "ram")
     if storage not in ("ram", "disk"):
         raise ValueError("SEVENZIP_BUILD_STORAGE must be ram or disk")
-    base = workspace_root(root) if storage == "disk" or preset.startswith("vcpkg-") else scratch_root(root)
-    return base / "branches" / branch_key(root) / "work" / host_tag()
+    if storage == "disk" or preset.startswith("vcpkg-"):
+        return workspace_root(root) / "branches" / branch_key(root) / "work" / host_tag()
+    return scratch_root(root) / "b" / hashlib.sha256(branch_name(root).encode()).hexdigest()[:16] / "w"
 
 
 def host_tools(root):
