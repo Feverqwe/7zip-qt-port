@@ -150,7 +150,8 @@ and RelWithDebInfo builds enable AddressSanitizer on all platforms and
 UndefinedBehaviorSanitizer on macOS/Linux by default. Use
 `-DSEVENZIP_ENABLE_SANITIZERS=OFF` only when investigating a toolchain or runtime
 incompatibility. Clang-Tidy is opt-in with `-DSEVENZIP_ENABLE_CLANG_TIDY=ON` and
-requires `clang-tidy` on `PATH`.
+requires Clang-Tidy on `PATH`. With Clang, the matching versioned executable
+(for example, `clang-tidy-19`) is preferred; `clang-tidy` is also supported.
 For the independent native runtime's dependency modules, set
 `SEVENZIP_ENABLE_CLANG_TIDY=ON` when running `scripts/prepare-runtime.py` or the
 codec-runtime builder. They use the same analysis configuration; switching this
@@ -238,7 +239,8 @@ brew install llvm
 ./scripts/ctest.sh --preset modules-dev -R '^filesystem_zlib$' --output-on-failure
 ```
 
-On Ubuntu 24.04, install `clang-19`, `clang-tools-19`, `libclang-rt-19-dev` and use
+On Ubuntu 24.04, install `clang-19`, `clang-tools-19`, `clang-tidy-19`,
+`libclang-rt-19-dev` and use
 `modules-linux-dev` to select that C/C++ compiler and its scanner. The wrappers
 also select it for native runtime preparation; direct preparation accepts
 `prepare-runtime.py --preset modules-linux-dev`. Clang 18 with the system
