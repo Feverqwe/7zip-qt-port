@@ -123,17 +123,16 @@ def execute_check(record, platform, preset, root, token, command=None,
     if qt_prefix:
         tool_paths.insert(0 if platform == 'linux' else len(tool_paths), qt_prefix + '/bin')
     build_environment = {}
+    workspace_parent = Path(config['workspace']['root']).parent.as_posix()
+    vcpkg_root = config.get('vcpkg_root', workspace_parent + '/storage/vcpkg').replace('\\', '/')
+    storage = Path(vcpkg_root).parent.as_posix()
+    branch_directory = Path(root).name
+    build_environment['SEVENZIP_OUTPUT_ROOT'] = f'{storage}/artifacts/{branch_directory}'
     if use_vcpkg:
-        build_environment.update(VCPKG_ROOT=config.get('vcpkg_root', root + '/build/vcpkg'),
-                                 VCPKG_MAX_CONCURRENCY=str(build_jobs))
+        build_environment.update(VCPKG_ROOT=vcpkg_root, VCPKG_MAX_CONCURRENCY=str(build_jobs),
+                                 VCPKG_INSTALLED_DIR=f'{storage}/installed/{branch_directory}')
         if platform == 'linux':
             build_environment['SEVENZIP_VCPKG_QT_PCH'] = 'OFF'
-    if config.get('vcpkg_root'):
-        storage = Path(config['vcpkg_root']).parent.as_posix()
-        branch_directory = Path(root).name
-        build_environment['SEVENZIP_OUTPUT_ROOT'] = f'{storage}/artifacts/{branch_directory}'
-        if use_vcpkg:
-            build_environment['VCPKG_INSTALLED_DIR'] = f'{storage}/installed/{branch_directory}'
     runtime_directory = codec_runtime(Path(root), preset).as_posix()
     timing_command = shlex.join([config['python'], 'scripts/lib/runner_timing.py'])
     payload = timing_command + " command_start\n" + payload

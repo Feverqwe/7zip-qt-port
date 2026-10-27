@@ -556,8 +556,9 @@ raise SystemExit(runner.main())
             root = Path(temporary)
             (root / "scripts/lib").mkdir(parents=True)
             shutil.copy2(ROOT / "scripts/lib/runner_timing.py", root / "scripts/lib/runner_timing.py")
-            (root / "scripts/probe.py").write_text('''import json, os
+            (root / "scripts/probe.py").write_text('''import json, os, subprocess, sys
 from pathlib import Path
+subprocess.run([sys.executable, str(Path(os.environ['VCPKG_ROOT']) / 'host-tool.py')], check=True)
 Path('selected.json').write_text(json.dumps({key: os.environ.get(key) for key in
     ('VCPKG_ROOT', 'VCPKG_MAX_CONCURRENCY', 'VCPKG_INSTALLED_DIR',
      'SEVENZIP_OUTPUT_ROOT', 'CMAKE_PREFIX_PATH', 'PATH')}))
@@ -572,7 +573,10 @@ Path('selected.json').write_text(json.dumps({key: os.environ.get(key) for key in
 
             for configured_root in (None, str(root / "tools/vcpkg user's $(touch injected)")):
                 with self.subTest(vcpkg_root=configured_root):
-                    settings = dict(config)
+                    settings = dict(config, workspace={"root": (root / "runs").as_posix()})
+                    tool_root = Path(configured_root) if configured_root else root / "storage/vcpkg"
+                    tool_root.mkdir(parents=True, exist_ok=True)
+                    (tool_root / "host-tool.py").write_text("raise SystemExit(0)\n")
                     if configured_root:
                         settings["vcpkg_root"] = configured_root
                     with patch.object(runner, "remote", local_remote), \
@@ -584,18 +588,15 @@ Path('selected.json').write_text(json.dumps({key: os.environ.get(key) for key in
                     prepared = json.loads((root / "prepared.json").read_text())
                     self.assertEqual({key: value for key, value in selected.items() if key != 'PATH'},
                                      {key: value for key, value in prepared.items() if key != 'PATH'})
-                    self.assertEqual(Path(selected["VCPKG_ROOT"]),
-                                     Path(configured_root) if configured_root else root / "build/vcpkg")
                     self.assertEqual(selected["VCPKG_MAX_CONCURRENCY"], "2")
                     self.assertFalse(selected["CMAKE_PREFIX_PATH"])
                     self.assertNotIn(config["qt_prefix"] + "/bin", selected["PATH"].split(os.pathsep))
                     self.assertFalse((root / "injected").exists())
-                    if configured_root:
-                        storage = Path(configured_root).parent
-                        self.assertEqual(Path(selected['VCPKG_INSTALLED_DIR']),
-                                         storage / 'installed' / root.name)
-                        self.assertEqual(Path(selected['SEVENZIP_OUTPUT_ROOT']),
-                                         storage / 'artifacts' / root.name)
+                    storage = tool_root.parent
+                    self.assertEqual(Path(selected['VCPKG_INSTALLED_DIR']),
+                                     storage / 'installed' / root.name)
+                    self.assertEqual(Path(selected['SEVENZIP_OUTPUT_ROOT']),
+                                     storage / 'artifacts' / root.name)
 
     @unittest.skipUnless(os.name == "nt", "Windows compiler bootstrap environment")
     def test_windows_bootstrap_preserves_selected_vcpkg_for_runtime_and_command(self):

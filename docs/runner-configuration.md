@@ -42,14 +42,16 @@ batch file and actual computer name. Native registration/reference commands
 check that name before running. Other tools, including CMake, Ninja, Git,
 ccache, clang-format and Bash, must be available on the configured PATH.
 Install the dependencies described in [development](development.md#dependencies).
-For `vcpkg-*` presets, install the pinned vcpkg checkout in the branch workspace's
-`build/vcpkg`, or set the optional `vcpkg_root` to its absolute guest path.
+For `vcpkg-*` presets, install the pinned vcpkg checkout in `storage/vcpkg`
+beside the configured workspace, or set the optional `vcpkg_root` to its
+absolute guest path.
 These presets obtain Qt from the manifest and do not select `qt_prefix`.
 On Windows, their configured tool directories are also available to CMake's
 program search inside vcpkg's clean build environment. Add installed host tools,
 such as Perl, to `path` to reuse them instead of downloading another copy.
-For a RAM-backed workspace, set `vcpkg_root` on persistent storage. Its parent
-also holds branch-specific installed packages and final build outputs; sources,
+The sibling `storage` directory holds branch-specific final build outputs and
+manifest packages. Keep it on persistent storage when the workspace is RAM-backed.
+An explicit `vcpkg_root` moves this storage to that checkout's parent. Sources,
 objects and temporary build data remain in the workspace. Keep `ccache_dir` on
 persistent storage as well. This layout preserves dependencies and binaries
 across a RAM-disk reset; source synchronization and compilation restore the
