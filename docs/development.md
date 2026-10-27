@@ -209,7 +209,11 @@ port recipe as required by vcpkg.
 
 On Debian/Ubuntu, vcpkg bootstrap requires `curl`, `zip`, `unzip` and `tar` in
 addition to the compiler/build tools below. Building the manifest's dependencies
-from source also requires `bison` and `flex`.
+from source also requires parser generators and autotools:
+
+```sh
+sudo apt install bison flex autoconf autoconf-archive automake libtool
+```
 
 On macOS, vcpkg source builds also need pkg-config and autotools:
 
@@ -267,6 +271,9 @@ brew install gcc
 ./scripts/build.sh modules-gcc-dev sevenzip_cpp23_example
 ./build/modules-gcc-dev/sevenzip_cpp23_example
 ```
+
+On Ubuntu 24.04, install `g++-14` for its C++23 standard library and build the
+example with `modules-linux-dev`; Clang 19 selects the installed libstdc++ 14.
 
 On Windows, sanitizer builds stage the example's compiler runtime DLLs beside
 the executable, allowing it to run outside the developer prompt.
