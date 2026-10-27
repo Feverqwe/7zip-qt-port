@@ -118,6 +118,12 @@ set_source_files_properties(src/CPP/7zip/Common/LimitedStreams.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Common")
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools Network RemoteObjects)
+get_target_property(sevenzip_qt_core_type Qt6::Core TYPE)
+if(BUILD_TESTING AND sevenzip_qt_core_type STREQUAL "STATIC_LIBRARY"
+        AND TARGET Qt6::QOffscreenIntegrationPlugin)
+    # Headless widget checks need their platform plugin embedded in static Qt.
+    set_property(TARGET Qt6::QOffscreenIntegrationPlugin PROPERTY QT_DEFAULT_PLUGIN 1)
+endif()
 find_package(Threads REQUIRED)
 include(cmake/Smb.cmake)
 include(cmake/Zstd.cmake)
@@ -181,6 +187,7 @@ if(APPLE)
     enable_language(OBJCXX)
     set(CMAKE_OBJCXX_STANDARD 23)
     set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+    include(cmake/MacosSdkIncludes.cmake)
     if(SEVENZIP_ENABLE_SANITIZERS)
         foreach(sevenzip_config DEBUG RELWITHDEBINFO)
             string(APPEND CMAKE_OBJCXX_FLAGS_${sevenzip_config}

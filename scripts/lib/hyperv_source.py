@@ -11,7 +11,7 @@ import tempfile
 from .source_snapshot_time import version_time_ns
 
 SOURCE_DIRS = {".agents", "cmake", "docs", "ports", "scripts", "src", "tests", "third_party", "resources",
-               "translations", "tools"}
+               "translations", "tools", "triplets"}
 SOURCE_FILES = {".clang-format", ".clang-tidy", ".gitattributes", ".gitignore", "AGENTS.md",
                 "CMakeLists.txt", "CMakePresets.json", "LICENSE", "README.md",
                 "upstream.lock.json", "vcpkg-configuration.json", "vcpkg.json",

@@ -6,6 +6,7 @@
     "onnxruntime",
     "qtbase",
     "qtremoteobjects",
-    "qttools"
+    "qttools",
+    "qttranslations"
   ]
 }

@@ -183,6 +183,9 @@ class RunnerTests(unittest.TestCase):
             overlay_patch = project / "ports/fixture/fix.patch"
             overlay_patch.parent.mkdir(parents=True)
             overlay_patch.write_text("fixture patch")
+            overlay_triplet = project / "triplets/fixture.cmake"
+            overlay_triplet.parent.mkdir()
+            overlay_triplet.write_text("set(VCPKG_TARGET_ARCHITECTURE arm64)\n")
             (project / "src/ignored-secret").write_text("excluded")
             (project / "build").mkdir()
             (project / "build/secret").write_text("excluded")
@@ -198,7 +201,7 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual((destination / "src/changed.cpp").read_text(), "new")
             self.assertEqual((destination / "translations/fixture.ts").read_text(), catalog.read_text())
             self.assertEqual((destination / "tools/cp2/fixture.json").read_text(), tool_asset.read_text())
-            for source in (build_manifest, registry_config, tidy_config, overlay_patch):
+            for source in (build_manifest, registry_config, tidy_config, overlay_patch, overlay_triplet):
                 self.assertEqual((destination / source.relative_to(project)).read_text(), source.read_text())
             self.assertTrue((destination / "src/Юникод $(touch injected).cpp").exists())
             self.assertFalse((destination / "src/deleted.cpp").exists())
@@ -545,6 +548,41 @@ raise SystemExit(runner.main())
             self.assertEqual((root / ".runner-complete").read_text().strip(), "token")
             self.assertFalse((root / "injected").exists())
             self.assertFalse((root / ".git").exists())
+
+    def test_manifest_command_receives_vcpkg_without_a_competing_qt_sdk(self):
+        # Without VCPKG_ROOT the actual build wrapper rejects the manifest
+        # preset; a configured Qt kit must not take precedence over its Qt.
+        with tempfile.TemporaryDirectory(prefix="manifest runner ") as temporary:
+            root = Path(temporary)
+            (root / "scripts/lib").mkdir(parents=True)
+            shutil.copy2(ROOT / "scripts/lib/runner_timing.py", root / "scripts/lib/runner_timing.py")
+            (root / "scripts/probe.py").write_text('''import json, os
+from pathlib import Path
+Path('selected.json').write_text(json.dumps({key: os.environ.get(key) for key in
+    ('VCPKG_ROOT', 'VCPKG_MAX_CONCURRENCY', 'CMAKE_PREFIX_PATH', 'PATH')}))
+''')
+            config = load_config()["linux"]
+
+            def local_remote(record, script, **kwargs):
+                return subprocess.run(["bash", "-se"], input=script, text=True,
+                                      check=True, capture_output=True)
+
+            for configured_root in (None, str(root / "tools/vcpkg user's $(touch injected)")):
+                with self.subTest(vcpkg_root=configured_root):
+                    settings = dict(config)
+                    if configured_root:
+                        settings["vcpkg_root"] = configured_root
+                    with patch.object(runner, "remote", local_remote), \
+                            patch.dict(os.environ, {"CMAKE_BUILD_PARALLEL_LEVEL": "2"}):
+                        runner.execute_check({"config": settings}, "linux", "vcpkg-dev",
+                                             root.as_posix(), "token",
+                                             [sys.executable, "scripts/probe.py"], False)
+                    selected = json.loads((root / "selected.json").read_text())
+                    self.assertEqual(selected["VCPKG_ROOT"], configured_root or str(root / "build/vcpkg"))
+                    self.assertEqual(selected["VCPKG_MAX_CONCURRENCY"], "2")
+                    self.assertFalse(selected["CMAKE_PREFIX_PATH"])
+                    self.assertNotIn(config["qt_prefix"] + "/bin", selected["PATH"].split(os.pathsep))
+                    self.assertFalse((root / "injected").exists())
 
     def test_remote_verification_prepares_the_requested_runtime_toolchain(self):
         # A default runtime with a module preset reproduced incompatible ASan

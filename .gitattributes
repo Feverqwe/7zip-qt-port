@@ -14,3 +14,9 @@ src/zstd/** -text -whitespace
 resources/7zip/Lang/* -text -whitespace
 resources/7zip/License.txt -text -whitespace
 resources/7zip/Help/** -text -whitespace
+# Pinned overlay recipes and notices retain their source bytes. Patch context
+# lines intentionally contain a space even when the original line is empty.
+ports/qttools/** -text
+ports/qttools/*.patch -whitespace
+ports/qttools/Qt-LICENSES/* -whitespace
+ports/qttools/LICENSE.vcpkg.txt -whitespace

@@ -57,6 +57,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Build dependency overlays](upstream-port-audit/build-dependencies.md)
+  — закреплённые vcpkg recipes и узкие исправления зависимостей сборки.
+
 - [cp2 runner sync](upstream-port-audit/runner-sync.md)
   — закреплённая внешняя утилита, provenance, лицензии и процедура обновления.
 

@@ -1,0 +1,23 @@
+{
+  "repository": "https://github.com/microsoft/vcpkg.git",
+  "revision": "9eec002df1cd109f8f104cd966a763daf9751489",
+  "scope": "Complete qttools overlay recipe; inherited optional features and patches retained",
+  "files": {
+    "ports/qttools/devendor-litehtml.patch": "e22786e7965b49120879d77f2b7475e7dd91ac07078c522ad91a49993a3c1c45",
+    "ports/qttools/fix-qlitehtml.patch": "06c948d10933a2895ad755012e29e73021923e959fc927d1e8c5c24fa2ffdec6",
+    "ports/qttools/port.data.cmake": "d65fd4240982393e6ea7493b4b6c642287d555a3cd91a5d66179679ff3d933f0",
+    "ports/qttools/portfile.cmake": "d3a33cc3c26f5287c8ce1958a9728580f8986e90dc677cb20f221d68b4a8b33d",
+    "ports/qttools/vcpkg.json": "659be9ac81859c3d80ee4387081e1c538103a771c7b13143778fdbba8b016e5e",
+    "ports/qttools/windeployqt.debug.bat": "4bd1b18297ccde9456343b6c6c25e95a4688bd9e4faca2be0988b0016abf5c2f",
+    "LICENSE.txt": "1ee376fc340e0aa6ad6a3581c94126e741468705096ac92263048a21daa86460"
+  },
+  "adapted": {
+    "ports/qttools/devendor-litehtml.patch": "ports/qttools/devendor-litehtml.patch",
+    "ports/qttools/fix-qlitehtml.patch": "ports/qttools/fix-qlitehtml.patch",
+    "ports/qttools/port.data.cmake": "ports/qttools/port.data.cmake",
+    "ports/qttools/portfile.cmake": "ports/qttools/portfile.cmake",
+    "ports/qttools/vcpkg.json": "ports/qttools/vcpkg.json",
+    "ports/qttools/windeployqt.debug.bat": "ports/qttools/windeployqt.debug.bat",
+    "LICENSE.txt": "ports/qttools/LICENSE.vcpkg.txt"
+  }
+}

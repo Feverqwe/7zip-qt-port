@@ -4,6 +4,10 @@ set -euo pipefail
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 preset="${1:-dev}"
+if [[ "$preset" == vcpkg-* && ! -f "${VCPKG_ROOT:-}/scripts/buildsystems/vcpkg.cmake" ]]; then
+  printf 'Set VCPKG_ROOT to a vcpkg checkout containing scripts/buildsystems/vcpkg.cmake.\n' >&2
+  exit 2
+fi
 source "$project_root/scripts/lib/toolchain.sh"
 sevenzip_select_toolchain "$preset"
 build_only=0
@@ -33,6 +37,11 @@ if command -v ccache >/dev/null 2>&1; then
   fi
   if [[ -z "${CCACHE_DIR:-}" && "$(uname -s)" == Darwin ]]; then
     export CCACHE_DIR=/private/tmp/sevenzip-desktop-ccache
+  fi
+  if [[ "$preset" == vcpkg-* ]]; then
+    export CMAKE_C_COMPILER_LAUNCHER="${CMAKE_C_COMPILER_LAUNCHER:-$compiler_cache}"
+    export CMAKE_CXX_COMPILER_LAUNCHER="${CMAKE_CXX_COMPILER_LAUNCHER:-$compiler_cache}"
+    export CMAKE_OBJCXX_COMPILER_LAUNCHER="${CMAKE_OBJCXX_COMPILER_LAUNCHER:-$compiler_cache}"
   fi
 fi
 
@@ -96,6 +105,9 @@ configure() {
     # Ninja owns CMake input/glob dependencies. Regenerate only when needed,
     # before CTest selection; this target does not compile the application.
     cmake --build --preset "$preset" --target build.ninja -- --quiet
+  elif [[ "$preset" == vcpkg-* ]]; then
+    # Manifest installation can take time; retain package progress and errors.
+    cmake --preset "$preset" "$@"
   else
     cmake --preset "$preset" --log-level=WARNING "$@" >/dev/null
   fi

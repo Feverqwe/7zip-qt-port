@@ -133,8 +133,9 @@ runner command with `SEVENZIP_INCLUDE_SLOW_TESTS=1` to opt in.
 
 Runner script provenance is retained in the [dated environment record](archive/runner-environment-2026-10-18.md#runner-script-provenance).
 
-Runner selection sets `CMAKE_PREFIX_PATH` and prepends the kit and tool
-directories from local configuration.
+For ordinary presets, runner selection sets `CMAKE_PREFIX_PATH` and prepends the
+kit and tool directories from local configuration. Manifest presets use
+[vcpkg runner configuration](runner-configuration.md#connections-and-tools).
 `probe` queries that kit's qmake rather than the system default. Install/select
 the kit before checks; the helper does not download Qt or change global PATH.
 Use `probe` to confirm the live kit; prior probe/gate results are

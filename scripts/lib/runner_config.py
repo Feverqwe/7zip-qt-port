@@ -64,7 +64,8 @@ def load_config(path=None):
     entries = data["runners"]
     if not isinstance(entries, dict) or not entries or set(entries) - {"linux", "windows"}:
         raise ValueError("Configure linux and/or windows runners")
-    common = {"workspace", "ssh", "ready_command", "python", "qt_prefix", "path", "ccache_dir", "rsync"}
+    common = {"workspace", "ssh", "ready_command", "python", "qt_prefix", "path", "ccache_dir", "rsync",
+              "vcpkg_root"}
     for platform, entry in entries.items():
         if not isinstance(entry, dict) or set(entry) - common - {"vcvars", "computer_name"}:
             raise ValueError(f"Unknown runner settings for {platform}")
@@ -80,6 +81,8 @@ def load_config(path=None):
         entry.setdefault("rsync", "rsync")
         for name in ("python", "qt_prefix", "ccache_dir", "rsync"):
             text(entry.get(name), name)
+        if "vcpkg_root" in entry:
+            text(entry["vcpkg_root"], "vcpkg_root")
         if not isinstance(entry.get("path"), list):
             raise ValueError("Runner path must be a list of tool directories")
         for directory in entry["path"]:

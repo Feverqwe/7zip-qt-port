@@ -106,6 +106,15 @@ def execute_check(record, platform, preset, root, token, command=None,
     if build_jobs <= 0:
         raise ValueError("CMAKE_BUILD_PARALLEL_LEVEL must be a positive integer")
     payload = command_payload(preset, command)
+    use_vcpkg = preset.startswith("vcpkg-")
+    qt_prefix = "" if use_vcpkg else config['qt_prefix']
+    tool_paths = [*config['path']]
+    if qt_prefix:
+        tool_paths.insert(0 if platform == 'linux' else len(tool_paths), qt_prefix + '/bin')
+    if use_vcpkg:
+        vcpkg_root = config.get('vcpkg_root', root + '/build/vcpkg')
+        payload = ('export VCPKG_ROOT=' + shlex.quote(vcpkg_root) + '\n'
+                   f'export VCPKG_MAX_CONCURRENCY={build_jobs}\n' + payload)
     runtime_directory = codec_runtime(Path(root), preset).as_posix()
     timing_command = shlex.join([config['python'], 'scripts/lib/runner_timing.py'])
     payload = timing_command + " command_start\n" + payload
@@ -117,8 +126,8 @@ export TMPDIR="$PWD/runner-tmp" TMP="$PWD/runner-tmp" TEMP="$PWD/runner-tmp"
 export QT_QPA_PLATFORM="${{QT_QPA_PLATFORM:-offscreen}}"
 export CMAKE_BUILD_PARALLEL_LEVEL={build_jobs} SEVENZIP_SCRIPT_OUTPUT=compact
 export SEVENZIP_COMPACT_TEST_BINARIES=ON SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}
-export CMAKE_PREFIX_PATH={shlex.quote(config['qt_prefix'])}
-export PATH={shlex.quote(':'.join([config['qt_prefix'] + '/bin', *config['path']]))}:"$PATH"
+export CMAKE_PREFIX_PATH={shlex.quote(qt_prefix)}
+export PATH={shlex.quote(':'.join(tool_paths))}:"$PATH"
 export LIBGL_ALWAYS_SOFTWARE=1 SEVENZIP_CTEST_JOBS=1
 export PYTHONUTF8=1 PYTHONIOENCODING=utf-8
 export SEVENZIP_RUN_TOKEN={token}
@@ -143,9 +152,9 @@ df -Pk .
     else:
         commands = ['@echo off', *[f'set "{key}={root}/runner-tmp"' for key in ("TEMP", "TMP", "TMPDIR")],
                     f'call "{config["vcvars"]}"', 'if errorlevel 1 exit /b %errorlevel%',
-                    f'set "PATH={runtime_directory};{";".join(config["path"])};{config["qt_prefix"]}/bin;%PATH%"',
+                    f'set "PATH={runtime_directory};{";".join(tool_paths)};%PATH%"',
                     f'set "CCACHE_DIR={config["ccache_dir"]}"', 'set "CCACHE_MAXSIZE=2G"',
-                    f'set "CMAKE_PREFIX_PATH={config["qt_prefix"]}"', 'set "CC=cl.exe"', 'set "CXX=cl.exe"',
+                    f'set "CMAKE_PREFIX_PATH={qt_prefix}"', 'set "CC=cl.exe"', 'set "CXX=cl.exe"',
                     f'set "SEVENZIP_WINDOWS_RUNNER_HOST={config["computer_name"]}"',
                     f'set "SEVENZIP_RUNNER_PYTHON={config["python"]}"',
                     f'set "CMAKE_BUILD_PARALLEL_LEVEL={build_jobs}"', 'set "SEVENZIP_COMPACT_TEST_BINARIES=ON"',

@@ -128,6 +128,39 @@ class UpstreamBaselineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "context does not match"):
             baseline.verify_reference(data, self.upstream, self.port)
 
+    def test_reference_patch_is_applied_and_checks_proposed_context_without_writing_sources(self):
+        data = self.reference_manifest()
+        data.pop("adapted")
+        original = baseline.git(self.upstream, "show", self.old + ":" + self.source)
+        owner = self.port / "adaptation.patch"
+        owner.write_text("--- a/" + self.source + "\n+++ b/" + self.source +
+                         "\n@@ -1 +1 @@\n-source body\n+adapted body\n")
+        data["adapted_edits"] = {self.source: "adaptation.patch"}
+        data["symbols"] = {self.source: ["fixture"]}
+        checkout_source = self.port / self.source
+        checkout_source.parent.mkdir(parents=True)
+        checkout_source.write_bytes(original)
+        with patch.dict(os.environ, {"GIT_DIR": str(self.port / ".git"),
+                                     "GIT_WORK_TREE": str(self.port)}), \
+                patch.object(tempfile, "tempdir", str(self.port)):
+            adapted = baseline.reference_edited_source(data, self.source, original, self.port)
+        self.assertEqual(adapted, original.replace(b"source body", b"adapted body"))
+        self.assertEqual(checkout_source.read_bytes(), original)
+        baseline.verify_reference(data, self.upstream, self.port)
+        report = baseline.review_reference(data, self.upstream, self.old, [], self.port)
+        self.assertIn("+adapted body", report.splitlines())
+        self.assertEqual(baseline.git(self.upstream, "show", self.old + ":" + self.source), original)
+        (self.upstream / self.source).write_text("changed upstream context\n")
+        git(self.upstream, "add", ".")
+        git(self.upstream, "commit", "-qm", "change context")
+        proposed = git(self.upstream, "rev-parse", "HEAD")
+        report = baseline.review_reference(data, self.upstream, proposed, [], self.port)
+        self.assertIn("Recorded edits require review:", report)
+        self.assertEqual((self.upstream / self.source).read_text(), "changed upstream context\n")
+        owner.write_text(owner.read_text().replace("-source body", "-missing context"))
+        with self.assertRaisesRegex(ValueError, "patch context does not match"):
+            baseline.verify_reference(data, self.upstream, self.port)
+
     def test_reference_review_reports_changes_and_deletions_without_writing_sources(self):
         data = self.reference_manifest()
         (self.upstream / self.source).write_text("new reference body\n")

@@ -138,14 +138,19 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lucide/LICENSE"
     DESTINATION "${notices_destination}/lucide")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/qemu/LICENSE"
     DESTINATION "${notices_destination}/qemu")
-if(APPLE)
-    qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT unix_deploy_script
-        NO_TRANSLATIONS DEPLOY_TOOL_OPTIONS
-        "-executable=Sevenzip.app/Contents/MacOS/SevenzipDeviceReader"
-        "-executable=Sevenzip.app/Contents/MacOS/SevenzipSmb"
-        "-executable=Sevenzip.app/Contents/MacOS/SevenzipMount")
-else()
-    qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT unix_deploy_script
-        NO_TRANSLATIONS)
+get_target_property(sevenzip_qt_core_type Qt6::Core TYPE)
+# Static Qt embeds its libraries and plugins; Qt's runtime deployment API only
+# supports shared builds. The native payload above is installed in either case.
+if(NOT sevenzip_qt_core_type STREQUAL "STATIC_LIBRARY")
+    if(APPLE)
+        qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT unix_deploy_script
+            NO_TRANSLATIONS DEPLOY_TOOL_OPTIONS
+            "-executable=Sevenzip.app/Contents/MacOS/SevenzipDeviceReader"
+            "-executable=Sevenzip.app/Contents/MacOS/SevenzipSmb"
+            "-executable=Sevenzip.app/Contents/MacOS/SevenzipMount")
+    else()
+        qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT unix_deploy_script
+            NO_TRANSLATIONS)
+    endif()
+    install(SCRIPT "${unix_deploy_script}")
 endif()
-install(SCRIPT "${unix_deploy_script}")

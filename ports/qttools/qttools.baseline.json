@@ -1,0 +1,24 @@
+{
+  "repository": "https://github.com/qt/qttools.git",
+  "revision": "8026c0462f19e9549501718152523ea223a19fd3",
+  "scope": "releasehelper.h Projects declaration requires its direct standard-library include; no translation algorithm changes",
+  "files": {
+    "src/linguist/shared/releasehelper.h": "a952c3e2d680712806e8fff7a01fdd79e725789a33529e321aa3fce43c55ba2a",
+    "LICENSES/GPL-3.0-only.txt": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+    "LICENSES/Qt-GPL-exception-1.0.txt": "40678d338ce53cd93f8b22b281a2ecbcaa3ee65ce60b25ffb0c462b0530846b2",
+    "LICENSES/LicenseRef-Qt-Commercial.txt": "9b1f50aae6267f9d5e0ceb6775ee86450262c25ec7c0573e151fe5d3f18a4700"
+  },
+  "adapted": {
+    "LICENSES/GPL-3.0-only.txt": "ports/qttools/Qt-LICENSES/GPL-3.0-only.txt",
+    "LICENSES/Qt-GPL-exception-1.0.txt": "ports/qttools/Qt-LICENSES/Qt-GPL-exception-1.0.txt",
+    "LICENSES/LicenseRef-Qt-Commercial.txt": "ports/qttools/Qt-LICENSES/LicenseRef-Qt-Commercial.txt"
+  },
+  "adapted_edits": {
+    "src/linguist/shared/releasehelper.h": "ports/qttools/include-vector.patch"
+  },
+  "symbols": {
+    "src/linguist/shared/releasehelper.h": [
+      "Projects"
+    ]
+  }
+}

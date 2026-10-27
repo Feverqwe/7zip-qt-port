@@ -12,6 +12,7 @@ import re
 import subprocess
 import sys
 import tarfile
+import tempfile
 
 
 
@@ -394,6 +395,28 @@ def reference_edited_source(data, path, original, root):
     owner = pathlib.PurePosixPath(data["adapted_edits"][path])
     if owner.is_absolute() or ".." in owner.parts:
         raise ValueError("Invalid reference edit owner")
+    if owner.suffix == ".patch":
+        if not data.get("symbols", {}).get(path):
+            raise ValueError("Reference patch requires selected symbols")
+        with tempfile.TemporaryDirectory(prefix="sevenzip-reference-patch-") as temporary:
+            source = pathlib.Path(temporary) / path
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_bytes(original)
+            environment = os.environ.copy()
+            for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE"):
+                environment.pop(name, None)
+            environment["GIT_CEILING_DIRECTORIES"] = str(pathlib.Path(temporary).resolve().parent)
+            result = subprocess.run(
+                ["git", "apply", "--whitespace=nowarn", "--include=" + path,
+                 str((root / owner).resolve())], cwd=temporary, env=environment,
+                capture_output=True)
+            if result.returncode:
+                raise ValueError("Reference patch context does not match: " +
+                                 result.stderr.decode("utf-8", "replace").strip())
+            adapted = source.read_bytes()
+            if adapted == original:
+                raise ValueError("Reference patch does not change its recorded source")
+            return adapted
     edit = json.loads((root / owner).read_text())
     if edit.get("source") != path or not edit.get("symbols"):
         raise ValueError("Reference edit requires original path and selected symbols")

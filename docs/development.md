@@ -198,6 +198,24 @@ presets continue to use the selected Qt SDK and system dependencies. Custom
 vcpkg ports belong under `ports/`; a patched port must include its complete
 port recipe as required by vcpkg.
 
+On Debian/Ubuntu, vcpkg bootstrap requires `curl`, `zip`, `unzip` and `tar` in
+addition to the compiler/build tools below.
+
+On macOS, vcpkg source builds also need pkg-config and autotools:
+
+```sh
+brew install pkgconf autoconf autoconf-archive automake libtool
+```
+
+The build wrapper keeps package installation progress and diagnostics visible.
+The macOS overlay triplets keep dependencies on the application's SDK/deployment
+floor and pass through compiler launchers. SDK metadata participates in their ABI
+cache keys.
+With Apple Command Line Tools selected, desktop Qt builds retain the SDK version
+checks and omit the full Xcode version check.
+SDK include paths remain implicit in warm build trees, preserving libc++ header
+ordering when packages such as Iconv are consumed.
+
 Dependency facades use C++23 named modules when the selected compiler supplies
 a scanner. Enable `SEVENZIP_ENABLE_DEPENDENCY_MODULES` explicitly to require
 them; unsupported compilers then fail configuration. Otherwise those compilers

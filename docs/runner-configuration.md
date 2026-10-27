@@ -42,6 +42,9 @@ batch file and actual computer name. Native registration/reference commands
 check that name before running. Other tools, including CMake, Ninja, Git,
 ccache, clang-format and Bash, must be available on the configured PATH.
 Install the dependencies described in [development](development.md#dependencies).
+For `vcpkg-*` presets, install the pinned vcpkg checkout in the branch workspace's
+`build/vcpkg`, or set the optional `vcpkg_root` to its absolute guest path.
+These presets obtain Qt from the manifest and do not select `qt_prefix`.
 The helper forwards the selected `computer_name` as `SEVENZIP_WINDOWS_RUNNER_HOST`;
 native registration/reference fixtures require a matching actual computer name.
 Changing this environment selection refreshes the build wrapper's configuration.
