@@ -17,6 +17,9 @@ if(SEVENZIP_ENABLE_CLANG_TIDY)
     execute_process(COMMAND "${SEVENZIP_CLANG_TIDY_EXECUTABLE}" --version
         OUTPUT_VARIABLE sevenzip_clang_tidy_version OUTPUT_STRIP_TRAILING_WHITESPACE
         COMMAND_ERROR_IS_FATAL ANY)
+    string(REGEX MATCH "LLVM version ([0-9]+\\.[0-9]+\\.[0-9]+)"
+        sevenzip_clang_tidy_release_match "${sevenzip_clang_tidy_version}")
+    set(sevenzip_clang_tidy_release "${CMAKE_MATCH_1}")
     if(sevenzip_clang_tidy_version MATCHES "LLVM version ([0-9]+)" AND CMAKE_MATCH_1 GREATER_EQUAL 23)
         list(APPEND CMAKE_CXX_CLANG_TIDY --extra-arg=-Wlifetime-safety-permissive)
     endif()
@@ -33,6 +36,20 @@ function(sevenzip_track_analysis_inputs)
     foreach(sevenzip_target IN LISTS sevenzip_analysis_targets)
         get_target_property(sevenzip_sources ${sevenzip_target} SOURCES)
         get_target_property(sevenzip_module_sets ${sevenzip_target} CXX_MODULE_SETS)
+        if(sevenzip_module_sets)
+            if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+                message(FATAL_ERROR
+                    "Clang-Tidy cannot read ${CMAKE_CXX_COMPILER_ID} module BMIs. "
+                    "Use a separate Clang build with matching Clang-Tidy; "
+                    "MSVC IFC and GCC GCM are not Clang module formats.")
+            endif()
+            if(NOT sevenzip_clang_tidy_release VERSION_EQUAL CMAKE_CXX_COMPILER_VERSION)
+                message(FATAL_ERROR
+                    "Module analysis requires Clang-Tidy ${CMAKE_CXX_COMPILER_VERSION} "
+                    "to match the Clang compiler; selected "
+                    "${SEVENZIP_CLANG_TIDY_EXECUTABLE} reports ${sevenzip_clang_tidy_release}.")
+            endif()
+        endif()
         foreach(sevenzip_set IN LISTS sevenzip_module_sets)
             if(sevenzip_set STREQUAL "CXX_MODULES")
                 get_target_property(sevenzip_modules ${sevenzip_target} CXX_MODULE_SET)

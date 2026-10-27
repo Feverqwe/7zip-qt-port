@@ -152,6 +152,11 @@ UndefinedBehaviorSanitizer on macOS/Linux by default. Use
 incompatibility. Clang-Tidy is opt-in with `-DSEVENZIP_ENABLE_CLANG_TIDY=ON` and
 requires Clang-Tidy on `PATH`. With Clang, the matching versioned executable
 (for example, `clang-tidy-19`) is preferred; `clang-tidy` is also supported.
+Named-module analysis requires a Clang compiler and Clang-Tidy from the same
+LLVM release. Configuration rejects other BMI producers or a mismatched analyzer:
+MSVC IFC and GCC GCM cannot be analyzed as Clang modules. Keep modules enabled
+and use a matching Clang build for analysis. See
+[Clang's module compatibility requirements](https://clang.llvm.org/docs/StandardCPlusPlusModules.html#clang-cl).
 For the independent native runtime's dependency modules, set
 `SEVENZIP_ENABLE_CLANG_TIDY=ON` when running `scripts/prepare-runtime.py` or the
 codec-runtime builder. They use the same analysis configuration; switching this
