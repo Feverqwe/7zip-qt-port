@@ -72,6 +72,11 @@ configure() {
   if [[ -n "$analysis_mode" ]]; then
     set -- "-DSEVENZIP_ENABLE_CLANG_TIDY=$analysis_mode" "$@"
   fi
+  if [[ "$preset" == vcpkg-* ]]; then
+    # The pinned vcpkg toolchain caches its root independently of its file path.
+    set -- "-DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+      "-DZ_VCPKG_ROOT_DIR=$VCPKG_ROOT" "$@"
+  fi
   if [[ "$preset" == vcpkg-* && -n "${VCPKG_INSTALLED_DIR:-}" ]]; then
     set -- "-DVCPKG_INSTALLED_DIR=$VCPKG_INSTALLED_DIR" "$@"
   fi
