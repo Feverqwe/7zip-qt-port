@@ -343,6 +343,8 @@ worktree/toolchain. The option does not delete artifacts from older builds.
 Runtime packages use Release builds with testing disabled; local checks remain
 unchanged. GitHub Actions builds release packages; see [CI scope](ci.md).
 For a local application with its runtime dependencies, run `./scripts/build-app.sh`.
+With `VCPKG_ROOT` configured, `./scripts/build-app.sh vcpkg-release` builds and
+installs the manifest-based application instead.
 It installs into `dist/` (`dist/Sevenzip.app` on macOS); intermediate build files
 remain in `build/`. The local runtime receives the same size optimizations as
 the archive payload, including native-architecture stripping and verified ad-hoc

@@ -821,6 +821,7 @@ if(WIN32)
 else()
     include(cmake/UnixInstall.cmake)
 endif()
+include(cmake/VcpkgNotices.cmake)
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/PackageInfo.json"
     CONTENT "{\"version\":\"${PROJECT_VERSION}\",\"display_version\":\"${SEVENZIP_DESKTOP_DISPLAY_VERSION}\",\"upstream_version\":\"${SEVENZIP_UPSTREAM_VERSION}\",\"qt_version\":\"${Qt6_VERSION}\"}\n")
 

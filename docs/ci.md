@@ -32,6 +32,8 @@ in tar.gz; Windows has a runtime directory in ZIP. Only ICO/SVG image plugins
 are retained for embedded resources/theme icons. macOS ZIPs omit resource-fork
 metadata alongside the application. Qt deploy tools resolve the
 linked libraries and plugins. System libraries remain platform dependencies.
+Manifest builds also include the installed vcpkg dependencies' copyright texts,
+covering static libraries whose notices cannot be found by scanning runtime files.
 Windows packages copy the imported VC CRT DLL dependency closure from the
 installed redistributable, with its notices, instead of shipping a CRT installer.
 The resulting archives are written to `build/packages`.
