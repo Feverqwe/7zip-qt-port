@@ -29,7 +29,7 @@ class WorkflowTests(unittest.TestCase):
         (root / "scripts/lib").mkdir(parents=True, exist_ok=True)
         for name in ("build.sh", "ctest.sh", "verify.py", "config/verify-profiles.json",
                      "lib/runner_timing.py", "lib/toolchain.py", "lib/toolchain.sh", "lib/runtime_layout.py",
-                     "lib/project_paths.py"):
+                     "lib/project_paths.py", "lib/local_ramdisk.py"):
             shutil.copy2(ROOT / "scripts" / name, root / "scripts" / name)
         shutil.copy2(ROOT / "cmake/DeveloperWorkflow.cmake", root / "cmake/DeveloperWorkflow.cmake")
         shutil.copy2(ROOT / "cmake/ReadCTestCommands.cmake", root / "cmake/ReadCTestCommands.cmake")

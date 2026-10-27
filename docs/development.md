@@ -70,6 +70,18 @@ On Linux with a `noexec` default temporary filesystem, a process-scoped `TMPDIR`
 can select an approved private directory with those capabilities. The isolated
 [runtime check](archive/qt-port/upstream-port-audit.md#p3-04--isolated-linux-runtime-and-temporary-directory-contract-2026-10-10)
 verifies this override, cleanup and unchanged archives; it changes no system policy.
+
+On macOS, `./scripts/ramdisk.sh start` creates or reuses a 4 GiB APFS RAM disk and
+enables it for this repository's local build and test wrappers, including its
+worktrees. Compiler temporary files, ccache temporary files and ordinary temporary
+test fixtures use separate scratch directories for each worktree. Incremental
+build outputs and the persistent compiler cache retain their existing locations.
+Use `./scripts/ramdisk.sh status` to check the volume. RAM contents disappear on
+restart; enabled build and test wrappers automatically recreate a missing RAM
+disk. If creation or identity verification fails, the wrapper stops instead of
+silently writing scratch data to SSD.
+`SEVENZIP_RAMDISK=OFF` bypasses this local setting for an invocation.
+
 Native regression fixtures also cache `SEVENZIP_CODEC_MODULE` in CMake. When
 preparing a fresh checkout or changing deployments, configure that variable to
 the same pinned module, for example `cmake --preset dev

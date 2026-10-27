@@ -4,6 +4,11 @@ set -euo pipefail
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 
+if [[ "$(uname -s)" == Darwin ]]; then
+  scratch_environment="$(python3 "$project_root/scripts/lib/local_ramdisk.py" env --root "$project_root")"
+  eval "$scratch_environment"
+fi
+
 export UBSAN_OPTIONS="${UBSAN_OPTIONS:-halt_on_error=1:print_stacktrace=1}"
 
 if [[ -z "${CTEST_PARALLEL_LEVEL:-}" ]]; then

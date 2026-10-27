@@ -47,7 +47,11 @@ def environment(root, preset="dev", current=None, require_qt=True):
         return selected
     if system != "Darwin":
         return {}
-    selected = {}
+    if __package__:
+        from .local_ramdisk import environment as scratch_environment
+    else:
+        from local_ramdisk import environment as scratch_environment
+    selected = scratch_environment(root)
     if not current.get("CMAKE_TOOLCHAIN_FILE"):
         cc, cxx = current.get("CC"), current.get("CXX")
         if not cc and not cxx:

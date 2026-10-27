@@ -20,7 +20,8 @@ class CTestSelectionTests(unittest.TestCase):
             root = Path(temporary)
             (root / "scripts/lib").mkdir(parents=True)
             (root / "runner-tmp").mkdir()
-            for name in ("ctest.sh", "lib/runner_timing.py"):
+            for name in ("ctest.sh", "lib/runner_timing.py", "lib/local_ramdisk.py",
+                         "lib/project_paths.py"):
                 shutil.copy2(ROOT / "scripts" / name, root / "scripts" / name)
             (root / "mark.py").write_text("from pathlib import Path\nimport sys\nPath(sys.argv[1]).touch()\n")
             commands = []

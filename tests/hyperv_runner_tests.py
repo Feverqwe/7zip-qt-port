@@ -771,7 +771,8 @@ raise SystemExit(0 if matches else 9)
             (root / "bin").mkdir()
             shutil.copy2(ROOT / "scripts/check.sh", root / "scripts/check.sh")
             shutil.copy2(ROOT / "scripts/lib/agent-output.sh", root / "scripts/lib/agent-output.sh")
-            for helper in ("toolchain.py", "toolchain.sh", "runtime_layout.py"):
+            for helper in ("toolchain.py", "toolchain.sh", "runtime_layout.py", "local_ramdisk.py",
+                           "project_paths.py"):
                 shutil.copy2(ROOT / "scripts/lib" / helper, root / "scripts/lib" / helper)
             for name, content in (("bin/git", "exit 73\n"), ("bin/clang-format", "exit 0\n"),
                                   ("scripts/build.sh", "touch built\n"), ("scripts/ctest.sh", "exit 0\n")):
