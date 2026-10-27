@@ -80,6 +80,7 @@ void CreateArchiveDialog::FormatChanged() {
     configureArchiveName(registryFormat_);
     archiveNameState_.SetMethod2(*method_, level_->currentData().toUInt(), m_RegistryInfo,
                                  [this] { MethodChanged(); });
+    SetEncryptionMethod();
 }
 
 void CreateArchiveDialog::MethodChanged() {

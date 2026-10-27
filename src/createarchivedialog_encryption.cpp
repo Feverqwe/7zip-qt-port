@@ -50,8 +50,6 @@ void CreateArchiveDialog::createEncryptionOptions(QVBoxLayout *form) {
             passwordEnabled_->setChecked(true);
     });
     connect(showPassword_, &QCheckBox::toggled, this, &CreateArchiveDialog::UpdatePasswordControl);
-    connect(format_, &QComboBox::currentTextChanged, this,
-            &CreateArchiveDialog::SetEncryptionMethod);
     SetEncryptionMethod();
     UpdatePasswordControl();
 }
