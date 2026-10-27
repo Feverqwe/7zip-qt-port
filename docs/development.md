@@ -208,7 +208,8 @@ vcpkg ports belong under `ports/`; a patched port must include its complete
 port recipe as required by vcpkg.
 
 On Debian/Ubuntu, vcpkg bootstrap requires `curl`, `zip`, `unzip` and `tar` in
-addition to the compiler/build tools below.
+addition to the compiler/build tools below. Building the manifest's dependencies
+from source also requires `bison` and `flex`.
 
 On macOS, vcpkg source builds also need pkg-config and autotools:
 
