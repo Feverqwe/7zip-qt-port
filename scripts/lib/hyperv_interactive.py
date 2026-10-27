@@ -4,16 +4,15 @@ import base64
 import re
 from .runner_config import runner_config
 
-def interactive_command(root, elevated=False):
-    workspace = runner_config("windows")["workspace"]["root"]
-    relative = root[len(workspace) + 1:] if root.startswith(workspace + "/") else ""
-    if relative != "current" and not re.fullmatch(r"branch-[A-Za-z0-9_-]{1,48}-[0-9a-f]{20}", relative):
-        raise ValueError("Interactive task requires the configured persistent worktree")
+def interactive_child_command(root, elevated=False, token=None):
+    """The task owns its result even when the SSH observer disconnects."""
     # check.cmd supplies the same toolchain, engine, environment and command as
     # the SSH path. Only the Windows logon session changes; no shell UI or app
     # visibility workaround is injected into the product or its tests.
     run_level = "Highest" if elevated else "Limited"
-    child = f"""$ErrorActionPreference='Stop'
+    completion = (f'    [IO.File]::WriteAllText("$root/.runner-complete", \'{token}\')'
+                  if token is not None else "")
+    return f"""$ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
 $root='{root}'
 $code=1
@@ -36,9 +35,19 @@ try {{
     $_ | Out-String | Add-Content "$root/check.log"
 }} finally {{
     [IO.File]::WriteAllText("$root/interactive-exit.txt", [string]$code)
+{completion}
 }}
 exit $code
 """
+
+
+def interactive_command(root, elevated=False, token=None):
+    workspace = runner_config("windows")["workspace"]["root"]
+    relative = root[len(workspace) + 1:] if root.startswith(workspace + "/") else ""
+    if relative != "current" and not re.fullmatch(r"branch-[A-Za-z0-9_-]{1,48}-[0-9a-f]{20}", relative):
+        raise ValueError("Interactive task requires the configured persistent worktree")
+    run_level = "Highest" if elevated else "Limited"
+    child = interactive_child_command(root, elevated, token)
     encoded = base64.b64encode(child.encode("utf-16le")).decode()
     return f"""Remove-Item '{root}/interactive-exit.txt','{root}/interactive-session.txt' -Force -ErrorAction SilentlyContinue
 $taskName='Sevenzip-check-'+[guid]::NewGuid().ToString('N')

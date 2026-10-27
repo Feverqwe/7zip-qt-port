@@ -178,6 +178,11 @@ active runner logon; it does not log in, supply credentials or fall back to a
 noninteractive desktop. Linux in `all` keeps its normal path. Session0 runs may
 verify backend/COM data consumers, but hidden windows do not prove UI acceptance.
 
+The interactive task preserves its exit code and completion receipt independently
+of the SSH observer. A disconnected or expired observer does not prove that the
+task stopped. Check the owned task before recovery; after it finishes, its receipt
+allows the existing lock recovery command to release the workspace.
+
 Interactive tasks explicitly request Task Scheduler priority4 (normal process
 priority); its default7 starts a background process and affects child fixtures.
 The child records and verifies actual `Priority=Normal` before `check.cmd`, and

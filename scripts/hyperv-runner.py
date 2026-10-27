@@ -214,7 +214,7 @@ df -Pk .
         commands += ['bash runner-command.sh', 'exit /b %errorlevel%']
         batch = base64.b64encode(("\r\n".join(commands) + "\r\n").encode()).decode()
         encoded_payload = base64.b64encode(payload.encode()).decode()
-        launch = interactive_command(root, elevated) if interactive else (
+        launch = interactive_command(root, elevated, token) if interactive else (
             "& cmd.exe /d /c 'check.cmd > check.log 2>&1'\n$code=$LASTEXITCODE\n")
         script = f"""Set-Location '{root}'
 New-Item -ItemType Directory '{root}/runner-tmp/ccache' -Force | Out-Null

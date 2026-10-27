@@ -504,6 +504,34 @@ raise SystemExit(runner.main())
         self.assertEqual(command[:4], ["scp", "-P", "2222", "builder@custom-host:D:/build/custom/runs/current/check.log"])
 
     @unittest.skipUnless(shutil.which("powershell.exe"), "Windows PowerShell is required")
+    def test_interactive_result_recovers_lock_without_an_observer(self):
+        import ctypes
+        from ctypes import wintypes
+
+        session = wintypes.DWORD()
+        get_session = ctypes.windll.kernel32.ProcessIdToSessionId
+        get_session.argtypes = (wintypes.DWORD, ctypes.POINTER(wintypes.DWORD))
+        get_session.restype = wintypes.BOOL
+        if not get_session(os.getpid(), ctypes.byref(session)):
+            raise ctypes.WinError()
+        if not session.value:
+            self.skipTest("An interactive Windows session is required")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "completion job"
+            token = "owned-completion-fixture"
+            hyperv_lock.operate(root, token, "acquire")
+            (root / "runner-tmp").mkdir()
+            (root / "check.cmd").write_bytes(b"@echo off\r\nexit /b 23\r\n")
+            command = hyperv_interactive.interactive_child_command(root.as_posix(), token=token)
+            result = subprocess.run(runner.powershell(command).split(), capture_output=True,
+                                    timeout=20)
+            self.assertEqual(result.returncode, 23, result.stderr.decode(errors="replace"))
+            hyperv_lock.operate(root, token, "release-completed")
+            hyperv_lock.operate(root, "next-owned-job", "acquire")
+            hyperv_lock.operate(root, "next-owned-job", "release")
+
+    @unittest.skipUnless(shutil.which("powershell.exe"), "Windows PowerShell is required")
     def test_windows_command_executes_with_large_unicode_input_and_delayed_eof(self):
         with tempfile.TemporaryDirectory() as temporary:
             relay = Path(temporary) / "ssh.py"
