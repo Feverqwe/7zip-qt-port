@@ -45,6 +45,9 @@ Install the dependencies described in [development](development.md#dependencies)
 For `vcpkg-*` presets, install the pinned vcpkg checkout in the branch workspace's
 `build/vcpkg`, or set the optional `vcpkg_root` to its absolute guest path.
 These presets obtain Qt from the manifest and do not select `qt_prefix`.
+On Windows, their configured tool directories are also available to CMake's
+program search inside vcpkg's clean build environment. Add installed host tools,
+such as Perl, to `path` to reuse them instead of downloading another copy.
 For a RAM-backed workspace, set `vcpkg_root` on persistent storage. Its parent
 also holds branch-specific installed packages and final build outputs; sources,
 objects and temporary build data remain in the workspace. Keep `ccache_dir` on

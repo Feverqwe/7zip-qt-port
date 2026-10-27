@@ -179,6 +179,10 @@ df -Pk .
         # vcvars supplies its own VCPKG_ROOT; explicit project settings win
         # after compiler bootstrap and before native preparation or commands.
         commands += [f'set "{key}={value}"' for key, value in build_environment.items()]
+        if use_vcpkg:
+            # Keep vcpkg's clean PATH while letting CMake reuse configured host tools.
+            commands += [f'set "CMAKE_PROGRAM_PATH={";".join(tool_paths)}"',
+                         'set "VCPKG_KEEP_ENV_VARS=CMAKE_PROGRAM_PATH;%VCPKG_KEEP_ENV_VARS%"']
         if analysis_mode is not None:
             commands.append(f'set "SEVENZIP_ENABLE_CLANG_TIDY={analysis_mode}"')
         commands += [f'set "PATH={runtime_directory};{";".join(tool_paths)};%PATH%"',
