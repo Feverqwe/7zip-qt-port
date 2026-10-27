@@ -5029,6 +5029,8 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/${sevenzip_workflow_suite}_tests.py")
         set_tests_properties(${sevenzip_workflow_suite} PROPERTIES TIMEOUT 60)
     endforeach()
+    # This suite compiles and analyzes real C++ modules, including rejected borrows.
+    set_tests_properties(developer_workflow PROPERTIES TIMEOUT 180)
     if(WIN32)
         add_test(NAME windows_reference_builder COMMAND ${Python3_EXECUTABLE}
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/windows_reference_builder_tests.py")

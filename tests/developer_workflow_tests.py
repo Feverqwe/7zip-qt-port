@@ -180,7 +180,7 @@ include(cmake/DeveloperWorkflow.cmake)
                 os.environ["SEVENZIP_ENABLE_CLANG_TIDY"] = "OFF"
                 self.run_verify(root, "^scenario$")
 
-    def test_clang_analysis_imports_a_module_and_rejects_a_dangling_view(self):
+    def test_clang_analysis_imports_a_module_and_rejects_dangling_borrows(self):
         compiler = shutil.which(os.environ.get("CXX", "clang++"))
         if not compiler:
             self.skipTest("Clang module toolchain unavailable")
@@ -217,12 +217,24 @@ include(cmake/DeveloperWorkflow.cmake)
             with patch.dict(os.environ, {"CC": compiler, "CXX": compiler,
                                          "SEVENZIP_ENABLE_CLANG_TIDY": "ON"}):
                 self.run_verify(root, "^scenario$")
+                for kind, headers, body in (
+                    ("span", '#include <array>\n#include <span>\n',
+                     'auto dangling() -> std::span<const int> {\n'
+                     '    const std::array values{1, 2, 3};\n'
+                     '    return std::span<const int>{values};\n}\n'),
+                    ("string_view", '#include <string>\n#include <string_view>\n',
+                     'auto dangling() -> std::string_view { return std::string("temporary"); }\n'),
+                ):
+                    with self.subTest(borrow=kind):
+                        (root / "main.cpp").write_text(
+                            headers + 'import answer;\n' + body +
+                            'int main() { return answer() == 42 ? 0 : 1; }\n')
+                        rejected = self.run_verify(root, "^scenario$", succeeds=False)
+                        self.assertRegex(rejected.stdout + rejected.stderr,
+                                         r'bugprone-dangling-handle|clang-diagnostic-(return-stack-address|lifetime-safety)')
                 (root / "main.cpp").write_text(
-                    '#include <string>\n#include <string_view>\nimport answer;\n'
-                    'std::string_view dangling() { return std::string("temporary"); }\n'
-                    'int main() { return answer() == 42 ? 0 : 1; }\n')
-                rejected = self.run_verify(root, "^scenario$", succeeds=False)
-                self.assertIn("clang-diagnostic-return-stack-address", rejected.stdout + rejected.stderr)
+                    'import answer;\nint main() { return answer() == 42 ? 0 : 1; }\n')
+                self.run_verify(root, "^scenario$")
 
     def test_analysis_launcher_preserves_quoted_module_paths(self):
         # Windows response parsing must also treat line breaks as separators;
