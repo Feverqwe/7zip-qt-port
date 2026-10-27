@@ -503,6 +503,37 @@ raise SystemExit(runner.main())
         command = invoke.call_args_list[0].args[0]
         self.assertEqual(command[:4], ["scp", "-P", "2222", "builder@custom-host:D:/build/custom/runs/current/check.log"])
 
+    @unittest.skipUnless(shutil.which("powershell.exe"), "Windows PowerShell is required")
+    def test_windows_command_executes_with_large_unicode_input_and_delayed_eof(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            relay = Path(temporary) / "ssh.py"
+            relay.write_text('''import subprocess, sys
+payload = sys.stdin.buffer.read()
+child = subprocess.Popen(sys.argv[1].split(), stdin=subprocess.PIPE,
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+try:
+    child.stdin.write(payload)
+    child.stdin.flush()
+    code = child.wait(timeout=10)
+except BaseException:
+    child.kill()
+    child.wait()
+    raise
+finally:
+    child.stdin.close()
+sys.stdout.buffer.write(child.stdout.read())
+sys.stderr.buffer.write(child.stderr.read())
+sys.exit(code)
+''')
+            record = {"platform": "windows", "ssh_argv": [sys.executable, str(relay)]}
+            script = ("[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)\n"
+                      "Write-Output 'данные ✓'\n" + "# padding for the SSH input buffer\n" * 2000)
+            result = runner.remote(record, script, capture_output=True, timeout=20)
+            self.assertEqual(result.stdout.strip(), "данные ✓")
+            with self.assertRaises(subprocess.CalledProcessError) as error:
+                runner.remote(record, "exit 7", capture_output=True, timeout=20)
+            self.assertEqual(error.exception.returncode, 7)
+
     def test_custom_readiness_command_supplies_connection_without_fixed_vm_names(self):
         provider = self.config_path.parent / "discover.py"
         provider.write_text("print(" + repr(json.dumps({"vm": "my-build-vm", "vm_id": "fixture",

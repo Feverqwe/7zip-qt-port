@@ -60,10 +60,18 @@ def discover(platform):
 
 
 def remote(record, script, **kwargs):
-    windows = record["platform"] == "windows"
-    return invoke([*record["ssh_argv"], powershell(
-        "& ([ScriptBlock]::Create([Console]::In.ReadToEnd()))") if windows else "bash -se"],
-        input=script, **kwargs)
+    command = "bash -se"
+    if record["platform"] == "windows":
+        # OpenSSH can delay stdin EOF after a large write. Read a framed ASCII
+        # payload so execution does not depend on EOF or the console code page.
+        script = base64.b64encode(script.encode("utf-8")).decode("ascii")
+        command = powershell(
+            f"$payload=[char[]]::new({len(script)}); "
+            "$received=[Console]::In.ReadBlock($payload,0,$payload.Length); "
+            "if($received -ne $payload.Length){throw 'Truncated runner command'}; "
+            "$source=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String((-join $payload))); "
+            "& ([ScriptBlock]::Create($source))")
+    return invoke([*record["ssh_argv"], command], input=script, **kwargs)
 
 
 def lock_command(record, root, token, action, **kwargs):
