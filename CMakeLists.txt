@@ -41,17 +41,7 @@ else()
         $<$<COMPILE_LANGUAGE:OBJCXX>:-Wpedantic>)
 endif()
 
-option(SEVENZIP_ENABLE_CLANG_TIDY "Run clang-tidy while compiling C++" OFF)
-if(SEVENZIP_ENABLE_CLANG_TIDY)
-    find_program(SEVENZIP_CLANG_TIDY_EXECUTABLE NAMES clang-tidy REQUIRED)
-    set(CMAKE_CXX_CLANG_TIDY "${SEVENZIP_CLANG_TIDY_EXECUTABLE};--config-file=${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy")
-    execute_process(COMMAND "${SEVENZIP_CLANG_TIDY_EXECUTABLE}" --version
-        OUTPUT_VARIABLE sevenzip_clang_tidy_version OUTPUT_STRIP_TRAILING_WHITESPACE
-        COMMAND_ERROR_IS_FATAL ANY)
-    if(sevenzip_clang_tidy_version MATCHES "LLVM version ([0-9]+)" AND CMAKE_MATCH_1 GREATER_EQUAL 23)
-        list(APPEND CMAKE_CXX_CLANG_TIDY --extra-arg=-Wlifetime-safety-permissive)
-    endif()
-endif()
+include(cmake/StaticAnalysis.cmake)
 
 option(SEVENZIP_ENABLE_SANITIZERS "Instrument Debug and RelWithDebInfo builds" ON)
 if(SEVENZIP_ENABLE_SANITIZERS)
@@ -5110,3 +5100,4 @@ if(SEVENZIP_BUILD_CPP23_MODULE_EXAMPLE)
 endif()
 
 include(cmake/SanitizerTests.cmake)
+sevenzip_track_analysis_inputs()

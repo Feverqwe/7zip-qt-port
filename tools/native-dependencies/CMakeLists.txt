@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/ModuleToolchain.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/StaticAnalysis.cmake")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/toolchain.json"
     CONTENT "{\"compiler\":\"${CMAKE_CXX_COMPILER_ID}\",\"version\":\"${CMAKE_CXX_COMPILER_VERSION}\",\"modules\":$<IF:$<BOOL:${SEVENZIP_ENABLE_DEPENDENCY_MODULES}>,true,false>}\n")
 
@@ -38,3 +39,4 @@ if(SEVENZIP_ENABLE_DEPENDENCY_MODULES)
     file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/facade-library.txt"
         CONTENT "$<TARGET_FILE:sevenzip_qemu_facade>\n")
 endif()
+sevenzip_track_analysis_inputs()

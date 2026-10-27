@@ -229,7 +229,8 @@ class RuntimeCacheTests(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("original")
             probe = subprocess.CompletedProcess("compiler", 0, b"compiler1", b"")
-            with patch.object(runtime.subprocess, "run", return_value=probe):
+            with patch.object(runtime.subprocess, "run", return_value=probe), \
+                    patch.dict(runtime.os.environ, {"SEVENZIP_ENABLE_CLANG_TIDY": "OFF"}):
                 original = runtime.fingerprint(root)
                 for system in ("Linux", "Windows"):
                     with patch.object(runtime.platform, "system", return_value=system):
@@ -245,6 +246,15 @@ class RuntimeCacheTests(unittest.TestCase):
                 module_rule.write_text("original")
                 with patch.dict(runtime.os.environ, {"CXXFLAGS": "-changed"}):
                     self.assertNotEqual(original, runtime.fingerprint(root))
+                engine = root / "engine"
+                engine.write_bytes(b"prepared runtime")
+                cached = {"fingerprint": original, "artifacts": {"engine": runtime.sha(engine)}}
+                self.assertTrue(runtime.cache_valid(root, cached, runtime.fingerprint(root), ["engine"]))
+                with patch.dict(runtime.os.environ, {"SEVENZIP_ENABLE_CLANG_TIDY": "ON"}):
+                    self.assertFalse(runtime.cache_valid(root, cached, runtime.fingerprint(root), ["engine"]))
+                (root / ".clang-tidy").write_text("changed lifetime diagnostics")
+                self.assertFalse(runtime.cache_valid(root, cached, runtime.fingerprint(root), ["engine"]))
+                (root / ".clang-tidy").write_text("original")
                 (root / "docs/upstream-baseline.json").write_text('{"revision":"two"}')
                 self.assertNotEqual(original, runtime.fingerprint(root))
 

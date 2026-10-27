@@ -26,5 +26,5 @@ ExtraArgs:
   - '-Wreturn-stack-address'
 CheckOptions:
   bugprone-dangling-handle.HandleClasses: 'std::basic_string_view;std::experimental::basic_string_view;std::span;gsl::span'
-HeaderFilterRegex: '^.*/src/.*'
+HeaderFilterRegex: '^.*/(src|dependencies)/.*'
 FormatStyle: file

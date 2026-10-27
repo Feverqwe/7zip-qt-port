@@ -151,6 +151,11 @@ UndefinedBehaviorSanitizer on macOS/Linux by default. Use
 `-DSEVENZIP_ENABLE_SANITIZERS=OFF` only when investigating a toolchain or runtime
 incompatibility. Clang-Tidy is opt-in with `-DSEVENZIP_ENABLE_CLANG_TIDY=ON` and
 requires `clang-tidy` on `PATH`.
+For the independent native runtime's dependency modules, set
+`SEVENZIP_ENABLE_CLANG_TIDY=ON` when running `scripts/prepare-runtime.py` or the
+codec-runtime builder. They use the same analysis configuration; switching this
+mode revalidates the runtime while retaining incremental objects and compiler caches.
+Changes to `.clang-tidy` are checked on the next analysis-enabled build.
 On macOS, build, check, verify and runtime-preparation scripts automatically
 select installed Homebrew LLVM 23+ for C, C++ and Objective-C++, including its
 module scanner and analysis tools. `modules-gcc-dev` selects Homebrew GCC.

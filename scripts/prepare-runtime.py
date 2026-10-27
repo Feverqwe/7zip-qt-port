@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILDERS = ("build-codec-runtime.sh", "build-codec-runtime.ps1", "build-sfx.sh", "build-sfx.ps1",
             "upstream_baseline.py", "build-native-dependencies.py")
 MODULE_BUILD_INPUTS = ("tools/native-dependencies/CMakeLists.txt", "cmake/ModuleToolchain.cmake",
+                       "cmake/StaticAnalysis.cmake", ".clang-tidy",
                        "scripts/lib/module_cache_launcher.py")
 
 
@@ -48,7 +49,7 @@ def fingerprint(root, sanitizer_runtime=True):
             "environment": {key: os.environ.get(key, "") for key in
                             ("CC", "CXX", "CFLAGS", "CXXFLAGS", "LDFLAGS", "SDKROOT",
                              "CPLUS_INCLUDE_PATH", "VCToolsVersion", "WindowsSDKVersion",
-                             "VSCMD_ARG_TGT_ARCH")}}
+                             "VSCMD_ARG_TGT_ARCH", "SEVENZIP_ENABLE_CLANG_TIDY")}}
 
 
 def artifact_paths(windows, runtime_prefix="codec-runtime", sfx_prefix="sfx"):

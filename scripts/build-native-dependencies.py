@@ -36,6 +36,7 @@ def prepare(snapshot):
     write_changed(owner, b'{"producer":"sevenzip-native-dependencies"}\n')
     configure = ["cmake", "-S", str(ROOT / "tools/native-dependencies"), "-B", str(build),
                  "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release",
+                 "-DSEVENZIP_ENABLE_CLANG_TIDY=" + os.environ.get("SEVENZIP_ENABLE_CLANG_TIDY", "OFF"),
                  "-DSEVENZIP_RUNTIME_SOURCE_DIR=" + str(snapshot)]
     compiler = os.environ.get("CXX", "cl" if platform.system() == "Windows" else "c++")
     parts = [compiler] if Path(compiler).is_file() else shlex.split(compiler)
