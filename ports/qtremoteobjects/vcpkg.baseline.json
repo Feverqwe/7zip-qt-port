@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/microsoft/vcpkg.git",
+  "revision": "9eec002df1cd109f8f104cd966a763daf9751489",
+  "scope": "Complete qtremoteobjects overlay recipe; QtDeclarative remains available through the qml feature",
+  "files": {
+    "ports/qtremoteobjects/port.data.cmake": "02d17ebd2705403a454ad2a5d7f9cfed4032244caf1ee068a306de910f1bfef6",
+    "ports/qtremoteobjects/portfile.cmake": "49ffb4c2e4a7693c64488dad7dd65b6cf891c327908882a1e03c5ff26e7c54c8",
+    "ports/qtremoteobjects/vcpkg.json": "03ee595a25c4277f9b3f5788fbc9a66c86c8d0a04b9376fa78740e96d42417bc",
+    "LICENSE.txt": "1ee376fc340e0aa6ad6a3581c94126e741468705096ac92263048a21daa86460"
+  },
+  "adapted": {
+    "ports/qtremoteobjects/port.data.cmake": "ports/qtremoteobjects/port.data.cmake",
+    "ports/qtremoteobjects/portfile.cmake": "ports/qtremoteobjects/portfile.cmake",
+    "ports/qtremoteobjects/vcpkg.json": "ports/qtremoteobjects/vcpkg.json",
+    "LICENSE.txt": "ports/qtremoteobjects/LICENSE.vcpkg.txt"
+  }
+}

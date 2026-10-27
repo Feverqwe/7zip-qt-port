@@ -109,6 +109,17 @@ set_source_files_properties(src/CPP/7zip/Common/LimitedStreams.cpp PROPERTIES
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools Network RemoteObjects)
 get_target_property(sevenzip_qt_core_type Qt6::Core TYPE)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_GENERATOR MATCHES "^Ninja"
+        AND sevenzip_qt_core_type STREQUAL "STATIC_LIBRARY"
+        AND SEVENZIP_ENABLE_SANITIZERS AND NOT DEFINED CMAKE_JOB_POOL_LINK)
+    # Concurrent static Qt/ASan links can exhaust RAM even with few build jobs.
+    get_property(sevenzip_existing_job_pools GLOBAL PROPERTY JOB_POOLS)
+    if(NOT sevenzip_existing_job_pools)
+        set_property(GLOBAL PROPERTY JOB_POOLS "${CMAKE_JOB_POOLS}")
+    endif()
+    set_property(GLOBAL APPEND PROPERTY JOB_POOLS sevenzip_static_qt_link=1)
+    set(CMAKE_JOB_POOL_LINK sevenzip_static_qt_link)
+endif()
 if(BUILD_TESTING AND sevenzip_qt_core_type STREQUAL "STATIC_LIBRARY"
         AND TARGET Qt6::QOffscreenIntegrationPlugin)
     # Headless widget checks need their platform plugin embedded in static Qt.
@@ -827,6 +838,13 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/PackageInfo.json"
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    if(VCPKG_MANIFEST_MODE)
+        qt_add_executable(svg_icon_tests tests/svg_icon_tests.cpp)
+        target_link_libraries(svg_icon_tests PRIVATE Qt6::Widgets Qt6::Test)
+        add_test(NAME svg_icon COMMAND svg_icon_tests -silent)
+        set_tests_properties(svg_icon PROPERTIES TIMEOUT 10
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    endif()
     qt_add_executable(file_list_hover_tests tests/file_list_hover_tests.cpp
         src/qtfilelisthover.cpp src/qtfilelisthover.h)
     target_link_libraries(file_list_hover_tests PRIVATE Qt6::Widgets Qt6::Test)
@@ -4857,6 +4875,13 @@ foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
     # of the native module consumed by the application.
     set_property(TEST ${sevenzip_test} APPEND PROPERTY ENVIRONMENT_MODIFICATION
         "PATH=path_list_prepend:${SEVENZIP_CODEC_RUNTIME_DIR}")
+    if(WIN32 AND VCPKG_MANIFEST_MODE)
+        # Focused tests may be built without deploying the GUI application.
+        # Plugins and their DLL dependencies must come from the same Qt config.
+        set_property(TEST ${sevenzip_test} APPEND PROPERTY ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+            "QT_PLUGIN_PATH=set:$<TARGET_FILE_DIR:Qt6::QWindowsIntegrationPlugin>/..")
+    endif()
     set_property(TEST ${sevenzip_test} APPEND PROPERTY ENVIRONMENT
         "SEVENZIP_OWNED_TEMP_REGISTRY=${CMAKE_BINARY_DIR}/test-owned-temp/${sevenzip_test}")
     # MainWindow opens the current directory before a test navigates to its

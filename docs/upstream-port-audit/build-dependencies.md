@@ -1,5 +1,28 @@
 # Build dependency overlays
 
+The Qt Remote Objects overlay retains the complete pinned vcpkg recipe and MIT
+license in [its baseline](../../ports/qtremoteobjects/vcpkg.baseline.json).
+It removes the unconditional QtDeclarative dependency; the existing `qml` feature
+still requests QtDeclarative and enables Qt Quick through the unchanged recipe.
+The port revision is advanced. Qt source code, tools and optional features remain
+unchanged. The Widgets application uses the C++ RemoteObjects interface, whose
+upstream target links Core and Network; the QML adapter is a separate target
+selected when Qt Quick is available. This avoids building QML libraries and tools
+for a consumer that does not request them.
+The application manifest requests Qt SVG directly to retain SVG icon rendering
+after removing the former transitive QML dependency closure.
+
+Verify and review this recipe with the same reference tooling:
+
+```sh
+python3 scripts/upstream_baseline.py reference-verify \
+  --manifest ports/qtremoteobjects/vcpkg.baseline.json --upstream build/vcpkg
+```
+
+For updates, use `reference-review` with this manifest and a proposed vcpkg
+revision, then validate the package and its application consumers. The original
+complete recipe hashes remain independent of the local adaptation.
+
 The Qt Tools overlay retains the complete Microsoft vcpkg recipe from the
 registry revision recorded in [its baseline](../../ports/qttools/vcpkg.baseline.json).
 The original recipe files and MIT license have complete SHA256 inventory entries

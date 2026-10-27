@@ -1,6 +1,25 @@
 # Qt and the retained Windows entrypoints share one deployment directory.
 # Registration is a separate Menu-page operation; installing files never writes
 # associations or registers the extension on the build machine.
+if(VCPKG_MANIFEST_MODE)
+    if(NOT TARGET Qt6::QWindowsIntegrationPlugin)
+        find_package(Qt6QWindowsIntegrationPlugin REQUIRED PATHS "${Qt6Gui_DIR}")
+    endif()
+    # App-local DLL copying alone misses dynamically loaded Qt plugins and
+    # their dependencies. Use Qt's deployment API for the build-tree app too.
+    qt6_generate_deploy_script(TARGET sevenzip_desktop NAME sevenzip_build_tree
+        OUTPUT_SCRIPT sevenzip_build_deploy_script CONTENT "
+set(QT_DEPLOY_PREFIX \"$<TARGET_FILE_DIR:sevenzip_desktop>\")
+qt_deploy_runtime_dependencies(
+    EXECUTABLE \"$<TARGET_FILE:sevenzip_desktop>\"
+    BIN_DIR . LIB_DIR . PLUGINS_DIR . GENERATE_QT_CONF NO_TRANSLATIONS
+    INCLUDE_PLUGINS qoffscreen qsvgicon qsvg)
+")
+    add_custom_command(TARGET sevenzip_desktop POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -P "${sevenzip_build_deploy_script}"
+        VERBATIM)
+endif()
+
 set(SEVENZIP_WINDOWS_RUNTIME "${SEVENZIP_CODEC_RUNTIME_DIR}" CACHE PATH
     "Official pinned Windows runtime prepared by scripts/build-codec-runtime.ps1")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib/LICENSE"

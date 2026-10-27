@@ -216,6 +216,14 @@ presets continue to use the selected Qt SDK and system dependencies. Custom
 vcpkg ports belong under `ports/`; a patched port must include its complete
 port recipe as required by vcpkg.
 
+Windows manifest builds deploy the application's Qt plugins and their runtime
+dependencies alongside the executable. Focused tests use the installed Qt
+runtime matching their build configuration.
+
+Linux Ninja builds with static Qt and sanitizers serialize linking to avoid
+concurrent linkers exhausting memory; compilation remains parallel. An explicit
+`CMAKE_JOB_POOL_LINK` selection takes precedence over the project default.
+
 On Debian/Ubuntu, vcpkg bootstrap requires `curl`, `zip`, `unzip` and `tar` in
 addition to the compiler/build tools below. Building the manifest's dependencies
 from source also requires parser generators and autotools:
