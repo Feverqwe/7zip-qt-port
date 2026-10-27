@@ -23,9 +23,19 @@
 
 #include "../Compress/DeflateDecoder.h"
 
-#include "../../../block/qcow.h"
-#include "../../../block/qcow2.h"
 #include "HandlerCont.h"
+#include <cstdint>
+#include <expected>
+#include <span>
+#include <string_view>
+
+#if defined(SEVENZIP_USE_QEMU_MODULE)
+import sevenzip.dependencies.qemu;
+#else
+#include "../../../dependencies/qemu.h"
+#endif
+
+namespace Qemu = sevenzip::qemu;
 
 #define Get32(p) GetBe32a(p)
 #define Get64(p) GetBe64a(p)
@@ -79,7 +89,7 @@ Z7_class_CHandler_final : public CHandlerImg {
     UInt32 _version;
     UInt32 _cryptMethod;
     UInt64 _incompatFlags;
-    Qcow2HeaderExtensions _extensions{};
+    Qemu::Extensions _extensions;
     CMyComPtr<IInStream> _backingStream;
     CMyComPtr<IInStream> _dataStream;
     UInt64 _backingSize = 0;
@@ -109,7 +119,6 @@ Z7_class_CHandler_final : public CHandlerImg {
   public:
     CHandler() : _zstd(NULL) {}
     ~CHandler() {
-        qcow2_free_extensions(&_extensions);
         if (_zstd)
             ZstdDec_Destroy(_zstd);
     }
@@ -172,7 +181,9 @@ Z7_COM7F_IMF(CHandler::Read(void *data, UInt32 size, UInt32 *processedSize)) {
                         size_t offsetInSector = 0;
                         if (_version == 1) {
                             // QCOW1 stores an exact byte count and byte offset.
-                            sectorOffset = qcow_get_compressed_cluster(v, _clusterBits, &dataSize);
+                            const auto compressed = Qemu::compressed_cluster(v, _clusterBits);
+                            sectorOffset = compressed.offset;
+                            dataSize = compressed.size;
                         } else {
                             const unsigned numOffsetBits = 62 - (_clusterBits - 8);
                             const UInt64 offset = v & (((UInt64)1 << 62) - 1);
@@ -287,14 +298,14 @@ Z7_COM7F_IMF(CHandler::Read(void *data, UInt32 size, UInt32 *processedSize)) {
                             if (size > rem)
                                 size = (UInt32)rem;
                         }
-                        const QCow2SubclusterType type =
-                            qcow2_get_subcluster_type(_extendedL2, _externalData, v,
-                                                      _extendedL2 ? Get64(p + 8) : 0, subcluster);
-                        if (type == QCOW2_SUBCLUSTER_INVALID)
+                        const Qemu::SubclusterType type =
+                            Qemu::subcluster_type(_extendedL2, _externalData, v,
+                                                  _extendedL2 ? Get64(p + 8) : 0, subcluster);
+                        if (type == Qemu::QCOW2_SUBCLUSTER_INVALID)
                             return S_FALSE;
-                        allocated = type == QCOW2_SUBCLUSTER_NORMAL;
-                        inherit = type == QCOW2_SUBCLUSTER_UNALLOCATED_PLAIN ||
-                                  type == QCOW2_SUBCLUSTER_UNALLOCATED_ALLOC;
+                        allocated = type == Qemu::QCOW2_SUBCLUSTER_NORMAL;
+                        inherit = type == Qemu::QCOW2_SUBCLUSTER_UNALLOCATED_PLAIN ||
+                                  type == Qemu::QCOW2_SUBCLUSTER_UNALLOCATED_ALLOC;
                     } else {
                         inherit = v == 0;
                     }
@@ -618,13 +629,14 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
     }
     if (_version >= 2) {
         const UInt64 extEnd = backOffset ? backOffset : clusterSize;
-        const auto read = [](void *opaque, uint64_t offset, void *data, size_t size) -> int32_t {
-            auto *input = static_cast<IInStream *>(opaque);
-            RINOK(InStream_SeekSet(input, offset))
-            return ReadStream_FALSE(input, data, size);
+        auto read = [stream](std::uint64_t offset,
+                             std::span<std::byte> data) noexcept -> std::int32_t {
+            RINOK(InStream_SeekSet(stream, offset))
+            return ReadStream_FALSE(stream, data.data(), data.size());
         };
-        RINOK(qcow2_read_extensions(read, stream, headerSize, extEnd, fileSize, &_extensions))
-        if (_extensions.has_crypto && _cryptMethod != 2)
+        const auto extensions = _extensions.read(read, headerSize, extEnd, fileSize);
+        RINOK(extensions ? S_OK : extensions.error())
+        if (_extensions.has_crypto() && _cryptMethod != 2)
             return S_FALSE;
     }
     if (_sourceName.IsEmpty() && openCallback) {
@@ -643,12 +655,13 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
         return S_FALSE;
     _dataSize = fileSize;
     if (_externalData) {
-        if (!_extensions.image_data_file || !_extensions.image_data_file[0]) {
+        const auto dataFile = _extensions.data_file();
+        if (dataFile.empty()) {
             _errorMessage = L"Missing external data file name";
             return S_FALSE;
         }
         UString name, resolved;
-        if (!ConvertUTF8ToUnicode(AString(_extensions.image_data_file), name))
+        if (!ConvertUTF8ToUnicode(AString(dataFile.data()), name))
             return S_FALSE;
         RINOK(OpenReference(openCallback, name, _dataStream, resolved))
         RINOK(InStream_GetSize_SeekToBegin(_dataStream, _dataSize))
@@ -684,7 +697,7 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
 
     for (i = 0; i < l1Size; i++) {
         const UInt64 entry = Get64(table64 + (size_t)i);
-        if (_version >= 2 && (entry & ~(L2E_OFFSET_MASK | QCOW_OFLAG_COPIED)))
+        if (_version >= 2 && (entry & ~(Qemu::offset_mask | Qemu::copied_flag)))
             return S_FALSE;
         const UInt64 v = Get64(table64 + (size_t)i) & offsetMask;
         if (!v)
@@ -743,14 +756,14 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
             const UInt64 bitmap = _extendedL2 ? Get64(buf2 + k + 8) : 0;
             if (_version >= 2) {
                 if (v & _compressedFlag) {
-                    if (_externalData || bitmap || (v & QCOW_OFLAG_COPIED))
+                    if (_externalData || bitmap || (v & Qemu::copied_flag))
                         return S_FALSE;
                 } else {
-                    const UInt64 allowed = L2E_OFFSET_MASK | QCOW_OFLAG_COPIED |
-                                           ((_version >= 3 && !_extendedL2) ? QCOW_OFLAG_ZERO : 0);
-                    if ((v & ~allowed) || ((v & L2E_OFFSET_MASK) & (clusterSize - 1)) ||
-                        qcow2_get_subcluster_type(_extendedL2, _externalData, v, bitmap, 0) ==
-                            QCOW2_SUBCLUSTER_INVALID)
+                    const UInt64 allowed = Qemu::offset_mask | Qemu::copied_flag |
+                                           ((_version >= 3 && !_extendedL2) ? Qemu::zero_flag : 0);
+                    if ((v & ~allowed) || ((v & Qemu::offset_mask) & (clusterSize - 1)) ||
+                        Qemu::subcluster_type(_extendedL2, _externalData, v, bitmap, 0) ==
+                            Qemu::QCOW2_SUBCLUSTER_INVALID)
                         return S_FALSE;
                 }
             }
@@ -761,7 +774,9 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
 
             if (v & _compressedFlag) {
                 if (_version <= 1) {
-                    offset = qcow_get_compressed_cluster(v, _clusterBits, &dataSize);
+                    const auto compressed = Qemu::compressed_cluster(v, _clusterBits);
+                    offset = compressed.offset;
+                    dataSize = compressed.size;
                     if (dataSize == 0)
                         return S_FALSE;
                 } else {
@@ -794,24 +809,24 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *openCallback) {
             if (_version == 1 && end > fileSize)
                 return S_FALSE;
             if (_version >= 2) {
-                const QCow2SubclusterType type =
-                    qcow2_get_subcluster_type(_extendedL2, _externalData, v, bitmap, 0);
+                const Qemu::SubclusterType type =
+                    Qemu::subcluster_type(_extendedL2, _externalData, v, bitmap, 0);
                 // Only allocated data is dereferenced. Zero/preallocated ranges
                 // need no host bytes; extended allocation can start after bit 0.
                 const bool readsData =
                     (v & _compressedFlag) ||
-                    (_extendedL2 ? (UInt32)bitmap != 0 : type == QCOW2_SUBCLUSTER_NORMAL);
+                    (_extendedL2 ? (UInt32)bitmap != 0 : type == Qemu::QCOW2_SUBCLUSTER_NORMAL);
                 if (readsData && end > _dataSize)
                     return S_FALSE;
-                if (_externalData &&
-                    (type == QCOW2_SUBCLUSTER_NORMAL || type == QCOW2_SUBCLUSTER_ZERO_ALLOC ||
-                     type == QCOW2_SUBCLUSTER_UNALLOCATED_ALLOC)) {
+                if (_externalData && (type == Qemu::QCOW2_SUBCLUSTER_NORMAL ||
+                                      type == Qemu::QCOW2_SUBCLUSTER_ZERO_ALLOC ||
+                                      type == Qemu::QCOW2_SUBCLUSTER_UNALLOCATED_ALLOC)) {
                     const unsigned l1Bits = _numMidBits + _clusterBits;
                     if ((UInt64)i > ((UInt64)(Int64)-1 >> l1Bits))
                         return S_FALSE;
                     const UInt64 guest =
                         ((UInt64)i << l1Bits) + ((UInt64)(k >> _l2EntryBits) << _clusterBits);
-                    if ((v & L2E_OFFSET_MASK) != guest)
+                    if ((v & Qemu::offset_mask) != guest)
                         return S_FALSE;
                 }
             }
@@ -877,14 +892,13 @@ HRESULT CHandler::OpenParent(IArchiveOpenCallback *callback) {
     RINOK(ReadStream(input, signature, &count))
     RINOK(InStream_SeekSet(input, 0))
     const bool isQcow = count == 4 && memcmp(signature, k_Signature, 4) == 0;
-    const char *format = _extensions.image_backing_format;
-    if (format && format[0] && strcmp(format, "raw") != 0 && strcmp(format, "qcow") != 0 &&
-        strcmp(format, "qcow2") != 0) {
+    const auto format = _extensions.backing_format();
+    if (!format.empty() && format != "raw" && format != "qcow" && format != "qcow2") {
         _unsupported = true;
         _errorMessage = L"Unsupported backing file format";
         return S_FALSE;
     }
-    if ((format && strcmp(format, "raw") == 0) || ((!format || !format[0]) && !isQcow)) {
+    if (format == "raw" || (format.empty() && !isQcow)) {
         _backingStream = input;
         _backingSize = size;
         return S_OK;
@@ -936,7 +950,7 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _backingName.Empty();
     _sourceName.Empty();
     _errorMessage.Empty();
-    qcow2_free_extensions(&_extensions);
+    _extensions.reset();
 
     // CHandlerImg:
     Clear_HandlerImg_Vars();

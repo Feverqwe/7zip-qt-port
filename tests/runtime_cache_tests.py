@@ -224,6 +224,10 @@ class RuntimeCacheTests(unittest.TestCase):
             (root / "docs/upstream-baseline.json").write_text('{"revision":"one"}')
             for name in runtime.BUILDERS:
                 (root / "scripts" / name).write_text("original")
+            for name in runtime.MODULE_BUILD_INPUTS:
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("original")
             probe = subprocess.CompletedProcess("compiler", 0, b"compiler1", b"")
             with patch.object(runtime.subprocess, "run", return_value=probe):
                 original = runtime.fingerprint(root)
@@ -235,6 +239,10 @@ class RuntimeCacheTests(unittest.TestCase):
                 self.assertNotEqual(original, runtime.fingerprint(root))
                 (root / "scripts" / runtime.BUILDERS[0]).write_text("original")
                 self.assertEqual(original, runtime.fingerprint(root))
+                module_rule = root / "tools/native-dependencies/CMakeLists.txt"
+                module_rule.write_text("changed module build flags")
+                self.assertNotEqual(original, runtime.fingerprint(root))
+                module_rule.write_text("original")
                 with patch.dict(runtime.os.environ, {"CXXFLAGS": "-changed"}):
                     self.assertNotEqual(original, runtime.fingerprint(root))
                 (root / "docs/upstream-baseline.json").write_text('{"revision":"two"}')
@@ -253,6 +261,10 @@ class RuntimeCacheTests(unittest.TestCase):
             path.write_text(json.dumps(manifest))
             for name in runtime.BUILDERS:
                 (root / "scripts" / name).write_text("builder")
+            for name in runtime.MODULE_BUILD_INPUTS:
+                owner = root / name
+                owner.parent.mkdir(parents=True, exist_ok=True)
+                owner.write_text("builder")
             with patch.object(runtime.subprocess, "run", return_value=
                               subprocess.CompletedProcess("compiler", 0, b"compiler", b"")):
                 before = runtime.fingerprint(root)

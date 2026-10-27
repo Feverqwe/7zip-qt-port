@@ -46,6 +46,7 @@ fi
 if [[ "$(uname -s)" == Darwin ]]; then
   export CCACHE_DIR="${CCACHE_DIR:-/private/tmp/sevenzip-desktop-ccache}"
 fi
+python3 "$project_root/scripts/build-native-dependencies.py" --snapshot "$snapshot"
 for source in CPP/7zip/UI/Console CPP/7zip/Bundles/Format7zF; do
   make -s -C "$snapshot/$source" -f sevenzip-runtime.gcc.mak \
     CC="$task_runtime_cc" CXX="$task_runtime_cxx" LFLAGS_STRIP= -j4

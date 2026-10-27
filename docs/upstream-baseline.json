@@ -15,6 +15,8 @@
     "src/block/qcow.h",
     "src/block/qcow2.c",
     "src/block/qcow2.h",
+    "src/dependencies/qemu.cppm",
+    "src/dependencies/qemu.h",
     "src/zstd/lib/common/allocations.h",
     "src/zstd/lib/common/bits.h",
     "src/zstd/lib/common/bitstream.h",

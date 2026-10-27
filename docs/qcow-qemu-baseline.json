@@ -8,6 +8,10 @@
     "block/qcow2.h": "bf7bc584fb466e54a46afc0511695e551db4f486c202ca1cb8e40c186b0bbf94",
     "docs/interop/qcow2.rst": "55c4d0fa03fe0690f444b3ed5ba58e7b075b7ba3f30778a6087e92ac6bc0d5d4"
   },
+  "local_integration": [
+    "src/dependencies/qemu.cppm",
+    "src/dependencies/qemu.h"
+  ],
   "adapted": {
     "block/qcow.c": "src/block/qcow.c",
     "block/qcow2.c": "src/block/qcow2.c",

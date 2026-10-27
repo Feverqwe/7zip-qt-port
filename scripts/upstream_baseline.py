@@ -152,6 +152,16 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
             # Nmake expands the upstream link command while reading its include;
             # supply additional objects through Build.mak's supported LIBS input.
             lines = (["LIBS = $(LIBS) " + " ".join(extra_objects)] if extra_objects else [])
+            qemu_module = (directory == "CPP/7zip/Bundles/Format7zF" and
+                           "dependencies/qemu.cppm" in overlays)
+            if qemu_module:
+                if windows:
+                    lines += ['!IF EXIST("../../../../dependencies/native-qemu.mak")',
+                              '!include "../../../../dependencies/native-qemu.mak"',
+                              '!IFDEF SEVENZIP_QEMU_ENABLED',
+                              'LIBS = $(LIBS) $(SEVENZIP_QEMU_LIBRARY)', '!ENDIF', '!ENDIF']
+                else:
+                    lines.append('-include ../../../../dependencies/native-qemu.gcc.mak')
             if windows:
                 lines += ["SEVENZIP_RUNTIME_SOURCES = $(filteri %.c %.cpp %.asm %.s %.rc,$**)",
                           "SEVENZIP_RUNTIME_CXXFLAGS = /std:c++latest /Zc:__cplusplus /permissive-",
@@ -163,7 +173,9 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                 if os.environ.get("SEVENZIP_RUNTIME_SANITIZERS") == "1":
                     lines.append('\t$(CC) $(CFLAGS_O2) -DSEVENZIP_RUNTIME_SANITIZERS -Fo"$(O)\\DllSecur.obj" "../../../../C/DllSecur.c"')
             if not windows:
-                lines.append("CXX_STD_FLAGS = -std=c++23")
+                lines.append("CXX_STD_FLAGS = -std=c++23 -D_GLIBCXX_ASSERTIONS=1 "
+                             "-D_LIBCPP_ENABLE_HARDENING=1 "
+                             "-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_EXTENSIVE")
                 lines.append("LOCAL_FLAGS += -I../../../..")
                 if os.environ.get("SEVENZIP_RUNTIME_SANITIZERS") == "1":
                     # An unsanitized console can load instrumented format
@@ -173,6 +185,21 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                 if sys.platform == "darwin":
                     lines += ["LOCAL_FLAGS += -mmacosx-version-min=14.4",
                               "MY_LIBS += -mmacosx-version-min=14.4"]
+            if qemu_module:
+                if windows:
+                    lines += ['!IFDEF SEVENZIP_QEMU_ENABLED',
+                              '$(O)\\QcowHandler.obj: ../../Archive/QcowHandler.cpp '
+                              '$(SEVENZIP_QEMU_BMI) $(SEVENZIP_QEMU_LIBRARY) sevenzip-runtime.mak',
+                              '\t$(SEVENZIP_QEMU_PYTHON) $(SEVENZIP_QEMU_CACHE) $(CC) '
+                              '$(SEVENZIP_RUNTIME_CXXFLAGS) $(CFLAGS_O1) '
+                              '-DSEVENZIP_USE_QEMU_MODULE @../../../../dependencies/qemu.modmap '
+                              '"../../Archive/QcowHandler.cpp"', '!ENDIF']
+                else:
+                    lines += ['ifdef SEVENZIP_QEMU_ENABLED',
+                              'MY_LIBS += $(SEVENZIP_QEMU_LIBRARY)',
+                              '$(O)/QcowHandler.o: CXXFLAGS += $(SEVENZIP_QEMU_FLAGS)',
+                              '$(O)/QcowHandler.o: $(SEVENZIP_QEMU_BMI) $(SEVENZIP_QEMU_LIBRARY)',
+                              'endif']
             for stem, needed in sorted(dependencies.items()):
                 relative = sorted(posixpath.relpath(name, directory) for name in needed)
                 target = "$(O)\\" + stem + ".obj" if windows else "$(O)/" + stem + ".o"
@@ -258,7 +285,7 @@ def prepare_runtime_snapshot(data, snapshot, upstream, build_rules=True):
     for path in dependencies:
         relative = pathlib.PurePosixPath(path)
         if (relative.parts[:1] not in (("src",), ("third_party",)) or ".." in relative.parts or
-                relative.suffix not in (".h", ".c", ".cpp") or path.startswith("src/gpl/") or
+                relative.suffix not in (".h", ".c", ".cpp", ".cppm") or path.startswith("src/gpl/") or
                 path in paths or (ROOT / path).is_symlink() or not (ROOT / path).is_file()):
             raise ValueError("Unsafe runtime source dependency: " + path)
         destination = str(pathlib.PurePosixPath(*relative.parts[1:]))

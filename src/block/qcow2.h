@@ -184,4 +184,14 @@ static inline QCow2SubclusterType qcow2_get_subcluster_type(bool extended_l2, bo
     }
 }
 
+/* External linkage keeps the C classifier behind the C++ module boundary. */
+#ifdef __cplusplus
+extern "C" {
+#endif
+QCow2SubclusterType qcow2_classify_subcluster(bool extended_l2, bool external_data, uint64_t entry,
+                                              uint64_t bitmap, unsigned index);
+#ifdef __cplusplus
+}
+#endif
+
 #endif

@@ -42,6 +42,11 @@
 #define QCOW2_EXT_MAGIC_DATA_FILE 0x44415441
 #define QCOW2_EXT_MAGIC_CRYPTO_HEADER 0x0537be77
 
+QCow2SubclusterType qcow2_classify_subcluster(bool extended_l2, bool external_data, uint64_t entry,
+                                              uint64_t bitmap, unsigned index) {
+    return qcow2_get_subcluster_type(extended_l2, external_data, entry, bitmap, index);
+}
+
 void qcow2_free_extensions(Qcow2HeaderExtensions *extensions) {
     free(extensions->image_backing_format);
     free(extensions->image_data_file);

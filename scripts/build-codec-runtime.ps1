@@ -66,6 +66,8 @@ $snapshot = Join-Path $output '.build-runtime'
 & {
     Invoke-Checked 'python' @((Join-Path $scriptDirectory 'upstream_baseline.py'),
         'runtime-snapshot', '--snapshot', $snapshot, '--upstream', $upstream)
+    Invoke-Checked 'python' @((Join-Path $scriptDirectory 'build-native-dependencies.py'),
+        '--snapshot', $snapshot)
     $files = [ordered]@{}
     foreach ($name in $artifacts.Keys) {
         $bundle = Join-Path $snapshot $artifacts[$name]

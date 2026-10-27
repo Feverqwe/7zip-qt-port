@@ -14,7 +14,9 @@ from lib.runtime_layout import codec_runtime, sanitizer_startup, sfx_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILDERS = ("build-codec-runtime.sh", "build-codec-runtime.ps1", "build-sfx.sh", "build-sfx.ps1",
-            "upstream_baseline.py")
+            "upstream_baseline.py", "build-native-dependencies.py")
+MODULE_BUILD_INPUTS = ("tools/native-dependencies/CMakeLists.txt", "cmake/ModuleToolchain.cmake",
+                       "scripts/lib/module_cache_launcher.py")
 
 
 def sha(path):
@@ -38,6 +40,7 @@ def fingerprint(root, sanitizer_runtime=True):
                                 baseline.get("runtime_adapted", []) + exact_overrides +
                                 baseline.get("runtime_dependencies", [])},
             "builders": {name: sha(root / "scripts" / name) for name in BUILDERS},
+            "module_build": {name: sha(root / name) for name in MODULE_BUILD_INPUTS},
             "cache_version": sha(Path(__file__)),
             "system": platform.system(), "architecture": platform.machine(),
             "sanitizer_runtime": bool(sanitizer_runtime),

@@ -269,6 +269,50 @@ backing formats beyond raw/QCOW and dependency selection beyond the existing
 volume callback remain unsupported. This is the selected product scope, not a
 claim that QEMU cannot read those inputs or that the port has full QEMU parity.
 
+### C++23 QEMU dependency facade — 2026-10-27
+
+The QEMU baseline above retains its original commit and complete inventory
+hashes. Its local integration now includes a named C++ module used by the native
+QCOW handler. Compared the original compressed descriptor extraction, complete
+cluster/subcluster classifiers and extension-reader dispatch with their C
+adaptations, handler callers, stream helpers and Close/destructor paths.
+
+The facade owns extension metadata, lends string views until reset/destruction,
+and passes callback buffers as spans. It preserves the C parser's exact status
+codes through `std::expected`. The stream callbacks already have nonthrowing
+7-Zip seek/read contracts. A C ABI shim delegates to the existing static-inline
+classifier so the exported module does not expose a translation-unit-local
+function. The C bodies, allocation/zero classification and decoding loops remain
+authoritative; their algorithms and omitted QEMU scope are unchanged.
+
+The independent Make/NMake core build imports the module only in its QCOW
+consumer. A small CMake dependency project builds the interface/archive using
+the native compiler; generated Make prerequisites track the BMI and archive.
+MSVC's cache launcher includes the imported IFC in its cache key. C dependencies
+remain C, and native C++ standard-library hardening matches the module producer.
+Runtime fingerprints include these build inputs without discarding incremental
+objects or compiler caches. This does not turn the forked 7-Zip project into a
+C++ module.
+
+GCC 16 reports an array-bounds error after speculative devirtualization selects
+`CLocalProgress::Release` for the separate `CHandlerImgProgress` COM implementation
+in the existing adapted `HandlerCont.cpp`, unchanged by this iteration. The
+same diagnostic selects `CFilterCoder::AddRef` for `CCopyCoder` in the existing
+RAR handler. Disabling that optimization for these two units allows their
+compilation; other optimizations and warnings remain enabled. This compatibility
+setting is restricted to GCC 16.
+
+Validation on macOS: the native Clang 23 consumer imports the module; the four
+existing QCOW/reference/layer-chain/lifetime suites pass with the development
+sanitizer environment. GCC 16 builds the independent console and format library,
+and extracts all nine QCOW1/QCOW2 compression/extended-L2 fixtures with matching
+source bytes and zero-filled sparse tails. Original QEMU reference hashes and
+the baseline/runtime-cache/developer-workflow suites pass. A repeated Clang
+runtime preparation reuses the verified artifact cache. Homebrew GCC's current
+libraries require a newer macOS deployment version than the project's 14.4
+floor; that floor is not accepted for this optional compiler. Windows and Linux
+module builds remain unverified for this iteration.
+
 ## Retained native streams and generations
 
 Selected source changes:

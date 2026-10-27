@@ -81,6 +81,9 @@ On Windows, `scripts/build-codec-runtime.ps1 -Architecture arm64` (or `x64`/`x86
 uses a matching developer environment and the same optional source/output arguments
 as the SFX builder. It compiles unchanged Console/Format7zF makefiles and
 produces the reference client, native module, license and runtime manifest.
+Dependency facade interfaces also need CMake and Ninja. The native Make/NMake
+build uses the same selected compiler for those interfaces and its C++ consumers;
+the 7-Zip engine keeps its own build and C sources retain their language.
 Both codec-runtime builders retain their source/build directory across runs,
 preserve unchanged source timestamps and use the existing compiler cache when
 available. Runtime provenance records the adapted-source hashes; changing one
