@@ -175,8 +175,13 @@ df -Pk .
         script += f") > check.log 2>&1\ncode=$?\nprintf '%s\\n' '{token}' > .runner-complete\ntail -n 80 check.log\nexit \"$code\"\n"
     else:
         commands = ['@echo off', *[f'set "{key}={root}/runner-tmp"' for key in ("TEMP", "TMP", "TMPDIR")],
-                    f'call "{config["vcvars"]}"', 'if errorlevel 1 exit /b %errorlevel%',
-                    f'set "PATH={runtime_directory};{";".join(tool_paths)};%PATH%"',
+                    f'call "{config["vcvars"]}"', 'if errorlevel 1 exit /b %errorlevel%']
+        # vcvars supplies its own VCPKG_ROOT; explicit project settings win
+        # after compiler bootstrap and before native preparation or commands.
+        commands += [f'set "{key}={value}"' for key, value in build_environment.items()]
+        if analysis_mode is not None:
+            commands.append(f'set "SEVENZIP_ENABLE_CLANG_TIDY={analysis_mode}"')
+        commands += [f'set "PATH={runtime_directory};{";".join(tool_paths)};%PATH%"',
                     f'set "CCACHE_DIR={config["ccache_dir"]}"',
                     f'set "CCACHE_TEMPDIR={root}/runner-tmp/ccache"', 'set "CCACHE_MAXSIZE=2G"',
                     f'set "CMAKE_PREFIX_PATH={qt_prefix}"', 'set "CC=cl.exe"', 'set "CXX=cl.exe"',
@@ -189,9 +194,6 @@ df -Pk .
                     f'set "SEVENZIP_RUN_TOKEN={token}"',
                     f'set "SEVENZIP_RUNNER_TIMING={root}/runner-tmp/timing.jsonl"',
                     f'cd /d "{root}"']
-        if analysis_mode is not None:
-            commands.insert(1, f'set "SEVENZIP_ENABLE_CLANG_TIDY={analysis_mode}"')
-        commands[1:1] = [f'set "{key}={value}"' for key, value in build_environment.items()]
         if prepare_runtime:
             commands += [f'"{config["python"]}" scripts/lib/runner_timing.py runtime_start',
                          f'"{config["python"]}" scripts/prepare-runtime.py --upstream upstream --preset {preset}',

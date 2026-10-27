@@ -597,6 +597,41 @@ Path('selected.json').write_text(json.dumps({key: os.environ.get(key) for key in
                         self.assertEqual(Path(selected['SEVENZIP_OUTPUT_ROOT']),
                                          storage / 'artifacts' / root.name)
 
+    @unittest.skipUnless(os.name == "nt", "Windows compiler bootstrap environment")
+    def test_windows_bootstrap_preserves_selected_vcpkg_for_runtime_and_command(self):
+        # vcvars sets its bundled VCPKG_ROOT. Both native preparation and the
+        # requested command must instead execute the explicitly selected tool.
+        with tempfile.TemporaryDirectory(prefix="windows bootstrap ") as temporary:
+            root = Path(temporary)
+            (root / "scripts/lib").mkdir(parents=True)
+            shutil.copy2(ROOT / "scripts/lib/runner_timing.py", root / "scripts/lib/runner_timing.py")
+            selected, bundled = root / "selected tool", root / "bundled tool"
+            for directory, status in ((selected, 0), (bundled, 61)):
+                directory.mkdir()
+                (directory / "vcpkg.py").write_text(f"raise SystemExit({status})\n")
+            (root / "vcvars.bat").write_text(
+                '@echo off\nset "VCPKG_ROOT=' + bundled.as_posix() + '"\n')
+            probe = '''import os, subprocess, sys
+from pathlib import Path
+subprocess.run([sys.executable, str(Path(os.environ['VCPKG_ROOT']) / 'vcpkg.py')], check=True)
+'''
+            (root / "scripts/prepare-runtime.py").write_text(probe)
+            (root / "scripts/probe.py").write_text(probe)
+            settings = dict(load_config()["windows"], python=Path(sys.executable).as_posix(),
+                            vcvars=(root / "vcvars.bat").as_posix(), vcpkg_root=selected.as_posix(),
+                            path=[Path(sys.executable).parent.as_posix(),
+                                  Path(shutil.which("bash")).parent.as_posix()])
+
+            def local_remote(record, script, **kwargs):
+                return subprocess.run(runner.powershell(script).split(), text=True,
+                                      capture_output=True)
+
+            with patch.object(runner, "remote", local_remote):
+                result = runner.execute_check({"config": settings}, "windows", "vcpkg-dev",
+                                              root.as_posix(), "fixture",
+                                              [Path(sys.executable).as_posix(), "scripts/probe.py"], True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_remote_verification_prepares_the_requested_runtime_toolchain(self):
         # A default runtime with a module preset reproduced incompatible ASan
         # runtimes. Exercise the actual verify -> runner -> bootstrap handoff;
