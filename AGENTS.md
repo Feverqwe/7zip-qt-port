@@ -389,5 +389,13 @@ clean obsolete project runs, build outputs and temporary data under the retentio
 and active-run safeguards in [Hyper-V runners](docs/hyperv-runners.md).
 This scoped cleanup is authorized; a capacity warning alone does not require
 another confirmation. Preserve active work, toolchains and unrelated data.
+After installing or updating a tool inside a runner guest, verify the installed
+tool and remove task-owned one-time installers, transferred installation archives,
+extracted setup payloads and temporary installer environments that are no longer
+needed. Do not retain installation leftovers for hypothetical future use. Check
+that no installation is active; preserve installed tools, incremental build trees,
+compiler caches, required repair/recovery data, licenses and provenance. Keep
+failure evidence until diagnosis is complete and report the cleanup performed.
+This guest cleanup does not authorize changes on the physical host.
 Historical ARM64 results do not validate these guests.
 Do not publish, push or update upstream unless the user's task calls for it.
