@@ -620,7 +620,9 @@ Path('selected.json').write_text(json.dumps({key: os.environ.get(key) for key in
                                       check=True, capture_output=True)
 
             settings = dict(config, workspace={"root": (root / "sources").as_posix()})
-            tool_root = directory(root, "tools") / "vcpkg"
+            # Match the explicit workspace used by the guest shell fixture.
+            with patch.dict(os.environ, {"SEVENZIP_WORKSPACE": str(root)}):
+                tool_root = directory(root, "tools") / "vcpkg"
             tool_root.mkdir(parents=True, exist_ok=True)
             (tool_root / "host-tool.py").write_text("raise SystemExit(0)\n")
             with patch.object(runner, "remote", local_remote), \

@@ -1,4 +1,4 @@
-"""Create and validate the project's 4 GiB RAM workspace."""
+"""Create and validate the project's RAM workspace."""
 
 import argparse
 from contextlib import contextmanager
@@ -153,11 +153,12 @@ def main():
         start(args.root)
     if platform.system() != "Darwin":
         if __package__:
-            from .ramdisk_platforms import ensure
+            from .ramdisk_platforms import capacity_gib, compression_enabled, ensure
         else:
-            from ramdisk_platforms import ensure
+            from ramdisk_platforms import capacity_gib, compression_enabled, ensure
         mount = Path(ensure(args.root, create=False))
-        print(f"{mount}: 4 GiB RAM, {shutil.disk_usage(mount).free / 1024**3:.2f} GiB free")
+        mode = "compressed" if compression_enabled() else "uncompressed"
+        print(f"{mount}: {capacity_gib()} GiB RAM ({mode}), {shutil.disk_usage(mount).free / 1024**3:.2f} GiB free")
         return
     configured = json.loads(configuration(args.root).read_text())
     mount = Path(configured["mount"])

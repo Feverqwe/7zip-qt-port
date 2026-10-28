@@ -71,8 +71,12 @@ can select an approved private directory with those capabilities. The isolated
 [runtime check](archive/qt-port/upstream-port-audit.md#p3-04--isolated-linux-runtime-and-temporary-directory-contract-2026-10-10)
 verifies this override, cleanup and unchanged archives; it changes no system policy.
 
-Build wrappers create a 4 GiB RAM workspace when missing: APFS on macOS, tmpfs
-on Linux, and an ImDisk NTFS drive on Windows. Linux requires passwordless mount
+Build wrappers create a RAM workspace when missing: APFS on macOS, LZ4 zram/ext4
+on Linux, and an ImDisk NTFS drive on Windows. Local development defaults to
+4 GiB; remote runner commands select 8 GiB. Linux/Windows capacity can be selected
+with `SEVENZIP_RAM_SIZE_GIB`. Linux/Windows use automatic compression by default;
+`SEVENZIP_RAM_COMPRESSION=OFF` selects an uncompressed workspace. Linux requires
+`zramctl`, ext4 utilities and passwordless provisioning
 permission; Windows requires the installed ImDisk driver and administrator
 rights for creation. `./scripts/ramdisk.sh start` and `status` allow explicit
 setup and inspection. The wrappers validate the actual backing storage and
