@@ -4,6 +4,7 @@ struct CProperty;
 class CArc;
 
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
+#include "archivecodecpublication.h"
 
 #include <QDateTime>
 #include <QHash>
@@ -109,9 +110,7 @@ class ArchiveBackend : public QObject {
     // Explicit module/version boundary. The engine probe/discovery service
     // supplies its verified version; widgets consume immutable metadata only.
     HRESULT loadCodecCatalog(const QString &module, quint32 engineVersion);
-    std::shared_ptr<const ArchiveCodecCatalog> codecCatalog() const {
-        return std::atomic_load(&codecCatalog_);
-    }
+    std::shared_ptr<const ArchiveCodecCatalog> codecCatalog() const { return codecCatalog_.load(); }
     ArchiveBackend *createIndependentBackend(QObject *parent = nullptr) const;
     // Worker-only snapshot/read service, retaining the exact opened resource.
     static HRESULT
@@ -274,7 +273,7 @@ class ArchiveBackend : public QObject {
     void startListing(const QString &archive, const QString &password, const QString &format);
 
     QString configuredModule_;
-    std::shared_ptr<const ArchiveCodecCatalog> codecCatalog_;
+    ArchiveCodecPublication codecCatalog_;
     std::unique_ptr<ArchiveCodecProbe> codecProbe_;
     bool codecDiscoveryActive_ = false;
     bool codecDiscoveryCancelled_ = false;

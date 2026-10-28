@@ -65,6 +65,7 @@ sevenzip_share_port_objects(sevenzip_archive_backend src/archivebackend.h
     src/archivebackend_validation.cpp
     src/archivebackend_workerprogress.cpp src/archivebackend_transfer.cpp)
 target_link_libraries(sevenzip_archive_backend PRIVATE sevenzip_archive_transfer_backup)
+target_sources(sevenzip_archive_backend PRIVATE src/archivecodecpublication.h)
 target_link_libraries(sevenzip_location PRIVATE sevenzip_archive_transfer_backup)
 
 sevenzip_share_port_objects(sevenzip_compress_presentation src/createarchivedialog.h

@@ -72,7 +72,7 @@ ArchiveBackend *ArchiveBackend::createIndependentBackend(QObject *parent) const 
     auto *backend = new ArchiveBackend(parent, configuredModule_);
     // A new File Manager window owns its process/operation state. Only the
     // immutable module lease is shared, as with existing native readers.
-    std::atomic_store(&backend->codecCatalog_, codecCatalog());
+    backend->codecCatalog_.store(codecCatalog());
     return backend;
 }
 
@@ -119,7 +119,7 @@ HRESULT ArchiveBackend::loadCodecCatalog(const QString &module, quint32 engineVe
     std::shared_ptr<const ArchiveCodecCatalog> catalog =
         std::make_shared<ArchiveCodecCatalog>(module, engineVersion);
     const HRESULT result = catalog->result();
-    std::atomic_store(&codecCatalog_, std::move(catalog));
+    codecCatalog_.store(std::move(catalog));
     return result;
 }
 
@@ -255,10 +255,9 @@ bool ArchiveBackend::discoverCodecCatalog(const QString &module) {
                     this,
                     [this, result = std::move(result)] {
                         codecDiscoveryActive_ = false;
-                        std::atomic_store(&codecCatalog_,
-                                          codecDiscoveryCancelled_
-                                              ? std::shared_ptr<const ArchiveCodecCatalog>()
-                                              : result.catalog);
+                        codecCatalog_.store(codecDiscoveryCancelled_
+                                                ? std::shared_ptr<const ArchiveCodecCatalog>()
+                                                : result.catalog);
                         emit codecCatalogReady(
                             !codecDiscoveryCancelled_ && result.result == S_OK,
                             codecDiscoveryCancelled_

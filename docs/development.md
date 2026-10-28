@@ -197,6 +197,10 @@ worktrees reuse the main checkout's Qt kit; their build outputs remain local.
 The ordinary commands need no manual compiler or Qt path exports.
 Native Make/NMake runtime and SFX builds also select C++23 for C++ sources;
 upstream C and assembly sources retain their original language.
+Atomic catalog ownership uses `std::atomic<std::shared_ptr<...>>` when the
+standard library advertises support. Current libc++ lacks
+[P0718R2](https://libcxx.llvm.org/Status/Cxx20.html); the catalog owner encapsulates
+its standard atomic shared-pointer functions with the same publication semantics.
 AppleClang 21's ASan retains global registrations after `dlclose`; a standalone
 library reload reproduces an ODR failure, and codec snapshots can crash during
 later loads. Configuration rejects this affected sanitizer toolchain.

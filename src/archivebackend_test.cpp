@@ -102,7 +102,7 @@ void ArchiveBackend::finishReadOperation() {
     QStringList diagnostics;
     if (result != E_ABORT && operation->catalog() && operation->catalog()->result() == S_OK &&
         !codecCatalog()) {
-        std::atomic_store(&codecCatalog_, operation->catalog());
+        codecCatalog_.store(operation->catalog());
     }
     if (result != E_ABORT && !operation->CatalogDiagnostic.isEmpty()) {
         emit outputReceived(operation->CatalogDiagnostic);

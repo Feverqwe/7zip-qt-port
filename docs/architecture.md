@@ -131,6 +131,8 @@ The snapshot factory returns a C++23 value-or-error result with exclusive image
 ownership. The catalog adopts a completed image before loading providers;
 failed preparation releases the partial snapshot immediately. Snapshot copying
 has its own library target shared by the catalog and focused lifetime checks.
+Catalog publication is encapsulated in an atomic owner: worker readers retain
+the acquired catalog across replacement, cancellation and backend shutdown.
 
 File navigation acquires native providers before binding an input, retaining
 the official reader and its item indexes. Standalone listing and archive testing
