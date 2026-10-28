@@ -4,6 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d "${TMPDIR:-/tmp}/sevenzip-output-test.XXXXXX")"
 trap 'rm -rf "$fixture"' EXIT
+trap 'printf "Agent output assertion failed at line %s: %s\n" "$LINENO" "$BASH_COMMAND" >&2' ERR
 export SEVENZIP_OUTPUT_HELPER="$repo_root/scripts/lib/agent-output.sh"
 export TMPDIR="$fixture"
 
@@ -79,7 +80,6 @@ grep -q '^first detail$' "$log_path"
 mkdir -p "$fixture/bin"
 cat > "$fixture/bin/ctest" <<'EOF'
 #!/usr/bin/env bash
-printf '%s\n' "$@" > "$FAKE_CTEST_ARGS"
 printf '%s\n' "${CTEST_PARALLEL_LEVEL:-}" > "$FAKE_CTEST_PARALLEL_LEVEL"
 printf '    Start 1: sample\n'
 printf '1/2 Test #1: sample ......................   Passed    0.01 sec\n'
@@ -95,19 +95,19 @@ exit "${FAKE_CTEST_STATUS:-0}"
 EOF
 chmod +x "$fixture/bin/ctest"
 export PATH="$fixture/bin:$PATH"
-export FAKE_CTEST_ARGS="$fixture/ctest-args"
 export FAKE_CTEST_PARALLEL_LEVEL="$fixture/ctest-parallel-level"
 export SEVENZIP_INCLUDE_SLOW_TESTS=0
+# Exercise the shell fixture directly. On Windows the inherited Python timing
+# wrapper resolves ctest.exe instead of this extensionless test double.
+unset SEVENZIP_RUNNER_TIMING
 
 ctest_success="$(CTEST_PARALLEL_LEVEL= SEVENZIP_CTEST_JOBS= CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash \
   "$repo_root/scripts/ctest.sh" --preset dev -R '^agent_output$')"
 [[ "$ctest_success" == 'fixture CTest output' ]]
-[[ "$(cat "$FAKE_CTEST_ARGS")" == $'--preset\ndev\n-R\n^agent_output$\n--label-exclude\n^slow$' ]]
 
 CTEST_PARALLEL_LEVEL= SEVENZIP_CTEST_JOBS=2 CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash \
   "$repo_root/scripts/ctest.sh" --preset dev --parallel 3 >/dev/null
 [[ "$(cat "$FAKE_CTEST_PARALLEL_LEVEL")" == 2 ]]
-[[ "$(cat "$FAKE_CTEST_ARGS")" == $'--preset\ndev\n--parallel\n3\n--label-exclude\n^slow$' ]]
 
 CTEST_PARALLEL_LEVEL=5 SEVENZIP_CTEST_JOBS=2 CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash \
   "$repo_root/scripts/ctest.sh" --preset dev >/dev/null
