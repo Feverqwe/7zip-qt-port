@@ -189,7 +189,8 @@ int public_key_verify_signature(const struct public_key *pkey,
 	ptr = key + pkey->keylen;
 	ptr = pkey_pack_u32(ptr, pkey->algo);
 	ptr = pkey_pack_u32(ptr, pkey->paramlen);
-	memcpy(ptr, pkey->params, pkey->paramlen);
+	if (pkey->paramlen)
+		memcpy(ptr, pkey->params, pkey->paramlen);
 
 	if (pkey->key_is_private)
 		ret = crypto_sig_set_privkey(tfm, key, pkey->keylen);

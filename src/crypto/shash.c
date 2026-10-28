@@ -117,7 +117,8 @@ int crypto_shash_finup(struct shash_desc *restrict desc, const u8 *data,
 	}
 
 	if (*blenp || !out) {
-		memcpy(buf + *blenp, data, len);
+		if (len)
+			memcpy(buf + *blenp, data, len);
 		*blenp += len;
 		if (!out)
 			return 0;

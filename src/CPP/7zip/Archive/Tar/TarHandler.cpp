@@ -1024,7 +1024,6 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     }
 
     CMyComPtr2_Create<IInStream, CExtentsStream> limited;
-    limited->Stream = _stream;
     CSeekExtent extent;
     extent.Virt = 0;
     extent.Phy = item.Get_DataPos();
@@ -1035,7 +1034,8 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
         RINOK(buffer.QueryInterface(IID_IInStream, &limited->Stream))
         extent.Phy = 0;
         size = item.LinkName.Len();
-    }
+    } else
+        limited->Stream = _stream;
     limited->Extents.Add(extent);
     extent.Virt = size;
     limited->Extents.Add(extent);

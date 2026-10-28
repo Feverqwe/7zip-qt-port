@@ -138,3 +138,20 @@ trees и compiler caches. Full gate и slow suites не запускались.
 Ранее установленный отдельный `.app` сохранён как проверенный артефакт
 `d6761528`; после совмещения с master он не пересобирался. Worktree оставлен
 для этого артефакта и текущих свидетельств. Push не выполнялся.
+
+## Пустой HMAC-ключ на границе libc — 2026-10-28
+
+Сверены полные `CPP/7zip/Crypto/HmacSha1.cpp` (`CHmac::SetKey`, `Final`,
+`GetLoopXorDigest1`), заголовок, PBKDF2 и ZIP AES consumers с 7-Zip commit
+`b88c6bc09339de32f7d18bbab900686b244f42ba` из
+<https://github.com/ip7z/7zip.git>. Полный исходный unit и SHA256 закреплены
+в [baseline](../upstream-baseline.json); его единственный адаптированный владелец
+теперь `src/CPP/7zip/Crypto/HmacSha1.cpp`, включая native runtime overlay.
+Лицензия 7-Zip и исходные notices сохранены.
+
+Для нулевой длины ключа пропускается только `memcpy`: SDK может передать
+нулевой указатель пустого буфера, который libc/UBSan не допускает даже при
+нулевом размере. Инициализация блока, обе стадии SHA-1 и PBKDF2 остаются
+исходными. Форматирование учтено отдельно от единственного функционального
+условия. Существующий independent empty-password/salt vector теперь передаёт
+нулевые указатели, как native ZIP consumer; алгоритм и ожидаемые bytes сохранены.

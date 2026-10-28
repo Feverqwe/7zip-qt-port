@@ -60,7 +60,7 @@ add_library(sevenzip_zip STATIC
     third_party/7zip/CPP/7zip/Compress/XzEncoder.cpp
     src/CPP/7zip/Compress/ZstdDecoder.cpp
     src/CPP/7zip/Compress/ZstdEncoder.cpp
-    third_party/7zip/CPP/7zip/Crypto/HmacSha1.cpp
+    src/CPP/7zip/Crypto/HmacSha1.cpp
     third_party/7zip/CPP/7zip/Crypto/MyAes.cpp
     third_party/7zip/CPP/7zip/Crypto/Pbkdf2HmacSha1.cpp
     third_party/7zip/CPP/7zip/Crypto/RandGen.cpp
@@ -74,6 +74,8 @@ add_library(sevenzip_zip STATIC
     third_party/7zip/CPP/Windows/TimeUtils.cpp
 )
 set_target_properties(sevenzip_zip PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+set_source_files_properties(src/CPP/7zip/Crypto/HmacSha1.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Crypto")
 target_include_directories(sevenzip_zip PUBLIC src src/C third_party/7zip/C third_party/7zip/CPP
     src/CPP/7zip/Archive/Common src/CPP/7zip/Archive/Zip
     third_party/7zip/CPP/7zip/Archive/Zip third_party/7zip/CPP/7zip/Compress)

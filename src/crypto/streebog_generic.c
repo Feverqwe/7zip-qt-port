@@ -991,7 +991,8 @@ static void streebog_stage3(struct streebog_state *ctx, const u8 *src,
 	} u = { { 0 } };
 
 	buf.qword[0] = cpu_to_le64(len << 3);
-	memcpy(u.buffer, src, len);
+	if (len)
+		memcpy(u.buffer, src, len);
 	u.buffer[len] = 1;
 
 	streebog_g(&ctx->h, &ctx->N, &u.m);

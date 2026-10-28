@@ -19,8 +19,8 @@ std::string hex(const std::vector<Byte> &bytes) {
 
 bool check(const std::string &password, const std::string &salt, UInt32 iterations,
            const char *expected) {
-    const auto *p = reinterpret_cast<const Byte *>(password.data());
-    const auto *s = reinterpret_cast<const Byte *>(salt.data());
+    const auto *p = password.empty() ? nullptr : reinterpret_cast<const Byte *>(password.data());
+    const auto *s = salt.empty() ? nullptr : reinterpret_cast<const Byte *>(salt.data());
     std::vector<Byte> result(std::char_traits<char>::length(expected) / 2, 0xa5);
     NCrypto::NSha1::Pbkdf2Hmac(p, password.size(), s, salt.size(), iterations, result.data(),
                                result.size());

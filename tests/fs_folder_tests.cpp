@@ -456,6 +456,7 @@ class FsFolderTests : public QObject {
                 QVERIFY(!indexed);
             }
         }
+        child.Release();
         QCOMPARE(folder->BindToFolder(count, &child), E_INVALIDARG);
         QVERIFY(!child);
         QVERIFY(folder->BindToFolder(L"file", &child) != S_OK);
