@@ -15,6 +15,7 @@ struct IArchiveLayerSource : public IUnknown {
 inline constexpr GUID IID_IArchiveLayerFolder = {
     0x3e021851, 0x8b87, 0x4848, {0xa8, 0xe2, 0x86, 0xf1, 0x7b, 0xa1, 0xc1, 0x47}};
 struct IArchiveLayerFolder : public IUnknown {
+    // S_FALSE means this folder has no engine-owned layer context.
     Z7_COM7F_PURE(GetContainerDepth(UInt64 *depth))
     Z7_COM7F_PURE(SetParentContainerDepth(UInt64 depth))
 };

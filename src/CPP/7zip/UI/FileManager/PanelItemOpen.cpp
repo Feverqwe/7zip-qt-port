@@ -369,9 +369,14 @@ HRESULT CPanel::OpenAsArc(IInStream *inStream, const CTempFileInfo &tempFileInfo
     if (ffp.Folder.QueryInterface(IID_IArchiveLayerFolder, &child) == S_OK && child) {
         UInt64 parentDepth = 0;
         CMyComPtr<IArchiveLayerFolder> parent;
-        if (_folder && _folder.QueryInterface(IID_IArchiveLayerFolder, &parent) == S_OK && parent)
-            RINOK(parent->GetContainerDepth(&parentDepth))
-        RINOK(child->SetParentContainerDepth(parentDepth))
+        if (_folder && _folder.QueryInterface(IID_IArchiveLayerFolder, &parent) == S_OK && parent) {
+            const HRESULT contextResult = parent->GetContainerDepth(&parentDepth);
+            if (FAILED(contextResult))
+                return contextResult;
+        }
+        const HRESULT contextResult = child->SetParentContainerDepth(parentDepth);
+        if (FAILED(contextResult))
+            return contextResult;
     }
     if (ffp.MaterializedStreamFile) {
         if (!folderLink.FileInfo.Find(folderLink.FilePath))

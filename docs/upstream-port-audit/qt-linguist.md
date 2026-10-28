@@ -35,6 +35,11 @@ original operation dispatch. The new diagnostic adapters depend only on QtCore;
 the existing dialog bindings use QtWidgets. Upstream has no Qt catalog or
 LanguageChange implementation to reuse at these presentation boundaries.
 
+The joined header-overflow diagnostic uses its explicit pair of known warning
+keys, independent of other entries added to the translation list. The existing
+language-change regression checks both translations and unchanged embedded
+paths/plugin text. No producer or archive parsing branch changes.
+
 Untranslated technical values are intentional: brands, codec/format names,
 characteristic tokens, registry/DBus/COM keys, command protocol, paths, debug-only
 traces and arbitrary external-tool/plugin output. Native OS error reasons retain

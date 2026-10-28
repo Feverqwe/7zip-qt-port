@@ -56,6 +56,9 @@ UString QtArchiveDiagnosticText(const UString &source) {
             "SevenZipDiagnostics", QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Missing volume: %1"));
         return UString(message.arg(text.mid(missingPrefix.size())).toStdWString().c_str());
     }
+    const char *const overflowWarnings[] = {
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "32-bit overflow in headers"),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "16-bit overflow for number of files in headers")};
     const char *const warnings[] = {
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "Some FAT files share clusters with directories. File contents may "
@@ -64,8 +67,8 @@ UString QtArchiveDiagnosticText(const UString &source) {
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "The FAT file shares clusters with a directory. Its contents are "
                           "unverified."),
-        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "32-bit overflow in headers"),
-        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "16-bit overflow for number of files in headers"),
+        overflowWarnings[0],
+        overflowWarnings[1],
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "Volume was not properly unmounted. Some data may be corrupt."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
@@ -266,10 +269,11 @@ UString QtArchiveDiagnosticText(const UString &source) {
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);
-    if (text == QString::fromLatin1(warnings[0]) + ' ' + QString::fromLatin1(warnings[1])) {
-        UString result = QtDiagnosticText(warnings[0]);
+    if (text ==
+        QString::fromLatin1(overflowWarnings[0]) + ' ' + QString::fromLatin1(overflowWarnings[1])) {
+        UString result = QtDiagnosticText(overflowWarnings[0]);
         result.Add_Space();
-        result += QtDiagnosticText(warnings[1]);
+        result += QtDiagnosticText(overflowWarnings[1]);
         return result;
     }
     return source;

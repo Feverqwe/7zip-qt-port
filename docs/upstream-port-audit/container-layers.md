@@ -56,6 +56,13 @@ No slow suites or full gate were run. These checks accept file-based native
 enumeration/testing; direct stream chains and retained generations are separate
 scope below and are not established by this result.
 
+The FileManager opening adapter preserves `S_FALSE` from optional layer-context
+metadata as "no engine-owned context", rather than treating it as a failed
+archive opening. Failed HRESULTs still abort before navigation state changes.
+The original `PanelItemOpen.cpp::OpenAsArc` opening/parent-chain body was compared
+again; upstream has no separate layer-context metadata interface. This local
+adapter does not change native archive-open `S_FALSE` or format recognition.
+
 ## QCOW
 
 Transferred the QCOW portion of

@@ -5,10 +5,12 @@
 #include "archivecodeccatalog.h"
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLibrary>
 #include <QProcess>
+#include <QSet>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -954,6 +956,16 @@ class UdfStreamTests final : public QObject {
     }
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
+        QTest::addColumn<bool>("trailingData");
+        // Remapping leaves replaced records outside the active physical span.
+        // Keep the engine diagnostic even when the selected file is readable.
+        const QSet<QString> trailingCases = {"sp-directory-cross",
+                                             "sp-metadata",
+                                             "md-fragmented",
+                                             "md-mirror-lazy",
+                                             "md-ad-chain",
+                                             "walk-metadata-zero-chain",
+                                             "walk-metadata-cycle-mirror"};
         for (const char *kind : {"sparse-long",
                                  "ad-directory",
                                  "ad-chain-long",
@@ -987,11 +999,14 @@ class UdfStreamTests final : public QObject {
                                  "ia-unaligned-ea",
                                  "ia-efe-owner",
                                  "fi-aed",
-                                 "fi-directory-hint"})
-            QTest::newRow(kind) << QString::fromLatin1(kind);
+                                 "fi-directory-hint"}) {
+            const QString name = QString::fromLatin1(kind);
+            QTest::newRow(kind) << name << trailingCases.contains(name);
+        }
     }
     void backendExtraction() {
         QFETCH(QString, kind);
+        QFETCH(bool, trailingData);
         fixture(kind);
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
@@ -1036,7 +1051,9 @@ class UdfStreamTests final : public QObject {
         }
         backend.extract(image.fileName(), output, {name});
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QCOMPARE(finished[0][0].toBool(), !trailingData);
+        if (trailingData)
+            QVERIFY(!finished[0][1].toString().isEmpty());
         QFile file(QDir(output).filePath(name));
         QVERIFY(file.open(QIODevice::ReadOnly));
         const QByteArray expected = QByteArray::fromHex(files_[name].toString().toLatin1());
@@ -1045,7 +1062,13 @@ class UdfStreamTests final : public QObject {
         const QString saved = temporary.filePath("source.bin");
         backend.extractSourceEntry(image.fileName(), name, saved, "Udf", {});
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QCOMPARE(finished[0][0].toBool(), !trailingData);
+        if (trailingData) {
+            QCOMPARE(backend.lastSourceExtractOperation(),
+                     Int32(NArchive::NExtract::NOperationResult::kDataAfterEnd));
+            QVERIFY(!QFileInfo::exists(saved));
+            return;
+        }
         QFile source(saved);
         QVERIFY(source.open(QIODevice::ReadOnly));
         QCOMPARE(source.readAll(), expected);
