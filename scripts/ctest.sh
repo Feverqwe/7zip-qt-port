@@ -6,13 +6,23 @@ project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 
 ctest_preset=dev
+ctest_directory=""
 arguments=("$@")
 for ((index=0; index < ${#arguments[@]}; index++)); do
   if [[ "${arguments[index]}" == --preset ]]; then ctest_preset="${arguments[index+1]:-dev}"; fi
   if [[ "${arguments[index]}" == --preset=* ]]; then ctest_preset="${arguments[index]#*=}"; fi
+  if [[ "${arguments[index]}" == --test-dir ]]; then ctest_directory="${arguments[index+1]:-}"; fi
+  if [[ "${arguments[index]}" == --test-dir=* ]]; then ctest_directory="${arguments[index]#*=}"; fi
 done
 workspace_environment="$(python3 -B "$project_root/scripts/lib/build_paths.py" env --root "$project_root" --preset "$ctest_preset")"
 eval "$workspace_environment"
+
+# Persistent build trees survive a RAM workspace reset. Restore their private
+# test directories before CTest tries to use them as working directories.
+test_workspace_setup="${ctest_directory:-$SEVENZIP_BUILD_ROOT/$ctest_preset}/PrepareTestWorkspace.cmake"
+if [[ -f "$test_workspace_setup" ]]; then
+  cmake -P "$test_workspace_setup"
+fi
 
 export UBSAN_OPTIONS="${UBSAN_OPTIONS:-halt_on_error=1:print_stacktrace=1}"
 

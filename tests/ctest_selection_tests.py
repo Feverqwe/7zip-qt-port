@@ -25,7 +25,8 @@ class CTestSelectionTests(unittest.TestCase):
                 shutil.copy2(ROOT / "scripts" / name, root / "scripts" / name)
             (root / "tools/build").mkdir(parents=True)
             shutil.copy2(ROOT / "tools/build/project.json", root / "tools/build/project.json")
-            (root / "mark.py").write_text("from pathlib import Path\nimport sys\nPath(sys.argv[1]).touch()\n")
+            (root / "mark.py").write_text(
+                "from pathlib import Path\nimport sys\nPath(sys.argv[1]).write_text(str(Path.cwd()))\n")
             commands = []
             for name in ("fast", "slow", "other"):
                 commands.append(f'add_test(NAME {name} COMMAND "{Path(sys.executable).as_posix()}" '
@@ -33,8 +34,12 @@ class CTestSelectionTests(unittest.TestCase):
             (root / "CMakeLists.txt").write_text(
                 "cmake_minimum_required(VERSION 3.21)\nproject(selection NONE)\nenable_testing()\n" +
                 "\n".join(commands) + "\nset_tests_properties(slow PROPERTIES LABELS slow)\n" +
-                "set_tests_properties(other PROPERTIES LABELS other)\n")
+                "set_tests_properties(other PROPERTIES LABELS other)\n" +
+                f'set_tests_properties(fast PROPERTIES WORKING_DIRECTORY "{root.as_posix()}/scratch/fast")\n')
             self.run_command(["cmake", "-S", str(root), "-B", str(root / "build"), "-G", "Ninja"])
+            scratch = root / "scratch/fast"
+            (root / "build/PrepareTestWorkspace.cmake").write_text(
+                f'file(MAKE_DIRECTORY [=[{scratch.as_posix()}]=])\n')
             wrapper = ["bash", str(root / "scripts/ctest.sh"), "--test-dir", str(root / "build"),
                        "--output-on-failure"]
             timing = root / "runner-tmp/timing.jsonl"
@@ -50,6 +55,13 @@ class CTestSelectionTests(unittest.TestCase):
             self.assertTrue((root / "fast").exists())
             self.assertFalse((root / "slow").exists())
             self.assertFalse((root / "other").exists())
+            self.assertEqual(Path((root / "fast").read_text()).resolve(), scratch.resolve())
+            # A persistent build tree remains after its RAM working directory
+            # disappears. The next invocation must restore it before startup.
+            shutil.rmtree(root / "scratch")
+            self.run_command([*wrapper, "-R", "^fast$"], env)
+            self.assertEqual(Path((root / "fast").read_text()).resolve(), scratch.resolve())
+            events = [json.loads(line) for line in timing.read_text().splitlines()]
             self.run_command([*wrapper, "-R", "^slow$"], env, succeeds=False)
             self.assertFalse((root / "slow").exists())
             self.run_command([*wrapper, "-R", "^missing$"], env, succeeds=False)

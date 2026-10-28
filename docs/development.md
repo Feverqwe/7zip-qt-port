@@ -91,7 +91,10 @@ when unmounted or after restart; persistent caches remain usable.
 Use `scripts/lib/build_paths.py path --root "$PWD" --category work --preset dev`
 to locate the selected profile's build trees. `SEVENZIP_BUILD_STORAGE=disk`
 explicitly selects persistent intermediates for large builds. The full
-`check.sh` gate defaults to that mode. vcpkg profiles always use disk for their
+`check.sh` gate defaults to that mode. Disposable test settings and startup data
+remain in the RAM workspace even with persistent intermediates; reports stay
+on disk. The test wrapper restores scratch directories after a RAM reset.
+vcpkg profiles always use disk for their
 intermediates and remain optional; native builds install no manifest packages.
 
 On macOS, installed host tools and the prebuilt Qt SDK are retained in the main

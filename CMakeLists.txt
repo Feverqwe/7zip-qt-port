@@ -5158,8 +5158,21 @@ endif()
 # Apply startup isolation after registering every consumer, including Language.
 # Parallel CTest runs share these generated artifact directories. Keep their
 # writers separate while allowing independent tests to run concurrently.
+set(SEVENZIP_TEST_SCRATCH_DIR "${CMAKE_BINARY_DIR}/test-workspaces" CACHE PATH
+    "Disposable test data, independently of persistent build intermediates")
+set(sevenzip_test_workspace_setup "")
 get_property(sevenzip_registered_tests DIRECTORY PROPERTY TESTS)
 foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
+    set(sevenzip_test_workspace "${SEVENZIP_TEST_SCRATCH_DIR}/${sevenzip_test}")
+    string(APPEND sevenzip_test_workspace_setup
+        "file(MAKE_DIRECTORY [=[${sevenzip_test_workspace}]=])\n")
+    get_property(sevenzip_test_environment TEST ${sevenzip_test} PROPERTY ENVIRONMENT)
+    if(sevenzip_test_environment MATCHES "SEVENZIP_SETTINGS_PATH=")
+        list(FILTER sevenzip_test_environment EXCLUDE REGEX "^SEVENZIP_SETTINGS_PATH=")
+        list(APPEND sevenzip_test_environment
+            "SEVENZIP_SETTINGS_PATH=${sevenzip_test_workspace}/settings.ini")
+        set_property(TEST ${sevenzip_test} PROPERTY ENVIRONMENT "${sevenzip_test_environment}")
+    endif()
     # Reference commands use the client built with this runtime, independently
     # of the native module consumed by the application.
     set_property(TEST ${sevenzip_test} APPEND PROPERTY ENVIRONMENT_MODIFICATION
@@ -5172,7 +5185,7 @@ foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
             "QT_PLUGIN_PATH=set:$<TARGET_FILE_DIR:Qt6::QWindowsIntegrationPlugin>/..")
     endif()
     set_property(TEST ${sevenzip_test} APPEND PROPERTY ENVIRONMENT
-        "SEVENZIP_OWNED_TEMP_REGISTRY=${CMAKE_BINARY_DIR}/test-owned-temp/${sevenzip_test}")
+        "SEVENZIP_OWNED_TEMP_REGISTRY=${sevenzip_test_workspace}/owned-temp")
     # MainWindow opens the current directory before a test navigates to its
     # fixture. Keep that startup input separate from hundreds of build outputs.
     # Each suite owns its directory so parallel runs cannot populate each other.
@@ -5197,8 +5210,9 @@ foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
     if(TARGET ${sevenzip_test_target})
         get_target_property(sevenzip_test_libraries ${sevenzip_test_target} LINK_LIBRARIES)
         if("sevenzip_window" IN_LIST sevenzip_test_libraries)
-            set(sevenzip_test_startup_dir "${CMAKE_BINARY_DIR}/test-startup/${sevenzip_test}")
-            file(MAKE_DIRECTORY "${sevenzip_test_startup_dir}")
+            set(sevenzip_test_startup_dir "${sevenzip_test_workspace}/startup")
+            string(APPEND sevenzip_test_workspace_setup
+                "file(MAKE_DIRECTORY [=[${sevenzip_test_startup_dir}]=])\n")
             set_tests_properties(${sevenzip_test} PROPERTIES
                 WORKING_DIRECTORY "${sevenzip_test_startup_dir}")
             # Saved panel paths outlive a QTemporaryDir fixture. Upstream
@@ -5214,6 +5228,8 @@ foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
         set_property(TEST ${sevenzip_test} APPEND PROPERTY RESOURCE_LOCK sevenzip_ui_artifacts)
     endif()
 endforeach()
+file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/PrepareTestWorkspace.cmake"
+    CONTENT "${sevenzip_test_workspace_setup}")
 
 # Add now reaches the source modal through CPanel and requires its native
 # codec metadata even in selection/cancellation-only window tests.
