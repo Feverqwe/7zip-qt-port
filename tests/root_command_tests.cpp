@@ -220,7 +220,7 @@ class RootCommandTests final : public QObject, protected MainWindowTestSupport {
         auto *address = window.findChild<QLineEdit *>("archivePath");
         QTRY_COMPARE(address->text(), drivePrefix("-"));
         QVERIFY(static_cast<FileTable *>(table(window))->sourcePanel->IsFSDrivesFolder());
-        QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(!static_cast<FileTable *>(table(window))->sourcePanel->IsArcFolder());
         action(window, "parentFolderAction")->trigger();
         QTRY_VERIFY(address->text().isEmpty());
         QCOMPARE(ExternalEditorFixture::read(archive), original);

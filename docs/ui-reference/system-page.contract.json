@@ -11,11 +11,16 @@
   },
   "controls": {
     "IDT_SYSTEM_ASSOCIATE": {
-      "selector": {"name": "systemAssociateLabel"},
-      "textAdaptation": "Original language resource supplies EN/RU caption."
+      "omit": "The redesigned Opening files section supplies the explanation; the duplicate source label stays hidden."
     },
-    "IDB_SYSTEM_CURRENT": {"selector": {"name": "systemCurrent"}},
-    "IDB_SYSTEM_ALL": {"selector": {"name": "systemAll"}},
+    "IDB_SYSTEM_CURRENT": {
+      "selector": {"name": "systemCurrent"},
+      "textAdaptation": "Advanced associations uses the translated Change selected caption instead of an unexplained plus sign."
+    },
+    "IDB_SYSTEM_ALL": {
+      "selector": {"name": "systemAll"},
+      "textAdaptation": "Advanced associations uses the translated All users caption instead of an unexplained plus sign."
+    },
     "IDL_SYSTEM_ASSOCIATE": {
       "selector": {"name": "systemAssociations"},
       "qtClass": "QTreeWidget",
@@ -24,8 +29,6 @@
     }
   },
   "relations": [
-    {"a": "IDT_SYSTEM_ASSOCIATE", "kind": "above", "b": "IDB_SYSTEM_CURRENT"},
-    {"a": "IDT_SYSTEM_ASSOCIATE", "kind": "above", "b": "IDB_SYSTEM_ALL"},
     {"a": "IDB_SYSTEM_CURRENT", "kind": "left_of", "b": "IDB_SYSTEM_ALL"},
     {"a": "IDB_SYSTEM_CURRENT", "kind": "above", "b": "IDL_SYSTEM_ASSOCIATE"},
     {"a": "IDB_SYSTEM_ALL", "kind": "above", "b": "IDL_SYSTEM_ASSOCIATE"}
@@ -38,8 +41,6 @@
       {"source": "CPP/7zip/UI/FileManager/SystemPage.cpp", "symbol": "CSystemPage::ChangeState", "requirement": "Mixed selection cycles follow source states; no selection applies to all supported rows."}
     ],
     "assert": [
-      {"id": "IDT_SYSTEM_ASSOCIATE", "property": "fullyVisible", "equals": true},
-      {"id": "IDT_SYSTEM_ASSOCIATE", "property": "labelFits", "equals": true},
       {"id": "IDB_SYSTEM_CURRENT", "property": "fullyVisible", "equals": true},
       {"id": "IDB_SYSTEM_CURRENT", "property": "enabled", "equals": true},
       {"id": "IDB_SYSTEM_ALL", "property": "fullyVisible", "equals": true},

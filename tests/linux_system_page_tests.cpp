@@ -3,11 +3,13 @@
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "Common/MyCom.h"
 #include "Common/StringConvert.h"
+#include "fixtures/options_presentation.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "qtassociationplatform.h"
 #include "qtfmoptionsdialog.h"
 #include "source_extract_fixture.h"
+#include <QCheckBox>
 #include <QDialogButtonBox>
 #include <QImage>
 #include <QMessageBox>
@@ -74,6 +76,7 @@ class LinuxSystemPageTests final : public QObject {
         const QByteArray original = SourceExtractFixture::readFile(preferences);
         CMyComPtr<IFolderManager> manager = new FormatFixture;
         QtFmOptionsDialog dialog(path, nullptr, manager, services);
+        QVERIFY(OptionsPresentation::show(dialog, "associationChoices"));
         dialog.resize(size);
         dialog.show();
         QVERIFY(QTest::qWaitForWindowActive(&dialog));
@@ -82,13 +85,17 @@ class LinuxSystemPageTests final : public QObject {
         auto *current = dialog.findChild<QPushButton *>("systemCurrent");
         auto *all = dialog.findChild<QPushButton *>("systemAll");
         auto *buttons = dialog.findChild<QDialogButtonBox *>("settingsButtons");
-        QVERIFY(list && page && current && all && buttons);
+        auto *choices = dialog.findChild<QTreeWidget *>("associationChoices");
+        auto *zipChoice = dialog.findChild<QCheckBox *>("association-zip");
+        QVERIFY(list && page && current && all && buttons && choices && zipChoice);
         auto *zip = row(*list, "zip");
         auto *seven = row(*list, "7z");
         QVERIFY(zip && seven);
         const QString tag = "linux-system-" + QString::fromLatin1(QTest::currentDataTag());
         auto inspect = [&](const QString &state) {
-            for (QWidget *widget : QList<QWidget *>{list, current, buttons})
+            if (!OptionsPresentation::show(dialog, choices))
+                return false;
+            for (QWidget *widget : QList<QWidget *>{choices, zipChoice, buttons})
                 if (!UiInspection::fullyVisible(*widget, dialog))
                     return false;
             dialog.setProperty("uiInspection_language", language == "ru" ? "ru" : "en");
@@ -106,24 +113,21 @@ class LinuxSystemPageTests final : public QObject {
         QVERIFY(zip->text(2).isEmpty());
         QCOMPARE(list->headerItem()->text(1), platform->CurrentUserName());
         QVERIFY(inspect("initial"));
-        list->clearSelection();
-        list->setCurrentItem(zip);
-        zip->setSelected(true);
-        current->click();
+        QVERIFY(!zipChoice->isChecked());
+        zipChoice->click();
+        QVERIFY(zipChoice->isChecked());
         QCOMPARE(zip->text(1), QString("7-Zip"));
         QCOMPARE(iconColor(*zip), QColor(30, 180, 70));
         QVERIFY(inspect("pending-own"));
-        current->click();
-        QVERIFY(zip->text(1).isEmpty());
-        QVERIFY(zip->icon(0).isNull());
-        current->click();
+        zipChoice->click();
+        QVERIFY(!zipChoice->isChecked());
         QCOMPARE(zip->text(1), QString("Red.desktop"));
         QCOMPARE(iconColor(*zip), QColor(220, 40, 30));
         QCOMPARE(SourceExtractFixture::readFile(preferences), original);
         QtAssociationRecord stillZip;
         QCOMPARE(platform->Read(0, UString(L"zip"), stillZip), LONG(0));
         QCOMPARE(stillZip.revision, beforeZip.revision);
-        current->click();
+        zipChoice->click();
         buttons->button(QDialogButtonBox::Apply)->click();
         QCOMPARE(zip->text(1), QString("7-Zip"));
         QCOMPARE(iconColor(*zip), QColor(30, 180, 70));
@@ -132,7 +136,7 @@ class LinuxSystemPageTests final : public QObject {
         QVERIFY(inspect("applied"));
         const QByteArray applied = SourceExtractFixture::readFile(preferences);
         QVERIFY(applied != original);
-        current->click();
+        zipChoice->click();
         QVERIFY(zip->text(1).isEmpty());
         QVERIFY(inspect("pending-clear"));
         dialog.reject();
@@ -143,6 +147,7 @@ class LinuxSystemPageTests final : public QObject {
         QCOMPARE(platform->Read(0, UString(L"7z"), after7z), LONG(0));
         QCOMPARE(after7z.revision, before7z.revision);
         QtFmOptionsDialog reopened(path, nullptr, manager, CreateQtAssociationServices(platform));
+        QVERIFY(OptionsPresentation::show(reopened, "associationChoices"));
         reopened.resize(size);
         reopened.show();
         QVERIFY(QTest::qWaitForWindowActive(&reopened));
@@ -154,12 +159,10 @@ class LinuxSystemPageTests final : public QObject {
         reopened.setProperty("uiInspection_language", language == "ru" ? "ru" : "en");
         reopened.setProperty("uiInspection_state", "reopened");
         QVERIFY(UiInspection::writeReport(reopened, tag + "-reopened"));
-        auto *reopenedCurrent = reopened.findChild<QPushButton *>("systemCurrent");
+        auto *reopenedChoice = reopened.findChild<QCheckBox *>("association-zip");
         auto *reopenedPage = reopened.findChild<CSystemPage *>("systemPage");
-        QVERIFY(reopenedCurrent && reopenedPage);
-        reopenedList->setCurrentItem(row(*reopenedList, "zip"));
-        row(*reopenedList, "zip")->setSelected(true);
-        reopenedCurrent->click();
+        QVERIFY(reopenedChoice && reopenedPage && reopenedChoice->isChecked());
+        reopenedChoice->click();
         QProcess external;
         external.start(QStandardPaths::findExecutable("gio"),
                        {"mime", "application/zip", "Red.desktop"});
