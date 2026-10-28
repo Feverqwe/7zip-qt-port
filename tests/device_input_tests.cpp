@@ -138,9 +138,10 @@ class DeviceInputTests final : public QObject {
     }
     void unalignedPartitionViewsExposeOnlyTheirRequestedBytes() {
         auto memory = std::make_shared<MemoryDevice>(4096, 4 * 4096);
-        CMyComPtr<IInStream> input, partition;
+        CMyComPtr<IInStream> input;
         QCOMPARE(CreateDeviceInput(Description(*memory), memory, &input), qint32(S_OK));
         for (const auto &span : {qMakePair(512, 4096), qMakePair(4096, 4097)}) {
+            CMyComPtr<IInStream> partition;
             QCOMPARE(CreateDevicePartitionInput(input, quint64(span.first), quint64(span.second),
                                                 &partition),
                      qint32(S_OK));

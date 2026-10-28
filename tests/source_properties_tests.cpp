@@ -192,6 +192,7 @@ class SourcePropertiesTests final : public QObject {
         QVERIFY(agent);
         CArc &inner = agent->_archiveLink.Arcs.AddNew();
         inner.Archive = agent->_archiveLink.Arcs[0].Archive;
+        QCOMPARE(resource->ConfigureArc(inner), HRESULT(S_OK));
         inner.Path = L"inner.7z";
         inner.SubfileIndex = 0;
         agent->_archiveLink.NonOpen_ArcPath = L"rejected.child";
