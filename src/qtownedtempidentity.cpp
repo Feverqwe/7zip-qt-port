@@ -16,7 +16,11 @@ class CIdentityFile final : public NWindows::NFile::NIO::CFileBase {
 #else
 #include <sys/stat.h>
 #ifdef __linux__
+#include <QScopeGuard>
 #include <fcntl.h>
+#include <linux/fs.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 #endif
 #endif
 
@@ -58,6 +62,20 @@ QString QtOwnedTempIdentity(const QString &path) {
             return {};
         identity +=
             QString(":%1:%2").arg(extended.stx_btime.tv_sec).arg(extended.stx_btime.tv_nsec);
+    }
+    // ext4 can reuse both an inode and its coarse birth timestamp immediately.
+    // Its generation distinguishes the replacement without changing on writes.
+    const int descriptor =
+        ::open(QFile::encodeName(path).constData(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
+    if (descriptor >= 0) {
+        const auto close = qScopeGuard([descriptor] { ::close(descriptor); });
+        struct stat opened;
+        if (::fstat(descriptor, &opened) != 0 || opened.st_dev != info.st_dev ||
+            opened.st_ino != info.st_ino)
+            return {};
+        long generation = 0;
+        if (::ioctl(descriptor, FS_IOC_GETVERSION, &generation) == 0)
+            identity += QString(":g%1").arg(qulonglong(static_cast<unsigned long>(generation)));
     }
 #endif
     return identity;

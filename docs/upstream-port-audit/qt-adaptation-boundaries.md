@@ -26,6 +26,21 @@ reproduced an ASan stack overflow at depth 1022 with the default Windows reserve
 depths 256 and 512 passed. Reader recursion, limits and error paths are unchanged.
 The retained original notices and licenses apply to the source inventory.
 
+## Temporary-object identity on ext4 — 2026-10-28
+
+The local cleanup registry is an OS adapter: upstream `CTempDir::Create`,
+`CreateTempFile2` and their consumers were compared; the SDK has no persisted
+ownership registry. Their name generation and deletion behavior remain unchanged.
+The existing retained-edit regression failed on the zram/ext4 workspace because
+ext4 reused both an inode and its birth timestamp. A disposable OS probe observed
+943 such collisions in 1000 recreations, with distinct inode generations.
+The Linux identity adapter now reads `FS_IOC_GETVERSION` through a read-only,
+non-following descriptor, validates its device/inode and closes it with RAII.
+Unsupported filesystems retain the existing identity fields. No object metadata,
+filesystem decoder or archive algorithm is modified. The
+[ext4 ioctl contract](https://kernel.org/doc/html/v5.19/admin-guide/ext4.html#ioctls)
+documents the generation identifier; no external implementation was imported.
+
 ## Extraction callback initialization — 2026-10-26
 
 The sanitizer-enabled C++23 build found an uninitialized archive-path diagnostic
