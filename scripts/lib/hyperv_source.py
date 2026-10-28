@@ -8,6 +8,7 @@ from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
 import tempfile
+import time
 
 from .source_snapshot_time import version_time_ns
 
@@ -68,13 +69,15 @@ def stage_tree(root, upstream, destination, cache, source_times=False):
         return name
 
     names_copied = []
+    progress = time.monotonic()
     with ThreadPoolExecutor(max_workers=8) as pool:
         try:
             for index, name in enumerate(pool.map(copy_source, names), 1):
                 if name is not None:
                     names_copied.append(name)
-                if index % 256 == 0 or index == len(names):
+                if time.monotonic() - progress >= 2:
                     print(f"Source snapshot: {index}/{len(names)} files", flush=True)
+                    progress = time.monotonic()
         except BaseException:
             pool.shutdown(wait=True, cancel_futures=True)
             raise

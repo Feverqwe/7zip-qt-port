@@ -79,7 +79,10 @@ print('CP2_INSTALL='+json.dumps(result))
             sys.stderr.write(diagnostic)
         raise
     if output:
-        output.write(result.stdout + result.stderr)
+        for line in result.stdout.splitlines(keepends=True):
+            if not line.startswith("CP2_INSTALL="):
+                output.write(line)
+        output.write(result.stderr)
         output.flush()
     for line in reversed(result.stdout.splitlines()):
         if line.startswith("CP2_INSTALL="):

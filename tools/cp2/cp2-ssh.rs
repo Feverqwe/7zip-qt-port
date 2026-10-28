@@ -23,9 +23,6 @@ fn run() -> io::Result<ExitCode> {
     }
     let executable = configured.first().ok_or_else(|| io::Error::other("Missing SSH executable"))?;
     let mut command = Command::new(executable);
-    // NAS workspaces cannot host Unix sockets. Key authentication permits
-    // independent sessions without a local multiplexing socket.
-    command.args(["-o", "ControlMaster=no", "-o", "ControlPath=none"]);
     command.args(&configured[1..]).args(args).arg(destination).arg(remote);
     #[cfg(unix)]
     {

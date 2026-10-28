@@ -116,6 +116,9 @@ guest runtime preparation, configuration, target discovery, selection, build
 and test durations and milestones. Missing stages are not reported as zero.
 Timing is diagnostic: unavailable measurements do not change the command result
 or prevent collection of its log and verification report.
+The command log, timing data and verification report return together in one
+compressed SSH response. Missing optional reports are recorded independently;
+a verification report is accepted only for the current run.
 
 `CMAKE_BUILD_PARALLEL_LEVEL` is forwarded to guest builds when set to a positive
 integer. Use `1` when a guest runs out of memory during compilation; this

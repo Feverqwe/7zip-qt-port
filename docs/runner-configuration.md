@@ -104,6 +104,10 @@ including edits made during the preceding build and backdated checkouts.
 Deleting that cache causes retransfers, not missing source. Original checkout
 timestamps are unchanged. Windows synchronization omits Unix permissions.
 
+On Unix clients, cp2 reuses an SSH connection during synchronization. Its
+control sockets use a private local temporary directory and the connection is
+closed after the transfer, including on failure.
+
 ## Optional VM discovery
 
 For managed VMs, replace a runner's `ssh` setting with `ready_command`, an

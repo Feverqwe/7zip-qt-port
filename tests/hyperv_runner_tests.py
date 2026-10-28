@@ -22,7 +22,7 @@ runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
 from lib import hyperv_cp2_sync, cp2_snapshot, hyperv_interactive, hyperv_lock, hyperv_source, hyperv_transport, hyperv_workspace
 from lib.runner_config import load_config
-from lib.build_paths import directory
+from lib.build_paths import branch_component, directory
 from lib.runner_timing import summarize
 
 
@@ -415,26 +415,66 @@ raise SystemExit(runner.main())
                 runner.discover("linux")
             invoke.assert_not_called()
 
-    def test_missing_timing_still_collects_verification_and_command_log(self):
+    def test_reports_share_one_transfer_and_preserve_bytes_with_missing_or_stale_results(self):
         with tempfile.TemporaryDirectory() as temporary:
-            destination = Path(temporary)
-            def download(command, **kwargs):
-                path = Path(command[-1])
-                if path.name == "timing.jsonl":
-                    path.write_text("partial transfer")
-                    raise subprocess.CalledProcessError(1, command)
-                if path.name == "check.log":
-                    path.write_text("Command diagnostics retained")
-                else:
-                    path.write_text(json.dumps({"status": "passed", "run_token": "current"}))
-            result = hyperv_transport.collect_logs(
-                {"ssh_argv": ["ssh", "fixture"], "platform": "linux"}, "/guest", destination,
-                ["python", "scripts/verify.py", "--preset", "modules-linux-dev"],
-                "current", download, None, "fixture")
-            self.assertEqual(result["verification"]["status"], "passed")
-            self.assertIn("timing_error", result)
-            self.assertEqual((destination / "check.log").read_text(), "Command diagnostics retained")
-            self.assertFalse((destination / "timing.jsonl").exists())
+            base = Path(temporary)
+            root = base / "sources/guest 空"
+            destination = base / "download"
+            root.mkdir(parents=True)
+            destination.mkdir()
+            payload = "Command diagnostics: Юникод 空\r\n".encode() + bytes(range(256)) * 1024
+            (root / "check.log").write_bytes(payload)
+            (root / "runner-tmp").mkdir()
+            timing = root / "runner-tmp/timing.jsonl"
+            platform = "windows" if os.name == "nt" else "linux"
+            report = (base / "branches" / branch_component("fixture") / "logs" /
+                      (platform + "-x86_64") / "modules-linux-dev/verify-result.json")
+            report.parent.mkdir(parents=True)
+            record = {"platform": platform, "config": {"python": sys.executable}}
+            def execute(record, script, **kwargs):
+                argv = runner.powershell(script).split() if os.name == "nt" else ["bash", "-se"]
+                return subprocess.run(argv, input=None if os.name == "nt" else script,
+                                      text=True, check=True, **kwargs)
+            transfer = Mock(side_effect=execute)
+            for scenario in ("complete", "missing-timing", "stale-verification", "missing-verification"):
+                with self.subTest(scenario=scenario):
+                    timing.write_bytes(b'{"event":"tests_start"}\n')
+                    report.write_text(json.dumps({"status": "passed", "run_token": "current"}))
+                    if scenario == "missing-timing":
+                        timing.unlink()
+                    elif scenario == "stale-verification":
+                        report.write_text(json.dumps({"run_token": "previous"}))
+                    elif scenario == "missing-verification":
+                        report.unlink()
+                    # Leftovers from earlier downloads must not masquerade as this run.
+                    (destination / "timing.jsonl").write_text("old timing")
+                    (destination / report.name).write_text("old result")
+                    transfer.reset_mock()
+                    result = hyperv_transport.collect_logs(
+                        record, root.as_posix(), destination,
+                        ["python", "scripts/verify.py", "--preset", "modules-linux-dev"],
+                        "current", transfer, None, "fixture")
+                    self.assertEqual(transfer.call_count, 1)
+                    self.assertEqual((destination / "check.log").read_bytes(), payload)
+                    if scenario == "missing-timing":
+                        self.assertIn("timing_error", result)
+                        self.assertFalse((destination / "timing.jsonl").exists())
+                    else:
+                        self.assertEqual((destination / "timing.jsonl").read_bytes(), timing.read_bytes())
+                    if scenario in ("stale-verification", "missing-verification"):
+                        self.assertIn("verification_error", result)
+                        self.assertFalse((destination / report.name).exists())
+                    else:
+                        self.assertEqual(result["verification"]["status"], "passed")
+            (root / "check.log").unlink()
+            report.write_text(json.dumps({"status": "failed", "run_token": "current"}))
+            with self.assertRaisesRegex(OSError, "command log is unavailable"):
+                hyperv_transport.collect_logs(
+                    record, root.as_posix(), destination,
+                    ["python", "scripts/verify.py", "--preset", "modules-linux-dev"],
+                    "current", transfer, None, "fixture")
+            self.assertFalse((destination / "check.log").exists())
+            self.assertEqual((destination / report.name).read_bytes(), report.read_bytes())
 
     def test_connections_use_configured_alias_port_and_nondefault_windows_drive(self):
         settings = {"schema": 1, "runners": load_config()}
@@ -448,11 +488,7 @@ raise SystemExit(runner.main())
         with patch.object(runner, "invoke") as invoke:
             runner.remote(record, "Write-Output configured")
             self.assertIn("powershell.exe", invoke.call_args.args[0][-1])
-        invoke = Mock()
-        hyperv_transport.collect_logs(record, "D:/build/custom/runs/current", Path("logs"),
-                                      None, "token", invoke, None, "fixture")
-        command = invoke.call_args_list[0].args[0]
-        self.assertEqual(command[:4], ["scp", "-P", "2222", "builder@custom-host:D:/build/custom/runs/current/check.log"])
+            self.assertEqual(invoke.call_args.args[0][:-1], record["ssh_argv"])
 
     @unittest.skipUnless(shutil.which("powershell.exe"), "Windows PowerShell is required")
     def test_interactive_result_recovers_lock_without_an_observer(self):
@@ -805,12 +841,14 @@ raise SystemExit(0 if matches else 9)
 
     def test_interrupted_execution_requests_confirmed_release_and_records_failure(self):
         with tempfile.TemporaryDirectory() as temporary:
-            record = {"name": "runner-linux", "ssh_argv": ["ssh", "fixture"], "ip": "fixture"}
+            record = {"name": "runner-linux", "ssh_argv": ["ssh", "fixture"], "ip": "fixture",
+                      "platform": "linux", "config": {"python": sys.executable}}
             current = Path(temporary) / "worktree/current"
             def local_lock(record, root, token, action, **kwargs):
                 return hyperv_lock.operate(current, token, action)
             with patch.object(runner, "discover", return_value=record), \
-                    patch.object(runner, "invoke"), patch.object(runner, "lock_command", side_effect=local_lock), \
+                    patch.object(runner, "remote", side_effect=subprocess.CalledProcessError(255, "ssh")), \
+                    patch.object(runner, "lock_command", side_effect=local_lock), \
                     patch.object(runner.hyperv_cp2_sync, "synchronize"), \
                     patch.object(runner, "execute_check", side_effect=KeyboardInterrupt()):
                 with self.assertRaises(KeyboardInterrupt):
@@ -819,6 +857,7 @@ raise SystemExit(0 if matches else 9)
                 self.assertTrue(current.with_name("current.lock").is_dir())
             result = json.loads((Path(temporary) / "linux/run.json").read_text())
             self.assertEqual(result["status"], "interrupted")
+            self.assertIn("log_error", result)
 
     @unittest.skipUnless(os.name == "nt", "Windows PowerShell script dispatch")
     def test_powershell_script_dispatch_works_with_restricted_process_default(self):

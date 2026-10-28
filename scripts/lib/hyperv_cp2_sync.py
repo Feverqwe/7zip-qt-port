@@ -40,7 +40,7 @@ def ssh_launcher():
 
 def command(binary, record, source, root, receiver, checksum=False):
     argv = [str(binary), str(source) + "/", record["ssh_argv"][-1] + ":" + root,
-            "--remote-path", receiver, "--no-auto-install", "--delete", "--stats", "--no-progress"]
+            "--remote-path", receiver, "--no-auto-install", "--delete", "--no-progress"]
     if record["platform"] == "windows":
         argv.append("--no-perms")
     if checksum:
@@ -59,7 +59,9 @@ def synchronize(record, platform, source, root, token, directory, remote, powers
     preparation = time.monotonic() - started
     key = hashlib.sha256(json.dumps([record["ssh_argv"], root]).encode()).hexdigest()
     cache = workspace_directory(ROOT, "cache") / "cp2-times" / (key + ".json")
-    with tempfile.TemporaryDirectory(prefix="cp2-", dir=workspace_directory(ROOT, "tmp")) as temporary:
+    # Keep OpenSSH control paths short enough for Unix-domain socket limits.
+    with tempfile.TemporaryDirectory(prefix="cp2-", dir=workspace_directory(ROOT, "tmp")) as temporary, \
+            tempfile.TemporaryDirectory(prefix="7z-ssh-", dir="/tmp" if os.name != "nt" else None) as sockets:
         temporary = Path(temporary)
         staged = temporary / "source"
         entries = cp2_snapshot.prepare(source, staged, cache, receiver["time_ns"])
@@ -68,15 +70,21 @@ def synchronize(record, platform, source, root, token, directory, remote, powers
         config = temporary / "ssh-argv"
         config.write_bytes("\0".join(argv).encode())
         environment = dict(os.environ, PATH=str(launcher.parent) + os.pathsep + os.environ["PATH"],
-                           SEVENZIP_CP2_SSH_ARGV=str(config), TMPDIR=str(temporary))
+                           SEVENZIP_CP2_SSH_ARGV=str(config), TMPDIR=sockets)
         if platform == "windows":
             environment["SEVENZIP_CP2_WINDOWS_PROBE"] = powershell(
                 "[Console]::Out.WriteLine($env:PROCESSOR_ARCHITECTURE)")
-        started = time.monotonic()
-        result = subprocess.run(command(client, record, staged, root, receiver["server_path"], checksum),
-                                env=environment, stdout=output, stderr=subprocess.STDOUT, check=True)
-        transfer = time.monotonic() - started
-        cp2_snapshot.commit(cache, entries)
+        try:
+            started = time.monotonic()
+            result = subprocess.run(command(client, record, staged, root, receiver["server_path"], checksum),
+                                    env=environment, stdout=output, stderr=subprocess.STDOUT, check=True)
+            transfer = time.monotonic() - started
+            cp2_snapshot.commit(cache, entries)
+        finally:
+            # Only this invocation can own sockets in the private directory.
+            for socket in Path(sockets).glob("cp2-ssh-*"):
+                subprocess.run([*argv[:-1], "-S", str(socket), "-O", "exit", argv[-1]],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     details = {"preparation_seconds": round(preparation, 3), "transfer_seconds": round(transfer, 3),
                "receiver": receiver, "checksum": checksum, "timestamp_cache": str(cache),
                "exit_code": result.returncode}

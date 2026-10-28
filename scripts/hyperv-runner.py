@@ -56,8 +56,6 @@ def discover(platform):
             or not all(isinstance(arg, str) and arg for arg in record["ssh_argv"])):
         raise ValueError("Readiness command must return vm and a nonempty ssh_argv array")
     record.update(platform=platform, config=config, name=record["vm"], id=record.get("vm_id"))
-    STATE.mkdir(parents=True, exist_ok=True)
-    (STATE / f"{platform}.json").write_text(json.dumps(record, indent=2) + "\n")
     return record
 
 
@@ -181,7 +179,8 @@ df -Pk .
                        timing_command + ' runtime_end\nexport SEVENZIP_RUNTIME_PREPARED=1\n')
         script += ('export PATH=' + shlex.quote(runtime_directory) + ':"$PATH"\n'
                    'export SEVENZIP_CODEC_MODULE_DIR=' + shlex.quote(runtime_directory) + '\n' + payload)
-        script += f") > check.log 2>&1\ncode=$?\nprintf '%s\\n' '{token}' > .runner-complete\ntail -n 80 check.log\nexit \"$code\"\n"
+        script += (f") > check.log 2>&1\ncode=$?\nprintf '%s\\n' '{token}' > .runner-complete\n"
+                   'if [ "$code" -ne 0 ]; then tail -n 80 check.log; fi\nexit "$code"\n')
     else:
         commands = ['@echo off', 'chcp 65001 >nul', *[f'set "{key}={root}/runner-tmp"' for key in ("TEMP", "TMP", "TMPDIR")],
                     f'call "{config["vcvars"]}"', 'if errorlevel 1 exit /b %errorlevel%']
@@ -237,7 +236,7 @@ $env:TEMP=$env:TMP=$env:TMPDIR='{root}/runner-tmp'
 [IO.File]::WriteAllBytes('{root}/runner-command.sh', [Convert]::FromBase64String('{encoded_payload}'))
 {launch}
 [IO.File]::WriteAllText('{root}/.runner-complete', '{token}')
-Get-Content check.log -Tail 80
+if ($code -ne 0) {{ Get-Content check.log -Tail 80 }}
 if ($code -ne 0) {{ exit $code }}
 """
     return remote(record, script, **({"stdout": output, "stderr": subprocess.STDOUT} if output else {}))
@@ -292,10 +291,11 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
             after_lock = time.monotonic()
             acquired = True
             if response is not None:
-                output.write(response.stdout)
                 for line in response.stdout.splitlines():
                     if line.startswith("RUNNER_CLOCK="):
                         clock_anchor = (before_lock, float(line.split("=", 1)[1]), after_lock)
+                    else:
+                        output.write(line + "\n")
             result["seconds"]["guard_and_lock"] = round(time.monotonic() - started, 3)
             started = time.monotonic()
             hyperv_cp2_sync.synchronize(record, platform, source, root, token, directory,
@@ -327,7 +327,7 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
             if acquired:
                 try:
                     if launched:
-                        result.update(collect_logs(record, root, directory, command, token, invoke, output, branch))
+                        result.update(collect_logs(record, root, directory, command, token, remote, output, branch))
                         timing = directory / "timing.jsonl"
                         if timing.exists():
                             result.update(summarize(timing, token, clock_anchor, INVOCATION_STARTED))
