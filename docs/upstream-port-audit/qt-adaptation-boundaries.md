@@ -11,6 +11,21 @@ are object prerequisites so changed compiler settings invalidate existing output
 through normal incremental builds and the shared compiler cache. Original SDK
 inventory hashes remain unchanged; no algorithm bodies were adapted.
 
+### Executable stack reserve — 2026-10-28
+
+CMake now preserves the Windows executable stack reserve from the same pinned
+`CPP/Build.mak`: 8 MiB for 64-bit and 2 MiB for 32-bit targets. The complete
+original inventory unit remains byte-exact in `third_party/7zip/CPP/Build.mak`,
+SHA256 `2fa73421ef3236655890cf479d6e5c8f0083667173248cea801e46fd698374df`,
+at SDK revision `b88c6bc09339de32f7d18bbab900686b244f42ba` from
+<https://github.com/ip7z/7zip.git>, verified through the existing SDK baseline.
+Only the `LFLAGS /STACK` executable setting is adapted into the root CMake
+configuration; NMake platform selection becomes pointer-width selection.
+DLLs retain their existing settings. The existing UDF ABI traversal fixture
+reproduced an ASan stack overflow at depth 1022 with the default Windows reserve;
+depths 256 and 512 passed. Reader recursion, limits and error paths are unchanged.
+The retained original notices and licenses apply to the source inventory.
+
 ## Extraction callback initialization — 2026-10-26
 
 The sanitizer-enabled C++23 build found an uninitialized archive-path diagnostic

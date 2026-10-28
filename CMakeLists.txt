@@ -32,6 +32,13 @@ endif()
 
 if(MSVC)
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/W4> $<$<COMPILE_LANGUAGE:CXX>:/permissive->)
+    # Match the pinned 7-Zip CPP/Build.mak executable stack reserve. Its
+    # bounded recursive readers also run in the application and ABI tests.
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        string(APPEND CMAKE_EXE_LINKER_FLAGS " /STACK:8388608")
+    else()
+        string(APPEND CMAKE_EXE_LINKER_FLAGS " /STACK:2097152")
+    endif()
 else()
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wall>
         $<$<COMPILE_LANGUAGE:CXX>:-Wextra>
