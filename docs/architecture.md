@@ -37,6 +37,8 @@ documented in [development](development.md#dependencies).
 Archive resource targets carry the typed backend implementation in their link
 closure, including consumers that only present options. Shared object libraries
 provide the same production implementation to application and test targets.
+Consumers link these component targets so their required libraries follow the
+implementation through the build graph, including archive resource libraries.
 
 ## Window and panel state
 

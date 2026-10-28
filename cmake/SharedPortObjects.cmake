@@ -47,11 +47,7 @@ function(sevenzip_share_port_objects owner header)
         endif()
         list(REMOVE_ITEM consumer_sources ${module_sources} ${header})
         set_property(TARGET ${consumer} PROPERTY SOURCES ${consumer_sources})
-        if(owner STREQUAL "sevenzip_archive_backend")
-            target_link_libraries(${consumer} PRIVATE ${owner})
-        else()
-            target_sources(${consumer} PRIVATE $<TARGET_OBJECTS:${owner}>)
-        endif()
+        target_link_libraries(${consumer} PRIVATE ${owner})
     endforeach()
 endfunction()
 
@@ -66,7 +62,6 @@ sevenzip_share_port_objects(sevenzip_archive_backend src/archivebackend.h
     src/archivebackend_workerprogress.cpp src/archivebackend_transfer.cpp)
 target_link_libraries(sevenzip_archive_backend PRIVATE sevenzip_archive_transfer_backup)
 target_sources(sevenzip_archive_backend PRIVATE src/archivecodecpublication.h)
-target_link_libraries(sevenzip_location PRIVATE sevenzip_archive_transfer_backup)
 
 sevenzip_share_port_objects(sevenzip_compress_presentation src/createarchivedialog.h
     src/createarchivedialog.cpp
@@ -158,9 +153,9 @@ sevenzip_share_port_objects(sevenzip_volume_operations src/qtvolumetransaction.h
 # Archive resources in this library call the typed backend even when a consumer
 # only opens an options page. Carry that implementation in the resource target
 # instead of requiring each executable to repeat the backend source closure.
+target_link_libraries(sevenzip_location PRIVATE
+    sevenzip_archive_backend sevenzip_compress_source)
 target_sources(sevenzip_location PRIVATE
-    $<TARGET_OBJECTS:sevenzip_archive_backend>
-    $<TARGET_OBJECTS:sevenzip_compress_source>
     src/archivebackend_guioperations.cpp
     src/archivebackend_nativeentries.cpp src/archivebackend_nativeentries.h
     src/archivebackend_test.cpp)
