@@ -127,6 +127,10 @@ Codec discovery loads the official native providers and their version metadata
 directly, retaining an immutable deployment image. It does not require a console
 executable; usable external format providers can supply a deployment without
 the main module, with the original loader's warning preserved.
+The snapshot factory returns a C++23 value-or-error result with exclusive image
+ownership. The catalog adopts a completed image before loading providers;
+failed preparation releases the partial snapshot immediately. Snapshot copying
+has its own library target shared by the catalog and focused lifetime checks.
 
 File navigation acquires native providers before binding an input, retaining
 the official reader and its item indexes. Standalone listing and archive testing

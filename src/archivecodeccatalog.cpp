@@ -24,12 +24,13 @@ ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedV
     QString nativeModule = module;
     const bool deployment = scope == Scope::Deployment;
     if (deployment) {
-        image_ = std::make_unique<ArchiveCodecImage>();
-        if (!image_->prepare(module)) {
+        auto image = ArchiveCodecImage::Create(module);
+        if (!image) {
             error_ = QCoreApplication::translate("archivecodeccatalog",
                                                  "Could not prepare the codec runtime snapshot.");
             return;
         }
+        image_ = std::move(*image);
         nativeModule = image_->module();
     }
     const auto path = QDir::toNativeSeparators(nativeModule).toStdWString();

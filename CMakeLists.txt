@@ -605,6 +605,12 @@ target_compile_features(sevenzip_archive_write_lease PUBLIC cxx_std_23)
 target_include_directories(sevenzip_archive_write_lease PUBLIC src)
 target_link_libraries(sevenzip_archive_write_lease PUBLIC Qt6::Core)
 
+add_library(sevenzip_codec_image STATIC src/archivecodecimage.cpp src/archivecodecimage.h)
+set_target_properties(sevenzip_codec_image PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+target_compile_features(sevenzip_codec_image PUBLIC cxx_std_23)
+target_include_directories(sevenzip_codec_image PUBLIC src)
+target_link_libraries(sevenzip_codec_image PUBLIC Qt6::Core PRIVATE sevenzip_common)
+
 add_library(sevenzip_filesystem STATIC
     src/qtoperationendpoint.cpp src/qtoperationendpoint.h
     src/archivesfxmodule.cpp src/archivesfxmodule.h
@@ -634,7 +640,6 @@ add_library(sevenzip_filesystem STATIC
     src/CPP/7zip/UI/Common/Extract.cpp src/CPP/7zip/UI/Common/Extract.h
     src/CPP/7zip/UI/Common/OpenArchive.cpp src/CPP/7zip/UI/Common/OpenArchive.h
     src/archivecodeccatalog.cpp src/archivecodeccatalog.h
-    src/archivecodecimage.cpp src/archivecodecimage.h
     src/archivenativeopen.cpp src/archivenativeopen.h
     src/archiveinputlayer.cpp src/archiveinputlayer.h src/archivelayercontext.h
     src/archivereadstream.h
@@ -668,6 +673,7 @@ target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Wind
 target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_operation_client sevenzip_archive_write_lease
     sevenzip_common sevenzip_zip sevenzip_progress_sync)
 target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_system_icons sevenzip_name_sort)
+target_link_libraries(sevenzip_filesystem PRIVATE sevenzip_codec_image)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/docs/upstream-baseline.json")
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/docs/upstream-baseline.json" sfx_baseline_json)
@@ -893,6 +899,10 @@ if(BUILD_TESTING)
     target_link_libraries(archive_write_lease_tests PRIVATE sevenzip_archive_write_lease Qt6::Test)
     add_test(NAME archive_write_lease COMMAND archive_write_lease_tests -silent)
     set_tests_properties(archive_write_lease PROPERTIES TIMEOUT 30)
+    qt_add_executable(codec_image_tests tests/codec_image_tests.cpp)
+    target_link_libraries(codec_image_tests PRIVATE sevenzip_codec_image sevenzip_common Qt6::Test)
+    add_test(NAME codec_image COMMAND codec_image_tests -silent)
+    set_tests_properties(codec_image PROPERTIES TIMEOUT 30)
     qt_add_executable(operation_process_tests tests/operation_process_tests.cpp)
     target_include_directories(operation_process_tests PRIVATE src)
     target_link_libraries(operation_process_tests PRIVATE sevenzip_operation_process Qt6::Test)

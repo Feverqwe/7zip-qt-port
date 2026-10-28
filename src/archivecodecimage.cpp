@@ -66,9 +66,17 @@ bool ArchiveCodecImage::copyFolder(const QString &source, const QString &relativ
     return true;
 }
 
+std::expected<std::unique_ptr<ArchiveCodecImage>, ArchiveCodecImage::Error>
+ArchiveCodecImage::Create(const QString &module) {
+    auto image = std::unique_ptr<ArchiveCodecImage>(new ArchiveCodecImage);
+    if (!image->directory_.isValid())
+        return std::unexpected(Error::TemporaryStorageUnavailable);
+    if (!image->prepare(module))
+        return std::unexpected(Error::RuntimeCopyFailed);
+    return image;
+}
+
 bool ArchiveCodecImage::prepare(const QString &module) {
-    if (!directory_.isValid())
-        return false;
     const QFileInfo main(module);
     if ((main.exists() || main.isSymLink()) && !copyFile(module, main.fileName()))
         return false;
