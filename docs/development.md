@@ -505,7 +505,8 @@ Long matrices and high-memory boundary checks are excluded by default.
 Agents run these only on an explicit request for long tests or the exhaustive
 suite, following [AGENTS.md](../AGENTS.md#validation-and-ui-reference).
 
-The full `interarchive_recovery` and `copy_archive_refresh` matrices are opt-in. The default
+The full `panel_creation_path`, `interarchive_recovery` and `copy_archive_refresh`
+matrices are opt-in. The default
 `interarchive_recovery_native` subset covers native reopen failure, cancellation
 and failed restore. Acceptance of that subset does not accept the full matrix.
 

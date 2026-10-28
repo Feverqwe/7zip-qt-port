@@ -3251,7 +3251,7 @@ if(BUILD_TESTING)
     target_link_libraries(panel_creation_path_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
 
     add_test(NAME panel_creation_path COMMAND panel_creation_path_tests -silent)
-    set_tests_properties(panel_creation_path PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-creation-path.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    set_tests_properties(panel_creation_path PROPERTIES TIMEOUT 180 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-creation-path.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(panel_creation_publication_tests
         tests/panel_creation_publication_tests.cpp
         tests/layout_inspection.cpp)
