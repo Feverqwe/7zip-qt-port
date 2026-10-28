@@ -145,10 +145,12 @@ struct ArchiveReadOnlyView::State {
         if (seekable) {
             if (!evict(id, 0))
                 return E_OUTOFMEMORY;
-            const HRESULT status = ArchiveInputLayer::Create(seekable, item.Stream, request);
-            if (status == S_OK)
-                ++Active;
-            return status;
+            const auto opened =
+                ArchiveInputLayer::Create(seekable, request).transform([&](auto layer) {
+                    item.Stream = std::move(layer);
+                    ++Active;
+                });
+            return opened ? S_OK : opened.error();
         }
 
         const quint64 size = Entries.at(qsizetype(id - 1)).Size;
@@ -228,12 +230,13 @@ struct ArchiveReadOnlyView::State {
             QFile::remove(path);
             return E_FAIL;
         }
-        const HRESULT status = ArchiveInputLayer::Create(file.Interface(), item.Stream, request);
-        if (status != S_OK) {
+        auto opened = ArchiveInputLayer::Create(file.Interface(), request);
+        if (!opened) {
             file.Detach()->Release();
             QFile::remove(path);
-            return status;
+            return opened.error();
         }
+        item.Stream = std::move(*opened);
         item.Path = path;
         item.Bytes = quint64(actual);
         item.Operation = operation.OutputOperation;

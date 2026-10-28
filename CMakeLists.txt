@@ -611,6 +611,12 @@ target_compile_features(sevenzip_codec_image PUBLIC cxx_std_23)
 target_include_directories(sevenzip_codec_image PUBLIC src)
 target_link_libraries(sevenzip_codec_image PUBLIC Qt6::Core PRIVATE sevenzip_common)
 
+add_library(sevenzip_archive_input STATIC
+    src/archiveinputlayer.cpp src/archiveinputlayer.h src/archivelayercontext.h src/archivereadstream.h)
+set_target_properties(sevenzip_archive_input PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+target_include_directories(sevenzip_archive_input PUBLIC src)
+target_link_libraries(sevenzip_archive_input PUBLIC sevenzip_native_types PRIVATE sevenzip_common)
+
 add_library(sevenzip_filesystem STATIC
     src/qtoperationendpoint.cpp src/qtoperationendpoint.h
     src/archivesfxmodule.cpp src/archivesfxmodule.h
@@ -641,8 +647,6 @@ add_library(sevenzip_filesystem STATIC
     src/CPP/7zip/UI/Common/OpenArchive.cpp src/CPP/7zip/UI/Common/OpenArchive.h
     src/archivecodeccatalog.cpp src/archivecodeccatalog.h
     src/archivenativeopen.cpp src/archivenativeopen.h
-    src/archiveinputlayer.cpp src/archiveinputlayer.h src/archivelayercontext.h
-    src/archivereadstream.h
     src/archivedevice.cpp src/archivedevice.h
     src/archivebackend_device.cpp
     src/deviceinput.cpp src/deviceaccess.h
@@ -671,7 +675,7 @@ target_include_directories(sevenzip_filesystem PUBLIC src)
 target_include_directories(sevenzip_filesystem PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
 target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_operation_client sevenzip_archive_write_lease
-    sevenzip_common sevenzip_zip sevenzip_progress_sync)
+    sevenzip_archive_input sevenzip_common sevenzip_zip sevenzip_progress_sync)
 target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_system_icons sevenzip_name_sort)
 target_link_libraries(sevenzip_filesystem PRIVATE sevenzip_codec_image)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS

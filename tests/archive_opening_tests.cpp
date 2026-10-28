@@ -279,8 +279,14 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
         bool released = false;
         auto *fault = new CReadBudgetInput(raw, released);
         CMyComPtr<IInStream> source = fault;
-        std::shared_ptr<ArchiveInputLayer> layer;
-        QCOMPARE(ArchiveInputLayer::Create(source, layer), S_OK);
+        fault->SeekFailure = E_FAIL;
+        const auto failed = ArchiveInputLayer::Create(source);
+        QVERIFY(!failed);
+        QCOMPARE(failed.error(), E_FAIL);
+        fault->SeekFailure = S_OK;
+        auto opened = ArchiveInputLayer::Create(source);
+        QVERIFY(opened);
+        auto layer = std::move(*opened);
         CMyComPtr<IInStream> cursor;
         QCOMPARE(layer->OpenCursor(&cursor), S_OK);
         QCOMPARE(cursor->Seek(7, STREAM_SEEK_SET, nullptr), S_OK);

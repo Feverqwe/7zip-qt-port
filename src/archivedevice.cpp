@@ -27,11 +27,12 @@ HRESULT Open(const std::shared_ptr<const ArchiveCodecCatalog> &catalog, IInStrea
         options = *requested;
     else
         options.props = nullptr;
-    std::shared_ptr<ArchiveInputLayer> layer;
     const auto request = CreateArchiveOpenReadRequest(callback);
-    RINOK(ArchiveInputLayer::Create(input, layer, request))
+    const auto layer = ArchiveInputLayer::Create(input, request);
+    if (!layer)
+        return layer.error();
     CMyComPtr<IInStream> cursor;
-    RINOK(layer->OpenCursor(&cursor))
+    RINOK((*layer)->OpenCursor(&cursor))
     options.stream = cursor;
     options.filePath = name.toStdWString().c_str();
     CObjectVector<COpenType> types;

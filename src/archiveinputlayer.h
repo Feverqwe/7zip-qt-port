@@ -5,6 +5,7 @@
 #include "Common/MyCom.h"
 #include "archivelayercontext.h"
 #include "archivereadstream.h"
+#include <expected>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -19,10 +20,11 @@ class ArchiveInputLayer final : public std::enable_shared_from_this<ArchiveInput
     std::mutex mutex_;
     std::optional<UInt64> containingDepth_;
     explicit ArchiveInputLayer(IInStream *source) : source_(source) {}
+    HRESULT initialize(IProgress *request);
 
   public:
-    static HRESULT Create(IInStream *source, std::shared_ptr<ArchiveInputLayer> &layer,
-                          IProgress *request = nullptr);
+    [[nodiscard]] static std::expected<std::shared_ptr<ArchiveInputLayer>, HRESULT>
+    Create(IInStream *source, IProgress *request = nullptr);
     UInt64 size() const { return size_; }
     IStreamGetProp *Properties() const { return properties_; }
     std::optional<UInt64> ContainingContainerDepth() const { return containingDepth_; }

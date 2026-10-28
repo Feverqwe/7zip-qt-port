@@ -287,7 +287,10 @@ HRESULT QtArchiveFolderManager::OpenLinkImpl(CArchiveLink &link, const COpenOpti
     CMyComPtr<IInStream> inputCursor;
     if (streamInput) {
         const auto readRequest = CreateArchiveOpenReadRequest(&nativeProgress);
-        RINOK(ArchiveInputLayer::Create(inStream, inputLayer, readRequest))
+        auto layer = ArchiveInputLayer::Create(inStream, readRequest);
+        if (!layer)
+            return layer.error();
+        inputLayer = std::move(*layer);
         RINOK(inputLayer->OpenCursor(&inputCursor))
     }
     COpenOptions nativeOptions = services.Requested ? *services.Requested : sourceOptions;

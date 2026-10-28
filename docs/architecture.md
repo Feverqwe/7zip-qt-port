@@ -222,6 +222,12 @@ avoid shell interpretation. Transactional update and temporary-resource owners
 retain original archives and leases until the operation completes. Extraction
 has different partial-output semantics, described in [parity](7zfm-parity.md).
 
+The shared archive input layer has a C++23 library target and publishes a stream
+owner through `std::expected` after size/context initialization. Folder opening,
+device readers and read-only views use the same layer and preserve native error
+codes, cancellation and independent cursor ownership. Partial native archive
+opening remains a separate contract with its original `S_FALSE` semantics.
+
 Nested archives and external editing require explicit resource lifetimes across
 open processes, pending writes and parent-chain updates. Module images, streams,
 temporary files and folder providers cannot be released while consumers retain

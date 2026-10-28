@@ -104,40 +104,48 @@ ArchiveInputReadRequestScope::~ArchiveInputReadRequestScope() {
         static_cast<CArchiveInputCursor *>(cursor_.Interface())->SwapRequest(previous_);
 }
 
-HRESULT ArchiveInputLayer::Create(IInStream *source, std::shared_ptr<ArchiveInputLayer> &layer,
-                                  IProgress *request) {
-    COM_TRY_BEGIN
-    layer.reset();
-    if (!source)
-        return E_INVALIDARG;
-    auto owner = std::shared_ptr<ArchiveInputLayer>(new ArchiveInputLayer(source));
-    source->QueryInterface(IID_IStreamGetProp, (void **)&owner->properties_);
+std::expected<std::shared_ptr<ArchiveInputLayer>, HRESULT>
+ArchiveInputLayer::Create(IInStream *source, IProgress *request) {
+    try {
+        if (!source)
+            return std::unexpected(E_INVALIDARG);
+        auto owner = std::shared_ptr<ArchiveInputLayer>(new ArchiveInputLayer(source));
+        const HRESULT result = owner->initialize(request);
+        if (result != S_OK)
+            return std::unexpected(result);
+        return owner;
+    } catch (...) {
+        // Preserve the native COM_TRY exception mapping at this typed boundary.
+        return std::unexpected(E_OUTOFMEMORY);
+    }
+}
+
+HRESULT ArchiveInputLayer::initialize(IProgress *request) {
+    source_->QueryInterface(IID_IStreamGetProp, (void **)&properties_);
     CMyComPtr<IArchiveLayerSource> context;
-    const HRESULT query = source->QueryInterface(IID_IArchiveLayerSource, (void **)&context);
+    const HRESULT query = source_->QueryInterface(IID_IArchiveLayerSource, (void **)&context);
     if (query != S_OK && query != E_NOINTERFACE)
         return query;
     if (context) {
         UInt64 depth;
         const HRESULT result = context->GetContainingContainerDepth(&depth);
         if (result == S_OK)
-            owner->containingDepth_ = depth;
+            containingDepth_ = depth;
         else if (result != S_FALSE)
             return result;
     }
-    source->QueryInterface(IID_IArchiveReadStream, (void **)&owner->requested_);
-    if (owner->requested_) {
-        RINOK(owner->requested_->SeekWithRequest(0, STREAM_SEEK_END, &owner->size_, request))
+    source_->QueryInterface(IID_IArchiveReadStream, (void **)&requested_);
+    if (requested_) {
+        RINOK(requested_->SeekWithRequest(0, STREAM_SEEK_END, &size_, request))
     } else {
         if (request) {
             RINOK(request->SetCompleted(nullptr))
         }
-        RINOK(InStream_GetSize_SeekToEnd(source, owner->size_))
+        RINOK(InStream_GetSize_SeekToEnd(source_, size_))
     }
-    if (owner->size_ > UInt64((std::numeric_limits<Int64>::max)()))
+    if (size_ > UInt64((std::numeric_limits<Int64>::max)()))
         return E_INVALIDARG;
-    layer = std::move(owner);
     return S_OK;
-    COM_TRY_END
 }
 
 HRESULT ArchiveInputLayer::ReadAt(UInt64 offset, void *data, UInt32 size, UInt32 *processed,
