@@ -9,9 +9,7 @@ endif()
 
 project(sevenzip_desktop VERSION 0.1.7 LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+include(cmake/CxxStandard.cmake)
 
 include(CheckCXXSourceCompiles)
 check_cxx_source_compiles("#include <expected>

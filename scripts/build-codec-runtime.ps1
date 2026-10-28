@@ -17,10 +17,8 @@ if ($env:OS -ne 'Windows_NT') { throw 'Run this script on Windows.' }
 if (-not $Architecture -or $env:VSCMD_ARG_TGT_ARCH -ne $Architecture) {
     throw 'Choose a matching MSVC developer environment and -Architecture arm64, x64 or x86.'
 }
-# Upstream makefiles invoke link by name; Git Bash also ships link.exe.
-$msvcBin = Split-Path -Parent (Get-Command cl.exe -CommandType Application -ErrorAction Stop).Source
-$null = Get-Command (Join-Path $msvcBin 'link.exe') -ErrorAction Stop
-$env:PATH = "$msvcBin;$env:PATH"
+. (Join-Path $scriptDirectory 'lib/msvc-toolchain.ps1')
+$msvcBin = Get-SevenzipMsvcTools
 Write-Output "Using MSVC tools: $msvcBin"
 # Git Bash's GNU tar treats drive-letter paths as remote archive names.
 $tar = Join-Path $env:SystemRoot 'System32/tar.exe'

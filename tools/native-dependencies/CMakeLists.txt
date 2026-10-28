@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 project(sevenzip_native_dependencies LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/CxxStandard.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/ModuleToolchain.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/StaticAnalysis.cmake")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/toolchain.json"

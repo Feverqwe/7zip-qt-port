@@ -19,10 +19,8 @@ if (-not $Architecture) { throw 'Choose -Architecture arm64, x64 or x86 in a mat
 if ($env:VSCMD_ARG_TGT_ARCH -ne $Architecture) {
     throw 'The MSVC developer environment must match -Architecture.'
 }
-# Upstream makefiles invoke link by name; Git Bash also ships link.exe.
-$msvcBin = Split-Path -Parent (Get-Command cl.exe -CommandType Application -ErrorAction Stop).Source
-$null = Get-Command (Join-Path $msvcBin 'link.exe') -ErrorAction Stop
-$env:PATH = "$msvcBin;$env:PATH"
+. (Join-Path $scriptDirectory 'lib/msvc-toolchain.ps1')
+$msvcBin = Get-SevenzipMsvcTools
 Write-Output "Using MSVC tools: $msvcBin"
 foreach ($tool in @('git', 'python', 'nmake', 'cl', 'link', 'rc')) {
     $null = Get-Command $tool -ErrorAction Stop

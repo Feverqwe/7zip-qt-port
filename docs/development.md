@@ -172,8 +172,14 @@ Build and deploy with the same SDK. Homebrew supplies the other local tools:
 brew install cmake ninja sevenzip clang-format ccache
 ```
 
-The application now requires CMake 3.28 or newer and a C++23 compiler. Debug
-and RelWithDebInfo builds enable AddressSanitizer on all platforms and
+The application now requires CMake 3.28 or newer and a C++23 compiler.
+Windows requires MSVC 19.43+ (Visual Studio 2022 17.13+) for the dedicated
+C++23 language mode. Older CMake mappings to `/std:c++latest` are bounded to
+`/std:c++23preview`, including the independent native runtime/SFX build. This
+keeps later experimental language features outside the project's standard;
+see [Microsoft's standard-mode documentation](https://learn.microsoft.com/en-us/cpp/build/reference/std-specify-language-standard-version).
+
+Debug and RelWithDebInfo builds enable AddressSanitizer on all platforms and
 UndefinedBehaviorSanitizer on macOS/Linux by default. Use
 `-DSEVENZIP_ENABLE_SANITIZERS=OFF` only when investigating a toolchain or runtime
 incompatibility. Clang-Tidy is opt-in with `-DSEVENZIP_ENABLE_CLANG_TIDY=ON` and

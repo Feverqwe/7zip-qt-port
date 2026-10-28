@@ -18,8 +18,10 @@ from lib.build_paths import directory as workspace_directory
 ROOT = Path(__file__).resolve().parents[1]
 BUILDERS = ("build-codec-runtime.sh", "build-codec-runtime.ps1", "build-sfx.sh", "build-sfx.ps1",
             "upstream_baseline.py", "build-native-dependencies.py")
-MODULE_BUILD_INPUTS = ("tools/native-dependencies/CMakeLists.txt", "cmake/ModuleToolchain.cmake",
+MODULE_BUILD_INPUTS = ("tools/native-dependencies/CMakeLists.txt", "cmake/CxxStandard.cmake",
+                       "cmake/ModuleToolchain.cmake",
                        "cmake/StaticAnalysis.cmake", ".clang-tidy",
+                       "scripts/lib/msvc-toolchain.ps1",
                        "scripts/lib/module_cache_launcher.py", "scripts/lib/clang_tidy_launcher.py")
 
 

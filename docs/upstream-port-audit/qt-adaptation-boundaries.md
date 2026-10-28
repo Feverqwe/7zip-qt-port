@@ -11,6 +11,13 @@ are object prerequisites so changed compiler settings invalidate existing output
 through normal incremental builds and the shared compiler cache. Original SDK
 inventory hashes remain unchanged; no algorithm bodies were adapted.
 
+The 2026-10-28 Release compiler audit found MSVC's CMake C++23 mapping still
+selected `/std:c++latest`. The shared project/native-dependency configuration
+now selects the dedicated C++23 mode on MSVC 19.43+, and generated NMake C++
+recipes use `/std:c++23preview` too. C recipes remain unchanged. This keeps
+producer and consumer language modes aligned without importing SDK algorithms
+or changing the original build-rule baseline.
+
 ### Executable stack reserve — 2026-10-28
 
 CMake now preserves the Windows executable stack reserve from the same pinned

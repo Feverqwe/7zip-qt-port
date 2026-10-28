@@ -164,7 +164,7 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                     lines.append('-include ../../../../dependencies/native-qemu.gcc.mak')
             if windows:
                 lines += ["SEVENZIP_RUNTIME_SOURCES = $(filteri %.c %.cpp %.asm %.s %.rc,$**)",
-                          "SEVENZIP_RUNTIME_CXXFLAGS = /std:c++latest /Zc:__cplusplus /permissive-",
+                          "SEVENZIP_RUNTIME_CXXFLAGS = /std:c++23preview /Zc:__cplusplus /permissive-",
                           "CFLAGS = $(CFLAGS) -I../../../.."]
             lines.append(f'!include "{original}"' if windows else f'include {original}')
             lines.append("# Toolchain: " + os.environ.get("SEVENZIP_RUNTIME_TOOLCHAIN", "direct"))
