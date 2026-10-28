@@ -23,6 +23,42 @@ class PanelFilesystemSortTests final : public QObject {
         return count;
     }
   private slots:
+    void nameOrderFollowsRenameAndReload() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QString current = QStringLiteral("имя space 2.txt");
+        const QString other = QStringLiteral("имя space 10.txt");
+        for (const QString &name : {current, other}) {
+            QFile file(temp.filePath(name));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write("unchanged"), qint64(9));
+        }
+        CMyComPtr<IFolderFolder> folder = new NFsFolder::CFSFolder(temp.path());
+        CMyComPtr<IFolderCompare> compare;
+        CMyComPtr<IFolderOperations> operations;
+        QCOMPARE(folder.QueryInterface(IID_IFolderCompare, &compare), S_OK);
+        QCOMPARE(folder.QueryInterface(IID_IFolderOperations, &operations), S_OK);
+        QCOMPARE(folder->LoadItems(), S_OK);
+        auto first = find(folder, current);
+        auto second = find(folder, other);
+        QVERIFY(first < 2 && second < 2 && first != second);
+        QVERIFY(compare->CompareItems(first, second, kpidName, 0) < 0);
+        for (const auto &[renamed, sign] : {qMakePair(QStringLiteral("имя space 20.txt"), 1),
+                                            qMakePair(QStringLiteral("имя space 1.txt"), -1)}) {
+            QCOMPARE(operations->Rename(first, renamed.toStdWString().c_str(), nullptr), S_OK);
+            QCOMPARE(folder->LoadItems(), S_OK);
+            current = renamed;
+            first = find(folder, current);
+            second = find(folder, other);
+            QVERIFY(first < 2 && second < 2 && first != second);
+            const int order = compare->CompareItems(first, second, kpidName, 0);
+            QVERIFY(sign > 0 ? order > 0 : order < 0);
+            QFile file(temp.filePath(current));
+            QVERIFY(file.open(QIODevice::ReadOnly));
+            QCOMPARE(file.readAll(), QByteArray("unchanged"));
+        }
+    }
+
     void sourceMetadataAndMissingFile() {
         QTemporaryDir temp(QDir::tempPath() + QStringLiteral("/metadata файл space-XXXXXX"));
         QVERIFY(temp.isValid());

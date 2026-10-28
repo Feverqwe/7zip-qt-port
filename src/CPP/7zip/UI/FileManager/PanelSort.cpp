@@ -1,6 +1,6 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/PanelSort.cpp at 0766b73.
 // Copyright (C) 1999-2026 Igor Pavlov. GNU LGPL 2.1 or later.
-// Pointer algorithm copied from upstream; char16_t replaces Windows wchar_t.
+// Pointer algorithm copied from upstream; compare Windows UTF-16 code units.
 // QStringView conversion and Qt properties adapt the panel at its boundary.
 
 #include "PanelSort.h"
@@ -26,7 +26,8 @@ char16_t MyCharUpper(char16_t c) {
 }
 } // namespace
 
-int CompareFileNames_ForFolderList(const char16_t *s1, const char16_t *s2) {
+template <typename Char> static int CompareUtf16Names(const Char *s1, const Char *s2) {
+    static_assert(sizeof(Char) == sizeof(char16_t));
     for (;;) {
         char16_t c1 = *s1;
         char16_t c2 = *s2;
@@ -69,6 +70,10 @@ int CompareFileNames_ForFolderList(const char16_t *s1, const char16_t *s2) {
     }
 }
 
+int CompareFileNames_ForFolderList(const char16_t *s1, const char16_t *s2) {
+    return CompareUtf16Names(s1, s2);
+}
+
 int CompareFileNames_ForFolderList(QStringView s1, QStringView s2) {
     // Views need not be null-terminated. Own the strings before calling upstream.
     const std::u16string name1 = s1.toString().toStdU16String();
@@ -82,8 +87,12 @@ QStringView GetExtensionPtr(QStringView name) {
 }
 
 int CompareFileNames_ForFolderList(const wchar_t *s1, const wchar_t *s2) {
+#ifdef _WIN32
+    return CompareUtf16Names(s1 ? s1 : L"", s2 ? s2 : L"");
+#else
     return CompareFileNames_ForFolderList(QStringView(QString::fromWCharArray(s1)),
                                           QStringView(QString::fromWCharArray(s2)));
+#endif
 }
 
 #else

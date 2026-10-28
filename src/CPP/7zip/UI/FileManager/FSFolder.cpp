@@ -217,6 +217,7 @@ HRESULT CFSFolder::LoadSubItems(int dirItem, const FString &relPrefix) {
                 if (recurse)
                     Folders.Add(relPrefix + fi.Name + FCHAR_PATH_SEPARATOR);
             }
+            fi.NameSortKey.reset();
             fi.PackSize_Defined = false;
             fi.FileInfo_Defined = false;
             fi.FileInfo_WasRequested = false;
@@ -663,7 +664,13 @@ Z7_COM7F_IMF2(Int32, CFSFolder::CompareItems(UInt32 index1, UInt32 index2, PROPI
 
     switch (propID) {
     case kpidName: {
-        const int comp = CompareFileNames_ForFolderList(fi1.Name, fi2.Name);
+        // Retain the source comparison while converting each loaded name once.
+        const auto key = [](CDirItem &item) {
+            if (!item.NameSortKey)
+                item.NameSortKey = QString::fromWCharArray(fs2us(item.Name)).toStdU16String();
+            return item.NameSortKey->c_str();
+        };
+        const int comp = CompareFileNames_ForFolderList(key(fi1), key(fi2));
         /*
         if (comp != 0)
           return comp;

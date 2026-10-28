@@ -12,10 +12,14 @@
 #include <QFileInfo>
 #include <QString>
 #include <functional>
+#include <optional>
+#include <string>
 
 namespace NFsFolder {
 #define FS_SHOW_LINKS_INFO
 struct CDirItem : public NWindows::NFile::NFind::CFileInfo {
+    // Derived only from this loaded record's Name; Clear/LoadItems replaces it.
+    std::optional<std::u16string> NameSortKey;
     CByteBuffer Reparse;
     UInt64 PackSize = 0;
     bool PackSize_Defined = false;

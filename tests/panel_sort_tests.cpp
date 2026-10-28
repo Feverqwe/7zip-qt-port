@@ -30,6 +30,9 @@ class PanelSortTests final : public QObject, protected MainWindowTestSupport {
         QVERIFY(CompareFileNames_ForFolderList(u"file0", u"file00a") < 0);
         QCOMPARE(CompareFileNames_ForFolderList(u"", u""), 0);
         QVERIFY(CompareFileNames_ForFolderList(u"", u"0") < 0);
+        const wchar_t *missing = nullptr;
+        QCOMPARE(CompareFileNames_ForFolderList(missing, L""), 0);
+        QVERIFY(CompareFileNames_ForFolderList(L"a", missing) > 0);
         const QString first = QStringLiteral("--file2 trailing");
         const QString second = QStringLiteral("--file10 trailing");
         QVERIFY(CompareFileNames_ForFolderList(QStringView(first).mid(2, 5),
