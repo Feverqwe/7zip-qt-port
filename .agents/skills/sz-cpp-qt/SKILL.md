@@ -24,4 +24,11 @@ and dependencies.
   behavioral coverage and [UI contracts](../../../docs/ui-layout-contracts.md)
   for affected visible controls/states.
 
-Use `build/dev/compile_commands.json` with clangd for compiler diagnostics.
+Locate the active build root:
+
+```sh
+python3 scripts/lib/build_paths.py path --root "$PWD" --category work --preset dev
+```
+
+Use its `dev/compile_commands.json` with clangd so diagnostics match the selected
+RAM or disk workspace.
