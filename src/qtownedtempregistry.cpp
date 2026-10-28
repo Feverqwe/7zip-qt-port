@@ -9,6 +9,7 @@
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QUuid>
+#include <optional>
 
 namespace {
 QString RecordPath(const QString &root, const QString &key) { return root + '/' + key + ".json"; }
@@ -37,26 +38,26 @@ bool WriteRecord(const QString &root, const QtOwnedTempEntry &entry) {
     const QByteArray bytes = QJsonDocument(data).toJson(QJsonDocument::Compact);
     return file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size() && file.commit();
 }
-QtOwnedTempEntry ReadRecord(const QString &root, const QString &key) {
+std::optional<QtOwnedTempEntry> ReadRecord(const QString &root, const QString &key) {
     QtOwnedTempEntry entry;
     // Registry filenames come from generated UUIDs, including after restart.
     if (QUuid(key).isNull())
-        return entry;
+        return std::nullopt;
     QFile file(RecordPath(root, key));
     const QFileInfo record(file);
     if (record.isSymLink() || record.isJunction())
-        return entry;
+        return std::nullopt;
     if (!file.open(QIODevice::ReadOnly) || file.size() > 16384)
-        return entry;
+        return std::nullopt;
     const QJsonObject object = QJsonDocument::fromJson(file.readAll()).object();
     if (object.value("version").toInt() != 1 || !object.value("external").isBool())
-        return entry;
+        return std::nullopt;
     entry.key = key;
     entry.path = object.value("path").toString();
     entry.identity = object.value("identity").toString();
     entry.externallyProtected = object.value("external").toBool();
     if (!QDir::isAbsolutePath(entry.path) || entry.identity.isEmpty())
-        return {};
+        return std::nullopt;
     return entry;
 }
 bool Matches(const QtOwnedTempEntry &entry) {
@@ -123,7 +124,8 @@ std::shared_ptr<QtOwnedTempLease> QtOwnedTempRegistry::RegisterCreated(const QSt
         QUuid::createUuidV5(QUuid("ae8d385e-4ab9-4bbf-818e-088be7c96ef2"), entry.identity.toUtf8())
             .toString(QUuid::WithoutBraces);
     auto lock = ClaimLock(root_, entry.key);
-    if (!lock || Matches(ReadRecord(root_, entry.key)) || !WriteRecord(root_, entry))
+    if (!lock || ReadRecord(root_, entry.key).transform(Matches).value_or(false) ||
+        !WriteRecord(root_, entry))
         return {};
     return std::shared_ptr<QtOwnedTempLease>(new QtOwnedTempLease(root_, entry, std::move(lock)));
 }
@@ -135,11 +137,11 @@ QVector<QtOwnedTempEntry> QtOwnedTempRegistry::Entries() const {
     const auto files = QDir(root_).entryList({"*.json"}, QDir::Files | QDir::NoSymLinks);
     for (const QString &file : files) {
         auto entry = ReadRecord(root_, file.chopped(5));
-        if (entry.key.isEmpty() || !Matches(entry))
+        if (!entry || !Matches(*entry))
             continue;
-        auto lock = ClaimLock(root_, entry.key);
-        entry.active = !lock;
-        entries.append(entry);
+        auto lock = ClaimLock(root_, entry->key);
+        entry->active = !lock;
+        entries.append(std::move(*entry));
     }
     return entries;
 }
@@ -152,8 +154,8 @@ QtOwnedTempRegistry::ClaimForDeletion(const QtOwnedTempEntry &requested) const {
     if (!lock)
         return {};
     const auto entry = ReadRecord(root_, requested.key);
-    if (entry.path != requested.path || entry.identity != requested.identity ||
-        entry.externallyProtected || !Matches(entry))
+    if (!entry || entry->path != requested.path || entry->identity != requested.identity ||
+        entry->externallyProtected || !Matches(*entry))
         return {};
-    return std::shared_ptr<QtOwnedTempLease>(new QtOwnedTempLease(root_, entry, std::move(lock)));
+    return std::shared_ptr<QtOwnedTempLease>(new QtOwnedTempLease(root_, *entry, std::move(lock)));
 }

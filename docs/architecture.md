@@ -224,6 +224,13 @@ temporary files and folder providers cannot be released while consumers retain
 them. Failure and cancellation must leave a reusable application state and
 preserve retained edit data where the operation requires it.
 
+Temporary-object identity, registration and directory ownership form a C++23
+object library composed into the shared native library. Native temporary creation
+and Qt consumers use the same registry and lease implementation. Registry reads
+return an optional validated record; callers acquire a lease before cleanup.
+Directory ownership handoff returns a shared owner rather than a reference to
+the directory's ownership field.
+
 ## Diagnostics
 
 Original Progress/Messages and source error paths own user-facing operation

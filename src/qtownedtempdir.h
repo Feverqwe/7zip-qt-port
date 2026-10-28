@@ -12,5 +12,5 @@ class QtOwnedTempDir final {
     bool isValid() const { return directory_.isValid() && bool(lease_); }
     QString path() const { return directory_.path(); }
     QString filePath(const QString &name) const { return directory_.filePath(name); }
-    const std::shared_ptr<QtOwnedTempLease> &lease() const { return lease_; }
+    std::shared_ptr<QtOwnedTempLease> lease() const { return lease_; }
 };

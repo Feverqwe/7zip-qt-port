@@ -244,6 +244,25 @@ add_library(sevenzip_hash_registration INTERFACE)
 target_link_libraries(sevenzip_hash_registration INTERFACE sevenzip_hash_registry
     $<TARGET_OBJECTS:sevenzip_hash_registry>)
 
+add_library(sevenzip_native_types INTERFACE)
+target_compile_features(sevenzip_native_types INTERFACE cxx_std_23)
+target_include_directories(sevenzip_native_types INTERFACE src/CPP third_party/7zip/CPP)
+target_compile_definitions(sevenzip_native_types INTERFACE Z7_EXTERNAL_CODECS)
+if(WIN32)
+    target_compile_definitions(sevenzip_native_types INTERFACE Z7_DEVICE_FILE)
+endif()
+
+# Native temp creation calls the registry, whose Windows identity adapter uses
+# native file handles. Compose these objects into the same archive as FileDir/
+# FileIO instead of introducing mutually dependent static libraries.
+add_library(sevenzip_owned_temp OBJECT
+    src/qtownedtempidentity.cpp src/qtownedtempidentity.h
+    src/qtownedtempregistry.cpp src/qtownedtempregistry.h
+    src/qtownedtempdir.cpp src/qtownedtempdir.h)
+set_target_properties(sevenzip_owned_temp PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+target_include_directories(sevenzip_owned_temp PUBLIC src)
+target_link_libraries(sevenzip_owned_temp PUBLIC Qt6::Core PRIVATE sevenzip_native_types)
+
 add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/Alloc.c
     src/qtdiagnostictext.cpp src/qtdiagnostictext.h
     src/qttranslationcatalog.cpp src/qttranslationcatalog.h
@@ -273,8 +292,6 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     third_party/7zip/CPP/Common/StringToInt.cpp
     third_party/7zip/CPP/Common/MyString.cpp third_party/7zip/CPP/Common/IntToString.cpp
     third_party/7zip/CPP/Common/MyWindows.cpp
-    src/qtownedtempidentity.cpp src/qtownedtempidentity.h
-    src/qtownedtempregistry.cpp src/qtownedtempregistry.h
     src/CPP/Windows/FileDir.cpp src/CPP/Windows/FileDir.h
     src/CPP/Windows/FileName.cpp
     third_party/7zip/CPP/Windows/FileFind.cpp
@@ -297,13 +314,10 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     src/CPP/7zip/UI/FileManager/RegistryUtils.cpp src/CPP/7zip/UI/FileManager/RegistryUtils.h
     third_party/7zip/CPP/7zip/UI/FileManager/StringUtils.cpp)
 set_target_properties(sevenzip_common PROPERTIES AUTOMOC OFF AUTOUIC OFF)
-target_include_directories(sevenzip_common PUBLIC src/CPP third_party/7zip/CPP PRIVATE src)
+target_include_directories(sevenzip_common PRIVATE src)
 target_include_directories(sevenzip_common PRIVATE third_party/7zip/CPP/Windows)
-target_link_libraries(sevenzip_common PUBLIC Qt6::Core)
-target_compile_definitions(sevenzip_common PUBLIC Z7_EXTERNAL_CODECS)
-if(WIN32)
-    target_compile_definitions(sevenzip_common PUBLIC Z7_DEVICE_FILE)
-endif()
+target_link_libraries(sevenzip_common PUBLIC sevenzip_native_types Qt6::Core
+    PRIVATE sevenzip_owned_temp)
 target_compile_definitions(sevenzip_hash_registry PRIVATE Z7_EXTERNAL_CODECS)
 target_link_libraries(sevenzip_common PUBLIC sevenzip_hash_registration)
 target_link_libraries(sevenzip_common PUBLIC ${CMAKE_DL_LIBS})
@@ -600,7 +614,6 @@ add_library(sevenzip_filesystem STATIC
     src/CPP/7zip/UI/Console/List.cpp src/CPP/7zip/UI/Console/List.h
 
     src/archivecodelocation.cpp src/archivecodelocation.h
-    src/qtownedtempdir.cpp src/qtownedtempdir.h
     src/CPP/7zip/UI/FileManager/LangUtils.cpp src/CPP/7zip/UI/FileManager/LangUtils.h
     src/qtlangdialogcontrols.h
     src/qtlanguageservices.cpp src/qtlanguageservices.h
@@ -960,7 +973,7 @@ if(BUILD_TESTING)
     endif()
     qt_add_executable(owned_temp_tests tests/owned_temp_tests.cpp)
     target_include_directories(owned_temp_tests PRIVATE src)
-    target_link_libraries(owned_temp_tests PRIVATE sevenzip_panel Qt6::Test)
+    target_link_libraries(owned_temp_tests PRIVATE sevenzip_common Qt6::Widgets Qt6::Test)
     add_test(NAME owned_temp COMMAND owned_temp_tests -silent)
     qt_add_executable(temp_cleanup_tests tests/temp_cleanup_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(temp_cleanup_tests PRIVATE tests)
