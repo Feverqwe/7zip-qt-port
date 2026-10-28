@@ -36,7 +36,7 @@ Manifest builds also include the installed vcpkg dependencies' copyright texts,
 covering static libraries whose notices cannot be found by scanning runtime files.
 Windows packages copy the imported VC CRT DLL dependency closure from the
 installed redistributable, with its notices, instead of shipping a CRT installer.
-The resulting archives are written to `build/packages`.
+The packaging command prints the resulting archives' paths in the project workspace.
 The packaging script itself does not upload artifacts or publish a release.
 
 Matching Qt source archives are checksum-verified private inputs for extracting

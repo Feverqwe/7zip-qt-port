@@ -15,6 +15,8 @@ concurrency:
 env:
   QT_VERSION: '6.12.0'
   CMAKE_BUILD_PARALLEL_LEVEL: '4'
+  SEVENZIP_RAMDISK: 'OFF'
+  SEVENZIP_BUILD_STORAGE: disk
 
 jobs:
   build:
@@ -30,27 +32,26 @@ jobs:
             qt-host: linux
             qt-arch: linux_gcc_64
             qt-archives: qtbase qttools qttranslations qtdeclarative qtwayland qtsvg icu
-            cmake-args: ''
             targets: sevenzip_desktop
           - platform: windows-x64
             runner: windows-2022
             qt-host: windows
             qt-arch: win64_msvc2022_64
             qt-archives: qtbase qttools qttranslations qtdeclarative
-            cmake-args: ''
             targets: sevenzip_desktop sevenzip_shell
           - platform: macos-arm64
             runner: macos-15
             qt-host: mac
             qt-arch: clang_64
             qt-archives: qtbase qttools qttranslations qtdeclarative
-            cmake-args: '-DCMAKE_OSX_DEPLOYMENT_TARGET=14.4'
             targets: sevenzip_desktop
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@v6
+      - name: Name the build checkout for workspace isolation
+        run: git switch -c ci-release-build
       - uses: actions/setup-python@v6
         with:
           python-version: '3.14'
@@ -68,7 +69,9 @@ jobs:
             libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
             libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 \
             libwayland-client0 libwayland-cursor0 libwayland-egl1 \
-            libglib2.0-dev patchelf ccache
+            libglib2.0-dev patchelf ccache clang-19 clang-tools-19 libclang-rt-19-dev
+          echo 'CC=clang-19' >> "$GITHUB_ENV"
+          echo 'CXX=clang++-19' >> "$GITHUB_ENV"
       - name: Configure Windows toolchain
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
@@ -76,7 +79,7 @@ jobs:
           arch: x64
       - name: Install macOS build tools
         if: runner.os == 'macOS'
-        run: brew install ninja ccache
+        run: brew install ninja ccache llvm
       - name: Install Windows compiler cache
         if: runner.os == 'Windows'
         shell: pwsh
@@ -120,19 +123,33 @@ jobs:
           subprocess.run(['git', '-C', upstream, 'fetch', '--depth=1',
                           baseline['repository'], baseline['revision']], check=True)
           PY
+      - name: Select release toolchain and workspace
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import sys
+          sys.path.insert(0, 'scripts/lib')
+          from toolchain import environment
+          from build_paths import directory
+          with open(os.environ['GITHUB_ENV'], 'a') as output:
+              for key, value in environment(Path.cwd(), 'release').items():
+                  if key != 'PATH':
+                      output.write(f'{key}={value}\n')
+              output.write(f"SEVENZIP_RELEASE_LICENSE_DIR={directory(Path.cwd(), 'cache') / 'qt-source'}\n")
+          PY
       - name: Build official engine and SFX
-        run: python3 scripts/prepare-runtime.py --upstream build/release-upstream
+        run: python3 scripts/prepare-runtime.py --preset release --sanitizer-runtime off --upstream build/release-upstream
       - name: Build Release
         run: |
-          cmake --preset release ${{ matrix.cmake-args }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-          cmake --build --preset release --target ${{ matrix.targets }}
+          ./scripts/build.sh release ${{ matrix.targets }}
       - name: Package Unix runtime
         if: runner.os != 'Windows'
         run: |
           python3 scripts/package.py \
-            --qt-source "build/qt-source/qtbase-everywhere-src-${QT_VERSION}.tar.xz" \
-            --qt-sha256 "build/qt-source/qtbase-everywhere-src-${QT_VERSION}.tar.xz.sha256" \
-            --icu-license build/qt-source/icu-73.2-LICENSE
+            --qt-source "$SEVENZIP_RELEASE_LICENSE_DIR/qtbase-everywhere-src-${QT_VERSION}.tar.xz" \
+            --qt-sha256 "$SEVENZIP_RELEASE_LICENSE_DIR/qtbase-everywhere-src-${QT_VERSION}.tar.xz.sha256" \
+            --icu-license "$SEVENZIP_RELEASE_LICENSE_DIR/icu-73.2-LICENSE"
       - name: Package Windows runtime
         if: runner.os == 'Windows'
         shell: pwsh
@@ -140,18 +157,18 @@ jobs:
           $crt = Join-Path $env:VCToolsRedistDir 'x64/Microsoft.VC143.CRT'
           $notices = Join-Path $env:VSINSTALLDIR 'Licenses/1033/Redist.txt'
           python scripts/package.py `
-            --qt-source "build/qt-source/qtbase-everywhere-src-$env:QT_VERSION.tar.xz" `
-            --qt-sha256 "build/qt-source/qtbase-everywhere-src-$env:QT_VERSION.tar.xz.sha256" `
-            --icu-license build/qt-source/icu-73.2-LICENSE `
+            --qt-source "$env:SEVENZIP_RELEASE_LICENSE_DIR/qtbase-everywhere-src-$env:QT_VERSION.tar.xz" `
+            --qt-sha256 "$env:SEVENZIP_RELEASE_LICENSE_DIR/qtbase-everywhere-src-$env:QT_VERSION.tar.xz.sha256" `
+            --icu-license "$env:SEVENZIP_RELEASE_LICENSE_DIR/icu-73.2-LICENSE" `
             --vc-runtime "$crt" --vc-notices "$notices"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v7
         with:
           name: sevenzip-desktop-${{ matrix.platform }}
           path: |
-            build/packages/*.zip
-            build/packages/*.tar.gz
-            !build/packages/*-source.*
+            ${{ env.SEVENZIP_ARTIFACT_ROOT }}/packages/*.zip
+            ${{ env.SEVENZIP_ARTIFACT_ROOT }}/packages/*.tar.gz
+            !${{ env.SEVENZIP_ARTIFACT_ROOT }}/packages/*-source.*
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
