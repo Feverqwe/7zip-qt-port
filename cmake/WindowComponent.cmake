@@ -4,17 +4,16 @@
 add_library(sevenzip_window STATIC)
 set_target_properties(sevenzip_window PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_compile_features(sevenzip_window PUBLIC cxx_std_23)
-target_link_libraries(sevenzip_window PUBLIC Qt6::Widgets sevenzip_location sevenzip_folder_loader)
-
-# Publish the component before Qt registers deployment. Attach the shared
-# implementations after legacy non-window consumers have been consolidated.
-function(sevenzip_finalize_window_component)
-    target_link_libraries(sevenzip_window PRIVATE
+target_link_libraries(sevenzip_window
+    PUBLIC Qt6::Widgets sevenzip_location sevenzip_folder_loader
+    PRIVATE
         sevenzip_main_window sevenzip_native_menu_presentation sevenzip_panel_context_menu
-        sevenzip_compress_presentation
+        sevenzip_compression_ui
         sevenzip_panel_selection sevenzip_file_transfer sevenzip_filesystem_scan
         sevenzip_panel_split sevenzip_split_dialog sevenzip_volume_operations)
 
+# Register the build-only group after all test consumers have been declared.
+function(sevenzip_add_window_test_target)
     if(BUILD_TESTING)
         add_custom_target(sevenzip_window_tests)
         get_property(sevenzip_window_consumers DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)

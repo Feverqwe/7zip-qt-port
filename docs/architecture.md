@@ -43,6 +43,9 @@ The application and window scenarios link the same production window library,
 including its command, transfer and presentation components. Tests add their own
 fixtures without copying the implementation or dependency list of another test.
 Window shortcuts and mount commands belong to the shared window component.
+Archive and compression scenarios link the resource and dialog libraries
+directly. Shared test helpers have their own targets; native override fixtures
+retain separate compilation where their definitions intentionally differ.
 
 ## Window and panel state
 
