@@ -1827,6 +1827,7 @@ if(BUILD_TESTING)
             target_link_libraries(native_mapi_${mapi_variant} PRIVATE Qt6::Core)
             set_target_properties(native_mapi_${mapi_variant} PROPERTIES
                 OUTPUT_NAME Mapi32 AUTOMOC OFF AUTOUIC OFF
+                PDB_NAME "native_mapi_${mapi_variant}"
                 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/mapi-fixtures/${mapi_variant}"
                 LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/mapi-fixtures/${mapi_variant}"
                 ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/mapi-fixtures/${mapi_variant}")
