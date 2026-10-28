@@ -801,24 +801,17 @@ add_library(sevenzip_folder_loader STATIC
 target_include_directories(sevenzip_folder_loader PUBLIC src)
 target_link_libraries(sevenzip_folder_loader PUBLIC sevenzip_location Qt6::Core)
 
-qt_add_executable(sevenzip_desktop
-    src/main.cpp src/desktopidentity.h
-      src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filepanelmodel.cpp src/filepanelmodel.h src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_rename.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/qtfiletransfertransaction.cpp src/qtfiletransfertransaction.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp
-    src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h
-    src/combodialog.h
-    src/copydialog.h
-    src/extractdialog.h
-    src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp
-    src/archivebackend.h
-    src/filesystemscanner.cpp
-    src/filesystemscanner.h
-    src/settingsdialog.h
-    src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h
-)
-
+qt_add_executable(sevenzip_desktop src/main.cpp src/desktopidentity.h)
 target_include_directories(sevenzip_desktop PRIVATE src)
-target_link_libraries(sevenzip_desktop PRIVATE Qt6::Widgets)
-target_sources(sevenzip_desktop PRIVATE src/qtguimain.cpp src/qtfilemanagermain.cpp)
+target_link_libraries(sevenzip_desktop PRIVATE
+    Qt6::Widgets
+    sevenzip_gui_entry sevenzip_file_manager_entry
+    sevenzip_main_window sevenzip_native_menu_presentation sevenzip_panel_context_menu
+    sevenzip_compress_presentation sevenzip_compress_source
+    sevenzip_archive_backend sevenzip_agent sevenzip_panel_selection
+    sevenzip_file_transfer sevenzip_filesystem_scan
+    sevenzip_panel_split sevenzip_split_dialog sevenzip_volume_operations
+    sevenzip_location sevenzip_folder_loader sevenzip_panel sevenzip_filesystem)
 if(WIN32)
     # Original resource.rc IDI_ICON entry, with build-local absolute paths.
     add_dependencies(sevenzip_desktop sevenzip_device_reader)
@@ -3516,7 +3509,7 @@ if(BUILD_TESTING)
     )
 endif()
 
-foreach(target IN ITEMS sevenzip_desktop archive_proxy_tests archive_backend_tests ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_copy_routing_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests checksum_tests extraction_options_tests compression_tests archive_item_open_tests nested_archive_tests volume_operations_tests)
+foreach(target IN ITEMS archive_proxy_tests archive_backend_tests ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_copy_routing_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests checksum_tests extraction_options_tests compression_tests archive_item_open_tests nested_archive_tests volume_operations_tests)
     if(TARGET ${target})
         target_link_libraries(${target} PRIVATE sevenzip_common)
     endif()
@@ -3633,7 +3626,7 @@ if(TARGET ui_navigation_tests)
     set_property(TEST ui_navigation APPEND PROPERTY ENVIRONMENT
         "SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
 endif()
-foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_copy_routing_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
+foreach(target IN ITEMS ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_copy_routing_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
     ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
     checksum_tests archive_item_open_tests nested_archive_tests native_navigation_window_tests panel_sort_tests combine_name_tests
     panel_key_tests main_shell_tests panel_shell_tests volume_workflow_tests bookmark_tests panel_focus_tests panel_selected_state_tests panel_runtime_tests properties_runtime_tests archive_selection_runtime_tests filesystem_selection_runtime_tests binding_lifecycle_tests app_lifecycle_window_tests)
@@ -3643,7 +3636,7 @@ foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_opera
     endif()
 endforeach()
 
-foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_copy_routing_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
+foreach(target IN ITEMS ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_copy_routing_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
     ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
     checksum_tests archive_item_open_tests nested_archive_tests native_navigation_window_tests panel_sort_tests combine_name_tests panel_key_tests main_shell_tests panel_shell_tests volume_workflow_tests)
     if(TARGET ${target})

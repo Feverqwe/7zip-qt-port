@@ -79,6 +79,9 @@ sevenzip_share_port_objects(sevenzip_compress_presentation src/createarchivedial
 sevenzip_share_port_objects(sevenzip_dialog_screen src/qtdialogscreenservices.h
     src/qtdialogscreenservices.cpp)
 
+if(APPLE OR WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(sevenzip_window_mount_sources src/qtfilemanagermountcommands.cpp)
+endif()
 sevenzip_share_port_objects(sevenzip_main_window src/mainwindow.h
     src/mainwindow.cpp
     src/mainwindow_archive_transfer.cpp
@@ -99,6 +102,7 @@ sevenzip_share_port_objects(sevenzip_main_window src/mainwindow.h
     src/mainwindow_menus.cpp
     src/mainwindow_panel.cpp
     src/mainwindow_panelkey.cpp
+    src/mainwindow_shortcuts.cpp
     src/mainwindow_preferences.cpp
     src/mainwindow_propertyinvalidation.cpp
     src/mainwindow_root.cpp
@@ -117,7 +121,11 @@ sevenzip_share_port_objects(sevenzip_main_window src/mainwindow.h
     src/qtfilemanagerdrag.cpp
     src/qtfilemanagerdragpresentation.cpp
     src/qtfilemanagerdraginput.cpp
-    src/qtfilemenuprojection.cpp)
+    src/qtfilemenuprojection.cpp
+    ${sevenzip_window_mount_sources})
+if(APPLE OR WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(sevenzip_main_window PRIVATE sevenzip_mount_ui)
+endif()
 
 sevenzip_share_port_objects(sevenzip_native_menu_presentation src/qtnativeshellmenupresentation.h
     src/qtnativeshellmenupresentation.cpp)
