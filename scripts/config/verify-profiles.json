@@ -36,7 +36,7 @@
   },
   "tooling": {
     "description": "Verification, runner sync, source snapshots, runtime cache and agent setup",
-    "tests": "^(ctest_selection|developer_workflow|hyperv_runner|upstream_baseline|runtime_cache|agent_output|project_memory_setup|windows_reference_builder)$",
+    "tests": "^(ctest_selection|developer_workflow|hyperv_runner|upstream_baseline|runtime_cache|module_cache|agent_output|project_memory_setup|windows_reference_builder)$",
     "interactive": false
   }
 }
