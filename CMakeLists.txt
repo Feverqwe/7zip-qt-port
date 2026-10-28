@@ -574,11 +574,21 @@ target_include_directories(sevenzip_operation_contract PUBLIC src "${CMAKE_CURRE
 target_link_libraries(sevenzip_operation_contract PUBLIC Qt6::Core Qt6::Network Qt6::RemoteObjects)
 qt_add_repc_merged(sevenzip_operation_contract src/operation.rep)
 
+add_library(sevenzip_operation_process STATIC src/qtoperationprocess.cpp src/qtoperationprocess.h)
+target_compile_features(sevenzip_operation_process PUBLIC cxx_std_23)
+target_include_directories(sevenzip_operation_process PUBLIC src)
+target_link_libraries(sevenzip_operation_process PUBLIC Qt6::Core)
+if(WIN32)
+    target_link_libraries(sevenzip_operation_process PRIVATE sevenzip_common)
+endif()
+
+add_library(sevenzip_operation_client STATIC src/qtoperationlauncher.cpp src/qtoperationlauncher.h)
+target_link_libraries(sevenzip_operation_client PUBLIC sevenzip_operation_contract
+    PRIVATE sevenzip_operation_process)
+
 add_library(sevenzip_filesystem STATIC
     src/qtarchivewritelease.cpp src/qtarchivewritelease.h
-    src/qtoperationprocess.cpp src/qtoperationprocess.h
     src/qtoperationendpoint.cpp src/qtoperationendpoint.h
-    src/qtoperationlauncher.cpp src/qtoperationlauncher.h
     src/archivesfxmodule.cpp src/archivesfxmodule.h
     src/qtarchivehashoperation.cpp src/qtarchivehashoperation.h
     src/qtarchivereadoperation.cpp src/qtarchivereadoperation.h
@@ -638,7 +648,7 @@ endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
 target_include_directories(sevenzip_filesystem PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
-target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_operation_contract sevenzip_common sevenzip_zip sevenzip_progress_sync)
+target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_operation_client sevenzip_common sevenzip_zip sevenzip_progress_sync)
 target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_system_icons sevenzip_name_sort)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/docs/upstream-baseline.json")
@@ -863,7 +873,7 @@ if(BUILD_TESTING)
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     qt_add_executable(operation_process_tests tests/operation_process_tests.cpp)
     target_include_directories(operation_process_tests PRIVATE src)
-    target_link_libraries(operation_process_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    target_link_libraries(operation_process_tests PRIVATE sevenzip_operation_process Qt6::Test)
     add_test(NAME operation_process COMMAND operation_process_tests -silent)
     set_tests_properties(operation_process PROPERTIES TIMEOUT 30)
     qt_add_executable(operation_protocol_tests tests/operation_protocol_tests.cpp)

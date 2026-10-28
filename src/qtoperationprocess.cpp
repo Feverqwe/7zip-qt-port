@@ -88,11 +88,11 @@ quint64 QtOperationProcess::processId() const {
 #endif
 }
 
-bool QtOperationProcess::start(const QString &program, const QString &channel, QString &error) {
+std::expected<void, QString> QtOperationProcess::start(const QString &program,
+                                                       const QString &channel) {
     if (result_.Status == State::Running || result_.Status == State::ObservationFailed) {
-        error =
-            QCoreApplication::translate("QtOperation", "An operation process is already running.");
-        return false;
+        return std::unexpected(
+            QCoreApplication::translate("QtOperation", "An operation process is already running."));
     }
     // Only the generated channel address goes through the native command
     // line. All selection, options and secrets belong to the local channel.
@@ -102,16 +102,16 @@ bool QtOperationProcess::start(const QString &program, const QString &channel, Q
     validChannel = validChannel && identifier.match(channel).hasMatch();
 #endif
     if (!QFileInfo(program).isAbsolute() || program.contains(QChar::Null) || !validChannel) {
-        error = QCoreApplication::translate("QtOperation", "Invalid operation process or channel.");
-        return false;
+        return std::unexpected(
+            QCoreApplication::translate("QtOperation", "Invalid operation process or channel."));
     }
 #ifdef Q_OS_WIN
     const UString arguments = UString(L"--operation-channel ") + channel.toStdWString().c_str();
     const WRes code = native_->Process.Create(program.toStdWString().c_str(), arguments, nullptr);
     if (code) {
-        error = QCoreApplication::translate("QtOperation", "Cannot launch operation process (%1).")
-                    .arg(code);
-        return false;
+        return std::unexpected(
+            QCoreApplication::translate("QtOperation", "Cannot launch operation process (%1).")
+                .arg(code));
     }
 #else
     QByteArray executable = QFile::encodeName(program);
@@ -126,12 +126,11 @@ bool QtOperationProcess::start(const QString &program, const QString &channel, Q
     const int code = Spawn(&native_->Pid, executable.constData(), arguments, environment);
     if (code) {
         native_->Pid = -1;
-        error = QString::fromLocal8Bit(std::strerror(code));
-        return false;
+        return std::unexpected(QString::fromLocal8Bit(std::strerror(code)));
     }
 #endif
     result_ = {State::Running, 0, {}};
-    return true;
+    return {};
 }
 
 QtOperationProcess::Result QtOperationProcess::poll() {

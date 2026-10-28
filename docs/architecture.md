@@ -154,7 +154,11 @@ and completion consume that result before changing operation state. Contract
 tests exercise the same generated interface and validation as both processes.
 The child copies and validates the complete request before explicitly acknowledging
 acceptance. Native process launch/observation, startup deadlines and independent
-child lifetime remain application responsibilities. Completion waits briefly for
+child lifetime remain application responsibilities.
+The process adapter and application observer have separate C++23 library targets;
+the adapter exposes launch failure as `std::expected` and keeps native observation
+ownership private. Process lifetime tests do not depend on archive/filesystem code.
+Completion waits briefly for
 the observer to acknowledge the result before the child exits. Before extraction
 starts, the child reports the actual output paths after any source dialog edits.
 The observer retains that metadata through partial results or a crash. Native

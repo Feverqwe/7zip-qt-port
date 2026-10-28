@@ -174,13 +174,16 @@ bool QtOperationLauncher::start(const QString &program, const QtOperationJob &jo
         error = QCoreApplication::translate("QtOperation", "Could not transfer the operation job.");
         return false;
     }
-    if (!state_->process_.start(program, channel, error)) {
+    const auto started = state_->process_.start(program, channel).transform([&] {
+        state_->started_ = true;
+        state_->startup_.start(10000);
+        state_->poll_.start();
+    });
+    if (!started) {
+        error = started.error();
         state_->host_.disableRemoting(&state_->channel_);
         return false;
     }
-    state_->started_ = true;
-    state_->startup_.start(10000);
-    state_->poll_.start();
     return true;
 }
 

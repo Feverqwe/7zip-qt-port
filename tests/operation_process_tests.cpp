@@ -27,9 +27,8 @@ class OperationProcessTests final : public QObject {
         QFETCH(QString, mode);
         QFETCH(int, code);
         QtOperationProcess process;
-        QString error;
-        QVERIFY2(process.start(QCoreApplication::applicationFilePath(), mode, error),
-                 qPrintable(error));
+        const auto started = process.start(QCoreApplication::applicationFilePath(), mode);
+        QVERIFY2(started.has_value(), started ? "" : qPrintable(started.error()));
         QTRY_COMPARE(process.poll().Status, QtOperationProcess::State::Exited);
         QCOMPARE(process.poll().Code, quint32(code));
     }
@@ -37,20 +36,31 @@ class OperationProcessTests final : public QObject {
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
         QtOperationProcess process;
-        QString error;
-        QVERIFY(!process.start(directory.filePath("missing 7zG"), "channel", error));
-        QVERIFY(!error.isEmpty());
+        const auto failed = process.start(directory.filePath("missing 7zG"), "channel");
+        QVERIFY(!failed);
+        QVERIFY(!failed.error().isEmpty());
         QCOMPARE(process.poll().Status, QtOperationProcess::State::Idle);
-        QVERIFY(process.start(QCoreApplication::applicationFilePath(), "success", error));
+        QVERIFY(process.start(QCoreApplication::applicationFilePath(), "success"));
         QTRY_COMPARE(process.poll().Status, QtOperationProcess::State::Exited);
         QCOMPARE(process.poll().Code, quint32(0));
     }
     void crashIsNotAnOperationExit() {
         QtOperationProcess process;
-        QString error;
-        QVERIFY(process.start(QCoreApplication::applicationFilePath(), "crash", error));
+        QVERIFY(process.start(QCoreApplication::applicationFilePath(), "crash"));
         QTRY_COMPARE(process.poll().Status, QtOperationProcess::State::Crashed);
         QVERIFY(process.poll().Code != 0);
+    }
+    void rejectedStartPreservesRunningChild() {
+        QtOperationProcess process;
+        QVERIFY(process.start(QCoreApplication::applicationFilePath(), "delayed"));
+        const auto child = process.processId();
+        QVERIFY(child != 0);
+        const auto rejected = process.start(QCoreApplication::applicationFilePath(), "success");
+        QVERIFY(!rejected);
+        QVERIFY(!rejected.error().isEmpty());
+        QCOMPARE(process.processId(), child);
+        QTRY_COMPARE(process.poll().Status, QtOperationProcess::State::Exited);
+        QCOMPARE(process.poll().Code, quint32(2));
     }
     void ownerExitDoesNotTerminateAcceptedWork() {
         QTemporaryDir directory;
@@ -77,12 +87,15 @@ int main(int argc, char **argv) {
     const auto arguments = application.arguments();
     if (arguments.contains("--probe-parent")) {
         QtOperationProcess operation;
-        QString error;
-        return operation.start(application.applicationFilePath(), "survive", error) ? 0 : 1;
+        return operation.start(application.applicationFilePath(), "survive") ? 0 : 1;
     }
     const int option = arguments.indexOf("--operation-channel");
     if (option >= 0) {
         const QString mode = arguments.value(option + 1);
+        if (mode == "delayed") {
+            QTimer::singleShot(250, &application, [&] { application.exit(2); });
+            return application.exec();
+        }
         if (mode == "crash") {
 #ifdef Q_OS_WIN
             TerminateProcess(GetCurrentProcess(), 0xc0000005u);
