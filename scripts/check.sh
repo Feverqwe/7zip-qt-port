@@ -24,6 +24,7 @@ if [[ "$#" -ne 0 ]]; then
 fi
 
 check_formatting() {
+  local format_status=0 format_exit
   if ! command -v clang-format >/dev/null 2>&1; then
     printf 'clang-format is required for the regression gate.\n' >&2
     return 1
@@ -32,10 +33,16 @@ check_formatting() {
   for source_dir in src tests; do
     if [[ -d "$source_dir" ]]; then
       while IFS= read -r -d '' source_file; do
-        clang-format --dry-run --Werror "$source_file" || return
+        if clang-format --dry-run --Werror "$source_file"; then
+          :
+        else
+          format_exit=$?
+          if [[ "$format_status" == 0 ]]; then format_status="$format_exit"; fi
+        fi
       done < <(find "$source_dir" -type f \( -name '*.cpp' -o -name '*.cppm' -o -name '*.mm' -o -name '*.h' -o -name '*.hpp' \) -print0)
     fi
   done
+  if [[ "$format_status" != 0 ]]; then return "$format_status"; fi
 
   # Runner snapshots already passed both Git whitespace checks locally before
   # source synchronization. The guest needs no project Git repository.
