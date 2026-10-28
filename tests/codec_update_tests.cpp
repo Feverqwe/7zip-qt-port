@@ -278,9 +278,8 @@ class CodecUpdateTests final : public QObject, protected ArchiveBackendTestSuppo
         QCOMPARE(opening.Folder.QueryInterface(IID_IFolderOperations, &operations), S_OK);
         writeFile(source, "replacement bytes");
         {
-            QtArchiveWriteLease owner;
-            QString error;
-            QVERIFY2(owner.acquire({archive}, error), qPrintable(error));
+            const auto owner = QtArchiveWriteLease::Acquire({archive});
+            QVERIFY2(owner.has_value(), owner ? "" : qPrintable(owner.error()));
             CCodecUpdateWorker worker(operations, source);
             worker.DisableUserQuestions = true;
             auto transport = resource->CreateProgressTransport(worker);

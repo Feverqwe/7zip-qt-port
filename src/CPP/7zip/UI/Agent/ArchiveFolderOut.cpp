@@ -106,17 +106,16 @@ HRESULT CAgentFolder::CommonUpdateOperation(AGENT_OP operation, bool moveMode,
     if (progress)
         progress->QueryInterface(IID_IFolderArchiveUpdateCallback, (void **)&updateCallback100);
 
-    QtArchiveWriteLease writeLease;
-    QString error;
-    const bool acquired =
-        writeLease.acquire({QString::fromWCharArray(_agentSpec->_archiveFilePath)}, error);
-    if (acquired)
+    auto writeLease =
+        QtArchiveWriteLease::Acquire({QString::fromWCharArray(_agentSpec->_archiveFilePath)});
+    QString error = writeLease ? QString{} : writeLease.error();
+    if (writeLease)
         if (auto *resource = dynamic_cast<QtArchiveFileResource *>(_agentSpec->GetEngineResource()))
             if (const auto reader = resource->NativeReaderLease();
                 reader && !reader->sourceIsCurrent())
                 error = QCoreApplication::translate(
                     "QtOperation", "The archive changed on disk. Refresh it before editing.");
-    if (!acquired || !error.isEmpty()) {
+    if (!writeLease || !error.isEmpty()) {
         if (updateCallback100)
             updateCallback100->UpdateErrorMessage(error.toStdWString().c_str());
         return E_FAIL;

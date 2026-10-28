@@ -1,5 +1,6 @@
 #pragma once
 #include <QStringList>
+#include <expected>
 #include <memory>
 #include <vector>
 class QLockFile;
@@ -8,10 +9,15 @@ class QLockFile;
 // Locks live outside selected input directories, so they cannot enter an archive.
 class QtArchiveWriteLease final {
   public:
-    QtArchiveWriteLease();
     ~QtArchiveWriteLease();
-    bool acquire(const QStringList &outputs, QString &error);
+    QtArchiveWriteLease(QtArchiveWriteLease &&) noexcept;
+    QtArchiveWriteLease &operator=(QtArchiveWriteLease &&) noexcept;
+    QtArchiveWriteLease(const QtArchiveWriteLease &) = delete;
+    QtArchiveWriteLease &operator=(const QtArchiveWriteLease &) = delete;
+    [[nodiscard]] static std::expected<QtArchiveWriteLease, QString>
+    Acquire(const QStringList &outputs);
 
   private:
+    QtArchiveWriteLease();
     std::vector<std::unique_ptr<QLockFile>> locks_;
 };

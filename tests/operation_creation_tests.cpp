@@ -163,9 +163,8 @@ class OperationCreationTests final : public QObject {
         const QByteArray original = readFile(archive);
         QVERIFY(writeFile(source, "replacement"));
         {
-            QtArchiveWriteLease owner;
-            QString error;
-            QVERIFY2(owner.acquire({archive}, error), qPrintable(error));
+            const auto owner = QtArchiveWriteLease::Acquire({archive});
+            QVERIFY2(owner.has_value(), owner ? "" : qPrintable(owner.error()));
             Environment report("SEVENZIP_OPERATION_UI_REPORT", directory.filePath("widgets.json"));
             const auto rejected = Run(QStringLiteral(SEVENZIP_OPERATION_HOST), job);
             QVERIFY2(rejected.Status == Outcome::Failure,

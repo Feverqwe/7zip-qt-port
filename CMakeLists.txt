@@ -586,8 +586,12 @@ add_library(sevenzip_operation_client STATIC src/qtoperationlauncher.cpp src/qto
 target_link_libraries(sevenzip_operation_client PUBLIC sevenzip_operation_contract
     PRIVATE sevenzip_operation_process)
 
+add_library(sevenzip_archive_write_lease STATIC src/qtarchivewritelease.cpp src/qtarchivewritelease.h)
+target_compile_features(sevenzip_archive_write_lease PUBLIC cxx_std_23)
+target_include_directories(sevenzip_archive_write_lease PUBLIC src)
+target_link_libraries(sevenzip_archive_write_lease PUBLIC Qt6::Core)
+
 add_library(sevenzip_filesystem STATIC
-    src/qtarchivewritelease.cpp src/qtarchivewritelease.h
     src/qtoperationendpoint.cpp src/qtoperationendpoint.h
     src/archivesfxmodule.cpp src/archivesfxmodule.h
     src/qtarchivehashoperation.cpp src/qtarchivehashoperation.h
@@ -648,7 +652,8 @@ endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
 target_include_directories(sevenzip_filesystem PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
-target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_operation_client sevenzip_common sevenzip_zip sevenzip_progress_sync)
+target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_operation_client sevenzip_archive_write_lease
+    sevenzip_common sevenzip_zip sevenzip_progress_sync)
 target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_system_icons sevenzip_name_sort)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/docs/upstream-baseline.json")
@@ -871,6 +876,10 @@ if(BUILD_TESTING)
     add_test(NAME file_list_hover COMMAND file_list_hover_tests -silent)
     set_tests_properties(file_list_hover PROPERTIES TIMEOUT 10
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(archive_write_lease_tests tests/archive_write_lease_tests.cpp)
+    target_link_libraries(archive_write_lease_tests PRIVATE sevenzip_archive_write_lease Qt6::Test)
+    add_test(NAME archive_write_lease COMMAND archive_write_lease_tests -silent)
+    set_tests_properties(archive_write_lease PROPERTIES TIMEOUT 30)
     qt_add_executable(operation_process_tests tests/operation_process_tests.cpp)
     target_include_directories(operation_process_tests PRIVATE src)
     target_link_libraries(operation_process_tests PRIVATE sevenzip_operation_process Qt6::Test)

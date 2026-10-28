@@ -170,7 +170,9 @@ boundary. Completion refreshes currently affected filesystem panels after their
 source guards release, preserving navigation made while the child was running.
 Creation uses the original UpdateGUI and Common/Update workers, including volumes,
 SFX and optional input deletion. A shared per-user write lease prevents competing
-native writers. Completed single-file outputs are published atomically; a
+native writers. Its separate C++23 library returns either an acquired, movable
+ownership token or an error; failed acquisition releases partial ownership.
+Completed single-file outputs are published atomically; a
 cross-filesystem move stages its cancellable copy beside the destination first.
 Readers may retain the previous generation, but a stale file-backed reader must
 refresh before editing. Completion reopens matching ordinary archive panels.

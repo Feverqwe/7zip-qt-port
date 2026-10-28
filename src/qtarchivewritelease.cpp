@@ -62,33 +62,33 @@ QString Identity(QString path) {
 
 QtArchiveWriteLease::QtArchiveWriteLease() = default;
 QtArchiveWriteLease::~QtArchiveWriteLease() = default;
+QtArchiveWriteLease::QtArchiveWriteLease(QtArchiveWriteLease &&) noexcept = default;
+QtArchiveWriteLease &QtArchiveWriteLease::operator=(QtArchiveWriteLease &&) noexcept = default;
 
-bool QtArchiveWriteLease::acquire(const QStringList &outputs, QString &error) {
+std::expected<QtArchiveWriteLease, QString>
+QtArchiveWriteLease::Acquire(const QStringList &outputs) {
     const QString cache = QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation);
     const QString root = cache + QStringLiteral("/sevenzip-desktop/archive-writers");
     if (cache.isEmpty() || !QDir().mkpath(root)) {
-        error =
-            QCoreApplication::translate("QtOperation", "Could not lock the archive for writing.");
-        return false;
+        return std::unexpected(
+            QCoreApplication::translate("QtOperation", "Could not lock the archive for writing."));
     }
     QStringList identities;
     for (const auto &output : outputs)
         identities.append(Identity(output));
     identities.removeDuplicates();
     std::sort(identities.begin(), identities.end());
-    std::vector<std::unique_ptr<QLockFile>> acquired;
+    QtArchiveWriteLease acquired;
     for (const auto &identity : identities) {
         const QString key = QString::fromLatin1(
             QCryptographicHash::hash(identity.toUtf8(), QCryptographicHash::Sha256).toHex());
         auto lock = std::make_unique<QLockFile>(root + '/' + key + ".lock");
         lock->setStaleLockTime(0); // Only a dead owner, never elapsed time, releases a live job.
         if (!lock->tryLock()) {
-            error = QCoreApplication::translate("QtOperation",
-                                                "Another operation is writing to this archive.");
-            return false;
+            return std::unexpected(QCoreApplication::translate(
+                "QtOperation", "Another operation is writing to this archive."));
         }
-        acquired.push_back(std::move(lock));
+        acquired.locks_.push_back(std::move(lock));
     }
-    locks_ = std::move(acquired);
-    return true;
+    return acquired;
 }

@@ -9,6 +9,7 @@
 #include "archivesfxmodule.h"
 #include "qtarchivewritelease.h"
 #include "qtdiagnostictext.h"
+#include <optional>
 
 #include "Common/StringConvert.h"
 
@@ -1177,7 +1178,7 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
 
     UString arcPath = options.ArchivePath.GetFinalPath();
 
-    QtArchiveWriteLease writeLease;
+    std::optional<QtArchiveWriteLease> writeLease;
     if (!options.StdOutMode) {
         QStringList outputs{QString::fromWCharArray(arcPath)};
         if (!options.VolumesSizes.IsEmpty())
@@ -1191,12 +1192,13 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
             if (!options.VolumesSizes.IsEmpty())
                 outputs.append(QString::fromWCharArray(output.GetFinalVolPath(options.SfxMode)));
         }
-        QString error;
-        if (!writeLease.acquire(outputs, error)) {
-            errorInfo.Message = error.toUtf8().constData();
+        auto acquired = QtArchiveWriteLease::Acquire(outputs);
+        if (!acquired) {
+            errorInfo.Message = acquired.error().toUtf8().constData();
             errorInfo.FileNames.Add(us2fs(arcPath));
             return E_FAIL;
         }
+        writeLease.emplace(std::move(*acquired));
     }
 
     if (!options.VolumesSizes.IsEmpty()) {
