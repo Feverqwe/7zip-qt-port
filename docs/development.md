@@ -309,6 +309,13 @@ python3 scripts/verify.py --preset modules-linux-dev --platform linux \
 MSVC module consumers retain ccache through a launcher that hashes the imported
 BMI files. This accounts for interface changes that ccache does not track from
 MSVC module references itself. Build trees and compiler caches remain incremental.
+Interface producers use the compiler when Ninja needs to rebuild
+them: the object-only ccache result cannot restore their additional IFC output
+after a RAM-disk reset. Completed interfaces remain incremental build outputs;
+ordinary sources and importers continue using the existing compiler cache.
+This handles unsupported paired outputs without clearing caches or disabling
+named modules. The [ccache module limitations](https://ccache.dev/manual/latest.html#_c_modules)
+describe this distinction.
 
 The separate C++23 module example requires module scanning, `std::views::chunk`
 and `std::println`. On macOS, use Homebrew GCC through `modules-gcc-dev` for

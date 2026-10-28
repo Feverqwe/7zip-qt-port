@@ -12,6 +12,7 @@ function(sevenzip_add_dependency_facade dependency core)
         target_compile_definitions(${facade} INTERFACE SEVENZIP_USE_${dependency_macro}_MODULE)
         set_target_properties(${facade} PROPERTIES
             AUTOMOC OFF AUTOUIC OFF POSITION_INDEPENDENT_CODE ON)
+        sevenzip_configure_module_cache(${facade})
     else()
         add_library(${facade} INTERFACE)
         target_link_libraries(${facade} INTERFACE ${core})

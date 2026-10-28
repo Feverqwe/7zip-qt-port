@@ -1,10 +1,26 @@
 #!/usr/bin/env python3
-"""Include CMake's explicit MSVC module imports in the compiler-cache key."""
+"""Cache MSVC importers safely and keep interface/object outputs paired."""
 
 import os
 from pathlib import Path
 import subprocess
 import sys
+
+
+def produces_interface(arguments):
+    for argument in arguments:
+        if argument.startswith(("-", "/")) and argument.lstrip("-/").lower() in (
+                "interface", "ifcoutput", "exportheader"):
+            return True
+        if argument.startswith("@"):
+            response = Path(argument[1:].strip('"'))
+            if response.suffix == ".modmap":
+                for line in response.read_text(encoding="utf-8-sig").splitlines():
+                    parts = line.strip().split(maxsplit=1)
+                    if parts and parts[0].lstrip("-/").lower() in (
+                            "interface", "ifcoutput", "exportheader"):
+                        return True
+    return False
 
 
 def imported_modules(arguments):
@@ -30,6 +46,11 @@ def imported_modules(arguments):
 
 def main():
     arguments = sys.argv[1:]
+    # ccache restores the object alone, not MSVC's additional IFC output.
+    # Ninja still reuses completed interface builds; only a dirty producer
+    # needs the compiler. Keep ordinary sources and importers in ccache.
+    if produces_interface(arguments):
+        return subprocess.call(arguments[1:])
     environment = os.environ.copy()
     modules = list(dict.fromkeys(imported_modules(arguments)))
     if modules:

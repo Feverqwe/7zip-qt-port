@@ -5282,7 +5282,7 @@ if(APPLE AND TEST copy_archive_refresh)
 endif()
 
 if(BUILD_TESTING)
-    foreach(sevenzip_workflow_suite IN ITEMS developer_workflow hyperv_runner runtime_cache)
+    foreach(sevenzip_workflow_suite IN ITEMS developer_workflow hyperv_runner runtime_cache module_cache)
         add_test(NAME ${sevenzip_workflow_suite} COMMAND ${Python3_EXECUTABLE}
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/${sevenzip_workflow_suite}_tests.py")
         set_tests_properties(${sevenzip_workflow_suite} PROPERTIES TIMEOUT 60)
