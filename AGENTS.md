@@ -265,7 +265,14 @@ Preserve unrelated working-tree changes and other tasks' memory entries.
 
 ### Validation scope
 
-Local focused tests and incremental compilation may run during implementation.
+Linux runner is the primary validation platform. For each code/build change,
+build affected targets and run focused checks there first. After Linux passes,
+validate the same change on macOS and Windows; those secondary checks may run
+in parallel. Fix Linux failures before starting secondary acceptance runs.
+If a runner is unavailable, continue independent work and report the missing
+platform evidence rather than waiting indefinitely.
+
+Incremental compilation and targeted diagnostics may run during implementation.
 Batch remote validation when further related edits are already planned: do not
 start remote suites after each minor/nonfinal patch. Run the affected suites and
 direct consumers together when the combined change is ready. An intermediate
@@ -273,10 +280,8 @@ remote diagnostic is appropriate only to resolve a concrete platform uncertainty
 failure or prerequisite that prevents further work. Repeat remote checks only
 when later edits affect their tested behavior or dependencies.
 
-Validate platform-independent changes on macOS. For platform-dependent changes,
-run the relevant checks on all supported platforms: macOS, Linux and Windows.
-Select focused checks from the changed behavior and its platform dependencies;
-do not repeat cross-platform validation for platform-independent changes alone.
+Select focused checks from the changed behavior and its platform dependencies.
+Documentation-only changes still need only `git diff --check`.
 
 For behavior changes, use the [test usefulness criteria](#test-usefulness).
 A pre-fix failing run follows the

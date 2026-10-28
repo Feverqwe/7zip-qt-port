@@ -321,7 +321,8 @@ include(cmake/DeveloperWorkflow.cmake)
                               "-fmodule-output=compiled module.pcm", "@msvc.modmap"])
 
     def run_verify(self, root, selection, plan=False, succeeds=True):
-        command = [sys.executable, str(root / "scripts/verify.py"), "--tests", selection]
+        command = [sys.executable, str(root / "scripts/verify.py"), "--platform", "local",
+                   "--tests", selection]
         if plan:
             command.append("--plan")
         # This fixture exercises the wrappers without any Qt dependency.

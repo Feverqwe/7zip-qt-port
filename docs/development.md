@@ -327,8 +327,12 @@ MSVC2022/Qt6.12.0 kit; see [runtime artifacts and CI scope](ci.md). Point
 
 ## Local commands
 
-For a focused correction, use one command to configure, build the selected
-targets and run their CTest suites (including required fixtures):
+Linux runner is the primary validation platform. For a focused correction,
+configure, build the selected targets and run their CTest suites there first.
+After Linux passes, check macOS locally and Windows; these secondary checks may
+run in parallel. `verify.py` defaults to Linux; `--platform local` selects the
+current machine explicitly.
+`--platform all` checks Linux before Windows and stops if Linux fails.
 
 ```sh
 python3 scripts/verify.py --list
@@ -336,7 +340,8 @@ python3 scripts/verify.py navigation
 python3 scripts/verify.py archive-open
 python3 scripts/verify.py options --plan
 python3 scripts/verify.py --tests '^address_combo$'
-python3 scripts/verify.py navigation --platform all
+python3 scripts/verify.py navigation --platform local
+python3 scripts/verify.py navigation --platform windows
 ```
 
 Profiles in `scripts/config/verify-profiles.json` define scenario scope and whether a

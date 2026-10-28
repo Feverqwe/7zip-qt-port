@@ -140,7 +140,8 @@ def parse_args(argv, profiles):
     parser.add_argument("--preset", choices=["dev", "modules-dev", "modules-gcc-dev",
                                            "modules-linux-dev", "vcpkg-dev"], default="dev",
                         help="test-enabled preset; build the application with scripts/build.sh release")
-    parser.add_argument("--platform", choices=["local", "linux", "windows", "all"], default="local")
+    parser.add_argument("--platform", choices=["local", "linux", "windows", "all"], default="linux",
+                        help="validation platform (default: linux runner)")
     parser.add_argument("--plan", action="store_true", help="configure and show tests/targets without building or testing")
     parser.add_argument("--list", action="store_true", help="list scenario profiles")
     parser.add_argument("--prepare-runtime", action="store_true",
@@ -164,25 +165,30 @@ def main(argv=None):
         return 0
     profile = profiles.get(args.profile, {"tests": args.tests})
     if args.platform != "local":
-        command = [sys.executable, str(ROOT / "scripts/hyperv-runner.py"), "run", args.platform,
-                   "--preset", args.preset]
-        if args.platform in ("windows", "all") and (args.interactive or args.elevated or profile.get("interactive")):
-            command.append("--interactive")
-        if args.elevated:
-            command.append("--elevated")
-        if args.prepare_runtime and not args.plan:
-            command.append("--prepare-runtime")
-        command += ["--", "scripts/verify.py", "--preset", args.preset]
-        if args.profile:
-            command.append(args.profile)
-        if args.tests:
-            command += ["--tests", args.tests]
-        if args.plan:
-            command.append("--plan")
-        if args.prepare_runtime:
-            command.append("--prepare-runtime")
-        environment = dict(os.environ, SEVENZIP_INVOCATION_STARTED=str(INVOCATION_STARTED))
-        return subprocess.run(command, cwd=ROOT, env=environment).returncode
+        platforms = ("linux", "windows") if args.platform == "all" else (args.platform,)
+        for platform in platforms:
+            command = [sys.executable, str(ROOT / "scripts/hyperv-runner.py"), "run", platform,
+                       "--preset", args.preset]
+            if platform == "windows" and (args.interactive or args.elevated or profile.get("interactive")):
+                command.append("--interactive")
+            if platform == "windows" and args.elevated:
+                command.append("--elevated")
+            if args.prepare_runtime and not args.plan:
+                command.append("--prepare-runtime")
+            command += ["--", "scripts/verify.py", "--platform", "local", "--preset", args.preset]
+            if args.profile:
+                command.append(args.profile)
+            if args.tests:
+                command += ["--tests", args.tests]
+            if args.plan:
+                command.append("--plan")
+            if args.prepare_runtime:
+                command.append("--prepare-runtime")
+            environment = dict(os.environ, SEVENZIP_INVOCATION_STARTED=str(INVOCATION_STARTED))
+            result = subprocess.run(command, cwd=ROOT, env=environment)
+            if result.returncode:
+                return result.returncode
+        return 0
     from lib.toolchain import apply_environment
     apply_environment(ROOT, args.preset)
     verify(ROOT, args, profile)

@@ -550,7 +550,7 @@ sys.exit(code)
             with patch.object(runner, "remote", local_remote), \
                     patch.dict(os.environ, {"QT_QPA_PLATFORM": "offscreen", "CMAKE_BUILD_PARALLEL_LEVEL": "1"}):
                 with self.assertRaises(subprocess.CalledProcessError) as error:
-                    runner.execute_check({}, "linux", "dev", root.as_posix(), "token",
+                    runner.execute_check({"branch": "snapshot"}, "linux", "dev", root.as_posix(), "token",
                                          ["bash", "scripts/fixture.sh", *args], False)
             self.assertEqual(error.exception.returncode, 23)
             log = (root / "check.log").read_text()
@@ -589,7 +589,7 @@ Path('selected.json').write_text(json.dumps({key: os.environ.get(key) for key in
             (tool_root / "host-tool.py").write_text("raise SystemExit(0)\n")
             with patch.object(runner, "remote", local_remote), \
                     patch.dict(os.environ, {"CMAKE_BUILD_PARALLEL_LEVEL": "2"}):
-                runner.execute_check({"config": settings}, "linux", "vcpkg-dev",
+                runner.execute_check({"config": settings, "branch": "snapshot"}, "linux", "vcpkg-dev",
                                      root.as_posix(), "token", [sys.executable, "scripts/probe.py"], True)
             selected = json.loads((root / "selected.json").read_text())
             prepared = json.loads((root / "prepared.json").read_text())
@@ -612,9 +612,9 @@ Path('selected.json').write_text(json.dumps({key: os.environ.get(key) for key in
             shutil.copy2(ROOT / "scripts/lib/runner_timing.py", root / "scripts/lib/runner_timing.py")
             self.workspace_fixture(root)
             selected, bundled = directory(root, "tools") / "vcpkg", root / "bundled tool"
-            for directory, status in ((selected, 0), (bundled, 61)):
-                directory.mkdir(parents=True)
-                (directory / "vcpkg.py").write_text(f"raise SystemExit({status})\n")
+            for tool_directory, status in ((selected, 0), (bundled, 61)):
+                tool_directory.mkdir(parents=True)
+                (tool_directory / "vcpkg.py").write_text(f"raise SystemExit({status})\n")
             (root / "vcvars.bat").write_text(
                 '@echo off\nset "VCPKG_ROOT=' + bundled.as_posix() + '"\n')
             probe = '''import os, subprocess, sys
@@ -634,10 +634,34 @@ subprocess.run([sys.executable, str(Path(os.environ['VCPKG_ROOT']) / 'vcpkg.py')
                                       capture_output=True)
 
             with patch.object(runner, "remote", local_remote):
-                result = runner.execute_check({"config": settings}, "windows", "vcpkg-dev",
+                result = runner.execute_check({"config": settings, "branch": "snapshot"}, "windows", "vcpkg-dev",
                                               root.as_posix(), "fixture",
                                               [Path(sys.executable).as_posix(), "scripts/probe.py"], True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_linux_is_first_and_failure_stops_secondary_verification(self):
+        spec = importlib.util.spec_from_file_location("verify_order", ROOT / "scripts/verify.py")
+        verify = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(verify)
+        for selection, failure, expected in (([], 0, ["linux"]),
+                (["--platform", "all"], 0, ["linux", "windows"]),
+                (["--platform", "all"], 7, ["linux"])):
+            with self.subTest(selection=selection, failure=failure):
+                visited = []
+
+                def run_stage(command, **kwargs):
+                    platform = command[3]
+                    visited.append(platform)
+                    guest = command[command.index("--") + 2:]
+                    guest_args = verify.parse_args(guest, {})
+                    if guest_args.platform != "local":
+                        raise RuntimeError("Guest verification would dispatch another runner")
+                    return subprocess.CompletedProcess(command, failure if platform == "linux" else 0)
+
+                with patch.object(verify.subprocess, "run", side_effect=run_stage):
+                    status = verify.main(["--tests", "^fixture$", *selection])
+                self.assertEqual(status, failure)
+                self.assertEqual(visited, expected)
 
     def test_remote_verification_prepares_the_requested_runtime_toolchain(self):
         # A default runtime with a module preset reproduced incompatible ASan
@@ -681,7 +705,7 @@ raise SystemExit(0 if matches else 9)
                     return original_run(command, **kwargs)
                 args = runner.parse_arguments(command[2:])
                 args.command[0] = sys.executable
-                runner.execute_check({}, "linux", args.preset, root.as_posix(), "token",
+                runner.execute_check({"branch": "snapshot"}, "linux", args.preset, root.as_posix(), "token",
                                      args.command, args.prepare_runtime)
                 return subprocess.CompletedProcess(command, 0)
 
