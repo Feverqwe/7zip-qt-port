@@ -38,8 +38,11 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
     HRESULT result;
     std::unique_ptr<QtArchiveTransferBackup> rollback;
     const QString destinationArchive = panelUi_[destinationIndex].archive;
-    if (move)
-        rollback = backend_->saveArchiveTransferDestination(destinationArchive);
+    if (move) {
+        auto saved = backend_->saveArchiveTransferDestination(destinationArchive);
+        if (saved)
+            rollback = std::move(*saved);
+    }
     if (move && !rollback) {
         QMessageBox::warning(
             this, QtLangText(IDS_MOVING),

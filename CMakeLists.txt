@@ -617,6 +617,14 @@ set_target_properties(sevenzip_archive_input PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_include_directories(sevenzip_archive_input PUBLIC src)
 target_link_libraries(sevenzip_archive_input PUBLIC sevenzip_native_types PRIVATE sevenzip_common)
 
+add_library(sevenzip_archive_transfer_backup STATIC
+    src/qtarchivetransferbackup.cpp src/qtarchivetransferbackup.h)
+set_target_properties(sevenzip_archive_transfer_backup PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+target_include_directories(sevenzip_archive_transfer_backup PUBLIC src)
+target_link_libraries(sevenzip_archive_transfer_backup PUBLIC Qt6::Core
+    PRIVATE sevenzip_common)
+target_compile_features(sevenzip_archive_transfer_backup PUBLIC cxx_std_23)
+
 add_library(sevenzip_filesystem STATIC
     src/qtoperationendpoint.cpp src/qtoperationendpoint.h
     src/archivesfxmodule.cpp src/archivesfxmodule.h
@@ -4173,10 +4181,9 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME native_update_path COMMAND native_update_path_tests -silent)
     set_tests_properties(native_update_path PROPERTIES TIMEOUT 30 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
-    qt_add_executable(archive_transfer_backup_tests tests/archive_transfer_backup_tests.cpp
-        ${codec_update_sources})
+    qt_add_executable(archive_transfer_backup_tests tests/archive_transfer_backup_tests.cpp)
     target_include_directories(archive_transfer_backup_tests PRIVATE src tests)
-    target_link_libraries(archive_transfer_backup_tests PRIVATE sevenzip_location Qt6::Test)
+    target_link_libraries(archive_transfer_backup_tests PRIVATE sevenzip_archive_transfer_backup Qt6::Test)
     add_test(NAME archive_transfer_backup COMMAND archive_transfer_backup_tests -silent)
     set_tests_properties(archive_transfer_backup PROPERTIES TIMEOUT 30)
     get_target_property(source_link_options_sources compression_preferences_tests SOURCES)

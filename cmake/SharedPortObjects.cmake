@@ -47,7 +47,11 @@ function(sevenzip_share_port_objects owner header)
         endif()
         list(REMOVE_ITEM consumer_sources ${module_sources} ${header})
         set_property(TARGET ${consumer} PROPERTY SOURCES ${consumer_sources})
-        target_sources(${consumer} PRIVATE $<TARGET_OBJECTS:${owner}>)
+        if(owner STREQUAL "sevenzip_archive_backend")
+            target_link_libraries(${consumer} PRIVATE ${owner})
+        else()
+            target_sources(${consumer} PRIVATE $<TARGET_OBJECTS:${owner}>)
+        endif()
     endforeach()
 endfunction()
 
@@ -59,8 +63,9 @@ sevenzip_share_port_objects(sevenzip_archive_backend src/archivebackend.h
     src/archivebackend_sourceextract.cpp
     src/archivebackend_sourceupdate.cpp
     src/archivebackend_validation.cpp
-    src/archivebackend_workerprogress.cpp src/archivebackend_transfer.cpp
-    src/qtarchivetransferbackup.h)
+    src/archivebackend_workerprogress.cpp src/archivebackend_transfer.cpp)
+target_link_libraries(sevenzip_archive_backend PRIVATE sevenzip_archive_transfer_backup)
+target_link_libraries(sevenzip_location PRIVATE sevenzip_archive_transfer_backup)
 
 sevenzip_share_port_objects(sevenzip_compress_presentation src/createarchivedialog.h
     src/createarchivedialog.cpp

@@ -1,18 +1,21 @@
 #pragma once
 #include "qtownedtempdir.h"
 #include <QString>
+#include <expected>
 #include <functional>
+#include <memory>
 
-class ArchiveBackend;
+enum class ArchiveTransferBackupError { TemporaryStorageUnavailable, CopyFailed };
 
 // A leased destination snapshot spanning the source-owned Copy/Move workflow.
 class QtArchiveTransferBackup final {
-    friend class ArchiveBackend;
     QtOwnedTempDir directory_;
     QString destination_;
     explicit QtArchiveTransferBackup(QString destination);
-    bool save();
 
   public:
+    [[nodiscard]] static std::expected<std::unique_ptr<QtArchiveTransferBackup>,
+                                       ArchiveTransferBackupError>
+    Create(const QString &destination);
     bool restore(const std::function<bool()> &closeArchive = {}) const;
 };

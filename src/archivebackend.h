@@ -13,6 +13,7 @@ class CArc;
 #include <QPair>
 #include <QStringList>
 #include <QTimer>
+#include <expected>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -26,6 +27,7 @@ class ArchiveNativeOpen;
 class ArchiveDevice;
 class QtOwnedTempDir;
 class QtArchiveTransferBackup;
+enum class ArchiveTransferBackupError;
 class QThread;
 struct IOpenCallbackUI;
 struct NativeArchiveListing;
@@ -210,7 +212,7 @@ class ArchiveBackend : public QObject {
     void hashMethods(const QStringList &paths, const QStringList &methods);
     HRESULT loadHashProviders(CExternalCodecs &providers) const;
     HRESULT loadBenchmarkProviders(CExternalCodecs &providers) const;
-    std::unique_ptr<QtArchiveTransferBackup>
+    std::expected<std::unique_ptr<QtArchiveTransferBackup>, ArchiveTransferBackupError>
     saveArchiveTransferDestination(const QString &path) const;
     // Extract one literal member into a private spool. Source callbacks own
     // the final output stream and filesystem presentation.

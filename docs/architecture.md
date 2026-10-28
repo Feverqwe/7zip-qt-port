@@ -233,6 +233,10 @@ open processes, pending writes and parent-chain updates. Module images, streams,
 temporary files and folder providers cannot be released while consumers retain
 them. Failure and cancellation must leave a reusable application state and
 preserve retained edit data where the operation requires it.
+The interarchive destination backup is a separate C++23 resource library.
+The backend returns its exclusive owner through `std::expected`; the File Manager
+keeps it through Move and rollback. Restoration retains the native copy stream
+and destination-side atomic publication, after the caller closes the reader.
 
 Temporary-object identity, registration and directory ownership form a C++23
 object library composed into the shared native library. Native temporary creation
