@@ -49,6 +49,14 @@ pass before ZIP creation. Local `build-app.sh` installations use the same runtim
 compaction and signing. Developer ID,
 notarization and Windows Authenticode are not configured.
 
+After `./scripts/build-app.sh release`, use
+`python3 scripts/check-installed-runtime.py --install` with the printed installation
+directory to check startup and native archive operations without SDK search paths
+in the environment. The check uses disposable Unicode/space-containing files
+and private settings, and verifies extracted bytes, a deployed external codec
+and unchanged inputs. Linux requires a desktop session or system `xvfb-run`;
+Windows needs an interactive runner session.
+
 `./scripts/release.sh patch` (also `minor`, `major` or an explicit larger version)
 requires a clean tree, changes the CMake version, commits it, creates an annotated
 `vX.Y.Z` tag, and atomically pushes branch and tag to `origin`.
