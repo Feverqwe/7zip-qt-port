@@ -435,6 +435,10 @@ dependencies, not every test executable. Use `verify.py` for a focused scenario
 or pass explicit targets. `build.sh dev all` is an explicit all-target build;
 use `SEVENZIP_BUILD_STORAGE=disk` when its intermediates exceed the RAM budget.
 
+`./scripts/build.sh dev sevenzip_window_tests` builds the application and its
+window test consumers without running them. Select runtime checks separately
+with `verify.py` or `ctest.sh`; long suites remain opt-in.
+
 Focused checks are the default for agent work. Select targets and suites using
 [testing](testing.md); use `./scripts/check.sh` only when the full-gate criteria
 in [AGENTS.md](../AGENTS.md#validation-and-ui-reference) apply. Before each batch,

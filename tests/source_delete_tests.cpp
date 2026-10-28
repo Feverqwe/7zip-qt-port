@@ -273,11 +273,19 @@ class SourceDeleteTests final : public QObject, protected MainWindowTestSupport 
             QTRY_COMPARE(view->rowCount(), 3);
         }
         panel.Set_AutoRefresh_Mode(false);
-        view->setCurrentCell(0, 0);
-        view->selectionModel()->select(view->model()->index(0, 0),
-                                       QItemSelectionModel::ClearAndSelect |
-                                           QItemSelectionModel::Rows);
-        view->selectionModel()->select(view->model()->index(1, 0),
+        const auto itemNamed = [view](const QString &name) {
+            const auto matches = view->model()->match(view->model()->index(0, 0), Qt::DisplayRole,
+                                                      name, 1, Qt::MatchExactly);
+            return matches.isEmpty() ? QModelIndex{} : matches.front();
+        };
+        const QModelIndex first = itemNamed(QStringLiteral("a 空.bin"));
+        const QModelIndex second = itemNamed(QStringLiteral("b space.bin"));
+        QVERIFY(first.isValid());
+        QVERIFY(second.isValid());
+        view->setCurrentCell(first.row(), 0);
+        view->selectionModel()->select(first, QItemSelectionModel::ClearAndSelect |
+                                                  QItemSelectionModel::Rows);
+        view->selectionModel()->select(second,
                                        QItemSelectionModel::Select | QItemSelectionModel::Rows);
         view->setFocus();
         CRecordVector<UInt32> operated;
@@ -349,7 +357,9 @@ class SourceDeleteTests final : public QObject, protected MainWindowTestSupport 
             QCOMPARE(remaining.readAll(), QByteArray("protected bytes"));
         }
         QFile keep(fixture.filePath("keep.bin"));
-        QVERIFY(keep.open(QIODevice::ReadOnly));
+        QVERIFY2(keep.open(QIODevice::ReadOnly),
+                 qPrintable(
+                     QStringLiteral("Operated entries: %1, %2").arg(firstDeleted, secondDeleted)));
         QCOMPARE(keep.readAll(), QByteArray("protected bytes"));
         QCOMPARE(peer->sourcePanel->GetFolder(), (IFolderFolder *)peerFolder);
         QCOMPARE(peer->rowCount(), 0);

@@ -39,9 +39,10 @@ closure, including consumers that only present options. Shared object libraries
 provide the same production implementation to application and test targets.
 Consumers link these component targets so their required libraries follow the
 implementation through the build graph, including archive resource libraries.
-The desktop executable composes these components around its application entry;
-it does not maintain another list of their implementation sources. Window
-shortcuts and mount commands belong to the shared window component.
+The application and window scenarios link the same production window library,
+including its command, transfer and presentation components. Tests add their own
+fixtures without copying the implementation or dependency list of another test.
+Window shortcuts and mount commands belong to the shared window component.
 
 ## Window and panel state
 
