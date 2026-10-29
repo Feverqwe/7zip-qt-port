@@ -204,10 +204,11 @@ whole workflow and pixel equality are not established by those initial views.
 
 ```sh
 ./scripts/build.sh dev ui_geometry_tests
-ctest --preset dev -R '^ui_geometry$' --output-on-failure
+./scripts/ctest.sh --preset dev -R '^ui_geometry$' --output-on-failure
 ```
 
-CTest writes reports to `build/dev/ui-reports/`. `tests/layout_inspection.h`
+CTest writes reports to `ui-reports/` in the selected CMake build directory
+(see [build workspace lookup](../development.md#local-commands)). `tests/layout_inspection.h`
 also supports other Qt tests through `UiInspection::writeReport(widget, tag)`.
 `SEVENZIP_UI_REPORT_DIR` overrides the output directory; standalone test runs
 default to `ui-reports/` in the current directory. `ui_layout`, `extract_dialog`,

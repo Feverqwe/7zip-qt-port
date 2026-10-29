@@ -211,7 +211,8 @@ source property catalog to the visible table columns.
 
 `panel_selected_state` checks normal/flat archive cells in all four views at
 980×620 and 640×480, verifies central/active view visibility, and writes
-`archive-runtime-mode*-flat*-*.json` under `build/dev/ui-reports`. Review geometry,
+`archive-runtime-mode*-flat*-*.json` under `ui-reports/` in the selected CMake
+build directory. Review geometry,
 control order and clipping in those current-build reports. These establish Qt
 usability/typed value behavior, not rendered Windows pixel parity. The later
 `panel_columns` reports cover source property columns and their header controls.

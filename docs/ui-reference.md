@@ -58,7 +58,7 @@ CTest's `ui_reference_copy` fixture runs `copy_dialog` first, even with this
 filter, so reports come from the current build. `ui_reference_progress` similarly
 runs `progress_dialog` and writes `progress-parity.json` for its 16 reports.
 Copy output is
-`build/dev/ui-reports/copy-parity.json`: checked states, errors, recorded
+`ui-reports/copy-parity.json` in the selected CMake build directory: checked states, errors, recorded
 adaptations and limitations. Exit codes: 0 passed, 1 comparison differences,
 2 invalid inputs/extraction error. Tests use local disposable fixtures, no
 user archive data or live services. `ui_parity_tool` exercises synthetic
@@ -67,11 +67,12 @@ resources and deliberately broken widget reports independently of upstream.
 For direct comparison (generate fresh reports first):
 
 ```sh
+build_root="$(python3 scripts/lib/build_paths.py path --root "$PWD" --category work --preset dev)"
 python3 scripts/check_ui_parity.py compare \
   --reference docs/ui-reference/copy-dialog.reference.json \
   --contract docs/ui-reference/copy-dialog.contract.json \
-  --reports build/dev/ui-reports \
-  --output build/dev/ui-reports/copy-parity.json
+  --reports "$build_root/dev/ui-reports" \
+  --output "$build_root/dev/ui-reports/copy-parity.json"
 ```
 
 ## Extract and review an upstream baseline
@@ -179,7 +180,7 @@ Browse cancellation/success/normalization. JSON omits editable values and cannot
 prove these transitions, read-only state or actual selection contents.
 
 Password uses the `ui_reference_password` producer fixture and writes
-`build/dev/ui-reports/password-parity.json`. Its resource extraction also includes
+`ui-reports/password-parity.json` in that build directory. Its resource extraction also includes
 PasswordDialog.cpp. OnInit, ReadControls, SetTextSpec and OnOK were reviewed;
 `password_dialog` covers masked/shown transitions, raw values and confirmation.
 `ui_archive_states` covers backend submission, cancellation and password lifetime.

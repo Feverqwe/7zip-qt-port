@@ -199,7 +199,8 @@ revision, hashes оригинальных и adapted files, wrapper и executabl
 его появление отслеживается и в уже настроенном build-каталоге.
 Тест открывает настоящий native7zFM File/System menu на disposable Unicode
 файле и сравнивает его runtime HMENU с raw source query и Qt projection.
-Он пишет в `build/dev/ui-reports/` два `native-system-rendered-*.json` с rows,
+Он пишет в `ui-reports/` выбранного CMake build-каталога два
+`native-system-rendered-*.json` с rows,
 font/DPI/style и два affected PNG при `SEVENZIP_CAPTURE_SCREENSHOTS=1`.
 Этот comparator относится только к System popup и не заменяет общий capture
 выше. Другая машина/DPI требует своей серии. Приёмка и observed adaptations —

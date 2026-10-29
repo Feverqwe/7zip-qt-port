@@ -38,7 +38,8 @@
 
 - [Agent documentation and tooling audit, 2026-10-25](agent-maintenance-2026-10-25.md).
 - Implemented plans: [direct device access](plans/direct-device-reading-plan.md),
-  [interface redesign](plans/ui-redesign-plan.md), [ZIP refresh](plans/zip-refresh-plan.md).
+  [interface redesign](plans/ui-redesign-plan.md), [ZIP refresh](plans/zip-refresh-plan.md),
+  [C++23 migration and acceptance](plans/cpp23-project-migration.md).
   Their iteration orders and former next steps are historical; current behavior
   and limitations belong to the [documentation map](../README.md).
 - [Runner installations and desktop/network diagnoses](runner-environment-2026-10-18.md).

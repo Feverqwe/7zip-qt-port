@@ -78,10 +78,11 @@ python3 scripts/prepare-runtime.py
 ```
 
 `check.sh` checks C++ formatting, builds the application and runs the default
-test suite. On macOS, open `build/dev/Sevenzip.app`, or launch it from a terminal:
+test suite. On macOS, locate the development build and launch it from a terminal:
 
 ```sh
-build/dev/Sevenzip.app/Contents/MacOS/Sevenzip /path/to/archive.7z
+build_root="$(python3 scripts/lib/build_paths.py path --root "$PWD" --category work --preset dev)"
+"$build_root/dev/Sevenzip.app/Contents/MacOS/Sevenzip" /path/to/archive.7z
 ```
 
 To build a Release package without test executables:

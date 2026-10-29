@@ -5,10 +5,17 @@ description: Trace Sevenzip Desktop C++ code, Qt UI behavior, native engine inte
 
 # Navigate Sevenzip Desktop and upstream 7-Zip
 
-Search with `rg -n` and `rg --files`. Use `build/dev/compile_commands.json` for
-compiler-aware definitions/references. Refresh with `./scripts/build.sh dev --configure-only`
-when build inputs change; check a translation unit with
-`clangd --check=<source-file> --compile-commands-dir=build/dev`.
+Search with `rg -n` and `rg --files`. Refresh compiler commands with
+`./scripts/build.sh dev --configure-only` when build inputs change, then locate
+the selected workspace and check a translation unit:
+
+```sh
+build_root="$(python3 scripts/lib/build_paths.py path --root "$PWD" --category work --preset dev)"
+clangd --check=<source-file> --compile-commands-dir="$build_root/dev"
+```
+
+The compilation database is `$build_root/dev/compile_commands.json`; do not
+assume a fixed path across branches, platforms or RAM/disk workspaces.
 
 Locate original code in the read-only
 `<harness-root>/../7zip-upstream/CPP/7zip/` (resolve the shared harness using

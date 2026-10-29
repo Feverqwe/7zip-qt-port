@@ -19,7 +19,7 @@ evidence applies only to the recorded revision, platform and scenario.
 | Read fscrypt files using raw master keys | [Encrypted ext files](ext-encryption.md) |
 | Report a bug, contribute or check licenses | [Contributing](../CONTRIBUTING.md), [security](../SECURITY.md), [licenses](../THIRD_PARTY_NOTICES.md) |
 | Set up, build, run or prepare runtime dependencies | [Development](development.md) |
-| Follow the project-wide C++23 migration | [Migration plan](cpp23-project-migration.md) |
+| Review the completed C++23 migration | [Migration acceptance](archive/plans/cpp23-project-migration.md#приёмка-миграции--2026-10-28); current setup: [Development](development.md) |
 | Update interface translations | [Localization](localization.md) |
 | Select checks and clean up temporary artifacts | [Testing](testing.md) |
 | Maintain agent setup, skills or validation helpers | [Agent rules](../AGENTS.md), [tooling checks](testing.md#проверка-tooling), [memory protocol](agent-memory.md) |

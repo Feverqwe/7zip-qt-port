@@ -537,8 +537,8 @@ The build script configures the preset and applies platform toolchain workaround
 without targets it builds everything. Requirements for focused/full validation,
 repeat runs and docs-only changes are in [AGENTS.md](../AGENTS.md#validation-and-ui-reference).
 
-Use `scripts/build-app.sh dev` to prepare a native development installation;
-it prints the runnable path. Build outputs are ignored. The development preset
+Use `scripts/build-app.sh release` to prepare a native application installation;
+it prints the installation directory. Build outputs are ignored. The development preset
 exports `compile_commands.json` in its selected build tree for editor navigation.
 
 Some Apple Command Line Tools installations contain C++ standard headers inside the macOS SDK but omit them from Clang's default include path. `scripts/build.sh` detects this and sets `CPLUS_INCLUDE_PATH` only for that build process; it does not alter system files.
