@@ -182,11 +182,47 @@ C++23 language mode. Older CMake mappings to `/std:c++latest` are bounded to
 keeps later experimental language features outside the project's standard;
 see [Microsoft's standard-mode documentation](https://learn.microsoft.com/en-us/cpp/build/reference/std-specify-language-standard-version).
 
-Debug and RelWithDebInfo builds enable AddressSanitizer on all platforms and
-UndefinedBehaviorSanitizer on macOS/Linux by default. Use
-`-DSEVENZIP_ENABLE_SANITIZERS=OFF` only when investigating a toolchain or runtime
-incompatibility. Clang-Tidy is opt-in with `-DSEVENZIP_ENABLE_CLANG_TIDY=ON` and
-requires Clang-Tidy on `PATH`. With Clang, the matching versioned executable
+### Build diagnostics
+
+Build wrappers default to `SEVENZIP_BUILD_MODE=lite`: fast Debug compilation
+without debug symbols, sanitizers or Clang-Tidy. Warnings, Debug assertions and
+input validation remain enabled. The Release preset still selects an optimized
+application build without test targets.
+
+Use `SEVENZIP_BUILD_MODE=debug` for debug symbols or `sanitize` for symbols plus
+AddressSanitizer (and UndefinedBehaviorSanitizer on macOS/Linux). Individual
+`SEVENZIP_DEBUG_SYMBOLS`, `SEVENZIP_ENABLE_SANITIZERS` and
+`SEVENZIP_ENABLE_CLANG_TIDY` environment variables accept `ON` or `OFF` and
+override the mode defaults. Clang-Tidy remains opt-in in every mode.
+The same names are CMake cache options for direct CMake use. Wrappers reset
+unspecified diagnostic overrides to the selected mode, so returning to an
+ordinary command does not retain a previous investigation's expensive settings.
+Build trees and compiler caches are reused.
+
+For example, scope diagnostics to the needed target and its dependencies:
+
+```sh
+SEVENZIP_BUILD_MODE=debug ./scripts/build.sh dev worker_checkpoint_tests
+SEVENZIP_ENABLE_SANITIZERS=ON python3 scripts/verify.py --tests '^worker_checkpoint$'
+SEVENZIP_ENABLE_CLANG_TIDY=ON ./scripts/build.sh dev sevenzip_progress_sync
+```
+
+These options are forwarded to runners. Restrict expensive diagnostic builds to
+the components and checks needed for the task; avoid `all` and the full gate
+unless the investigation requires that scope. Sanitizer-enabled format modules
+need a matching console host; prepare it with the same diagnostic options using
+`scripts/prepare-runtime.py` or `verify.py --prepare-runtime`.
+
+`SEVENZIP_UI_REPORTS=ON` enables widget JSON reports during the selected UI tests.
+`SEVENZIP_CAPTURE_SCREENSHOTS=1` also saves PNGs and enables their JSON reports.
+Normal geometry assertions run without saving these optional artifacts.
+Reference-comparison fixtures enable the JSON they need as test input themselves.
+`SEVENZIP_SCRIPT_OUTPUT=verbose` enables configuration output and compiler/linker
+commands; warnings and errors remain visible in the default compact output.
+Verification keeps its small result/timing summary and runner command logs for
+failure diagnosis. A plain application build does not run tests or create UI reports.
+
+Clang-Tidy requires Clang-Tidy on `PATH`. With Clang, the matching versioned executable
 (for example, `clang-tidy-19`) is preferred; `clang-tidy` is also supported.
 Named-module analysis requires a Clang compiler and Clang-Tidy from the same
 LLVM release. Configuration rejects other BMI producers or a mismatched analyzer:
@@ -411,13 +447,13 @@ selected by the current Git branch; see [sync, locks and recovery](hyperv-runner
 There are no per-run source/build directories on the guests. Distinct run IDs
 identify local logs and timing records only.
 
-Shared Linux/Windows runners enable `SEVENZIP_COMPACT_TEST_BINARIES=ON`.
-The build wrapper forwards this environment setting to the CMake option of the
-same name. Linux test executables omit linked DWARF debug sections; MSVC test
+`SEVENZIP_COMPACT_TEST_BINARIES=ON` can reduce linked test debug information
+when compiling with symbols enabled. The option is forwarded to runners.
+Linux test executables omit linked DWARF debug sections; MSVC test
 executables omit linker PDB/ILK files and remove unreferenced code, while retaining
 distinct function addresses. Compiler debug information, Debug assertions and
 runtime checks are retained, as are production application symbols. Ordinary
-local builds default to OFF. For debugger work, rebuild the affected test with
+builds default to OFF. For debugger work, rebuild the affected test with
 `SEVENZIP_COMPACT_TEST_BINARIES=OFF ./scripts/build.sh dev <target>` in the same
 worktree/toolchain. The option does not delete artifacts from older builds.
 

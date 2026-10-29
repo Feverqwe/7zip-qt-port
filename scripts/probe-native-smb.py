@@ -233,6 +233,7 @@ def main():
         environment = dict(os.environ, SEVENZIP_NATIVE_SMB_TEST='1')
         if args.product_manager:
             environment['SEVENZIP_UI_REPORT_DIR'] = str(directory(ROOT, 'artifacts') / 'dev/ui-reports')
+            environment['SEVENZIP_UI_REPORTS'] = 'ON'
         if args.installed_root:
             installed_device_probe(args.installed_root, test, scenario, environment)
         else:

@@ -15,7 +15,7 @@
 ```sh
 rg -n 'SEVENZIP_UI_REPORT_DIR|layout_inspection' tests/
 ./scripts/build.sh dev <producer-targets>
-./scripts/ctest.sh --preset dev -R '<affected-suites>' --output-on-failure
+SEVENZIP_UI_REPORTS=ON ./scripts/ctest.sh --preset dev -R '<affected-suites>' --output-on-failure
 ```
 
 Используйте отчёты текущей сборки. Учитывайте язык, активную панель,

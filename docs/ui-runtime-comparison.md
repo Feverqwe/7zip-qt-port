@@ -42,7 +42,7 @@ Do not equate a geometry PASS with visual or behavioral parity.
    Update matrix `reference` paths to the resulting JSON files.
 4. Build `copy_dialog_tests` on each platform after synchronizing the current
    source. Run its `sourceFrameAndKeyboard` case with the native QPA backend,
-   `SEVENZIP_UI_REPORT_DIR` pointing to the platform evidence directory and,
+   `SEVENZIP_UI_REPORTS=ON`, `SEVENZIP_UI_REPORT_DIR` pointing to the platform evidence directory and,
    when appearance evidence is needed, `SEVENZIP_CAPTURE_SCREENSHOTS=1`.
    See [native GUI commands](development.md) and [runners](hyperv-runners.md).
    The ordinary CTest producer uses offscreen; those reports are useful for
@@ -55,7 +55,7 @@ Do not equate a geometry PASS with visual or behavioral parity.
 
    ```sh
    QT_QPA_PLATFORM=cocoa \
-   SEVENZIP_UI_REPORT_DIR="$PWD/build/ui-runtime/macos" \
+   SEVENZIP_UI_REPORTS=ON SEVENZIP_UI_REPORT_DIR="$PWD/build/ui-runtime/macos" \
    SEVENZIP_SETTINGS_PATH="$PWD/build/ui-runtime/settings.ini" \
      ./build/dev/copy_dialog_tests sourceFrameAndKeyboard -silent
    ```

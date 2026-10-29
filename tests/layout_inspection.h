@@ -18,6 +18,7 @@ bool labelFits(const QWidget &widget);
 QSize normalizedInitialClientSize(const QWidget &widget, const QSize &resourceClient);
 // JSON omits editable values, including passwords even in show-password mode.
 QString dump(const QWidget &root);
-// Always writes compact JSON. PNG is opt-in through SEVENZIP_CAPTURE_SCREENSHOTS=1.
+// JSON is opt-in through SEVENZIP_UI_REPORTS=ON; screenshots also enable JSON.
+// Disabled reporting succeeds without writing files.
 bool writeReport(QWidget &root, const QString &tag);
 } // namespace UiInspection

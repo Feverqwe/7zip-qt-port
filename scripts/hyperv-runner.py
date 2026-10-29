@@ -114,6 +114,29 @@ def clang_tidy_mode():
     return value
 
 
+def diagnostic_environment():
+    values = {}
+    choices = {
+        'SEVENZIP_BUILD_MODE': ('lite', 'debug', 'sanitize'),
+        'SEVENZIP_DEBUG_SYMBOLS': ('ON', 'OFF'),
+        'SEVENZIP_ENABLE_SANITIZERS': ('ON', 'OFF'),
+        'SEVENZIP_COMPACT_TEST_BINARIES': ('ON', 'OFF'),
+        'SEVENZIP_UI_REPORTS': ('ON', 'OFF'),
+        'SEVENZIP_CAPTURE_SCREENSHOTS': ('0', '1'),
+        'SEVENZIP_SCRIPT_OUTPUT': ('compact', 'verbose'),
+    }
+    for name, allowed in choices.items():
+        if name not in os.environ:
+            continue
+        value = os.environ[name]
+        if allowed == ('ON', 'OFF'):
+            value = value.upper()
+        if value not in allowed:
+            raise ValueError(name + ' must be ' + ' or '.join(allowed))
+        values[name] = value
+    return values
+
+
 def execute_check(record, platform, preset, root, token, command=None,
                   prepare_runtime=False, output=None, interactive=False, elevated=False):
     import os
@@ -125,6 +148,7 @@ def execute_check(record, platform, preset, root, token, command=None,
     if build_jobs <= 0:
         raise ValueError("CMAKE_BUILD_PARALLEL_LEVEL must be a positive integer")
     analysis_mode = clang_tidy_mode()
+    diagnostics = diagnostic_environment()
     payload = command_payload(preset, command)
     use_vcpkg = preset.startswith("vcpkg-")
     qt_prefix = "" if use_vcpkg else config['qt_prefix']
@@ -140,6 +164,7 @@ def execute_check(record, platform, preset, root, token, command=None,
     for name in ('SEVENZIP_BUILD_STORAGE', 'SEVENZIP_RAMDISK'):
         if name in os.environ:
             build_environment[name] = os.environ[name]
+    build_environment.update(diagnostics)
     if use_vcpkg:
         build_environment.update(VCPKG_MAX_CONCURRENCY=str(build_jobs))
         if platform == 'linux':
@@ -157,10 +182,10 @@ cd {shlex.quote(root)}
 mkdir -p runner-tmp/ccache
 export TMPDIR="$PWD/runner-tmp" TMP="$PWD/runner-tmp" TEMP="$PWD/runner-tmp"
 export QT_QPA_PLATFORM="${{QT_QPA_PLATFORM:-offscreen}}"
-export CMAKE_BUILD_PARALLEL_LEVEL={build_jobs} SEVENZIP_SCRIPT_OUTPUT=compact
+export CMAKE_BUILD_PARALLEL_LEVEL={build_jobs}
 {storage_environment}{analysis_environment}workspace_environment="$({shlex.quote(config['python'])} -B scripts/lib/build_paths.py env --root "$PWD" --preset {shlex.quote(preset)})"
 eval "$workspace_environment"
-export SEVENZIP_COMPACT_TEST_BINARIES=ON SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}
+export SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}
 export CMAKE_PREFIX_PATH={shlex.quote(qt_prefix)}
 export PATH={shlex.quote(':'.join(tool_paths))}:"$PATH"
 export LIBGL_ALWAYS_SOFTWARE=1 SEVENZIP_CTEST_JOBS=1
@@ -202,8 +227,8 @@ df -Pk .
                     f'set "CMAKE_PREFIX_PATH={qt_prefix}"', 'set "CC=cl.exe"', 'set "CXX=cl.exe"',
                     f'set "SEVENZIP_WINDOWS_RUNNER_HOST={config["computer_name"]}"',
                     f'set "SEVENZIP_RUNNER_PYTHON={config["python"]}"',
-                    f'set "CMAKE_BUILD_PARALLEL_LEVEL={build_jobs}"', 'set "SEVENZIP_COMPACT_TEST_BINARIES=ON"',
-                    f'set "SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}"', 'set "SEVENZIP_SCRIPT_OUTPUT=compact"',
+                    f'set "CMAKE_BUILD_PARALLEL_LEVEL={build_jobs}"',
+                    f'set "SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}"',
                     'set "SEVENZIP_CTEST_JOBS=1"', f'set "SEVENZIP_CODEC_MODULE_DIR={runtime_directory}"',
                     'set "PYTHONUTF8=1"', 'set "PYTHONIOENCODING=utf-8"',
                     f'set "SEVENZIP_RUN_TOKEN={token}"',
@@ -363,6 +388,7 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
 def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=False,
                   interactive=False, elevated=False, sync_checksum=False):
     clang_tidy_mode()
+    diagnostic_environment()
     os.environ.update(workspace_environment(ROOT))
     if elevated and (not interactive or "windows" not in platforms):
         raise ValueError("Elevated fixtures require an interactive Windows guest")

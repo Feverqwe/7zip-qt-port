@@ -126,9 +126,9 @@ a verification report is accepted only for the current run.
 integer. Use `1` when a guest runs out of memory during compilation; this
 retains its incremental build and compiler cache.
 
-Linux and Windows runs enable compact test binaries through the build
-wrapper; [development](development.md#local-commands) describes the retained
-diagnostics and the opt-out for debugger rebuilds. This reduces per-run artifacts;
+Linux and Windows runs use the same light diagnostic defaults as local builds;
+[development](development.md#build-diagnostics) describes the optional modes,
+individual diagnostics and compact test links. This reduces per-run artifacts;
 historical completed snapshots still require the storage cleanup policy above.
 Default runner gates also exclude tests labeled `slow`. Long suites require an
 explicit request and opt-in as described in AGENTS.md; do not count excluded

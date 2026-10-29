@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 
@@ -42,7 +43,13 @@ def sanitizer_startup(root, preset):
                 return value
         return None
 
-    return build_type(preset) in ("Debug", "RelWithDebInfo")
+    mode = os.environ.get("SEVENZIP_BUILD_MODE", "lite")
+    if mode not in ("lite", "debug", "sanitize"):
+        raise ValueError("SEVENZIP_BUILD_MODE must be lite, debug or sanitize")
+    selected = os.environ.get("SEVENZIP_ENABLE_SANITIZERS", "ON" if mode == "sanitize" else "OFF").upper()
+    if selected not in ("ON", "OFF"):
+        raise ValueError("SEVENZIP_ENABLE_SANITIZERS must be ON or OFF")
+    return selected == "ON" and build_type(preset) in ("Debug", "RelWithDebInfo")
 
 
 if __name__ == "__main__":

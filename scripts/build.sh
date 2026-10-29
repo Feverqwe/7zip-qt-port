@@ -6,14 +6,11 @@ project_root="$(python3 "$(dirname "${BASH_SOURCE[0]}")/lib/project_paths.py" \
   "$(dirname "${BASH_SOURCE[0]}")/..")"
 cd "$project_root"
 preset="${1:-dev}"
-analysis_mode=""
-if [[ -n "${SEVENZIP_ENABLE_CLANG_TIDY+x}" ]]; then
-  case "$SEVENZIP_ENABLE_CLANG_TIDY" in
-    [Oo][Nn]) analysis_mode=ON ;;
-    [Oo][Ff][Ff]) analysis_mode=OFF ;;
-    *) printf 'SEVENZIP_ENABLE_CLANG_TIDY must be ON or OFF.\n' >&2; exit 2 ;;
-  esac
-fi
+build_mode="${SEVENZIP_BUILD_MODE:-lite}"
+case "$build_mode" in
+  lite|debug|sanitize) ;;
+  *) printf 'SEVENZIP_BUILD_MODE must be lite, debug or sanitize.\n' >&2; exit 2 ;;
+esac
 source "$project_root/scripts/lib/toolchain.sh"
 sevenzip_select_toolchain "$preset"
 if [[ "$preset" == vcpkg-* && ! -f "$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" ]]; then
@@ -68,9 +65,17 @@ configure() {
     fi
     return
   fi
-  if [[ -n "$analysis_mode" ]]; then
-    set -- "-DSEVENZIP_ENABLE_CLANG_TIDY=$analysis_mode" "$@"
-  fi
+  set -- "-DSEVENZIP_BUILD_MODE=$build_mode" "$@"
+  local diagnostic value
+  for diagnostic in SEVENZIP_DEBUG_SYMBOLS SEVENZIP_ENABLE_SANITIZERS SEVENZIP_ENABLE_CLANG_TIDY SEVENZIP_COMPACT_TEST_BINARIES; do
+    value="${!diagnostic:-}"
+    case "$value" in
+      '') set -- "-U$diagnostic" "$@" ;;
+      [Oo][Nn]) set -- "-D$diagnostic=ON" "$@" ;;
+      [Oo][Ff][Ff]) set -- "-D$diagnostic=OFF" "$@" ;;
+      *) printf '%s must be ON or OFF.\n' "$diagnostic" >&2; exit 2 ;;
+    esac
+  done
   set -- "-DCMAKE_INSTALL_PREFIX=$SEVENZIP_ARTIFACT_ROOT/install/$preset" "$@"
   set -- "-DSEVENZIP_TEST_SCRATCH_DIR=$TMPDIR/ctest/$preset" "$@"
   if [[ "$preset" == vcpkg-* ]]; then
@@ -113,9 +118,6 @@ configure() {
     runtime_module="$runtime_directory/7z.dll"
   fi
   set -- "-DSEVENZIP_CODEC_MODULE=$runtime_module" "$@"
-  if [[ -n "${SEVENZIP_COMPACT_TEST_BINARIES:-}" ]]; then
-    set -- "-DSEVENZIP_COMPACT_TEST_BINARIES=$SEVENZIP_COMPACT_TEST_BINARIES" "$@"
-  fi
   if [[ -n "$compiler_cache" ]]; then
     set -- \
       "-DCMAKE_C_COMPILER_LAUNCHER=$compiler_cache" \
@@ -136,7 +138,9 @@ configure() {
   if [[ -f "$cache_file" && -f "$signature_file" && -f "$build_directory/build.ninja" ]]; then
     existing_signature="$(printf '%s\n%s\n' "$requested_signature" "$(cksum "$cache_file")")"
   fi
-  if [[ -n "$existing_signature" && "$(cat "$signature_file")" == "$existing_signature" ]]; then
+  if [[ "${SEVENZIP_SCRIPT_OUTPUT:-compact}" == verbose ]]; then
+    cmake --preset "$preset" "$@"
+  elif [[ -n "$existing_signature" && "$(cat "$signature_file")" == "$existing_signature" ]]; then
     # Ninja owns CMake input/glob dependencies. Regenerate only when needed,
     # before CTest selection; this target does not compile the application.
     cmake --build --preset "$preset" --target build.ninja -- --quiet
@@ -203,7 +207,10 @@ if [[ "${1:-}" == --configure-only ]]; then
   fi
   exit 0
 fi
-if [[ "$#" -gt 0 ]]; then
+if [[ "${SEVENZIP_SCRIPT_OUTPUT:-compact}" == verbose ]]; then
+  if [[ "$#" == 0 ]]; then set -- sevenzip_desktop; fi
+  cmake --build --preset "$preset" --target "$@" --verbose
+elif [[ "$#" -gt 0 ]]; then
   cmake --build --preset "$preset" --target "$@" -- --quiet
 else
   cmake --build --preset "$preset" --target sevenzip_desktop -- --quiet

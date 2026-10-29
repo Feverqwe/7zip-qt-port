@@ -10,6 +10,7 @@
 #include <QJsonDocument>
 #include <QLabel>
 #include <QPushButton>
+#include <QScopeGuard>
 #include <QScreen>
 #include <QScrollArea>
 #include <QScrollBar>
@@ -69,6 +70,14 @@ class UiGeometryTests final : public QObject {
     }
 
     void reportOmitsEditableValues() {
+        const QByteArray previousReports = qgetenv("SEVENZIP_UI_REPORTS");
+        qputenv("SEVENZIP_UI_REPORTS", "ON");
+        const auto restoreReports = qScopeGuard([&] {
+            if (previousReports.isNull())
+                qunsetenv("SEVENZIP_UI_REPORTS");
+            else
+                qputenv("SEVENZIP_UI_REPORTS", previousReports);
+        });
         QWidget root;
         QLineEdit password(&root);
         password.setObjectName("password");
@@ -89,6 +98,32 @@ class UiGeometryTests final : public QObject {
         const QJsonDocument document = QJsonDocument::fromJson(saved.readAll());
         QVERIFY(document.isObject());
         QCOMPARE(document, QJsonDocument::fromJson(report.toUtf8()));
+    }
+
+    void disabledReportsDoNotCreateOutput() {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const auto previousReports = qgetenv("SEVENZIP_UI_REPORTS");
+        const auto previousScreenshots = qgetenv("SEVENZIP_CAPTURE_SCREENSHOTS");
+        const auto previousDirectory = qgetenv("SEVENZIP_UI_REPORT_DIR");
+        const auto restore = qScopeGuard([&] {
+            for (const auto &entry :
+                 {qMakePair("SEVENZIP_UI_REPORTS", previousReports),
+                  qMakePair("SEVENZIP_CAPTURE_SCREENSHOTS", previousScreenshots),
+                  qMakePair("SEVENZIP_UI_REPORT_DIR", previousDirectory)}) {
+                if (entry.second.isNull())
+                    qunsetenv(entry.first);
+                else
+                    qputenv(entry.first, entry.second);
+            }
+        });
+        qunsetenv("SEVENZIP_UI_REPORTS");
+        qunsetenv("SEVENZIP_CAPTURE_SCREENSHOTS");
+        const auto destination = temporary.filePath("reports");
+        qputenv("SEVENZIP_UI_REPORT_DIR", destination.toUtf8());
+        QWidget root;
+        QVERIFY(UiInspection::writeReport(root, "disabled"));
+        QVERIFY(!QDir(destination).exists());
     }
 
     void dialogs_data() {

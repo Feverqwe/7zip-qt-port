@@ -199,6 +199,9 @@ QString dump(const QWidget &root) {
 bool writeReport(QWidget &root, const QString &tag) {
     if (tag.isEmpty() || tag.contains('/') || tag.contains('\\') || tag.contains(".."))
         return false;
+    if (qEnvironmentVariable("SEVENZIP_UI_REPORTS") != "ON" &&
+        qEnvironmentVariable("SEVENZIP_CAPTURE_SCREENSHOTS") != "1")
+        return true;
     const QString directory =
         qEnvironmentVariable("SEVENZIP_UI_REPORT_DIR", QDir::currentPath() + "/ui-reports");
     if (!QDir().mkpath(directory))

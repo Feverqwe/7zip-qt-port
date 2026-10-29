@@ -55,6 +55,7 @@ class WorkflowTests(unittest.TestCase):
         (root / "tools/build").mkdir(parents=True)
         shutil.copy2(ROOT / "tools/build/project.json", root / "tools/build/project.json")
         shutil.copy2(ROOT / "cmake/DeveloperWorkflow.cmake", root / "cmake/DeveloperWorkflow.cmake")
+        shutil.copy2(ROOT / "cmake/BuildDiagnostics.cmake", root / "cmake/BuildDiagnostics.cmake")
         shutil.copy2(ROOT / "cmake/ReadCTestCommands.cmake", root / "cmake/ReadCTestCommands.cmake")
         shutil.copy2(ROOT / "CMakePresets.json", root / "CMakePresets.json")
         (root / "main.cpp").write_text("int main() { return 0; }\n")
@@ -64,6 +65,7 @@ class WorkflowTests(unittest.TestCase):
             "raise SystemExit(subprocess.run(sys.argv[2:]).returncode)\n")
         (root / "CMakeLists.txt").write_text('''cmake_minimum_required(VERSION 3.21)
 project(workflow LANGUAGES CXX)
+include(cmake/BuildDiagnostics.cmake)
 file(APPEND "${CMAKE_BINARY_DIR}/configure-count" "configured\n")
 enable_testing()
 add_executable(subject main.cpp)
@@ -97,6 +99,52 @@ include(cmake/DeveloperWorkflow.cmake)
             self.assertTrue((output / ("subject" + suffix)).is_file())
             self.assertFalse((output / ("producer" + suffix)).exists())
             self.assertFalse((output / ("unrelated" + suffix)).exists())
+
+    def test_diagnostic_modes_restore_light_build_and_allow_overrides(self):
+        # Catch stale CMake diagnostic settings, missing sanitizer linkage and
+        # accidental loss of Debug assertions while switching one build tree.
+        with tempfile.TemporaryDirectory(prefix="diagnostic modes ") as temporary:
+            root = Path(temporary)
+            self.fixture(root)
+            (root / "main.cpp").write_text('''#include <cassert>
+#ifdef NDEBUG
+#error Diagnostic modes must retain Debug assertions
+#endif
+int main(int argc, char **) {
+    assert(argc > 0);
+    if (argc > 1) {
+        volatile int index = argc + 10;
+        auto *values = new int[2];
+        values[index] = 7;
+        delete[] values;
+    }
+    return 0;
+}
+''')
+            environment = dict(os.environ, CMAKE_PREFIX_PATH=str(root))
+            for name in ("SEVENZIP_BUILD_MODE", "SEVENZIP_DEBUG_SYMBOLS",
+                         "SEVENZIP_ENABLE_SANITIZERS", "SEVENZIP_ENABLE_CLANG_TIDY",
+                         "SEVENZIP_COMPACT_TEST_BINARIES"):
+                environment.pop(name, None)
+            suffix = ".exe" if os.name == "nt" else ""
+            for mode, overrides, symbols in (("lite", {}, False), ("debug", {}, True),
+                    ("sanitize", {"SEVENZIP_DEBUG_SYMBOLS": "OFF"}, False), ("lite", {}, False)):
+                with self.subTest(mode=mode):
+                    selected = dict(environment, SEVENZIP_BUILD_MODE=mode, **overrides)
+                    built = subprocess.run(["bash", "scripts/build.sh", "dev", "subject"],
+                                           cwd=root, env=selected, text=True, capture_output=True)
+                    self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+                    binary = directory(root, "artifacts") / "dev" / ("subject" + suffix)
+                    safe = subprocess.run([str(binary)], env=selected, capture_output=True, text=True)
+                    self.assertEqual(safe.returncode, 0, safe.stdout + safe.stderr)
+                    if sys.platform == "linux":
+                        sections = subprocess.check_output(["readelf", "-SW", str(binary)], text=True)
+                        self.assertEqual(".debug_info" in sections, symbols)
+                    if mode == "sanitize":
+                        fault = subprocess.run([str(binary), "overflow"], env=selected,
+                                               capture_output=True, text=True)
+                        self.assertNotEqual(fault.returncode, 0)
+                        self.assertIn("AddressSanitizer", fault.stdout + fault.stderr)
 
     def test_first_build_includes_fixture_and_preserves_incremental_output(self):
         with tempfile.TemporaryDirectory(prefix="verify Юникод ") as temporary:
