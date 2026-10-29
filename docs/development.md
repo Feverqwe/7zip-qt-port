@@ -71,7 +71,10 @@ can select an approved private directory with those capabilities. The isolated
 [runtime check](archive/qt-port/upstream-port-audit.md#p3-04--isolated-linux-runtime-and-temporary-directory-contract-2026-10-10)
 verifies this override, cleanup and unchanged archives; it changes no system policy.
 
-Build wrappers create a RAM workspace when missing: APFS on macOS, LZ4 zram/ext4
+Build wrappers use the ordinary disk by default for intermediates and temporary
+data. Optional RAM workspaces are enabled with `SEVENZIP_RAMDISK=ON`;
+add `SEVENZIP_BUILD_STORAGE=ram` to place native build intermediates there too.
+When enabled, wrappers create a RAM workspace when missing: APFS on macOS, LZ4 zram/ext4
 on Linux, and an ImDisk NTFS drive on Windows. Local development defaults to
 4 GiB; remote runner commands select 8 GiB. Linux/Windows capacity can be selected
 with `SEVENZIP_RAM_SIZE_GIB`. Linux/Windows use automatic compression by default;
@@ -83,24 +86,21 @@ setup and inspection. The wrappers validate the actual backing storage and
 stop on a wrong mount or insufficient free space; they never silently spill
 RAM builds onto disk.
 
-Native profiles keep their intermediate build files and temporary data in RAM.
-Finished binaries, runtimes, reports, installed dependencies and persistent
-compiler/download caches stay on the machine's ordinary disk under the main
-checkout's `build/`, separated by branch and platform. RAM contents are lost
+Build files, binaries, runtimes, reports, installed dependencies and persistent
+compiler/download caches stay under the main checkout's `build/`, separated by
+branch and platform. Optional RAM contents are lost
 when unmounted or after restart; persistent caches remain usable.
 Use `scripts/lib/build_paths.py path --root "$PWD" --category work --preset dev`
 to locate the selected profile's build trees. `SEVENZIP_BUILD_STORAGE=disk`
-explicitly selects persistent intermediates for large builds. The full
-`check.sh` gate defaults to that mode. Disposable test settings and startup data
-remain in the RAM workspace even with persistent intermediates; reports stay
-on disk. The test wrapper restores scratch directories after a RAM reset.
+selects persistent intermediates. Disposable test settings and startup data
+use the selected scratch storage; reports stay on disk.
 vcpkg profiles always use disk for their
 intermediates and remain optional; native builds install no manifest packages.
 
 On macOS, installed host tools and the prebuilt Qt SDK are retained in the main
 checkout's ignored `.codex/tools/` directory. They are installed once and reused
 by worktrees. Project compilation, temporary data and compiler/package caches
-use the RAM/disk split above. The system Ninja is used normally.
+use the storage selection above. The system Ninja is used normally.
 
 Use the build wrapper after preparing a deployment: it selects that preset's
 exact native module and refreshes stale module paths in the existing CMake cache.

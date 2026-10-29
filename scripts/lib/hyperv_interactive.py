@@ -44,7 +44,7 @@ exit $code
 def interactive_command(root, elevated=False, token=None):
     workspace = runner_config("windows")["workspace"]["root"]
     relative = root[len(workspace) + 1:] if root.startswith(workspace + "/") else ""
-    if relative != "current" and not re.fullmatch(r"branch-[A-Za-z0-9_-]{1,48}-[0-9a-f]{20}", relative):
+    if relative != "current" and not re.fullmatch(r"branch-(?:[a-z0-9_-]|~[0-9a-f]{2})+", relative):
         raise ValueError("Interactive task requires the configured persistent worktree")
     run_level = "Highest" if elevated else "Limited"
     child = interactive_child_command(root, elevated, token)

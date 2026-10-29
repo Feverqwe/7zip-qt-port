@@ -1,7 +1,6 @@
-"""RAM build workspace with durable per-machine tools, caches and outputs."""
+"""Build workspace with durable per-machine tools, caches and outputs."""
 
 import argparse
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -60,8 +59,10 @@ def branch_name(root):
 
 
 def branch_component(branch):
-    label = re.sub(r"[^A-Za-z0-9_-]", "-", branch)[:48]
-    return label + "-" + hashlib.sha256(branch.encode()).hexdigest()[:16]
+    # Reversible ASCII escaping also keeps case-distinct branches separate
+    # on Windows, without a digest or lossy truncation.
+    return "".join(chr(byte) if 97 <= byte <= 122 or 48 <= byte <= 57 or byte in (45, 95)
+                   else f"~{byte:02x}" for byte in branch.encode("utf-8"))
 
 
 def branch_key(root):
@@ -76,14 +77,14 @@ def directory(root, category):
         raise ValueError("Unknown workspace category")
     workspace = workspace_root(root)
     if category == "tmp":
-        return scratch_root(root) / "b" / hashlib.sha256(branch_name(root).encode()).hexdigest()[:16] / "t"
+        return scratch_root(root) / "b" / branch_key(root) / "t"
     if category in ("work", "artifacts", "logs", "tmp", "packages"):
         workspace = workspace / "branches" / branch_key(root)
     return workspace / category / host_tag()
 
 
 def scratch_root(root):
-    if os.environ.get("SEVENZIP_RAMDISK") == "OFF":
+    if os.environ.get("SEVENZIP_RAMDISK", "OFF") == "OFF":
         return workspace_root(root)
     if __package__:
         from .local_ramdisk import scratch
@@ -93,12 +94,12 @@ def scratch_root(root):
 
 
 def build_root(root, preset="dev"):
-    storage = os.environ.get("SEVENZIP_BUILD_STORAGE", "ram")
+    storage = os.environ.get("SEVENZIP_BUILD_STORAGE", "disk")
     if storage not in ("ram", "disk"):
         raise ValueError("SEVENZIP_BUILD_STORAGE must be ram or disk")
     if storage == "disk" or preset.startswith("vcpkg-"):
         return workspace_root(root) / "branches" / branch_key(root) / "work" / host_tag()
-    return scratch_root(root) / "b" / hashlib.sha256(branch_name(root).encode()).hexdigest()[:16] / "w"
+    return scratch_root(root) / "b" / branch_key(root) / "w"
 
 
 def host_tools(root):
@@ -142,7 +143,7 @@ def environment(root, preset="dev"):
     workspace.mkdir(parents=True, exist_ok=True)
     scratch = scratch_root(root)
     ram_mount = ""
-    if os.environ.get("SEVENZIP_RAMDISK") != "OFF":
+    if os.environ.get("SEVENZIP_RAMDISK", "OFF") != "OFF":
         if __package__:
             from .local_ramdisk import volume
         else:
@@ -174,7 +175,7 @@ def environment(root, preset="dev"):
              if name not in ("SEVENZIP_RAM_MOUNT", "SEVENZIP_WORKSPACE", "SEVENZIP_SOURCE_ROOT", "SEVENZIP_BRANCH_KEY", "SEVENZIP_TOOLS_ROOT", "SEVENZIP_BUILD_ROOT", "CCACHE_TEMPDIR", "TMPDIR", "TMP", "TEMP")]
     paths.extend([contained_output(scratch, values["TMPDIR"]),
                   contained_output(scratch, values["CCACHE_TEMPDIR"]),
-                  contained_output(workspace if preset.startswith("vcpkg-") or os.environ.get("SEVENZIP_BUILD_STORAGE") == "disk" else scratch,
+                  contained_output(workspace if preset.startswith("vcpkg-") or os.environ.get("SEVENZIP_BUILD_STORAGE", "disk") == "disk" else scratch,
                                    values["SEVENZIP_BUILD_ROOT"])])
     tools = host_tools(root)
     if platform.system() == "Darwin" and not tools.resolve().is_relative_to(harness_root(root).resolve()):

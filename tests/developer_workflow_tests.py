@@ -36,7 +36,8 @@ class WorkflowTests(unittest.TestCase):
             sentinel = unavailable / "existing-data"
             sentinel.write_bytes(b"not a RAM filesystem")
             result = subprocess.run(["bash", "scripts/build.sh", "dev", "subject"], cwd=root,
-                                    env=dict(os.environ, SEVENZIP_RAM_MOUNT=str(unavailable)),
+                                    env=dict(os.environ, SEVENZIP_RAMDISK="ON",
+                                             SEVENZIP_RAM_MOUNT=str(unavailable)),
                                     text=True, capture_output=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(retained.read_bytes(), b"existing compiler data")
@@ -83,8 +84,12 @@ include(cmake/DeveloperWorkflow.cmake)
         with tempfile.TemporaryDirectory(prefix="focused default ") as temporary:
             root = Path(temporary)
             self.fixture(root)
+            environment = dict(os.environ, CMAKE_PREFIX_PATH=str(root),
+                               SEVENZIP_RAM_MOUNT=str(root / "unavailable-ram"))
+            environment.pop("SEVENZIP_RAMDISK", None)
+            environment.pop("SEVENZIP_BUILD_STORAGE", None)
             built = subprocess.run(["bash", "scripts/build.sh", "dev"], cwd=root,
-                                   env=dict(os.environ, CMAKE_PREFIX_PATH=str(root)),
+                                   env=environment,
                                    text=True, capture_output=True)
             self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
             output = directory(root, "artifacts") / "dev"

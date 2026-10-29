@@ -22,8 +22,10 @@ outputs; do not create per-run build directories. Branch isolation (user request
 skill's default fresh-directory workflow does not apply.
 
 The selected workspace root contains a persistent source directory for each Git branch.
-Tools, caches, dependencies, runtime and outputs stay on the ordinary disk;
-native build intermediates, temporary files and local source staging use RAM.
+Tools, caches, dependencies, runtime, outputs, native build intermediates,
+temporary files and local source staging use the ordinary disk by default.
+An optional RAM workspace can be selected through the
+[storage settings](runner-configuration.md#connections-and-tools).
 Only the branch
 name selects the directory; local checkout paths do not affect it. Different
 branches can run concurrently; runs of the same branch share a lock even from
@@ -31,8 +33,8 @@ different local directories. Switch to a named branch before running from a
 detached HEAD. The selected branch and remote directory appear in console output
 and run reports. Preserve branch worktrees, incremental outputs, compiler caches
 and active locks. The first run of each branch creates its own build tree while
-reusing the project compiler cache. RAM builds are retained until the RAM disk
-is unmounted; large builds can explicitly use persistent intermediates.
+reusing the project compiler cache. Branch directory names use reversible
+escaping for special characters without adding hashes.
 
 Before transfer, an atomic sibling `.lock` directory reserves the entire cycle,
 including synchronization, build/tests and log retrieval. A second invocation

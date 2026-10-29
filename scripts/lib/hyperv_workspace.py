@@ -1,9 +1,8 @@
 """Allowlisted guest workspace roots and fail-closed data-volume identity."""
 
-import hashlib
-import re
 import shlex
 import subprocess
+from .build_paths import branch_component
 from .runner_config import load_config
 
 
@@ -21,11 +20,7 @@ def current_branch(root):
 
 
 def worktree_root(workspace, branch):
-    # A bounded ASCII component works on Windows too. Hash the original name
-    # so slash replacement, case folding and truncation cannot merge branches.
-    label = re.sub(r"[^a-zA-Z0-9_-]", "-", branch)[:48]
-    digest = hashlib.sha256(branch.encode("utf-8")).hexdigest()[:20]
-    return workspace["root"] + f"/branch-{label}-{digest}"
+    return workspace["root"] + "/branch-" + branch_component(branch)
 
 
 def mount_guard(workspace):

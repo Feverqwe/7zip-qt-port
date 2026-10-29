@@ -42,8 +42,11 @@ Install the dependencies described in [development](development.md#dependencies)
 
 Select a dedicated `build/sources` workspace on the runner's ordinary disk.
 Its parent `build` retains installed tools, dependencies, outputs and caches.
-Native build intermediates and temporary data use a verified 8 GiB RAM disk,
-created automatically when missing. Linux uses `build/ram-zram` (LZ4 zram with ext4); Windows
+Native build intermediates and temporary data use the ordinary disk by default.
+For an optional RAM workspace, set `SEVENZIP_RAMDISK=ON` and
+`SEVENZIP_BUILD_STORAGE=ram`; these settings are forwarded to guests.
+The helper then uses a verified 8 GiB RAM disk, created automatically when missing.
+Linux uses `build/ram-zram` (LZ4 zram with ext4); Windows
 uses the ImDisk NTFS drive `R:`. Set `SEVENZIP_RAM_MOUNT` to select another
 mount point/drive. The helper refuses a wrong backing store and never formats
 an existing drive. `SEVENZIP_RAM_SIZE_GIB` overrides the runner capacity for
@@ -56,8 +59,8 @@ Zram has no disk writeback. Its configured capacity is the logical block-device
 size; actual RAM use depends on compression and filesystem cache. NTFS compression
 saves volume space without reducing the configured ImDisk device size.
 Local macOS development retains its 4 GiB APFS workspace without this compression mode.
-`SEVENZIP_BUILD_STORAGE=disk` explicitly retains large
-build intermediates on the ordinary disk; this setting is forwarded to guests.
+`SEVENZIP_BUILD_STORAGE=disk` keeps build intermediates on the ordinary disk
+even when RAM scratch is enabled.
 
 The ordinary `dev` preset uses the configured Qt SDK. Optional `vcpkg-*` presets
 use the checkout under the workspace's tools directory and obtain Qt from the

@@ -131,7 +131,7 @@ def scratch(root):
 
 
 def environment(root):
-    if os.environ.get("SEVENZIP_RAMDISK") == "OFF":
+    if os.environ.get("SEVENZIP_RAMDISK", "OFF") == "OFF":
         return {}
     temporary, cache = scratch(root) / "tmp", scratch(root) / "ccache-tmp"
     for directory in (temporary, cache):
