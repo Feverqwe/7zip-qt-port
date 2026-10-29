@@ -12,31 +12,31 @@
 #define FS_VERITY_HASH_ALG_SHA256 1
 #define FS_VERITY_HASH_ALG_SHA512 2
 struct fsverity_descriptor {
-	__u8 version;		/* must be 1 */
-	__u8 hash_algorithm;	/* Merkle tree hash algorithm */
-	__u8 log_blocksize;	/* log2 of size of data and tree blocks */
-	__u8 salt_size;		/* size of salt in bytes; 0 if none */
+    __u8 version;        /* must be 1 */
+    __u8 hash_algorithm; /* Merkle tree hash algorithm */
+    __u8 log_blocksize;  /* log2 of size of data and tree blocks */
+    __u8 salt_size;      /* size of salt in bytes; 0 if none */
 #if 1
-	__le32 sig_size;
+    __le32 sig_size;
 #else
-	__le32 __reserved_0x04;	/* must be 0 */
+    __le32 __reserved_0x04; /* must be 0 */
 #endif
-	__le64 data_size;	/* size of file the Merkle tree is built over */
-	__u8 root_hash[64];	/* Merkle tree root hash */
-	__u8 salt[32];		/* salt prepended to each hashed block */
-	__u8 __reserved[144];	/* must be 0's */
+    __le64 data_size;     /* size of file the Merkle tree is built over */
+    __u8 root_hash[64];   /* Merkle tree root hash */
+    __u8 salt[32];        /* salt prepended to each hashed block */
+    __u8 __reserved[144]; /* must be 0's */
 #if 1
-	__u8 signature[];
+    __u8 signature[];
 #endif
 };
 
 /* Format in which fs-verity file digests are signed in built-in signatures.
  * Fixed endianness and context distinguish these from other uses of a key. */
 struct fsverity_formatted_digest {
-	char magic[8];			/* must be "FSVerity" */
-	__le16 digest_algorithm;
-	__le16 digest_size;
-	__u8 digest[];
+    char magic[8]; /* must be "FSVerity" */
+    __le16 digest_algorithm;
+    __le16 digest_size;
+    __u8 digest[];
 };
 
 #endif

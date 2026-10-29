@@ -21,13 +21,14 @@ enum {
 typedef int (*sevenzip_squashfs_read_meta)(void *, uint64_t, void *, unsigned *, uint64_t *);
 // Independent bounded blocklist reader. No ancillary tables are loaded.
 int sevenzip_squashfs_file_create(uint64_t bytes_used, uint64_t inode_table,
-    uint64_t directory_table, unsigned block_size, uint64_t reference,
-    unsigned header_size, uint64_t file_size, uint64_t block_count, uint64_t data_start,
-    unsigned inode_number, sevenzip_squashfs_read_meta, void *,
-    struct sevenzip_squashfs_file **);
+                                  uint64_t directory_table, unsigned block_size, uint64_t reference,
+                                  unsigned header_size, uint64_t file_size, uint64_t block_count,
+                                  uint64_t data_start, unsigned inode_number,
+                                  sevenzip_squashfs_read_meta, void *,
+                                  struct sevenzip_squashfs_file **);
 void sevenzip_squashfs_file_destroy(struct sevenzip_squashfs_file *);
-int sevenzip_squashfs_file_block(struct sevenzip_squashfs_file *, uint64_t index,
-    uint64_t *start, unsigned *size);
+int sevenzip_squashfs_file_block(struct sevenzip_squashfs_file *, uint64_t index, uint64_t *start,
+                                 unsigned *size);
 int sevenzip_squashfs_metadata_create(uint64_t bytes_used, sevenzip_squashfs_read,
                                       sevenzip_squashfs_read_meta, void *,
                                       struct sevenzip_squashfs_metadata **,

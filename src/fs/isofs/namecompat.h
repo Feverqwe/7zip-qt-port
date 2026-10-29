@@ -17,8 +17,8 @@ static inline __be16 isofs_get_unaligned(const void *p) {
     return value;
 }
 #define get_unaligned(p) isofs_get_unaligned(p)
-static inline int isofs_utf16s_to_utf8s(const void *source, int length,
-                                        enum utf16_endian endian, u8 *output, int capacity) {
+static inline int isofs_utf16s_to_utf8s(const void *source, int length, enum utf16_endian endian,
+                                        u8 *output, int capacity) {
     fat_wchar_t aligned[128];
     if (length < 0 || length > 127)
         return -EIO;

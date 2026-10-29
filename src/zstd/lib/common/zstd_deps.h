@@ -29,7 +29,7 @@
  * header and the script 'combine.sh' combines the whole zstd source code
  * in a single file.
  */
-#if defined(__linux) || defined(__linux__) || defined(linux) || defined(__gnu_linux__) || \
+#if defined(__linux) || defined(__linux__) || defined(linux) || defined(__gnu_linux__) ||          \
     defined(__CYGWIN__) || defined(__MSYS__)
 #if !defined(_GNU_SOURCE) && !defined(__ANDROID__) /* NDK doesn't ship qsort_r(). */
 #define _GNU_SOURCE
@@ -41,13 +41,13 @@
 #include <string.h>
 
 #if defined(__GNUC__) && __GNUC__ >= 4
-# define ZSTD_memcpy(d,s,l) __builtin_memcpy((d),(s),(l))
-# define ZSTD_memmove(d,s,l) __builtin_memmove((d),(s),(l))
-# define ZSTD_memset(p,v,l) __builtin_memset((p),(v),(l))
+#define ZSTD_memcpy(d, s, l) __builtin_memcpy((d), (s), (l))
+#define ZSTD_memmove(d, s, l) __builtin_memmove((d), (s), (l))
+#define ZSTD_memset(p, v, l) __builtin_memset((p), (v), (l))
 #else
-# define ZSTD_memcpy(d,s,l) memcpy((d),(s),(l))
-# define ZSTD_memmove(d,s,l) memmove((d),(s),(l))
-# define ZSTD_memset(p,v,l) memset((p),(v),(l))
+#define ZSTD_memcpy(d, s, l) memcpy((d), (s), (l))
+#define ZSTD_memmove(d, s, l) memmove((d), (s), (l))
+#define ZSTD_memset(p, v, l) memset((p), (v), (l))
 #endif
 
 #endif /* ZSTD_DEPS_COMMON */
@@ -64,7 +64,7 @@
 #include <stdlib.h>
 
 #define ZSTD_malloc(s) malloc(s)
-#define ZSTD_calloc(n,s) calloc((n), (s))
+#define ZSTD_calloc(n, s) calloc((n), (s))
 #define ZSTD_free(p) free((p))
 
 #endif /* ZSTD_DEPS_MALLOC */

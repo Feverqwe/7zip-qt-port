@@ -23,26 +23,23 @@ struct public_key_signature;
  * capabilities.
  */
 struct asymmetric_key_subtype {
-	struct module		*owner;
-	const char		*name;
-	unsigned short		name_len;	/* length of name */
+    struct module *owner;
+    const char *name;
+    unsigned short name_len; /* length of name */
 
-	/* Describe a key of this subtype for /proc/keys */
-	void (*describe)(const struct key *key, struct seq_file *m);
+    /* Describe a key of this subtype for /proc/keys */
+    void (*describe)(const struct key *key, struct seq_file *m);
 
-	/* Destroy a key of this subtype */
-	void (*destroy)(void *payload_crypto, void *payload_auth);
+    /* Destroy a key of this subtype */
+    void (*destroy)(void *payload_crypto, void *payload_auth);
 
-	int (*query)(const struct kernel_pkey_params *params,
-		     struct kernel_pkey_query *info);
+    int (*query)(const struct kernel_pkey_params *params, struct kernel_pkey_query *info);
 
-	/* Encrypt/decrypt/sign data */
-	int (*eds_op)(struct kernel_pkey_params *params,
-		      const void *in, void *out);
+    /* Encrypt/decrypt/sign data */
+    int (*eds_op)(struct kernel_pkey_params *params, const void *in, void *out);
 
-	/* Verify the signature on a key of this subtype (optional) */
-	int (*verify_signature)(const struct key *key,
-				const struct public_key_signature *sig);
+    /* Verify the signature on a key of this subtype (optional) */
+    int (*verify_signature)(const struct key *key, const struct public_key_signature *sig);
 };
 
 /**
@@ -52,10 +49,8 @@ struct asymmetric_key_subtype {
  * Retrieves and returns the subtype pointer of the asymmetric key from the
  * type-specific data attached to the key.
  */
-static inline
-struct asymmetric_key_subtype *asymmetric_key_subtype(const struct key *key)
-{
-	return key->payload.data[asym_subtype];
+static inline struct asymmetric_key_subtype *asymmetric_key_subtype(const struct key *key) {
+    return key->payload.data[asym_subtype];
 }
 
 #endif /* _KEYS_ASYMMETRIC_SUBTYPE_H */

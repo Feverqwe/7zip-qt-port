@@ -4,20 +4,20 @@
 #define _LINUX_RBTREE_TYPES_H
 
 struct rb_node {
-	uintptr_t  __rb_parent_color;
-	struct rb_node *rb_right;
-	struct rb_node *rb_left;
+    uintptr_t __rb_parent_color;
+    struct rb_node *rb_right;
+    struct rb_node *rb_left;
 };
 /* The alignment might seem pointless, but allegedly CRIS needs it */
 
 struct rb_node_linked {
-	struct rb_node		node;
-	struct rb_node_linked	*prev;
-	struct rb_node_linked	*next;
+    struct rb_node node;
+    struct rb_node_linked *prev;
+    struct rb_node_linked *next;
 };
 
 struct rb_root {
-	struct rb_node *rb_node;
+    struct rb_node *rb_node;
 };
 
 /*
@@ -31,8 +31,8 @@ struct rb_root {
  * find it a bit asymmetric, but that's ok.
  */
 struct rb_root_cached {
-	struct rb_root rb_root;
-	struct rb_node *rb_leftmost;
+    struct rb_root rb_root;
+    struct rb_node *rb_leftmost;
 };
 
 /*
@@ -40,12 +40,25 @@ struct rb_root_cached {
  * but that has been omitted due to the lack of users.
  */
 struct rb_root_linked {
-	struct rb_root		rb_root;
-	struct rb_node_linked	*rb_leftmost;
+    struct rb_root rb_root;
+    struct rb_node_linked *rb_leftmost;
 };
 
-#define RB_ROOT (struct rb_root) { NULL, }
-#define RB_ROOT_CACHED (struct rb_root_cached) { {NULL, }, NULL }
-#define RB_ROOT_LINKED (struct rb_root_linked) { {NULL, }, NULL }
+#define RB_ROOT                                                                                    \
+    (struct rb_root) { NULL, }
+#define RB_ROOT_CACHED                                                                             \
+    (struct rb_root_cached) {                                                                      \
+        {                                                                                          \
+            NULL,                                                                                  \
+        },                                                                                         \
+            NULL                                                                                   \
+    }
+#define RB_ROOT_LINKED                                                                             \
+    (struct rb_root_linked) {                                                                      \
+        {                                                                                          \
+            NULL,                                                                                  \
+        },                                                                                         \
+            NULL                                                                                   \
+    }
 
 #endif

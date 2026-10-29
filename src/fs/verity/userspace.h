@@ -2,11 +2,11 @@
 /* Immutable archive services for the transferred Linux fs-verity readers. */
 #ifndef SEVENZIP_FSVERITY_USERSPACE_H
 #define SEVENZIP_FSVERITY_USERSPACE_H
-#include "../ext4/ext4.h"
-#include "../ext4/ext4_extents.h"
-#include "../../include/linux/string.h"
 #include "../../../third_party/7zip/C/Sha256.h"
 #include "../../../third_party/7zip/C/Sha512.h"
+#include "../../include/linux/string.h"
+#include "../ext4/ext4.h"
+#include "../ext4/ext4_extents.h"
 /* Windows SAL defines this annotation name, also used by the Linux disk ABI. */
 #ifdef __reserved
 #undef __reserved
@@ -49,45 +49,92 @@ typedef u64 pgoff_t;
 typedef u64 fsverity_index_t;
 #define FSVERITY_INDEX_MAX UINT64_MAX
 enum hash_algo { HASH_ALGO_SHA256 = 4, HASH_ALGO_SHA512 = 6 };
-struct sha256_ctx { CSha256 state; };
-struct sha512_ctx { CSha512 state; };
+struct sha256_ctx {
+    CSha256 state;
+};
+struct sha512_ctx {
+    CSha512 state;
+};
 static inline void sha256_init(struct sha256_ctx *p) { Sha256_Init(&p->state); }
-static inline void sha256_update(struct sha256_ctx *p, const void *data, size_t size) { Sha256_Update(&p->state, data, size); }
+static inline void sha256_update(struct sha256_ctx *p, const void *data, size_t size) {
+    Sha256_Update(&p->state, data, size);
+}
 static inline void sha256_final(struct sha256_ctx *p, u8 *out) { Sha256_Final(&p->state, out); }
 static inline void sha512_init(struct sha512_ctx *p) { Sha512_Init(&p->state, SHA512_DIGEST_SIZE); }
-static inline void sha512_update(struct sha512_ctx *p, const void *data, size_t size) { Sha512_Update(&p->state, data, size); }
-static inline void sha512_final(struct sha512_ctx *p, u8 *out) { Sha512_Final(&p->state, out, SHA512_DIGEST_SIZE); }
+static inline void sha512_update(struct sha512_ctx *p, const void *data, size_t size) {
+    Sha512_Update(&p->state, data, size);
+}
+static inline void sha512_final(struct sha512_ctx *p, u8 *out) {
+    Sha512_Final(&p->state, out, SHA512_DIGEST_SIZE);
+}
 static inline void sha256(const void *data, size_t size, u8 *out) {
-    struct sha256_ctx ctx; sha256_init(&ctx); sha256_update(&ctx, data, size); sha256_final(&ctx, out);
+    struct sha256_ctx ctx;
+    sha256_init(&ctx);
+    sha256_update(&ctx, data, size);
+    sha256_final(&ctx, out);
 }
 static inline void sha512(const void *data, size_t size, u8 *out) {
-    struct sha512_ctx ctx; sha512_init(&ctx); sha512_update(&ctx, data, size); sha512_final(&ctx, out);
+    struct sha512_ctx ctx;
+    sha512_init(&ctx);
+    sha512_update(&ctx, data, size);
+    sha512_final(&ctx, out);
 }
 static inline bool sha256_finup_2x_is_optimized(void) { return false; }
 static inline void sha256_finup_2x(const struct sha256_ctx *initial, const void *a, const void *b,
-                                 size_t size, u8 *out_a, u8 *out_b) {
+                                   size_t size, u8 *out_a, u8 *out_b) {
     struct sha256_ctx ctx;
-    if (initial) ctx = *initial; else sha256_init(&ctx);
-    sha256_update(&ctx, a, size); sha256_final(&ctx, out_a);
-    if (initial) ctx = *initial; else sha256_init(&ctx);
-    sha256_update(&ctx, b, size); sha256_final(&ctx, out_b);
+    if (initial)
+        ctx = *initial;
+    else
+        sha256_init(&ctx);
+    sha256_update(&ctx, a, size);
+    sha256_final(&ctx, out_a);
+    if (initial)
+        ctx = *initial;
+    else
+        sha256_init(&ctx);
+    sha256_update(&ctx, b, size);
+    sha256_final(&ctx, out_b);
 }
 static inline void *kmemdup(const void *data, size_t size, int flags) {
-    void *result = malloc(size); if (result) memcpy(result, data, size); return result;
+    void *result = malloc(size);
+    if (result)
+        memcpy(result, data, size);
+    return result;
 }
 static inline u64 le64_to_cpu(__le64 value) {
     return (u64)ext_load_le32(&value) | (u64)ext_load_le32((const char *)&value + 4) << 32;
 }
-static inline unsigned int ilog2(u64 n) { unsigned int result = 0; while (n >>= 1) ++result; return result; }
+static inline unsigned int ilog2(u64 n) {
+    unsigned int result = 0;
+    while (n >>= 1)
+        ++result;
+    return result;
+}
 static inline void *page_address(const void *page) { return (void *)page; }
-static inline const void *zero_page(void) { static const u8 zero[PAGE_SIZE] = {0}; return zero; }
+static inline const void *zero_page(void) {
+    static const u8 zero[PAGE_SIZE] = {0};
+    return zero;
+}
 #define ZERO_PAGE(n) zero_page()
-static inline bool test_bit(u64 bit, const unsigned long *map) { return (map[bit / (sizeof(long) * 8)] >> (bit % (sizeof(long) * 8))) & 1; }
-static inline void clear_bit(u64 bit, unsigned long *map) { map[bit / (sizeof(long) * 8)] &= ~(1UL << (bit % (sizeof(long) * 8))); }
-static inline void set_bit(u64 bit, unsigned long *map) { map[bit / (sizeof(long) * 8)] |= 1UL << (bit % (sizeof(long) * 8)); }
+static inline bool test_bit(u64 bit, const unsigned long *map) {
+    return (map[bit / (sizeof(long) * 8)] >> (bit % (sizeof(long) * 8))) & 1;
+}
+static inline void clear_bit(u64 bit, unsigned long *map) {
+    map[bit / (sizeof(long) * 8)] &= ~(1UL << (bit % (sizeof(long) * 8)));
+}
+static inline void set_bit(u64 bit, unsigned long *map) {
+    map[bit / (sizeof(long) * 8)] |= 1UL << (bit % (sizeof(long) * 8));
+}
 #define BITS_TO_LONGS(n) (((n) + sizeof(long) * 8 - 1) / (sizeof(long) * 8))
-struct page { u8 *data; u64 index; size_t base_offset; bool checked; unsigned int references;
-              u64 verified_blocks, age; };
+struct page {
+    u8 *data;
+    u64 index;
+    size_t base_offset;
+    bool checked;
+    unsigned int references;
+    u64 verified_blocks, age;
+};
 #define folio page
 #define PageChecked(p) ((p)->checked)
 static inline bool fsverity_needs_verified_bitmap(void) { return false; }
@@ -95,7 +142,10 @@ static inline bool fsverity_needs_verified_bitmap(void) { return false; }
 #define kmap_local_page(p) ((p)->data)
 #define kmap_local_folio(p, offset) ((p)->data + ((offset) - (p)->base_offset))
 #define kunmap_local(p) ((void)0)
-static inline void verity_put_page(struct page *page) { if (--page->references == 0) free(page); }
+static inline void verity_put_page(struct page *page) {
+    if (--page->references == 0)
+        free(page);
+}
 #define put_page verity_put_page
 #define folio_put verity_put_page
 #define folio_file_page(p, index) (p)
@@ -109,8 +159,10 @@ static inline void fsverity_mark_page_block_verified(struct page *page, u64 inde
 }
 struct page *read_mapping_folio(struct inode *, pgoff_t, void *);
 static inline size_t memcpy_from_file_folio(void *output, struct page *page, u64 pos, size_t size) {
-    size_t offset = pos & (PAGE_SIZE - 1); size_t amount = min_t(size_t, size, PAGE_SIZE - offset);
-    memcpy(output, page->data + offset, amount); return amount;
+    size_t offset = pos & (PAGE_SIZE - 1);
+    size_t amount = min_t(size_t, size, PAGE_SIZE - offset);
+    memcpy(output, page->data + offset, amount);
+    return amount;
 }
 #include "../../include/linux/fsverity.h"
 struct page *generic_read_merkle_tree_page(struct inode *, pgoff_t);

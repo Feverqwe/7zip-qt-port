@@ -8,11 +8,11 @@
 #ifndef _CRYPTO_GF128HASH_H
 #define _CRYPTO_GF128HASH_H
 
-#include <crypto/ghash.h>
 #include "../../lib/crypto/userspace.h"
+#include <crypto/ghash.h>
 
-#define POLYVAL_BLOCK_SIZE	16
-#define POLYVAL_DIGEST_SIZE	16
+#define POLYVAL_BLOCK_SIZE 16
+#define POLYVAL_DIGEST_SIZE 16
 
 /**
  * struct polyval_elem - An element of the POLYVAL finite field
@@ -24,13 +24,13 @@
  * convention: little-endian byte order and natural bit order.
  */
 struct polyval_elem {
-	union {
-		u8 bytes[POLYVAL_BLOCK_SIZE];
-		struct {
-			__le64 lo;
-			__le64 hi;
-		};
-	};
+    union {
+        u8 bytes[POLYVAL_BLOCK_SIZE];
+        struct {
+            __le64 lo;
+            __le64 hi;
+        };
+    };
 };
 
 /**
@@ -40,15 +40,14 @@ struct polyval_elem {
  */
 struct ghash_key {
 #if defined(CONFIG_CRYPTO_LIB_GF128HASH_ARCH) && defined(CONFIG_PPC64)
-	/** @htable: GHASH key format used by the POWER8 assembly code */
-	u64 htable[4][2];
-#elif defined(CONFIG_CRYPTO_LIB_GF128HASH_ARCH) && \
-	(defined(CONFIG_RISCV) || defined(CONFIG_S390))
-	/** @h_raw: The hash key H, in GHASH format */
-	u8 h_raw[GHASH_BLOCK_SIZE];
+    /** @htable: GHASH key format used by the POWER8 assembly code */
+    u64 htable[4][2];
+#elif defined(CONFIG_CRYPTO_LIB_GF128HASH_ARCH) && (defined(CONFIG_RISCV) || defined(CONFIG_S390))
+    /** @h_raw: The hash key H, in GHASH format */
+    u8 h_raw[GHASH_BLOCK_SIZE];
 #endif
-	/** @h: The hash key H, in POLYVAL format */
-	struct polyval_elem h;
+    /** @h: The hash key H, in POLYVAL format */
+    struct polyval_elem h;
 };
 
 /**
@@ -62,13 +61,12 @@ struct ghash_key {
  * exponentiation repeats the POLYVAL dot operation, with its "extra" x^-128.
  */
 struct polyval_key {
-#if defined(CONFIG_CRYPTO_LIB_GF128HASH_ARCH) && \
-	(defined(CONFIG_ARM64) || defined(CONFIG_X86))
-	/** @h_powers: Powers of the hash key H^8 through H^1 */
-	struct polyval_elem h_powers[8];
+#if defined(CONFIG_CRYPTO_LIB_GF128HASH_ARCH) && (defined(CONFIG_ARM64) || defined(CONFIG_X86))
+    /** @h_powers: Powers of the hash key H^8 through H^1 */
+    struct polyval_elem h_powers[8];
 #else
-	/** @h: The hash key H */
-	struct polyval_elem h;
+    /** @h: The hash key H */
+    struct polyval_elem h;
 #endif
 };
 
@@ -81,9 +79,9 @@ struct polyval_key {
  * @partial: Number of data bytes processed so far modulo GHASH_BLOCK_SIZE
  */
 struct ghash_ctx {
-	const struct ghash_key *key;
-	struct polyval_elem acc;
-	size_t partial;
+    const struct ghash_key *key;
+    struct polyval_elem acc;
+    size_t partial;
 };
 
 /**
@@ -94,9 +92,9 @@ struct ghash_ctx {
  * @partial: Number of data bytes processed so far modulo POLYVAL_BLOCK_SIZE
  */
 struct polyval_ctx {
-	const struct polyval_key *key;
-	struct polyval_elem acc;
-	size_t partial;
+    const struct polyval_key *key;
+    struct polyval_elem acc;
+    size_t partial;
 };
 
 /**
@@ -108,8 +106,7 @@ struct polyval_ctx {
  *
  * Context: Any context.
  */
-void ghash_preparekey(struct ghash_key *key,
-		      const u8 raw_key[GHASH_BLOCK_SIZE]);
+void ghash_preparekey(struct ghash_key *key, const u8 raw_key[GHASH_BLOCK_SIZE]);
 
 /**
  * polyval_preparekey() - Prepare a POLYVAL key
@@ -122,8 +119,7 @@ void ghash_preparekey(struct ghash_key *key,
  *
  * Context: Any context.
  */
-void polyval_preparekey(struct polyval_key *key,
-			const u8 raw_key[POLYVAL_BLOCK_SIZE]);
+void polyval_preparekey(struct polyval_key *key, const u8 raw_key[POLYVAL_BLOCK_SIZE]);
 
 /**
  * ghash_init() - Initialize a GHASH context for a new message
@@ -131,10 +127,8 @@ void polyval_preparekey(struct polyval_key *key,
  * @key: The key to use.  Note that a pointer to the key is saved in the
  *	 context, so the key must live at least as long as the context.
  */
-static inline void ghash_init(struct ghash_ctx *ctx,
-			      const struct ghash_key *key)
-{
-	*ctx = (struct ghash_ctx){ .key = key };
+static inline void ghash_init(struct ghash_ctx *ctx, const struct ghash_key *key) {
+    *ctx = (struct ghash_ctx){.key = key};
 }
 
 /**
@@ -143,10 +137,8 @@ static inline void ghash_init(struct ghash_ctx *ctx,
  * @key: The key to use.  Note that a pointer to the key is saved in the
  *	 context, so the key must live at least as long as the context.
  */
-static inline void polyval_init(struct polyval_ctx *ctx,
-				const struct polyval_key *key)
-{
-	*ctx = (struct polyval_ctx){ .key = key };
+static inline void polyval_init(struct polyval_ctx *ctx, const struct polyval_key *key) {
+    *ctx = (struct polyval_ctx){.key = key};
 }
 
 /**
@@ -159,12 +151,9 @@ static inline void polyval_init(struct polyval_ctx *ctx,
  * This imports an accumulator that was saved by polyval_export_blkaligned().
  * The same key must be used.
  */
-static inline void
-polyval_import_blkaligned(struct polyval_ctx *ctx,
-			  const struct polyval_key *key,
-			  const struct polyval_elem *acc)
-{
-	*ctx = (struct polyval_ctx){ .key = key, .acc = *acc };
+static inline void polyval_import_blkaligned(struct polyval_ctx *ctx, const struct polyval_key *key,
+                                             const struct polyval_elem *acc) {
+    *ctx = (struct polyval_ctx){.key = key, .acc = *acc};
 }
 
 /**
@@ -176,9 +165,8 @@ polyval_import_blkaligned(struct polyval_ctx *ctx,
  * bytes processed so far must be a multiple of POLYVAL_BLOCK_SIZE.
  */
 static inline void polyval_export_blkaligned(const struct polyval_ctx *ctx,
-					     struct polyval_elem *acc)
-{
-	*acc = ctx->acc;
+                                             struct polyval_elem *acc) {
+    *acc = ctx->acc;
 }
 
 /**
@@ -242,14 +230,13 @@ void polyval_final(struct polyval_ctx *ctx, u8 out[POLYVAL_BLOCK_SIZE]);
  *
  * Context: Any context.
  */
-static inline void ghash(const struct ghash_key *key, const u8 *data,
-			 size_t len, u8 out[GHASH_BLOCK_SIZE])
-{
-	struct ghash_ctx ctx;
+static inline void ghash(const struct ghash_key *key, const u8 *data, size_t len,
+                         u8 out[GHASH_BLOCK_SIZE]) {
+    struct ghash_ctx ctx;
 
-	ghash_init(&ctx, key);
-	ghash_update(&ctx, data, len);
-	ghash_final(&ctx, out);
+    ghash_init(&ctx, key);
+    ghash_update(&ctx, data, len);
+    ghash_final(&ctx, out);
 }
 
 /**
@@ -261,15 +248,13 @@ static inline void ghash(const struct ghash_key *key, const u8 *data,
  *
  * Context: Any context.
  */
-static inline void polyval(const struct polyval_key *key,
-			   const u8 *data, size_t len,
-			   u8 out[POLYVAL_BLOCK_SIZE])
-{
-	struct polyval_ctx ctx;
+static inline void polyval(const struct polyval_key *key, const u8 *data, size_t len,
+                           u8 out[POLYVAL_BLOCK_SIZE]) {
+    struct polyval_ctx ctx;
 
-	polyval_init(&ctx, key);
-	polyval_update(&ctx, data, len);
-	polyval_final(&ctx, out);
+    polyval_init(&ctx, key);
+    polyval_update(&ctx, data, len);
+    polyval_final(&ctx, out);
 }
 
 #endif /* _CRYPTO_GF128HASH_H */

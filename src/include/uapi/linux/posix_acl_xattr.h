@@ -21,19 +21,19 @@
 #include <stdint.h>
 
 /* Supported ACL a_version fields */
-#define POSIX_ACL_XATTR_VERSION	0x0002
+#define POSIX_ACL_XATTR_VERSION 0x0002
 
 /* An undefined entry e_id value */
-#define ACL_UNDEFINED_ID	(-1)
+#define ACL_UNDEFINED_ID (-1)
 
 struct posix_acl_xattr_entry {
-	uint16_t			e_tag;
-	uint16_t			e_perm;
-	uint32_t			e_id;
+    uint16_t e_tag;
+    uint16_t e_perm;
+    uint32_t e_id;
 };
 
 struct posix_acl_xattr_header {
-	uint32_t			a_version;
+    uint32_t a_version;
 };
 
-#endif	/* __UAPI_POSIX_ACL_XATTR_H */
+#endif /* __UAPI_POSIX_ACL_XATTR_H */

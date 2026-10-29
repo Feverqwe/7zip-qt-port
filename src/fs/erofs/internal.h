@@ -2,16 +2,16 @@
 /* Userspace services for the Linux EROFS read-side modules. */
 #ifndef SEVENZIP_EROFS_INTERNAL_H
 #define SEVENZIP_EROFS_INTERNAL_H
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <limits.h>
 #include "../../include/linux/kdev_t.h"
 #include "../../include/linux/string.h"
+#include <errno.h>
+#include <limits.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 typedef uint8_t u8;
 typedef uint16_t u16, __le16;
@@ -45,10 +45,11 @@ typedef u64 erofs_nid_t, erofs_off_t, erofs_blk_t;
 #endif
 #define min_t(t, a, b) min((t)(a), (t)(b))
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
-#define for_each_set_bit(bit, mask, count) \
-    for ((bit) = 0; (bit) < (count); ++(bit)) if ((*(mask) >> (bit)) & 1UL)
+#define for_each_set_bit(bit, mask, count)                                                         \
+    for ((bit) = 0; (bit) < (count); ++(bit))                                                      \
+        if ((*(mask) >> (bit)) & 1UL)
 #define container_of(p, type, member) ((type *)((char *)(p) - offsetof(type, member)))
-#define check_add_overflow(a, b, p) \
+#define check_add_overflow(a, b, p)                                                                \
     ((u64)(b) > UINT64_MAX - (u64)(a) || ((*(p) = (a) + (b)), false))
 #define unlikely(x) (x)
 #define IS_ERR(p) ((uintptr_t)(p) >= (uintptr_t)-4095)
@@ -127,7 +128,8 @@ static inline u32 get_unaligned_le32(const void *p) {
 }
 static inline unsigned int ilog2(u64 n) {
     unsigned int bits = 0;
-    while (n >>= 1) ++bits;
+    while (n >>= 1)
+        ++bits;
     return bits;
 }
 #include "erofs_fs.h"
@@ -156,18 +158,27 @@ struct erofs_inode {
     unsigned int *xattr_shared_xattrs;
     union {
         erofs_blk_t startblk;
-        struct { unsigned short chunkformat; unsigned char chunkbits; };
+        struct {
+            unsigned short chunkformat;
+            unsigned char chunkbits;
+        };
         struct {
             unsigned short z_advise;
             unsigned char z_algofmt[2], z_lclusterbits;
-            union { u64 z_tailextent_headlcn, z_extents; };
+            union {
+                u64 z_tailextent_headlcn, z_extents;
+            };
             erofs_off_t z_fragmentoff;
             unsigned short z_idata_size;
         };
     };
     struct inode vfs_inode;
 };
-struct erofs_device_info { u64 blocks, uniaddr; unsigned int id; u8 tag[64]; };
+struct erofs_device_info {
+    u64 blocks, uniaddr;
+    unsigned int id;
+    u8 tag[64];
+};
 struct erofs_map_dev {
     struct super_block *m_sb;
     struct erofs_device_info *m_dif;
@@ -197,7 +208,9 @@ struct erofs_sb_info {
     char *volume_name;
     u32 feature_compat, feature_incompat;
     u16 available_compr_algs;
-    struct { u16 max_pclusterblks; } lz4;
+    struct {
+        u16 max_pclusterblks;
+    } lz4;
     unsigned int lzma_dict_size;
     unsigned int zstd_dict_size;
     unsigned int opt;
@@ -219,8 +232,14 @@ struct super_block {
 #include "../../include/linux/fs.h"
 // Owned single-page folios replace the kernel page cache. Decoder pages borrow
 // their data; only metadata folios are released through folio_put.
-struct page { u8 *data; };
-struct folio { struct page page; u64 index; u8 data[PAGE_SIZE]; };
+struct page {
+    u8 *data;
+};
+struct folio {
+    struct page page;
+    u64 index;
+    u8 data[PAGE_SIZE];
+};
 typedef u64 pgoff_t;
 static inline struct folio *page_folio(struct page *page) {
     return container_of(page, struct folio, page);
@@ -241,7 +260,10 @@ struct erofs_buf {
     struct super_block *sb;
     struct inode *mapping;
 };
-struct qstr { const char *name; unsigned int len; };
+struct qstr {
+    const char *name;
+    unsigned int len;
+};
 #define QSTR(text) ((struct qstr){(text), (unsigned int)strlen(text)})
 #define __EROFS_BUF_INITIALIZER ((struct erofs_buf){0})
 #define EROFS_SB(sb) ((sb)->s_fs_info)
@@ -252,10 +274,10 @@ struct qstr { const char *name; unsigned int len; };
 #define erofs_blkoff(sb, pos) ((pos) & ((sb)->s_blocksize - 1))
 #define erofs_pos(sb, blk) ((erofs_off_t)(blk) << (sb)->s_blocksize_bits)
 #define erofs_iblks(i) (round_up((i)->i_size, i_blocksize(i)) >> (i)->i_blkbits)
-#define EROFS_FEATURE_FUNCS(name, kind, feature) \
-static inline bool erofs_sb_has_##name(struct erofs_sb_info *sbi) { \
-    return !!(sbi->feature_##kind & EROFS_FEATURE_##feature); \
-}
+#define EROFS_FEATURE_FUNCS(name, kind, feature)                                                   \
+    static inline bool erofs_sb_has_##name(struct erofs_sb_info *sbi) {                            \
+        return !!(sbi->feature_##kind & EROFS_FEATURE_##feature);                                  \
+    }
 EROFS_FEATURE_FUNCS(lz4_0padding, incompat, INCOMPAT_LZ4_0PADDING)
 EROFS_FEATURE_FUNCS(compr_cfgs, incompat, INCOMPAT_COMPR_CFGS)
 EROFS_FEATURE_FUNCS(big_pcluster, incompat, INCOMPAT_BIG_PCLUSTER)
@@ -275,7 +297,8 @@ static inline bool erofs_inode_in_metabox(struct inode *inode) {
 static inline erofs_off_t erofs_iloc(struct inode *inode) {
     struct erofs_sb_info *sbi = EROFS_I_SB(inode);
     erofs_nid_t nid_lo = EROFS_I(inode)->nid & EROFS_DIRENT_NID_MASK;
-    if (erofs_inode_in_metabox(inode)) return nid_lo << sbi->islotbits;
+    if (erofs_inode_in_metabox(inode))
+        return nid_lo << sbi->islotbits;
     return erofs_pos(inode->i_sb, sbi->meta_blkaddr) + (nid_lo << sbi->islotbits);
 }
 static inline unsigned int erofs_inode_version(unsigned int f) { return f & 1; }
@@ -284,7 +307,8 @@ static inline void i_uid_write(struct inode *inode, u32 uid) { inode->uid = uid;
 static inline void i_gid_write(struct inode *inode, u32 gid) { inode->gid = gid; }
 static inline void set_nlink(struct inode *inode, u32 n) { inode->nlink = n; }
 static inline void inode_set_mtime(struct inode *inode, s64 sec, u32 nsec) {
-    inode->mtime = sec; inode->nsec = nsec;
+    inode->mtime = sec;
+    inode->nsec = nsec;
 }
 #define inode_set_atime_to_ts(...) ((void)0)
 #define inode_set_ctime_to_ts(...) ((void)0)
@@ -299,13 +323,15 @@ struct dir_context {
     void *context;
     bool (*emit)(void *, const char *, unsigned int, u64, unsigned char);
 };
-struct file { struct inode *inode; };
+struct file {
+    struct inode *inode;
+};
 #define file_inode(file) ((file)->inode)
 #define dir_emit(ctx, name, len, nid, type) ((ctx)->emit((ctx)->context, name, len, nid, type))
 static inline bool dir_emit_dot(struct file *file, struct dir_context *ctx) {
     struct inode *inode = file_inode(file);
-    return dir_emit(ctx, ".", 1,
-                    erofs_nid_to_ino64(EROFS_I_SB(inode), EROFS_I(inode)->nid), DT_DIR);
+    return dir_emit(ctx, ".", 1, erofs_nid_to_ino64(EROFS_I_SB(inode), EROFS_I(inode)->nid),
+                    DT_DIR);
 }
 #define EROFS_MAP_MAPPED 0x0001
 #define EROFS_MAP_META 0x0002
@@ -330,7 +356,8 @@ enum {
     Z_EROFS_COMPRESSION_RUNTIME_MAX
 };
 static inline void erofs_printk(struct super_block *sb, const char *fmt, ...) {
-    (void)sb; (void)fmt;
+    (void)sb;
+    (void)fmt;
 }
 #define erofs_err erofs_printk
 #define erofs_info erofs_printk

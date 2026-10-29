@@ -2,21 +2,20 @@
 
 #ifndef _CRYPTO_BLAKE2B_H
 #define _CRYPTO_BLAKE2B_H
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #define WARN_ON(...) ((void)0)
 
-
 enum blake2b_lengths {
-	BLAKE2B_BLOCK_SIZE = 128,
-	BLAKE2B_HASH_SIZE = 64,
-	BLAKE2B_KEY_SIZE = 64,
+    BLAKE2B_BLOCK_SIZE = 128,
+    BLAKE2B_HASH_SIZE = 64,
+    BLAKE2B_KEY_SIZE = 64,
 
-	BLAKE2B_160_HASH_SIZE = 20,
-	BLAKE2B_256_HASH_SIZE = 32,
-	BLAKE2B_384_HASH_SIZE = 48,
-	BLAKE2B_512_HASH_SIZE = 64,
+    BLAKE2B_160_HASH_SIZE = 20,
+    BLAKE2B_256_HASH_SIZE = 32,
+    BLAKE2B_384_HASH_SIZE = 48,
+    BLAKE2B_512_HASH_SIZE = 64,
 };
 
 /**
@@ -29,13 +28,13 @@ enum blake2b_lengths {
  * @outlen: length of output hash value in bytes, at most BLAKE2B_HASH_SIZE
  */
 struct blake2b_ctx {
-	/* 'h', 't', and 'f' are used in assembly code, so keep them as-is. */
-	uint64_t h[8];
-	uint64_t t[2];
-	uint64_t f[2];
-	uint8_t buf[BLAKE2B_BLOCK_SIZE];
-	unsigned int buflen;
-	unsigned int outlen;
+    /* 'h', 't', and 'f' are used in assembly code, so keep them as-is. */
+    uint64_t h[8];
+    uint64_t t[2];
+    uint64_t f[2];
+    uint8_t buf[BLAKE2B_BLOCK_SIZE];
+    unsigned int buflen;
+    unsigned int outlen;
 };
 
 #define BLAKE2B_IV0 UINT64_C(0x6A09E667F3BCC908)
@@ -47,28 +46,27 @@ struct blake2b_ctx {
 #define BLAKE2B_IV6 UINT64_C(0x1F83D9ABFB41BD6B)
 #define BLAKE2B_IV7 UINT64_C(0x5BE0CD19137E2179)
 
-static inline void __blake2b_init(struct blake2b_ctx *ctx, size_t outlen,
-				  const void *key, size_t keylen)
-{
-	ctx->h[0] = BLAKE2B_IV0 ^ (0x01010000 | keylen << 8 | outlen);
-	ctx->h[1] = BLAKE2B_IV1;
-	ctx->h[2] = BLAKE2B_IV2;
-	ctx->h[3] = BLAKE2B_IV3;
-	ctx->h[4] = BLAKE2B_IV4;
-	ctx->h[5] = BLAKE2B_IV5;
-	ctx->h[6] = BLAKE2B_IV6;
-	ctx->h[7] = BLAKE2B_IV7;
-	ctx->t[0] = 0;
-	ctx->t[1] = 0;
-	ctx->f[0] = 0;
-	ctx->f[1] = 0;
-	ctx->buflen = 0;
-	ctx->outlen = outlen;
-	if (keylen) {
-		memcpy(ctx->buf, key, keylen);
-		memset(&ctx->buf[keylen], 0, BLAKE2B_BLOCK_SIZE - keylen);
-		ctx->buflen = BLAKE2B_BLOCK_SIZE;
-	}
+static inline void __blake2b_init(struct blake2b_ctx *ctx, size_t outlen, const void *key,
+                                  size_t keylen) {
+    ctx->h[0] = BLAKE2B_IV0 ^ (0x01010000 | keylen << 8 | outlen);
+    ctx->h[1] = BLAKE2B_IV1;
+    ctx->h[2] = BLAKE2B_IV2;
+    ctx->h[3] = BLAKE2B_IV3;
+    ctx->h[4] = BLAKE2B_IV4;
+    ctx->h[5] = BLAKE2B_IV5;
+    ctx->h[6] = BLAKE2B_IV6;
+    ctx->h[7] = BLAKE2B_IV7;
+    ctx->t[0] = 0;
+    ctx->t[1] = 0;
+    ctx->f[0] = 0;
+    ctx->f[1] = 0;
+    ctx->buflen = 0;
+    ctx->outlen = outlen;
+    if (keylen) {
+        memcpy(ctx->buf, key, keylen);
+        memset(&ctx->buf[keylen], 0, BLAKE2B_BLOCK_SIZE - keylen);
+        ctx->buflen = BLAKE2B_BLOCK_SIZE;
+    }
 }
 
 /**
@@ -78,9 +76,8 @@ static inline void __blake2b_init(struct blake2b_ctx *ctx, size_t outlen,
  *
  * Context: Any context.
  */
-static inline void blake2b_init(struct blake2b_ctx *ctx, size_t outlen)
-{
-	__blake2b_init(ctx, outlen, NULL, 0);
+static inline void blake2b_init(struct blake2b_ctx *ctx, size_t outlen) {
+    __blake2b_init(ctx, outlen, NULL, 0);
 }
 
 /**
@@ -92,13 +89,12 @@ static inline void blake2b_init(struct blake2b_ctx *ctx, size_t outlen)
  *
  * Context: Any context.
  */
-static inline void blake2b_init_key(struct blake2b_ctx *ctx, size_t outlen,
-				    const void *key, size_t keylen)
-{
-	WARN_ON(IS_ENABLED(DEBUG) && (!outlen || outlen > BLAKE2B_HASH_SIZE ||
-		!key || !keylen || keylen > BLAKE2B_KEY_SIZE));
+static inline void blake2b_init_key(struct blake2b_ctx *ctx, size_t outlen, const void *key,
+                                    size_t keylen) {
+    WARN_ON(IS_ENABLED(DEBUG) && (!outlen || outlen > BLAKE2B_HASH_SIZE || !key || !keylen ||
+                                  keylen > BLAKE2B_KEY_SIZE));
 
-	__blake2b_init(ctx, outlen, key, keylen);
+    __blake2b_init(ctx, outlen, key, keylen);
 }
 
 /**
@@ -137,19 +133,17 @@ void blake2b_final(struct blake2b_ctx *ctx, uint8_t *out);
  *
  * Context: Any context.
  */
-static inline void blake2b(const uint8_t *key, size_t keylen,
-			   const uint8_t *in, size_t inlen,
-			   uint8_t *out, size_t outlen)
-{
-	struct blake2b_ctx ctx;
+static inline void blake2b(const uint8_t *key, size_t keylen, const uint8_t *in, size_t inlen,
+                           uint8_t *out, size_t outlen) {
+    struct blake2b_ctx ctx;
 
-	WARN_ON(IS_ENABLED(DEBUG) && ((!in && inlen > 0) || !out || !outlen ||
-		outlen > BLAKE2B_HASH_SIZE || keylen > BLAKE2B_KEY_SIZE ||
-		(!key && keylen)));
+    WARN_ON(IS_ENABLED(DEBUG) &&
+            ((!in && inlen > 0) || !out || !outlen || outlen > BLAKE2B_HASH_SIZE ||
+             keylen > BLAKE2B_KEY_SIZE || (!key && keylen)));
 
-	__blake2b_init(&ctx, outlen, key, keylen);
-	blake2b_update(&ctx, in, inlen);
-	blake2b_final(&ctx, out);
+    __blake2b_init(&ctx, outlen, key, keylen);
+    blake2b_update(&ctx, in, inlen);
+    blake2b_final(&ctx, out);
 }
 
 #undef WARN_ON

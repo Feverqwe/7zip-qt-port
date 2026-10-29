@@ -8,10 +8,10 @@
 #ifndef _LINUX_BITOPS_COUNT_ZEROS_H_
 #define _LINUX_BITOPS_COUNT_ZEROS_H_
 
-#include <asm-generic/bitops/fls.h>
-#include <asm-generic/bitops/__fls.h>
-#include <asm-generic/bitops/fls64.h>
 #include <asm-generic/bitops/__ffs.h>
+#include <asm-generic/bitops/__fls.h>
+#include <asm-generic/bitops/fls.h>
+#include <asm-generic/bitops/fls64.h>
 
 /**
  * count_leading_zeros - Count the number of zeros from the MSB back
@@ -23,12 +23,11 @@
  * If only the LSB of @x is set, then the result is BITS_PER_LONG-1.
  * If @x is 0 then the result is BITS_PER_LONG.
  */
-static inline int count_leading_zeros(unsigned long x)
-{
-	if (sizeof(x) == 4)
-		return BITS_PER_LONG - fls(x);
-	else
-		return BITS_PER_LONG - fls64(x);
+static inline int count_leading_zeros(unsigned long x) {
+    if (sizeof(x) == 4)
+        return BITS_PER_LONG - fls(x);
+    else
+        return BITS_PER_LONG - fls64(x);
 }
 
 /**
@@ -41,9 +40,6 @@ static inline int count_leading_zeros(unsigned long x)
  * If only the MSB of @x is set, then the result is BITS_PER_LONG-1.
  * If @x is 0 then the result is BITS_PER_LONG.
  */
-static inline int count_trailing_zeros(unsigned long x)
-{
-	return x ? __ffs(x) : BITS_PER_LONG;
-}
+static inline int count_trailing_zeros(unsigned long x) { return x ? __ffs(x) : BITS_PER_LONG; }
 
 #endif /* _LINUX_BITOPS_COUNT_ZEROS_H_ */

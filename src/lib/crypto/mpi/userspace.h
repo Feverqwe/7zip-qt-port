@@ -11,13 +11,22 @@ typedef unsigned long ulong;
 #define kfree(ptr) sevenzip_crypto_free_sensitive(ptr)
 #define printk(...) ((void)0)
 #define pr_info(...) ((void)0)
-#define BUG_ON(value) do { if (value) abort(); } while (0)
+#define BUG_ON(value)                                                                              \
+    do {                                                                                           \
+        if (value)                                                                                 \
+            abort();                                                                               \
+    } while (0)
 #define cond_resched() ((void)0)
-#define swap(a, b) do { mpi_ptr_t temporary = (a); (a) = (b); (b) = temporary; } while (0)
-static inline void *sevenzip_mpi_zalloc_array(size_t size, size_t count)
-{
-	if (size && count > SIZE_MAX / size) return NULL;
-	return sevenzip_crypto_zalloc(size * count);
+#define swap(a, b)                                                                                 \
+    do {                                                                                           \
+        mpi_ptr_t temporary = (a);                                                                 \
+        (a) = (b);                                                                                 \
+        (b) = temporary;                                                                           \
+    } while (0)
+static inline void *sevenzip_mpi_zalloc_array(size_t size, size_t count) {
+    if (size && count > SIZE_MAX / size)
+        return NULL;
+    return sevenzip_crypto_zalloc(size * count);
 }
 #define kzalloc_objs(object, count) sevenzip_mpi_zalloc_array(sizeof(object), count)
 #endif

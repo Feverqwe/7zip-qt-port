@@ -2,9 +2,9 @@
 /* Owned, unpublished trees need no kernel RCU or volatile access services. */
 #ifndef SEVENZIP_RBTREE_HOST_H
 #define SEVENZIP_RBTREE_HOST_H
-#include <stdint.h>
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #ifndef __always_inline
 #define __always_inline inline
 #endif

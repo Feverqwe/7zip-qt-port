@@ -16,7 +16,9 @@ typedef intptr_t ssize_t;
 #define XATTR_USER_PREFIX "user."
 #define XATTR_TRUSTED_PREFIX "trusted."
 #define XATTR_SECURITY_PREFIX "security."
-struct dentry { struct inode *inode; };
+struct dentry {
+    struct inode *inode;
+};
 static inline struct inode *d_inode(struct dentry *d) { return d->inode; }
 // Archive metadata does not depend on the host's namespace privileges.
 #define CAP_SYS_ADMIN 21
@@ -26,10 +28,11 @@ struct xattr_handler {
     const char *name;
     int flags;
     bool (*list)(struct dentry *);
-    int (*get)(const struct xattr_handler *, struct dentry *, struct inode *, const char *, void *, size_t);
+    int (*get)(const struct xattr_handler *, struct dentry *, struct inode *, const char *, void *,
+               size_t);
 };
-extern const struct xattr_handler * const squashfs_xattr_handlers[];
+extern const struct xattr_handler *const squashfs_xattr_handlers[];
 ssize_t squashfs_listxattr(struct dentry *, char *, size_t);
-ssize_t squashfs_listxattr_visit(struct dentry *, char *, size_t,
-    int (*)(void *, const char *), void *);
+ssize_t squashfs_listxattr_visit(struct dentry *, char *, size_t, int (*)(void *, const char *),
+                                 void *);
 #endif

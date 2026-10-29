@@ -10,13 +10,11 @@
 /* Select Linux's existing generic carry/borrow path. These services replace
  * compiler overflow intrinsics, including their unsigned-long-long pointer
  * assumption, with the same unsigned 64-bit operations on all host ABIs. */
-static inline bool ecc_add_overflow(u64 a, u64 b, u64 *out)
-{
-	return check_add_overflow(a, b, out);
+static inline bool ecc_add_overflow(u64 a, u64 b, u64 *out) {
+    return check_add_overflow(a, b, out);
 }
-static inline bool ecc_sub_overflow(u64 a, u64 b, u64 *out)
-{
-	*out = a - b;
-	return a < b;
+static inline bool ecc_sub_overflow(u64 a, u64 b, u64 *out) {
+    *out = a - b;
+    return a < b;
 }
 #endif

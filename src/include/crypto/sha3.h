@@ -9,32 +9,32 @@
 
 #include "../../lib/crypto/userspace.h"
 
-#define SHA3_224_DIGEST_SIZE	(224 / 8)
-#define SHA3_224_BLOCK_SIZE	(200 - 2 * SHA3_224_DIGEST_SIZE)
-#define SHA3_224_EXPORT_SIZE	SHA3_STATE_SIZE + SHA3_224_BLOCK_SIZE + 1
+#define SHA3_224_DIGEST_SIZE (224 / 8)
+#define SHA3_224_BLOCK_SIZE (200 - 2 * SHA3_224_DIGEST_SIZE)
+#define SHA3_224_EXPORT_SIZE SHA3_STATE_SIZE + SHA3_224_BLOCK_SIZE + 1
 
-#define SHA3_256_DIGEST_SIZE	(256 / 8)
-#define SHA3_256_BLOCK_SIZE	(200 - 2 * SHA3_256_DIGEST_SIZE)
-#define SHA3_256_EXPORT_SIZE	SHA3_STATE_SIZE + SHA3_256_BLOCK_SIZE + 1
+#define SHA3_256_DIGEST_SIZE (256 / 8)
+#define SHA3_256_BLOCK_SIZE (200 - 2 * SHA3_256_DIGEST_SIZE)
+#define SHA3_256_EXPORT_SIZE SHA3_STATE_SIZE + SHA3_256_BLOCK_SIZE + 1
 
-#define SHA3_384_DIGEST_SIZE	(384 / 8)
-#define SHA3_384_BLOCK_SIZE	(200 - 2 * SHA3_384_DIGEST_SIZE)
-#define SHA3_384_EXPORT_SIZE	SHA3_STATE_SIZE + SHA3_384_BLOCK_SIZE + 1
+#define SHA3_384_DIGEST_SIZE (384 / 8)
+#define SHA3_384_BLOCK_SIZE (200 - 2 * SHA3_384_DIGEST_SIZE)
+#define SHA3_384_EXPORT_SIZE SHA3_STATE_SIZE + SHA3_384_BLOCK_SIZE + 1
 
-#define SHA3_512_DIGEST_SIZE	(512 / 8)
-#define SHA3_512_BLOCK_SIZE	(200 - 2 * SHA3_512_DIGEST_SIZE)
-#define SHA3_512_EXPORT_SIZE	SHA3_STATE_SIZE + SHA3_512_BLOCK_SIZE + 1
+#define SHA3_512_DIGEST_SIZE (512 / 8)
+#define SHA3_512_BLOCK_SIZE (200 - 2 * SHA3_512_DIGEST_SIZE)
+#define SHA3_512_EXPORT_SIZE SHA3_STATE_SIZE + SHA3_512_BLOCK_SIZE + 1
 
 /*
  * SHAKE128 and SHAKE256 actually have variable output size, but this is used to
  * calculate the block size (rate) analogously to the above.
  */
-#define SHAKE128_DEFAULT_SIZE	(128 / 8)
-#define SHAKE128_BLOCK_SIZE	(200 - 2 * SHAKE128_DEFAULT_SIZE)
-#define SHAKE256_DEFAULT_SIZE	(256 / 8)
-#define SHAKE256_BLOCK_SIZE	(200 - 2 * SHAKE256_DEFAULT_SIZE)
+#define SHAKE128_DEFAULT_SIZE (128 / 8)
+#define SHAKE128_BLOCK_SIZE (200 - 2 * SHAKE128_DEFAULT_SIZE)
+#define SHAKE256_DEFAULT_SIZE (256 / 8)
+#define SHAKE256_BLOCK_SIZE (200 - 2 * SHAKE256_DEFAULT_SIZE)
 
-#define SHA3_STATE_SIZE		200
+#define SHA3_STATE_SIZE 200
 
 /*
  * State for the Keccak-f[1600] permutation: 25 64-bit words.
@@ -46,21 +46,21 @@
  * words.  Of course, that conversion is a no-op on little-endian machines.
  */
 struct sha3_state {
-	union {
-		__le64 words[SHA3_STATE_SIZE / 8];
-		u8 bytes[SHA3_STATE_SIZE];
+    union {
+        __le64 words[SHA3_STATE_SIZE / 8];
+        u8 bytes[SHA3_STATE_SIZE];
 
-		u64 native_words[SHA3_STATE_SIZE / 8]; /* see comment above */
-	};
+        u64 native_words[SHA3_STATE_SIZE / 8]; /* see comment above */
+    };
 };
 
 /* Internal context, shared by the digests (SHA3-*) and the XOFs (SHAKE*) */
 struct __sha3_ctx {
-	struct sha3_state state;
-	u8 digest_size;		/* Digests only: the digest size in bytes */
-	u8 block_size;		/* Block size in bytes */
-	u8 absorb_offset;	/* Index of next state byte to absorb into */
-	u8 squeeze_offset;	/* XOFs only: index of next state byte to extract */
+    struct sha3_state state;
+    u8 digest_size;    /* Digests only: the digest size in bytes */
+    u8 block_size;     /* Block size in bytes */
+    u8 absorb_offset;  /* Index of next state byte to absorb into */
+    u8 squeeze_offset; /* XOFs only: index of next state byte to extract */
 };
 
 void __sha3_update(struct __sha3_ctx *ctx, const u8 *in, size_t in_len);
@@ -70,7 +70,7 @@ void __sha3_update(struct __sha3_ctx *ctx, const u8 *in, size_t in_len);
  * @ctx: private
  */
 struct sha3_ctx {
-	struct __sha3_ctx ctx;
+    struct __sha3_ctx ctx;
 };
 
 /**
@@ -80,17 +80,14 @@ struct sha3_ctx {
  * This is already called by sha3_final().  Call this explicitly when abandoning
  * a context without calling sha3_final().
  */
-static inline void sha3_zeroize_ctx(struct sha3_ctx *ctx)
-{
-	memzero_explicit(ctx, sizeof(*ctx));
-}
+static inline void sha3_zeroize_ctx(struct sha3_ctx *ctx) { memzero_explicit(ctx, sizeof(*ctx)); }
 
 /**
  * struct shake_ctx - Context for SHAKE128 or SHAKE256
  * @ctx: private
  */
 struct shake_ctx {
-	struct __sha3_ctx ctx;
+    struct __sha3_ctx ctx;
 };
 
 /**
@@ -99,10 +96,7 @@ struct shake_ctx {
  *
  * Call this after the last squeeze.
  */
-static inline void shake_zeroize_ctx(struct shake_ctx *ctx)
-{
-	memzero_explicit(ctx, sizeof(*ctx));
-}
+static inline void shake_zeroize_ctx(struct shake_ctx *ctx) { memzero_explicit(ctx, sizeof(*ctx)); }
 
 /**
  * sha3_224_init() - Initialize a context for SHA3-224
@@ -112,14 +106,14 @@ static inline void shake_zeroize_ctx(struct shake_ctx *ctx)
  *
  * Context: Any context.
  */
-static inline void sha3_224_init(struct sha3_ctx *ctx)
-{
-	*ctx = (struct sha3_ctx){
-		.ctx = {
-			.digest_size = SHA3_224_DIGEST_SIZE,
-			.block_size = SHA3_224_BLOCK_SIZE,
-		},
-	};
+static inline void sha3_224_init(struct sha3_ctx *ctx) {
+    *ctx = (struct sha3_ctx){
+        .ctx =
+            {
+                .digest_size = SHA3_224_DIGEST_SIZE,
+                .block_size = SHA3_224_BLOCK_SIZE,
+            },
+    };
 }
 
 /**
@@ -130,14 +124,14 @@ static inline void sha3_224_init(struct sha3_ctx *ctx)
  *
  * Context: Any context.
  */
-static inline void sha3_256_init(struct sha3_ctx *ctx)
-{
-	*ctx = (struct sha3_ctx){
-		.ctx = {
-			.digest_size = SHA3_256_DIGEST_SIZE,
-			.block_size = SHA3_256_BLOCK_SIZE,
-		},
-	};
+static inline void sha3_256_init(struct sha3_ctx *ctx) {
+    *ctx = (struct sha3_ctx){
+        .ctx =
+            {
+                .digest_size = SHA3_256_DIGEST_SIZE,
+                .block_size = SHA3_256_BLOCK_SIZE,
+            },
+    };
 }
 
 /**
@@ -148,14 +142,14 @@ static inline void sha3_256_init(struct sha3_ctx *ctx)
  *
  * Context: Any context.
  */
-static inline void sha3_384_init(struct sha3_ctx *ctx)
-{
-	*ctx = (struct sha3_ctx){
-		.ctx = {
-			.digest_size = SHA3_384_DIGEST_SIZE,
-			.block_size = SHA3_384_BLOCK_SIZE,
-		},
-	};
+static inline void sha3_384_init(struct sha3_ctx *ctx) {
+    *ctx = (struct sha3_ctx){
+        .ctx =
+            {
+                .digest_size = SHA3_384_DIGEST_SIZE,
+                .block_size = SHA3_384_BLOCK_SIZE,
+            },
+    };
 }
 
 /**
@@ -166,14 +160,14 @@ static inline void sha3_384_init(struct sha3_ctx *ctx)
  *
  * Context: Any context.
  */
-static inline void sha3_512_init(struct sha3_ctx *ctx)
-{
-	*ctx = (struct sha3_ctx){
-		.ctx = {
-			.digest_size = SHA3_512_DIGEST_SIZE,
-			.block_size = SHA3_512_BLOCK_SIZE,
-		},
-	};
+static inline void sha3_512_init(struct sha3_ctx *ctx) {
+    *ctx = (struct sha3_ctx){
+        .ctx =
+            {
+                .digest_size = SHA3_512_DIGEST_SIZE,
+                .block_size = SHA3_512_BLOCK_SIZE,
+            },
+    };
 }
 
 /**
@@ -187,10 +181,8 @@ static inline void sha3_512_init(struct sha3_ctx *ctx)
  *
  * Context: Any context.
  */
-static inline void sha3_update(struct sha3_ctx *ctx,
-			       const u8 *in, size_t in_len)
-{
-	__sha3_update(&ctx->ctx, in, in_len);
+static inline void sha3_update(struct sha3_ctx *ctx, const u8 *in, size_t in_len) {
+    __sha3_update(&ctx->ctx, in, in_len);
 }
 
 /**
@@ -214,13 +206,13 @@ void sha3_final(struct sha3_ctx *ctx, u8 *out);
  *
  * Context: Any context.
  */
-static inline void shake128_init(struct shake_ctx *ctx)
-{
-	*ctx = (struct shake_ctx){
-		.ctx = {
-			.block_size = SHAKE128_BLOCK_SIZE,
-		},
-	};
+static inline void shake128_init(struct shake_ctx *ctx) {
+    *ctx = (struct shake_ctx){
+        .ctx =
+            {
+                .block_size = SHAKE128_BLOCK_SIZE,
+            },
+    };
 }
 
 /**
@@ -231,13 +223,13 @@ static inline void shake128_init(struct shake_ctx *ctx)
  *
  * Context: Any context.
  */
-static inline void shake256_init(struct shake_ctx *ctx)
-{
-	*ctx = (struct shake_ctx){
-		.ctx = {
-			.block_size = SHAKE256_BLOCK_SIZE,
-		},
-	};
+static inline void shake256_init(struct shake_ctx *ctx) {
+    *ctx = (struct shake_ctx){
+        .ctx =
+            {
+                .block_size = SHAKE256_BLOCK_SIZE,
+            },
+    };
 }
 
 /**
@@ -251,10 +243,8 @@ static inline void shake256_init(struct shake_ctx *ctx)
  *
  * Context: Any context.
  */
-static inline void shake_update(struct shake_ctx *ctx,
-				const u8 *in, size_t in_len)
-{
-	__sha3_update(&ctx->ctx, in, in_len);
+static inline void shake_update(struct shake_ctx *ctx, const u8 *in, size_t in_len) {
+    __sha3_update(&ctx->ctx, in, in_len);
 }
 
 /**

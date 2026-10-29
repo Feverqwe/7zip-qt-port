@@ -9,9 +9,9 @@
 #define __LINUX_KEYCTL_H
 
 enum kernel_pkey_operation {
-	kernel_pkey_encrypt,
-	kernel_pkey_decrypt,
-	kernel_pkey_sign,
-	kernel_pkey_verify,
+    kernel_pkey_encrypt,
+    kernel_pkey_decrypt,
+    kernel_pkey_sign,
+    kernel_pkey_verify,
 };
 #endif

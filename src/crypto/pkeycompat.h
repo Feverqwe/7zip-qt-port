@@ -4,8 +4,8 @@
 #define SEVENZIP_PKEY_COMPAT_H
 #include "skciphercompat.h"
 #include <crypto/utils.h>
-#include <linux/asn1_decoder.h>
 #include <linux/asn1.h>
+#include <linux/asn1_decoder.h>
 #include <stdio.h>
 #ifndef ENOPKG
 #define ENOPKG 65
@@ -29,17 +29,21 @@
 #define pr_devel(...) ((void)0)
 #define pr_debug(...) ((void)0)
 #define pr_err(...) ((void)0)
-#define BUG_ON(value) do { if (value) abort(); } while (0)
+#define BUG_ON(value)                                                                              \
+    do {                                                                                           \
+        if (value)                                                                                 \
+            abort();                                                                               \
+    } while (0)
 #define WARN_ON_ONCE(value) crypto_warn_on(value)
 
 /* Scalar algorithm metadata; module discovery and hardware dispatch are
  * replaced by the fixed process-owned provider registry. */
 struct crypto_alg {
-	char cra_name[CRYPTO_MAX_ALG_NAME];
-	char cra_driver_name[CRYPTO_MAX_ALG_NAME];
-	unsigned cra_priority;
-	size_t cra_ctxsize;
-	u32 cra_flags;
-	const void *cra_module;
+    char cra_name[CRYPTO_MAX_ALG_NAME];
+    char cra_driver_name[CRYPTO_MAX_ALG_NAME];
+    unsigned cra_priority;
+    size_t cra_ctxsize;
+    u32 cra_flags;
+    const void *cra_module;
 };
 #endif

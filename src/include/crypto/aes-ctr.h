@@ -31,8 +31,8 @@
  *
  * Context: Any context.
  */
-void aes_ctr(u8 *dst, const u8 *src, size_t len,
-	     u8 ctr[at_least AES_BLOCK_SIZE], aes_encrypt_arg key);
+void aes_ctr(u8 *dst, const u8 *src, size_t len, u8 ctr[at_least AES_BLOCK_SIZE],
+             aes_encrypt_arg key);
 
 /**
  * aes_xctr() - AES-XCTR en/decryption
@@ -59,7 +59,7 @@ void aes_ctr(u8 *dst, const u8 *src, size_t len,
  *
  * Context: Any context.
  */
-void aes_xctr(u8 *dst, const u8 *src, size_t len, u64 *ctr,
-	      const u8 iv[at_least AES_BLOCK_SIZE], aes_encrypt_arg key);
+void aes_xctr(u8 *dst, const u8 *src, size_t len, u64 *ctr, const u8 iv[at_least AES_BLOCK_SIZE],
+              aes_encrypt_arg key);
 
 #endif /* _CRYPTO_AES_CTR_H */

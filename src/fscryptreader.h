@@ -41,22 +41,23 @@ int sevenzip_fscrypt_inode_create(const struct sevenzip_fscrypt_inode_options *,
 void sevenzip_fscrypt_inode_free(struct sevenzip_fscrypt_inode *);
 int sevenzip_fscrypt_has_key(const struct sevenzip_fscrypt_inode *);
 size_t sevenzip_fscrypt_data_unit_size(const struct sevenzip_fscrypt_inode *);
-int sevenzip_fscrypt_decrypt_unit(struct sevenzip_fscrypt_inode *, uint64_t index,
-                                  const void *src, void *dst, size_t size);
+int sevenzip_fscrypt_decrypt_unit(struct sevenzip_fscrypt_inode *, uint64_t index, const void *src,
+                                  void *dst, size_t size);
 /* Presents directory names or symlink ciphertext; returns the length without
  * NUL in out_size. A successful buffer result is NUL-terminated. */
 int sevenzip_fscrypt_present_name(const struct sevenzip_fscrypt_inode *, uint32_t hash,
-                                  uint32_t minor_hash, const void *cipher, size_t size,
-                                  void *out, size_t capacity, size_t *out_size);
+                                  uint32_t minor_hash, const void *cipher, size_t size, void *out,
+                                  size_t capacity, size_t *out_size);
 /* Consumes the complete on-disk symlink payload, including its length header. */
 int sevenzip_fscrypt_present_symlink(struct sevenzip_fscrypt_inode *, const void *payload,
                                      size_t size, void *out, size_t capacity, size_t *out_size);
 /* Hash already-normalized filename bytes using the prepared casefold dir key. */
-int sevenzip_fscrypt_hash_name(const struct sevenzip_fscrypt_inode *, const void *, size_t, uint64_t *);
+int sevenzip_fscrypt_hash_name(const struct sevenzip_fscrypt_inode *, const void *, size_t,
+                               uint64_t *);
 int sevenzip_fscrypt_require_key(struct sevenzip_fscrypt_inode *);
 /* NULL represents an unencrypted inode; mode is used for an unencrypted child. */
 int sevenzip_fscrypt_permitted_context(struct sevenzip_fscrypt_inode *parent,
-                                        struct sevenzip_fscrypt_inode *child, unsigned child_mode);
+                                       struct sevenzip_fscrypt_inode *child, unsigned child_mode);
 #ifdef __cplusplus
 }
 #endif

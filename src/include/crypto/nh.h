@@ -14,20 +14,19 @@
 /* Word size: 32 bits (works well on NEON, SSE2, AVX2) */
 
 /* Stride: 2 words (optimal on ARM32 NEON; works okay on other CPUs too) */
-#define NH_PAIR_STRIDE		2
-#define NH_MESSAGE_UNIT		(NH_PAIR_STRIDE * 2 * sizeof(u32))
+#define NH_PAIR_STRIDE 2
+#define NH_MESSAGE_UNIT (NH_PAIR_STRIDE * 2 * sizeof(u32))
 
 /* Num passes (Toeplitz iteration count): 4, to give ε = 2^{-128} */
-#define NH_NUM_PASSES		4
-#define NH_HASH_BYTES		(NH_NUM_PASSES * sizeof(u64))
+#define NH_NUM_PASSES 4
+#define NH_HASH_BYTES (NH_NUM_PASSES * sizeof(u64))
 
 /* Max message size: 1024 bytes (32x compression factor) */
-#define NH_NUM_STRIDES		64
-#define NH_MESSAGE_WORDS	(NH_PAIR_STRIDE * 2 * NH_NUM_STRIDES)
-#define NH_MESSAGE_BYTES	(NH_MESSAGE_WORDS * sizeof(u32))
-#define NH_KEY_WORDS		(NH_MESSAGE_WORDS + \
-				 NH_PAIR_STRIDE * 2 * (NH_NUM_PASSES - 1))
-#define NH_KEY_BYTES		(NH_KEY_WORDS * sizeof(u32))
+#define NH_NUM_STRIDES 64
+#define NH_MESSAGE_WORDS (NH_PAIR_STRIDE * 2 * NH_NUM_STRIDES)
+#define NH_MESSAGE_BYTES (NH_MESSAGE_WORDS * sizeof(u32))
+#define NH_KEY_WORDS (NH_MESSAGE_WORDS + NH_PAIR_STRIDE * 2 * (NH_NUM_PASSES - 1))
+#define NH_KEY_BYTES (NH_KEY_WORDS * sizeof(u32))
 
 /**
  * nh() - NH hash function for Adiantum
@@ -46,7 +45,6 @@
  *
  * Context: Any context.
  */
-void nh(const u32 *key, const u8 *message, size_t message_len,
-	__le64 hash[NH_NUM_PASSES]);
+void nh(const u32 *key, const u8 *message, size_t message_len, __le64 hash[NH_NUM_PASSES]);
 
 #endif /* _CRYPTO_NH_H */

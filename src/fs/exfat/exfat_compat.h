@@ -2,6 +2,7 @@
 // Userspace replacements for the read-side Linux platform services.
 #ifndef SEVENZIP_EXFAT_COMPAT_H
 #define SEVENZIP_EXFAT_COMPAT_H
+#include "../../include/linux/string.h"
 #include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -10,7 +11,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../../include/linux/string.h"
 
 typedef uint8_t u8;
 typedef uint16_t u16;

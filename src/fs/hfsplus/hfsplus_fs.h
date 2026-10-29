@@ -22,8 +22,7 @@
  */
 #define HFSPLUS_UTC_OFFSET 2082844800U
 
-static inline int64_t __hfsp_mt2ut(u32 mt)
-{
+static inline int64_t __hfsp_mt2ut(u32 mt) {
     int64_t ut = (u32)(be32_to_cpu(mt) - HFSPLUS_UTC_OFFSET);
 
     return ut;

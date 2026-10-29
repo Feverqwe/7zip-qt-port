@@ -19,26 +19,26 @@
 
 #include "../../lib/crypto/mpi/userspace.h"
 
-#define BYTES_PER_MPI_LIMB	(BITS_PER_LONG / 8)
-#define BITS_PER_MPI_LIMB	BITS_PER_LONG
+#define BYTES_PER_MPI_LIMB (BITS_PER_LONG / 8)
+#define BITS_PER_MPI_LIMB BITS_PER_LONG
 
 typedef unsigned long int mpi_limb_t;
 typedef signed long int mpi_limb_signed_t;
 
 struct gcry_mpi {
-	int alloced;		/* array size (# of allocated limbs) */
-	int nlimbs;		/* number of valid limbs */
-	int nbits;		/* the real number of valid bits (info only) */
-	int sign;		/* indicates a negative number */
-	unsigned flags;		/* bit 0: array must be allocated in secure memory space */
-	/* bit 1: not used */
-	/* bit 2: the limb is a pointer to some m_alloced data */
-	mpi_limb_t *d;		/* array with the limbs */
+    int alloced;    /* array size (# of allocated limbs) */
+    int nlimbs;     /* number of valid limbs */
+    int nbits;      /* the real number of valid bits (info only) */
+    int sign;       /* indicates a negative number */
+    unsigned flags; /* bit 0: array must be allocated in secure memory space */
+    /* bit 1: not used */
+    /* bit 2: the limb is a pointer to some m_alloced data */
+    mpi_limb_t *d; /* array with the limbs */
 };
 
 typedef struct gcry_mpi *MPI;
 
-#define mpi_get_nlimbs(a)     ((a)->nlimbs)
+#define mpi_get_nlimbs(a) ((a)->nlimbs)
 
 /*-- mpiutil.c --*/
 MPI mpi_alloc(unsigned nlimbs);
@@ -52,10 +52,8 @@ MPI mpi_read_raw_data(const void *xbuffer, size_t nbytes);
 MPI mpi_read_from_buffer(const void *buffer, unsigned *ret_nread);
 MPI mpi_read_raw_from_sgl(struct scatterlist *sgl, unsigned int len);
 void *mpi_get_buffer(MPI a, unsigned *nbytes, int *sign);
-int mpi_read_buffer(MPI a, uint8_t *buf, unsigned buf_len, unsigned *nbytes,
-		    int *sign);
-int mpi_write_to_sgl(MPI a, struct scatterlist *sg, unsigned nbytes,
-		     int *sign);
+int mpi_read_buffer(MPI a, uint8_t *buf, unsigned buf_len, unsigned *nbytes, int *sign);
+int mpi_write_to_sgl(MPI a, struct scatterlist *sg, unsigned nbytes, int *sign);
 
 /*-- mpi-mod.c --*/
 int mpi_mod(MPI rem, MPI dividend, MPI divisor);
@@ -100,8 +98,5 @@ int mpi_fdiv_r(MPI rem, MPI dividend, MPI divisor);
  *
  * Return: size required to store the number
  */
-static inline unsigned int mpi_get_size(MPI a)
-{
-	return a->nlimbs * BYTES_PER_MPI_LIMB;
-}
+static inline unsigned int mpi_get_size(MPI a) { return a->nlimbs * BYTES_PER_MPI_LIMB; }
 #endif /*G10_MPI_H */

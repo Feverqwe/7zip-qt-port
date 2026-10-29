@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #ifndef SEVENZIP_NTFS_DECODER_H
 #define SEVENZIP_NTFS_DECODER_H
+#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <errno.h>
 #ifndef EOPNOTSUPP
 #define EOPNOTSUPP 95
 #endif

@@ -24,8 +24,8 @@
  *
  * Context: Any context.
  */
-void aes_cbc_encrypt(u8 *dst, const u8 *src, size_t len,
-		     u8 iv[at_least AES_BLOCK_SIZE], aes_encrypt_arg key);
+void aes_cbc_encrypt(u8 *dst, const u8 *src, size_t len, u8 iv[at_least AES_BLOCK_SIZE],
+                     aes_encrypt_arg key);
 
 /**
  * aes_cbc_decrypt() - Decrypt data using AES-CBC
@@ -42,8 +42,8 @@ void aes_cbc_encrypt(u8 *dst, const u8 *src, size_t len,
  *
  * Context: Any context.
  */
-void aes_cbc_decrypt(u8 *dst, const u8 *src, size_t len,
-		     u8 iv[at_least AES_BLOCK_SIZE], const struct aes_key *key);
+void aes_cbc_decrypt(u8 *dst, const u8 *src, size_t len, u8 iv[at_least AES_BLOCK_SIZE],
+                     const struct aes_key *key);
 
 /**
  * aes_cbc_cts_encrypt() - Encrypt data using AES-CBC-CTS (CS3 variant)
@@ -56,8 +56,8 @@ void aes_cbc_decrypt(u8 *dst, const u8 *src, size_t len,
  *
  * Context: Any context.
  */
-void aes_cbc_cts_encrypt(u8 *dst, const u8 *src, size_t len,
-			 u8 iv[at_least AES_BLOCK_SIZE], aes_encrypt_arg key);
+void aes_cbc_cts_encrypt(u8 *dst, const u8 *src, size_t len, u8 iv[at_least AES_BLOCK_SIZE],
+                         aes_encrypt_arg key);
 
 /**
  * aes_cbc_cts_decrypt() - Decrypt data using AES-CBC-CTS (CS3 variant)
@@ -70,8 +70,7 @@ void aes_cbc_cts_encrypt(u8 *dst, const u8 *src, size_t len,
  *
  * Context: Any context.
  */
-void aes_cbc_cts_decrypt(u8 *dst, const u8 *src, size_t len,
-			 u8 iv[at_least AES_BLOCK_SIZE],
-			 const struct aes_key *key);
+void aes_cbc_cts_decrypt(u8 *dst, const u8 *src, size_t len, u8 iv[at_least AES_BLOCK_SIZE],
+                         const struct aes_key *key);
 
 #endif /* _CRYPTO_AES_CBC_H */

@@ -14,9 +14,9 @@
  * @ndigits:	Length of vlis in u64 qwords.
  */
 struct ecc_point {
-	u64 *x;
-	u64 *y;
-	u8 ndigits;
+    u64 *x;
+    u64 *y;
+    u8 ndigits;
 };
 
 /**
@@ -34,13 +34,13 @@ struct ecc_point {
  * @b:		Curve parameter b.
  */
 struct ecc_curve {
-	char *name;
-	u32 nbits;
-	struct ecc_point g;
-	u64 *p;
-	u64 *n;
-	u64 *a;
-	u64 *b;
+    char *name;
+    u32 nbits;
+    struct ecc_point g;
+    u64 *p;
+    u64 *n;
+    u64 *a;
+    u64 *b;
 };
 
 /**

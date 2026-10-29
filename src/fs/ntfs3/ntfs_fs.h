@@ -6,8 +6,5 @@
 #define BITS_TO_U64(bits) (((bits) + 63) / 64)
 
 /* NTFS uses quad aligned bitmaps. */
-static inline size_t ntfs3_bitmap_size(size_t bits)
-{
-	return BITS_TO_U64(bits) * sizeof(u64);
-}
+static inline size_t ntfs3_bitmap_size(size_t bits) { return BITS_TO_U64(bits) * sizeof(u64); }
 #endif

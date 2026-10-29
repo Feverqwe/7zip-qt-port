@@ -12,21 +12,21 @@
 
 #include "../../lib/crypto/userspace.h"
 
-#define SM3_DIGEST_SIZE	32
-#define SM3_BLOCK_SIZE	64
+#define SM3_DIGEST_SIZE 32
+#define SM3_BLOCK_SIZE 64
 
-#define SM3_IVA		0x7380166f
-#define SM3_IVB		0x4914b2b9
-#define SM3_IVC		0x172442d7
-#define SM3_IVD		0xda8a0600
-#define SM3_IVE		0xa96f30bc
-#define SM3_IVF		0x163138aa
-#define SM3_IVG		0xe38dee4d
-#define SM3_IVH		0xb0fb0e4e
+#define SM3_IVA 0x7380166f
+#define SM3_IVB 0x4914b2b9
+#define SM3_IVC 0x172442d7
+#define SM3_IVD 0xda8a0600
+#define SM3_IVE 0xa96f30bc
+#define SM3_IVF 0x163138aa
+#define SM3_IVG 0xe38dee4d
+#define SM3_IVH 0xb0fb0e4e
 
 /* State for the SM3 compression function */
 struct sm3_block_state {
-	u32 h[SM3_DIGEST_SIZE / 4];
+    u32 h[SM3_DIGEST_SIZE / 4];
 };
 
 /**
@@ -36,9 +36,9 @@ struct sm3_block_state {
  * @buf: partial block buffer; bytecount % SM3_BLOCK_SIZE bytes are valid
  */
 struct sm3_ctx {
-	struct sm3_block_state state;
-	u64 bytecount;
-	_Alignas(sizeof(__be64)) u8 buf[SM3_BLOCK_SIZE];
+    struct sm3_block_state state;
+    u64 bytecount;
+    _Alignas(sizeof(__be64)) u8 buf[SM3_BLOCK_SIZE];
 };
 
 /**

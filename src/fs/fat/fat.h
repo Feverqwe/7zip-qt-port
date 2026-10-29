@@ -3,10 +3,10 @@
 #ifndef SEVENZIP_LINUX_FAT_H
 #define SEVENZIP_LINUX_FAT_H
 #include "../../fatreader.h"
+#include "../nls/types.h"
+#include <errno.h>
 #include <stdbool.h>
 #include <string.h>
-#include <errno.h>
-#include "../nls/types.h"
 typedef uint8_t u8, __u8;
 typedef uint16_t u16, __le16;
 typedef uint32_t u32, __u32, __le32;
@@ -58,7 +58,10 @@ static inline unsigned char *hex_byte_pack(unsigned char *out, unsigned int valu
     return out;
 }
 struct nls_table *fat_cp437_table(void);
-struct timespec64 { time64_t tv_sec; long tv_nsec; };
+struct timespec64 {
+    time64_t tv_sec;
+    long tv_nsec;
+};
 struct fat_mount_options {
     int isvfat, nocase, utf8, unicode_xlate, tz_set, time_offset;
     unsigned short shortname;
@@ -75,12 +78,11 @@ struct super_block {
 #define MSDOS_SB(sb) ((sb)->s_fs_info)
 #define bdev_nr_sectors(dev) ((dev)->size / 512)
 /* Archive dates remain local wall-clock values until the host time adapter. */
-static const struct { int tz_minuteswest; } sys_tz = {0};
+static const struct {
+    int tz_minuteswest;
+} sys_tz = {0};
 #include "../../include/uapi/linux/msdos_fs.h"
-static inline int fat_valid_media(u8 media)
-{
-    return 0xf8 <= media || media == 0xf0;
-}
+static inline int fat_valid_media(u8 media) { return 0xf8 <= media || media == 0xf0; }
 _Static_assert(sizeof(struct msdos_dir_entry) == 32, "FAT directory layout");
 _Static_assert(offsetof(struct fat_boot_sector, fat32.root_cluster) == 44, "FAT32 BPB layout");
 #endif

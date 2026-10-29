@@ -2,14 +2,14 @@
 /* Stream and owned-buffer services for the Linux allocation reader. */
 #ifndef SEVENZIP_UDF_DECL_H
 #define SEVENZIP_UDF_DECL_H
+#include "../../include/linux/crc-itu-t.h"
 #include "../../udfreader.h"
+#include "../nls/types.h"
 #include <errno.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
-#include "../nls/types.h"
-#include "../../include/linux/crc-itu-t.h"
 #ifdef _MSC_VER
 #pragma pack(push, 1)
 #endif
@@ -61,12 +61,18 @@
 #define DIV_ROUND_UP(value, size) (((value) + (size) - 1) / (size))
 #define buffer_uptodate(bh) (1)
 typedef uint64_t udf_pblk_t;
-struct buffer_head { uint8_t *b_data; unsigned b_size, references; };
+struct buffer_head {
+    uint8_t *b_data;
+    unsigned b_size, references;
+};
 typedef uint32_t u32;
 typedef uint64_t sector_t;
 typedef uint16_t umode_t;
 typedef uint16_t u16;
-struct timespec64 { int64_t tv_sec; long tv_nsec; };
+struct timespec64 {
+    int64_t tv_sec;
+    long tv_nsec;
+};
 #define UDF_INVALID_ID UINT32_MAX
 /* Linux mode/dev_t representation, independent of the host C runtime. */
 #define S_IFDIR 0040000
@@ -115,9 +121,16 @@ struct super_block {
     unsigned seen_anchor;
     uint32_t anchor_block;
 };
-struct udf_options { uint32_t blocksize, lastblock, anchor; };
-struct udf_vds_record { uint32_t block, volDescSeqNum; };
-struct generic_desc { struct tag descTag; __le32 volDescSeqNum; };
+struct udf_options {
+    uint32_t blocksize, lastblock, anchor;
+};
+struct udf_vds_record {
+    uint32_t block, volDescSeqNum;
+};
+struct generic_desc {
+    struct tag descTag;
+    __le32 volDescSeqNum;
+};
 #include "udf_i.h"
 /* Constant-space cycle guard for one allocation traversal. */
 struct sevenzip_udf_walk {
@@ -138,10 +151,10 @@ struct udf_fileident_iter {
     uint8_t *name, *namebuf;
     struct sevenzip_udf_walk walk;
 };
-static inline unsigned int udf_dir_entry_len(struct fileIdentDesc *cfi)
-{
-    return ALIGN(sizeof(struct fileIdentDesc) +
-        le16_to_cpu(cfi->lengthOfImpUse) + cfi->lengthFileIdent, UDF_NAME_PAD);
+static inline unsigned int udf_dir_entry_len(struct fileIdentDesc *cfi) {
+    return ALIGN(sizeof(struct fileIdentDesc) + le16_to_cpu(cfi->lengthOfImpUse) +
+                     cfi->lengthFileIdent,
+                 UDF_NAME_PAD);
 }
 struct udf_inode_info {
     struct kernel_lb_addr i_location;
@@ -177,11 +190,18 @@ static inline void init_special_inode(struct inode *inode, umode_t mode, uint32_
     inode->i_mode = mode;
     inode->i_rdev = dev;
 }
-static inline void inode_set_atime_to_ts(struct inode *inode, struct timespec64 ts) { inode->atime = ts; }
-static inline void inode_set_mtime_to_ts(struct inode *inode, struct timespec64 ts) { inode->mtime = ts; }
-static inline void inode_set_ctime_to_ts(struct inode *inode, struct timespec64 ts) { inode->ctime = ts; }
+static inline void inode_set_atime_to_ts(struct inode *inode, struct timespec64 ts) {
+    inode->atime = ts;
+}
+static inline void inode_set_mtime_to_ts(struct inode *inode, struct timespec64 ts) {
+    inode->mtime = ts;
+}
+static inline void inode_set_ctime_to_ts(struct inode *inode, struct timespec64 ts) {
+    inode->ctime = ts;
+}
 void udf_disk_stamp_to_time(struct timespec64 *, struct timestamp);
-int64_t mktime64(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
+int64_t mktime64(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int,
+                 unsigned int);
 static inline uint64_t sb_bdev_nr_blocks(struct super_block *sb) { return sb->blocks; }
 struct inode *udf_iget_special(struct super_block *, const struct kernel_lb_addr *);
 struct buffer_head *udf_bread(struct inode *, uint32_t, int, int *);
@@ -195,8 +215,7 @@ void iput(struct inode *);
 #define spin_unlock(lock) ((void)0)
 static inline void get_bh(struct buffer_head *bh) { ++bh->references; }
 void udf_clear_extent_cache(struct inode *);
-static inline size_t udf_file_entry_alloc_offset(struct inode *inode)
-{
+static inline size_t udf_file_entry_alloc_offset(struct inode *inode) {
     struct udf_inode_info *iinfo = UDF_I(inode);
     if (iinfo->i_use)
         return sizeof(struct unallocSpaceEntry);
@@ -205,24 +224,21 @@ static inline size_t udf_file_entry_alloc_offset(struct inode *inode)
     else
         return sizeof(struct fileEntry) + iinfo->i_lenEAttr;
 }
-static inline int check_add_overflow(size_t a, uint32_t b, int *result)
-{
+static inline int check_add_overflow(size_t a, uint32_t b, int *result) {
     if (a > INT_MAX || b > INT_MAX - a)
         return 1;
     *result = (int)(a + b);
     return 0;
 }
-static inline int udf_add_u32_overflow(uint32_t a, uint32_t b, uint32_t *result)
-{
+static inline int udf_add_u32_overflow(uint32_t a, uint32_t b, uint32_t *result) {
     if (b > UINT32_MAX - a)
         return 1;
     *result = a + b;
     return 0;
 }
 /* This token carries a logical address to the caller's existing partition mapper. */
-static inline udf_pblk_t udf_get_lb_pblock(struct super_block *sb,
-                                          const struct kernel_lb_addr *loc, unsigned offset)
-{
+static inline udf_pblk_t udf_get_lb_pblock(struct super_block *sb, const struct kernel_lb_addr *loc,
+                                           unsigned offset) {
     (void)sb;
     if (offset > UINT32_MAX - loc->logicalBlockNum)
         return UINT64_MAX;
@@ -232,29 +248,33 @@ struct buffer_head *sb_bread(struct super_block *, udf_pblk_t);
 void brelse(struct buffer_head *);
 struct short_ad *udf_get_fileshortad(uint8_t *, int, uint32_t *, int);
 struct long_ad *udf_get_filelongad(uint8_t *, int, uint32_t *, int);
-int udf_current_aext(struct inode *, struct extent_position *, struct kernel_lb_addr *, uint32_t *, int8_t *, int);
-int udf_next_aext(struct inode *, struct extent_position *, struct kernel_lb_addr *, uint32_t *, int8_t *, int);
+int udf_current_aext(struct inode *, struct extent_position *, struct kernel_lb_addr *, uint32_t *,
+                     int8_t *, int);
+int udf_next_aext(struct inode *, struct extent_position *, struct kernel_lb_addr *, uint32_t *,
+                  int8_t *, int);
 int sevenzip_udf_next_aext(struct sevenzip_udf_walk *, struct inode *, struct extent_position *,
                            struct kernel_lb_addr *, uint32_t *, int8_t *);
 u8 udf_tag_checksum(const struct tag *);
 struct buffer_head *udf_read_tagged(struct super_block *, udf_pblk_t, uint32_t, uint16_t *);
-struct buffer_head *udf_read_ptagged(struct super_block *, struct kernel_lb_addr *, uint32_t, uint16_t *);
+struct buffer_head *udf_read_ptagged(struct super_block *, struct kernel_lb_addr *, uint32_t,
+                                     uint16_t *);
 struct inode *__udf_iget(struct super_block *, struct kernel_lb_addr *, bool);
 struct inode *iget_locked(struct super_block *, unsigned long);
 void iget_failed(struct inode *);
 #define I_NEW 1U
 #define UDF_INODE_LOADING 2U
 static inline unsigned inode_state_read_once(struct inode *inode) { return inode->i_state; }
-static inline void unlock_new_inode(struct inode *inode) { inode->i_state &= ~(I_NEW | UDF_INODE_LOADING); }
+static inline void unlock_new_inode(struct inode *inode) {
+    inode->i_state &= ~(I_NEW | UDF_INODE_LOADING);
+}
 static inline unsigned long udf_inode_block(struct super_block *sb,
-                                            const struct kernel_lb_addr *location)
-{
-    return sb->inode_block(sb->context, location->partitionReferenceNum,
-                           location->logicalBlockNum);
+                                            const struct kernel_lb_addr *location) {
+    return sb->inode_block(sb->context, location->partitionReferenceNum, location->logicalBlockNum);
 }
 struct genericFormat *udf_get_extendedattr(struct inode *, uint32_t, uint8_t);
 uint32_t udf_get_pblock_spar15(struct super_block *, uint32_t, uint16_t, uint32_t);
-int sevenzip_udf_load_sparable(struct super_block *, struct udf_part_map *, struct sparablePartitionMap *);
+int sevenzip_udf_load_sparable(struct super_block *, struct udf_part_map *,
+                               struct sparablePartitionMap *);
 uint32_t udf_get_pblock(struct super_block *, uint32_t, uint16_t, uint32_t);
 uint32_t udf_get_pblock_virt15(struct super_block *, uint32_t, uint16_t, uint32_t);
 uint32_t udf_get_pblock_virt20(struct super_block *, uint32_t, uint16_t, uint32_t);
@@ -268,7 +288,8 @@ int sb_set_blocksize(struct super_block *, unsigned);
 udf_pblk_t udf_get_last_block(struct super_block *);
 unsigned int udf_get_last_session(struct super_block *);
 int sevenzip_udf_load_vrs(struct super_block *, struct udf_options *, struct kernel_lb_addr *);
-int sevenzip_udf_find_fileset(struct super_block *, struct kernel_lb_addr *, struct kernel_lb_addr *);
+int sevenzip_udf_find_fileset(struct super_block *, struct kernel_lb_addr *,
+                              struct kernel_lb_addr *);
 struct logicalVolIntegrityDescImpUse *udf_sb_lvidiu(struct super_block *);
 int sevenzip_udf_check_vsd(struct super_block *);
 int udf_get_filename(struct super_block *, const uint8_t *, int, uint8_t *, int);

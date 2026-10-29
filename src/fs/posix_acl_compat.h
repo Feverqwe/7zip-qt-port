@@ -2,14 +2,14 @@
 /* Numeric filesystem IDs and allocation for the transferred ACL converters. */
 #ifndef SEVENZIP_POSIX_ACL_COMPAT_H
 #define SEVENZIP_POSIX_ACL_COMPAT_H
-#include <stdint.h>
-#include <stddef.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <limits.h>
-#include <errno.h>
 #include "../include/uapi/linux/posix_acl.h"
 #include "../include/uapi/linux/posix_acl_xattr.h"
+#include <errno.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
 #ifndef cpu_to_le32
 #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define cpu_to_le16(x) __builtin_bswap16(x)
@@ -35,16 +35,27 @@
 #define IS_ERR(pointer) ((uintptr_t)(pointer) >= (uintptr_t)-4095)
 #endif
 typedef int gfp_t;
-struct user_namespace { int unused; };
+struct user_namespace {
+    int unused;
+};
 static struct user_namespace init_user_ns;
-struct posix_acl_entry { int e_tag; uint16_t e_perm; uint32_t e_uid, e_gid; };
-struct posix_acl { unsigned a_count; struct posix_acl_entry a_entries[]; };
+struct posix_acl_entry {
+    int e_tag;
+    uint16_t e_perm;
+    uint32_t e_uid, e_gid;
+};
+struct posix_acl {
+    unsigned a_count;
+    struct posix_acl_entry a_entries[];
+};
 static inline struct posix_acl *posix_acl_alloc(size_t count, int flags) {
     struct posix_acl *acl;
     (void)flags;
-    if (count > UINT_MAX || count > (SIZE_MAX - sizeof(*acl)) / sizeof(acl->a_entries[0])) return NULL;
+    if (count > UINT_MAX || count > (SIZE_MAX - sizeof(*acl)) / sizeof(acl->a_entries[0]))
+        return NULL;
     acl = calloc(1, sizeof(*acl) + count * sizeof(acl->a_entries[0]));
-    if (acl) acl->a_count = (unsigned)count;
+    if (acl)
+        acl->a_count = (unsigned)count;
     return acl;
 }
 #define posix_acl_release free
@@ -55,9 +66,11 @@ static inline struct posix_acl *posix_acl_alloc(size_t count, int flags) {
 #define uid_valid(id) ((id) != UINT32_MAX)
 #define gid_valid(id) ((id) != UINT32_MAX)
 static inline int posix_acl_xattr_count(size_t size) {
-    if (size < sizeof(struct posix_acl_xattr_header)) return -1;
+    if (size < sizeof(struct posix_acl_xattr_header))
+        return -1;
     size -= sizeof(struct posix_acl_xattr_header);
-    if (size % sizeof(struct posix_acl_xattr_entry)) return -1;
+    if (size % sizeof(struct posix_acl_xattr_entry))
+        return -1;
     return (int)(size / sizeof(struct posix_acl_xattr_entry));
 }
 static inline size_t posix_acl_xattr_size(unsigned count) {

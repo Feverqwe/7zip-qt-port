@@ -11,13 +11,13 @@
 
 #include "../../lib/crypto/userspace.h"
 
-#define SM4_KEY_SIZE	16
-#define SM4_BLOCK_SIZE	16
-#define SM4_RKEY_WORDS	32
+#define SM4_KEY_SIZE 16
+#define SM4_BLOCK_SIZE 16
+#define SM4_RKEY_WORDS 32
 
 struct sm4_ctx {
-	u32 rkey_enc[SM4_RKEY_WORDS];
-	u32 rkey_dec[SM4_RKEY_WORDS];
+    u32 rkey_enc[SM4_RKEY_WORDS];
+    u32 rkey_dec[SM4_RKEY_WORDS];
 };
 
 /**
@@ -29,8 +29,7 @@ struct sm4_ctx {
  * Returns 0 on success. The function fails only if an invalid key size (or
  * pointer) is supplied.
  */
-int sm4_expandkey(struct sm4_ctx *ctx, const u8 *in_key,
-			  unsigned int key_len);
+int sm4_expandkey(struct sm4_ctx *ctx, const u8 *in_key, unsigned int key_len);
 
 /**
  * sm4_crypt_block - Encrypt or decrypt a single SM4 block

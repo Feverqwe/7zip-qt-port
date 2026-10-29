@@ -3,10 +3,10 @@
 #define SEVENZIP_ZISOFS_COMPAT_H
 #include "../../zisofsreader.h"
 #include <errno.h>
-#include <zlib.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <zlib.h>
 #define PAGE_SHIFT 12
 #define PAGE_SIZE (1U << PAGE_SHIFT)
 #define PAGE_MASK (~(uint64_t)(PAGE_SIZE - 1))

@@ -11,23 +11,19 @@
 /* Selected original CONFIG_SYSTEM_BLACKLIST_KEYRING=n path. Archive trust
  * uses explicit owned anchors; there is no system blacklist/keyring access. */
 enum blacklist_hash_type {
-	/* TBSCertificate hash */
-	BLACKLIST_HASH_X509_TBS = 1,
-	/* Raw data hash */
-	BLACKLIST_HASH_BINARY = 2,
+    /* TBSCertificate hash */
+    BLACKLIST_HASH_X509_TBS = 1,
+    /* Raw data hash */
+    BLACKLIST_HASH_BINARY = 2,
 };
 
 static inline int is_hash_blacklisted(const u8 *hash, size_t hash_len,
-				      enum blacklist_hash_type hash_type)
-{
-	return 0;
+                                      enum blacklist_hash_type hash_type) {
+    return 0;
 }
 
 struct pkcs7_message;
 /* Selected original CONFIG_SYSTEM_REVOCATION_LIST=n service. */
-static inline int is_key_on_revocation_list(struct pkcs7_message *pkcs7)
-{
-	return -ENOKEY;
-}
+static inline int is_key_on_revocation_list(struct pkcs7_message *pkcs7) { return -ENOKEY; }
 
 #endif

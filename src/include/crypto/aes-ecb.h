@@ -43,7 +43,6 @@ void aes_ecb_encrypt(u8 *dst, const u8 *src, size_t len, aes_encrypt_arg key);
  *
  * Context: Any context.
  */
-void aes_ecb_decrypt(u8 *dst, const u8 *src, size_t len,
-		     const struct aes_key *key);
+void aes_ecb_decrypt(u8 *dst, const u8 *src, size_t len, const struct aes_key *key);
 
 #endif /* _CRYPTO_AES_ECB_H */

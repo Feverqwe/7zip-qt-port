@@ -2,14 +2,14 @@
 // Read-only stream boundary for the Linux EROFS adaptation.
 #ifndef SEVENZIP_EROFS_READER_H
 #define SEVENZIP_EROFS_READER_H
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
 struct erofs_volume;
 int erofs_decode_native(unsigned int algorithm, unsigned int dictionary, const void *, size_t,
-                         void *, size_t, int partial);
+                        void *, size_t, int partial);
 // Files borrow the volume; close them before closing their volume.
 struct erofs_file;
 struct erofs_source {
@@ -18,8 +18,8 @@ struct erofs_source {
     // Device 0 is the primary image. External-device mode uses the slot index + 1.
     int (*read)(void *, unsigned int, uint64_t, void *, size_t);
     int (*poll)(void *);
-    int (*decode)(void *, unsigned int algorithm, unsigned int dictionary,
-                  const void *, size_t, void *, size_t, int partial);
+    int (*decode)(void *, unsigned int algorithm, unsigned int dictionary, const void *, size_t,
+                  void *, size_t, int partial);
     int (*open_device)(void *, unsigned int, const char *tag, uint64_t size);
     int external_devices;
 };

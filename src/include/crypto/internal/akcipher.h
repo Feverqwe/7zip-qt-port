@@ -6,13 +6,16 @@
 #define SEVENZIP_CRYPTO_INTERNAL_AKCIPHER_H
 #include <crypto/akcipher.h>
 struct crypto_akcipher {
-	const struct akcipher_alg *algorithm;
-	void *ctx;
-	unsigned reqsize;
+    const struct akcipher_alg *algorithm;
+    void *ctx;
+    unsigned reqsize;
 };
-struct crypto_akcipher_spawn { const char *name; };
+struct crypto_akcipher_spawn {
+    const char *name;
+};
 static inline void *akcipher_tfm_ctx(struct crypto_akcipher *tfm) { return tfm->ctx; }
-static inline struct crypto_akcipher *crypto_spawn_akcipher(struct crypto_akcipher_spawn *spawn)
-{ return crypto_alloc_akcipher(spawn->name, 0, 0); }
+static inline struct crypto_akcipher *crypto_spawn_akcipher(struct crypto_akcipher_spawn *spawn) {
+    return crypto_alloc_akcipher(spawn->name, 0, 0);
+}
 const struct akcipher_alg *sevenzip_rsa_alg(void);
 #endif

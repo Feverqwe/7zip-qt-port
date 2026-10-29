@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 #ifndef SEVENZIP_SQUASHFS_COMPAT_H
 #define SEVENZIP_SQUASHFS_COMPAT_H
-#include <stdint.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 typedef uint16_t __le16;
 typedef uint32_t __le32;
 typedef uint64_t __le64;
@@ -46,54 +46,68 @@ typedef uint64_t pgoff_t;
 #define ERR_PTR(n) ((void *)(intptr_t)(n))
 #define PTR_ERR(p) ((int)(intptr_t)(p))
 #define IS_ERR(p) ((uintptr_t)(p) >= (uintptr_t)-4095)
-static inline uint32_t le32_to_cpu(__le32 v)
-{
+static inline uint32_t le32_to_cpu(__le32 v) {
     const uint8_t *b = (const uint8_t *)&v;
     return (uint32_t)b[0] | (uint32_t)b[1] << 8 | (uint32_t)b[2] << 16 | (uint32_t)b[3] << 24;
 }
-static inline uint16_t le16_to_cpu(__le16 v)
-{
+static inline uint16_t le16_to_cpu(__le16 v) {
     const uint8_t *b = (const uint8_t *)&v;
     return (uint16_t)(b[0] | (uint16_t)b[1] << 8);
 }
-static inline uint64_t le64_to_cpu(__le64 v)
-{
+static inline uint64_t le64_to_cpu(__le64 v) {
     const uint8_t *b = (const uint8_t *)&v;
     uint64_t value = 0;
     unsigned i;
-    for (i = 0; i < 8; ++i) value |= (uint64_t)b[i] << (8 * i);
+    for (i = 0; i < 8; ++i)
+        value |= (uint64_t)b[i] << (8 * i);
     return value;
 }
-static inline int sevenzip_squashfs_ffs(int n)
-{
+static inline int sevenzip_squashfs_ffs(int n) {
     unsigned value = (unsigned)n;
     int bit = 1;
-    if (!value) return 0;
-    while (!(value & 1)) { value >>= 1; ++bit; }
+    if (!value)
+        return 0;
+    while (!(value & 1)) {
+        value >>= 1;
+        ++bit;
+    }
     return bit;
 }
 #define ffs sevenzip_squashfs_ffs
 struct squashfs_sb_info;
 struct squashfs_page_actor;
 struct bio;
-struct super_block { struct squashfs_sb_info *s_fs_info; };
+struct super_block {
+    struct squashfs_sb_info *s_fs_info;
+};
 struct squashfs_decompressor_thread_ops {
     void *(*create)(struct squashfs_sb_info *, void *);
     void (*destroy)(struct squashfs_sb_info *);
-    int (*decompress)(struct squashfs_sb_info *, struct bio *, int, int, struct squashfs_page_actor *);
+    int (*decompress)(struct squashfs_sb_info *, struct bio *, int, int,
+                      struct squashfs_page_actor *);
     int (*max_decompressors)(void);
 };
-struct mutex { int unused; };
+struct mutex {
+    int unused;
+};
 #define mutex_init(p) ((void)(p))
 #define mutex_lock(p) ((void)(p))
 #define mutex_unlock(p) ((void)(p))
-struct bio_vec { const void *data; unsigned int bv_len; };
-struct bio { struct bio_vec segment; };
-struct bvec_iter_all { struct bio_vec bv; int consumed; };
+struct bio_vec {
+    const void *data;
+    unsigned int bv_len;
+};
+struct bio {
+    struct bio_vec segment;
+};
+struct bvec_iter_all {
+    struct bio_vec bv;
+    int consumed;
+};
 static inline struct bio_vec *bvec_init_iter_all(struct bvec_iter_all *iter) { return &iter->bv; }
-static inline int bio_next_segment(struct bio *bio, struct bvec_iter_all *iter)
-{
-    if (iter->consumed) return 0;
+static inline int bio_next_segment(struct bio *bio, struct bvec_iter_all *iter) {
+    if (iter->consumed)
+        return 0;
     iter->bv = bio->segment;
     iter->consumed = 1;
     return 1;

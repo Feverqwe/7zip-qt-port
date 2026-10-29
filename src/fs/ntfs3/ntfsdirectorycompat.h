@@ -2,18 +2,17 @@
 // Immutable archive inode/stream boundary for NTFS3 directory enumeration.
 #ifndef SEVENZIP_NTFS_DIRECTORY_COMPAT_H
 #define SEVENZIP_NTFS_DIRECTORY_COMPAT_H
-#include "ntfssecuritycompat.h"
 #include "../../ntfsdirectory.h"
+#include "ntfssecuritycompat.h"
 #define MINUS_ONE_T SIZE_MAX
 #define ntfs_i(inode) ((inode)->owner)
 #define i_size_read(inode) ((inode)->size)
 static inline void ntfs_directory_check_child(struct ntfs_inode *ni, const struct NTFS_DE *e,
-                                               const struct indx_node *node) {
+                                              const struct indx_node *node) {
     if (de_has_vcn_ex(e)) {
         const u64 vbn = de_get_vbn(e);
         const u64 size = ni->directory_input->allocation_size;
-        if (vbn > (UINT64_MAX >> ni->dir.vbn2vbo_bits) ||
-            (vbn << ni->dir.vbn2vbo_bits) > size ||
+        if (vbn > (UINT64_MAX >> ni->dir.vbn2vbo_bits) || (vbn << ni->dir.vbn2vbo_bits) > size ||
             (UINT64_C(1) << ni->dir.index_bits) > size - (vbn << ni->dir.vbn2vbo_bits) ||
             (node && vbn == le64_to_cpu(node->index->vbn)))
             ni->directory_unverified = true;

@@ -7,7 +7,10 @@
 #define PAGE_SHIFT 12
 #define PAGE_ALIGN(size) ALIGN(size, PAGE_SIZE)
 /* Archive requests own one linear memory span, without chained/DMA pages. */
-static inline struct scatterlist *sg_next(struct scatterlist *sg) { (void)sg; return NULL; }
+static inline struct scatterlist *sg_next(struct scatterlist *sg) {
+    (void)sg;
+    return NULL;
+}
 static inline void *kmap_atomic(struct page *page) { return page->data; }
 static inline void *kmap(struct page *page) { return page->data; }
 static inline void kunmap_atomic(const void *addr) { (void)addr; }

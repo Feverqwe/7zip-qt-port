@@ -17,9 +17,9 @@
  * which makes it a bit too large to allocate on the stack in most cases.
  */
 struct aes_xts_key {
-	/* private: */
-	struct aes_key main_key;
-	struct aes_enckey tweak_key;
+    /* private: */
+    struct aes_key main_key;
+    struct aes_enckey tweak_key;
 };
 
 /**
@@ -40,8 +40,8 @@ struct aes_xts_key {
  *   FIPS mode isn't enabled) 48; or because its two halves are the same and
  *   either XTS_FORBID_WEAK_KEYS is given or FIPS mode is enabled.
  */
-int __must_check aes_xts_preparekey(struct aes_xts_key *key, const u8 *in_key,
-				    size_t key_len, int flags);
+int __must_check aes_xts_preparekey(struct aes_xts_key *key, const u8 *in_key, size_t key_len,
+                                    int flags);
 
 /**
  * aes_xts_encrypt() - Encrypt data using AES-XTS
@@ -63,9 +63,8 @@ int __must_check aes_xts_preparekey(struct aes_xts_key *key, const u8 *in_key,
  *
  * Context: Any context.
  */
-void aes_xts_encrypt(u8 *dst, const u8 *src, size_t len,
-		     u8 tweak[at_least AES_BLOCK_SIZE],
-		     const struct aes_xts_key *key, bool cont);
+void aes_xts_encrypt(u8 *dst, const u8 *src, size_t len, u8 tweak[at_least AES_BLOCK_SIZE],
+                     const struct aes_xts_key *key, bool cont);
 
 /**
  * aes_xts_decrypt() - Decrypt data using AES-XTS
@@ -87,8 +86,7 @@ void aes_xts_encrypt(u8 *dst, const u8 *src, size_t len,
  *
  * Context: Any context.
  */
-void aes_xts_decrypt(u8 *dst, const u8 *src, size_t len,
-		     u8 tweak[at_least AES_BLOCK_SIZE],
-		     const struct aes_xts_key *key, bool cont);
+void aes_xts_decrypt(u8 *dst, const u8 *src, size_t len, u8 tweak[at_least AES_BLOCK_SIZE],
+                     const struct aes_xts_key *key, bool cont);
 
 #endif /* _CRYPTO_AES_XTS_H */

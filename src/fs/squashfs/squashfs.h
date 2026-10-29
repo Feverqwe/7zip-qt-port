@@ -20,7 +20,8 @@ struct inode;
 int squashfs_read_blocklist(struct inode *, int, u64 *);
 int squashfs_read_blocklist_ptrs(struct inode *, int, u64 *, int *, u64 *);
 int squashfs_read_blocklist_next(struct inode *, u64 *, int *);
-struct squashfs_cache_entry *squashfs_cache_get(struct super_block *, struct squashfs_cache *, u64, int);
+struct squashfs_cache_entry *squashfs_cache_get(struct super_block *, struct squashfs_cache *, u64,
+                                                int);
 void squashfs_cache_put(struct squashfs_cache_entry *);
 int squashfs_read_metadata(struct super_block *, void *, u64 *, int *, int);
 void *squashfs_read_table(struct super_block *, u64, int);

@@ -14,19 +14,19 @@
 
 #include "../../lib/crypto/userspace.h"
 
-#define STREEBOG256_DIGEST_SIZE	32
-#define STREEBOG512_DIGEST_SIZE	64
-#define STREEBOG_BLOCK_SIZE	64
+#define STREEBOG256_DIGEST_SIZE 32
+#define STREEBOG512_DIGEST_SIZE 64
+#define STREEBOG_BLOCK_SIZE 64
 
 struct streebog_uint512 {
-	__le64 qword[8];
+    __le64 qword[8];
 };
 
 struct streebog_state {
-	struct streebog_uint512 hash;
-	struct streebog_uint512 h;
-	struct streebog_uint512 N;
-	struct streebog_uint512 Sigma;
+    struct streebog_uint512 hash;
+    struct streebog_uint512 h;
+    struct streebog_uint512 N;
+    struct streebog_uint512 Sigma;
 };
 
 #endif /* !_CRYPTO_STREEBOG_H_ */

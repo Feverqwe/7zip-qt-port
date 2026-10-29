@@ -36,8 +36,7 @@ struct inode *ext_xattr_iget(struct super_block *, unsigned long, ext4_iget_flag
 #define ext4_iget(sb, ino, flags) ext_xattr_iget(sb, ino, flags)
 void ext4_put_ea_inode(struct inode *);
 
-static struct buffer_head *ext_xattr_alloc_block(struct super_block *sb, u64 number)
-{
+static struct buffer_head *ext_xattr_alloc_block(struct super_block *sb, u64 number) {
     struct buffer_head *bh = calloc(1, sizeof(*bh) + sb->s_blocksize);
     if (bh) {
         bh->b_data = (char *)(bh + 1);
@@ -48,8 +47,7 @@ static struct buffer_head *ext_xattr_alloc_block(struct super_block *sb, u64 num
     return bh;
 }
 
-static struct buffer_head *ext4_sb_bread(struct super_block *sb, u64 block, int flags)
-{
+static struct buffer_head *ext4_sb_bread(struct super_block *sb, u64 block, int flags) {
     const struct ext_xattr_services *services = EXT4_SB(sb)->xattr_services;
     struct buffer_head *bh;
     int result;
@@ -57,36 +55,46 @@ static struct buffer_head *ext4_sb_bread(struct super_block *sb, u64 block, int 
     if (!services || !services->read || block > (UINT64_MAX >> sb->s_blocksize_bits))
         return ERR_PTR(-EIO);
     bh = ext_xattr_alloc_block(sb, block);
-    if (!bh) return ERR_PTR(-ENOMEM);
-    result = services->read(services->context, 0, block << sb->s_blocksize_bits,
-                            bh->b_data, bh->b_size);
-    if (result) { brelse(bh); return ERR_PTR(result); }
+    if (!bh)
+        return ERR_PTR(-ENOMEM);
+    result =
+        services->read(services->context, 0, block << sb->s_blocksize_bits, bh->b_data, bh->b_size);
+    if (result) {
+        brelse(bh);
+        return ERR_PTR(result);
+    }
     return bh;
 }
 
-static int ext4_bread_batch(struct inode *inode, u64 first, unsigned count,
-                           bool wait, struct buffer_head **blocks)
-{
+static int ext4_bread_batch(struct inode *inode, u64 first, unsigned count, bool wait,
+                            struct buffer_head **blocks) {
     const struct ext_xattr_services *services = EXT4_SB(inode->i_sb)->xattr_services;
     unsigned i;
     int result = -EIO;
     (void)wait;
-    if (!services || !services->read) return -EIO;
+    if (!services || !services->read)
+        return -EIO;
     memset(blocks, 0, count * sizeof(*blocks));
     for (i = 0; i < count; ++i) {
         u64 offset = (first + i) << inode->i_blkbits;
         size_t bytes = inode->i_sb->s_blocksize;
-        if (offset >= inode->i_size) goto fail;
-        if (bytes > inode->i_size - offset) bytes = (size_t)(inode->i_size - offset);
+        if (offset >= inode->i_size)
+            goto fail;
+        if (bytes > inode->i_size - offset)
+            bytes = (size_t)(inode->i_size - offset);
         blocks[i] = ext_xattr_alloc_block(inode->i_sb, first + i);
-        if (!blocks[i]) { result = -ENOMEM; goto fail; }
-        result = services->read(services->context, inode->i_ino, offset,
-                                blocks[i]->b_data, bytes);
-        if (result) goto fail;
+        if (!blocks[i]) {
+            result = -ENOMEM;
+            goto fail;
+        }
+        result = services->read(services->context, inode->i_ino, offset, blocks[i]->b_data, bytes);
+        if (result)
+            goto fail;
     }
     return 0;
 fail:
-    for (i = 0; i < count; ++i) brelse(blocks[i]);
+    for (i = 0; i < count; ++i)
+        brelse(blocks[i]);
     return result ? result : -EIO;
 }
 #endif

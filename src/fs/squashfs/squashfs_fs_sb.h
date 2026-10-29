@@ -33,7 +33,9 @@ struct squashfs_sb_info {
     unsigned int xattr_ids;
     unsigned int ids;
 };
-struct squashfs_cache { void *private_data; };
+struct squashfs_cache {
+    void *private_data;
+};
 struct squashfs_cache_entry {
     u64 block;
     int length;

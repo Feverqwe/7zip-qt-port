@@ -11,8 +11,8 @@ struct z_erofs_decompress_req {
     unsigned int inputsize, outputsize, alg;
     bool partial_decoding;
 };
-static inline void memcpy_to_page(struct page *page, unsigned int offset,
-                                   const void *data, size_t size) {
+static inline void memcpy_to_page(struct page *page, unsigned int offset, const void *data,
+                                  size_t size) {
     memcpy(page->data + offset, data, size);
 }
 #endif

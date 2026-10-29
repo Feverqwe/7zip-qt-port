@@ -2,8 +2,8 @@
 /* Immutable archive services for the original system-zone reader. */
 #ifndef SEVENZIP_EXT4_BLOCK_READ_H
 #define SEVENZIP_EXT4_BLOCK_READ_H
-#include "ext4.h"
 #include "../../include/linux/rbtree.h"
+#include "ext4.h"
 #define kzalloc_obj(type) calloc(1, sizeof(type))
 #define cond_resched() ((void)0)
 #define rcu_read_lock() ((void)0)
@@ -15,8 +15,13 @@
 #define PTR_ERR(pointer) ((int)(intptr_t)(pointer))
 #define IS_ERR(pointer) ((uintptr_t)(pointer) >= (uintptr_t)-4095)
 #define EXT4_ERROR_INODE_ERR(inode, code, ...) ((inode)->error = -(code))
-struct rcu_head { int unused; };
-struct ext4_system_blocks { struct rb_root root; struct rcu_head rcu; };
+struct rcu_head {
+    int unused;
+};
+struct ext4_system_blocks {
+    struct rb_root root;
+    struct rcu_head rcu;
+};
 struct ext4_map_blocks {
     ext4_fsblk_t m_pblk;
     ext4_lblk_t m_lblk;

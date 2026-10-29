@@ -6,7 +6,7 @@
 #ifndef __CRYPTO_GHASH_H__
 #define __CRYPTO_GHASH_H__
 
-#define GHASH_BLOCK_SIZE	16
-#define GHASH_DIGEST_SIZE	16
+#define GHASH_BLOCK_SIZE 16
+#define GHASH_DIGEST_SIZE 16
 
 #endif

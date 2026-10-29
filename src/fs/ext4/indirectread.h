@@ -18,7 +18,11 @@ typedef void handle_t;
 #define trace_ext4_ind_map_blocks_enter(...) ((void)0)
 #define trace_ext4_ind_map_blocks_exit(...) ((void)0)
 #define BUFFER_TRACE(...) ((void)0)
-#define ASSERT(condition) do { if (!(condition)) return -EFSCORRUPTED; } while (0)
+#define ASSERT(condition)                                                                          \
+    do {                                                                                           \
+        if (!(condition))                                                                          \
+            return -EFSCORRUPTED;                                                                  \
+    } while (0)
 #define ext4_warning(...) ((void)0)
 struct ext_indirect_buffer;
 struct ext_indirect {
@@ -34,8 +38,7 @@ struct ext_indirect_buffer {
     unsigned refs;
     bool validated;
 };
-static struct buffer_head *sb_getblk(struct super_block *sb, u32 block)
-{
+static struct buffer_head *sb_getblk(struct super_block *sb, u32 block) {
     struct ext_indirect *owner = (struct ext_indirect *)sb;
     struct ext_indirect_buffer *buffer;
     unsigned i, slot = 3;
@@ -45,13 +48,16 @@ static struct buffer_head *sb_getblk(struct super_block *sb, u32 block)
             ++buffer->refs;
             return &buffer->bh;
         }
-        if (!buffer || !buffer->refs) slot = i;
+        if (!buffer || !buffer->refs)
+            slot = i;
     }
-    if (slot == 3) return NULL;
+    if (slot == 3)
+        return NULL;
     buffer = owner->buffers[slot];
     if (!buffer) {
         buffer = calloc(1, sizeof(*buffer) + sb->s_blocksize);
-        if (!buffer) return NULL;
+        if (!buffer)
+            return NULL;
         owner->buffers[slot] = buffer;
     }
     buffer->sb = sb;
@@ -62,29 +68,29 @@ static struct buffer_head *sb_getblk(struct super_block *sb, u32 block)
     buffer->validated = false;
     return &buffer->bh;
 }
-static int bh_uptodate_or_lock(struct buffer_head *bh)
-{
+static int bh_uptodate_or_lock(struct buffer_head *bh) {
     return ((struct ext_indirect_buffer *)bh)->validated;
 }
-static int ext4_check_indirect_blockref(struct inode *inode, struct buffer_head *bh)
-{
+static int ext4_check_indirect_blockref(struct inode *inode, struct buffer_head *bh) {
     int error = ext4_check_blockref(__func__, __LINE__, inode, (__le32 *)bh->b_data,
                                     EXT4_ADDR_PER_BLOCK(inode->i_sb));
-    if (!error) ((struct ext_indirect_buffer *)bh)->validated = true;
+    if (!error)
+        ((struct ext_indirect_buffer *)bh)->validated = true;
     return error;
 }
-static void ext_indirect_release(struct buffer_head *bh)
-{
-    if (bh) --((struct ext_indirect_buffer *)bh)->refs;
+static void ext_indirect_release(struct buffer_head *bh) {
+    if (bh)
+        --((struct ext_indirect_buffer *)bh)->refs;
 }
 #define brelse(bh) ext_indirect_release(bh)
-static int ext4_read_bh(struct buffer_head *bh, int flags, void *end, bool wait)
-{
+static int ext4_read_bh(struct buffer_head *bh, int flags, void *end, bool wait) {
     struct ext_indirect_buffer *buffer = (struct ext_indirect_buffer *)bh;
-    const struct ext_indirect_services *services =
-        &((struct ext_indirect *)buffer->sb)->services;
-    (void)flags; (void)end; (void)wait;
-    if (bh->b_blocknr >= ext4_blocks_count(EXT4_SB(buffer->sb)->s_es)) return -EIO;
+    const struct ext_indirect_services *services = &((struct ext_indirect *)buffer->sb)->services;
+    (void)flags;
+    (void)end;
+    (void)wait;
+    if (bh->b_blocknr >= ext4_blocks_count(EXT4_SB(buffer->sb)->s_es))
+        return -EIO;
     return services->read(services->context, bh->b_blocknr, bh->b_data, bh->b_size);
 }
 #define put_bh(bh) brelse(bh)

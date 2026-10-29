@@ -26,21 +26,22 @@
 #ifndef _CRYPTO_ECC_H
 #define _CRYPTO_ECC_H
 
-#include <crypto/ecc_curve.h>
 #include "../../../crypto/eccread.h"
+#include <crypto/ecc_curve.h>
 
 /* One digit is u64 qword. */
-#define ECC_CURVE_NIST_P192_DIGITS  3
-#define ECC_CURVE_NIST_P256_DIGITS  4
-#define ECC_CURVE_NIST_P384_DIGITS  6
-#define ECC_CURVE_NIST_P521_DIGITS  9
-#define ECC_MAX_DIGITS              DIV_ROUND_UP(521, 64) /* NIST P521 */
+#define ECC_CURVE_NIST_P192_DIGITS 3
+#define ECC_CURVE_NIST_P256_DIGITS 4
+#define ECC_CURVE_NIST_P384_DIGITS 6
+#define ECC_CURVE_NIST_P521_DIGITS 9
+#define ECC_MAX_DIGITS DIV_ROUND_UP(521, 64) /* NIST P521 */
 
 #define ECC_DIGITS_TO_BYTES_SHIFT 3
 
 #define ECC_MAX_BYTES (ECC_MAX_DIGITS << ECC_DIGITS_TO_BYTES_SHIFT)
 
-#define ECC_POINT_INIT(x, y, ndigits)	(struct ecc_point) { x, y, ndigits }
+#define ECC_POINT_INIT(x, y, ndigits)                                                              \
+    (struct ecc_point) { x, y, ndigits }
 
 /*
  * The integers r and s making up the signature are expected to be
@@ -50,8 +51,8 @@
  * This format allows direct use by internal vli_*() functions.
  */
 struct ecdsa_raw_sig {
-	u64 r[ECC_MAX_DIGITS];
-	u64 s[ECC_MAX_DIGITS];
+    u64 r[ECC_MAX_DIGITS];
+    u64 s[ECC_MAX_DIGITS];
 };
 
 /**
@@ -60,13 +61,12 @@ struct ecdsa_raw_sig {
  * @out:      Output array
  * @ndigits:  Number of digits to copy
  */
-static inline void ecc_swap_digits(const void *in, u64 *out, unsigned int ndigits)
-{
-	const __be64 *src = (__be64 *)in;
-	int i;
+static inline void ecc_swap_digits(const void *in, u64 *out, unsigned int ndigits) {
+    const __be64 *src = (__be64 *)in;
+    int i;
 
-	for (i = 0; i < ndigits; i++)
-		out[i] = get_unaligned_be64(&src[ndigits - 1 - i]);
+    for (i = 0; i < ndigits; i++)
+        out[i] = get_unaligned_be64(&src[ndigits - 1 - i]);
 }
 
 /**
@@ -79,8 +79,7 @@ static inline void ecc_swap_digits(const void *in, u64 *out, unsigned int ndigit
  * The first byte in the input byte array is expected to hold the most
  * significant bits of the large integer.
  */
-void ecc_digits_from_bytes(const u8 *in, unsigned int nbytes,
-			   u64 *out, unsigned int ndigits);
+void ecc_digits_from_bytes(const u8 *in, unsigned int nbytes, u64 *out, unsigned int ndigits);
 
 /**
  * ecc_is_pubkey_valid_partial() - Partial public key validation
@@ -96,8 +95,7 @@ void ecc_digits_from_bytes(const u8 *in, unsigned int nbytes,
  *
  * Return: 0 if validation is successful, -EINVAL if validation is failed.
  */
-int ecc_is_pubkey_valid_partial(const struct ecc_curve *curve,
-				struct ecc_point *pk);
+int ecc_is_pubkey_valid_partial(const struct ecc_curve *curve, struct ecc_point *pk);
 
 /**
  * ecc_is_pubkey_valid_full() - Full public key validation
@@ -110,8 +108,7 @@ int ecc_is_pubkey_valid_partial(const struct ecc_curve *curve,
  *
  * Return: 0 if validation is successful, -EINVAL if validation is failed.
  */
-int ecc_is_pubkey_valid_full(const struct ecc_curve *curve,
-			     struct ecc_point *pk);
+int ecc_is_pubkey_valid_full(const struct ecc_curve *curve, struct ecc_point *pk);
 
 /**
  * vli_is_zero() - Determine is vli is zero
@@ -147,8 +144,7 @@ int vli_cmp(const u64 *left, const u64 *right, unsigned int ndigits);
  *
  * Return: carry bit.
  */
-u64 vli_sub(u64 *result, const u64 *left, const u64 *right,
-	    unsigned int ndigits);
+u64 vli_sub(u64 *result, const u64 *left, const u64 *right, unsigned int ndigits);
 
 /**
  * vli_from_be64() - Load vli from big-endian u64 array
@@ -176,8 +172,7 @@ void vli_from_le64(u64 *dest, const void *src, unsigned int ndigits);
  * @mod:		modulus
  * @ndigits:		length of all vlis
  */
-void vli_mod_inv(u64 *result, const u64 *input, const u64 *mod,
-		 unsigned int ndigits);
+void vli_mod_inv(u64 *result, const u64 *input, const u64 *mod, unsigned int ndigits);
 
 /**
  * vli_mod_mult_slow() - Modular multiplication
@@ -190,8 +185,8 @@ void vli_mod_inv(u64 *result, const u64 *input, const u64 *mod,
  *
  * Note: Assumes that mod is big enough curve order.
  */
-void vli_mod_mult_slow(u64 *result, const u64 *left, const u64 *right,
-		       const u64 *mod, unsigned int ndigits);
+void vli_mod_mult_slow(u64 *result, const u64 *left, const u64 *right, const u64 *mod,
+                       unsigned int ndigits);
 
 /**
  * vli_num_bits() - Counts the number of bits required for vli.
@@ -241,9 +236,7 @@ bool ecc_point_is_zero(const struct ecc_point *point);
  * Returns result = x * p + x * q over the curve.
  * This works faster than two multiplications and addition.
  */
-void ecc_point_mult_shamir(const struct ecc_point *result,
-			   const u64 *x, const struct ecc_point *p,
-			   const u64 *y, const struct ecc_point *q,
-			   const struct ecc_curve *curve);
+void ecc_point_mult_shamir(const struct ecc_point *result, const u64 *x, const struct ecc_point *p,
+                           const u64 *y, const struct ecc_point *q, const struct ecc_curve *curve);
 
 #endif

@@ -23,10 +23,10 @@
  */
 
 /* Curves IDs */
-#define ECC_CURVE_NIST_P192	0x0001
-#define ECC_CURVE_NIST_P256	0x0002
-#define ECC_CURVE_NIST_P384	0x0003
-#define ECC_CURVE_NIST_P521	0x0004
+#define ECC_CURVE_NIST_P192 0x0001
+#define ECC_CURVE_NIST_P256 0x0002
+#define ECC_CURVE_NIST_P384 0x0003
+#define ECC_CURVE_NIST_P521 0x0004
 
 /**
  * struct ecdh - define an ECDH private key
@@ -35,8 +35,8 @@
  * @key_size:	Size of the private ECDH key
  */
 struct ecdh {
-	char *key;
-	unsigned short key_size;
+    char *key;
+    unsigned short key_size;
 };
 
 /**

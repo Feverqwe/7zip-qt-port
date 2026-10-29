@@ -30,12 +30,15 @@ struct sevenzip_udf_map {
 };
 int sevenzip_udf_maps(const void *, uint32_t, struct sevenzip_udf_map **, uint32_t *, uint32_t *);
 void sevenzip_udf_maps_free(struct sevenzip_udf_map *);
-void sevenzip_udf_map_indices(const struct sevenzip_udf_map *, uint32_t, uint16_t,
-                              uint32_t *, uint32_t *);
+void sevenzip_udf_map_indices(const struct sevenzip_udf_map *, uint32_t, uint16_t, uint32_t *,
+                              uint32_t *);
 struct sevenzip_udf_inode {
     uint32_t mode, uid, gid, links, device_major, device_minor, hidden;
 };
-struct sevenzip_udf_time { int64_t seconds; uint32_t nanoseconds; };
+struct sevenzip_udf_time {
+    int64_t seconds;
+    uint32_t nanoseconds;
+};
 void sevenzip_udf_stamp(const void *, struct sevenzip_udf_time *);
 struct sevenzip_udf_file {
     uint64_t size;
@@ -53,7 +56,7 @@ struct sevenzip_udf_entry {
     const void *icb, *name;
 };
 int sevenzip_udf_directory_open(void *, sevenzip_udf_read, uint32_t, uint32_t,
-                               const struct sevenzip_udf_file *, struct sevenzip_udf_directory **);
+                                const struct sevenzip_udf_file *, struct sevenzip_udf_directory **);
 /* Entry pointers remain valid until the next call or directory_free. */
 int sevenzip_udf_directory_next(struct sevenzip_udf_directory *, struct sevenzip_udf_entry *);
 void sevenzip_udf_directory_free(struct sevenzip_udf_directory *);
@@ -61,46 +64,45 @@ typedef int (*sevenzip_udf_open_file)(void *, uint16_t, uint32_t, struct sevenzi
 typedef int (*sevenzip_udf_read_file)(void *, uint32_t, void *, size_t);
 typedef void (*sevenzip_udf_close_file)(void *);
 typedef int (*sevenzip_udf_status)(void *);
-typedef int (*sevenzip_udf_descriptor)(void *, uint16_t, uint32_t, const void *, size_t,
-                                       uint32_t *, uint32_t);
+typedef int (*sevenzip_udf_descriptor)(void *, uint16_t, uint32_t, const void *, size_t, uint32_t *,
+                                       uint32_t);
 typedef void (*sevenzip_udf_reset)(void *);
 struct sevenzip_udf_discovery {
     uint32_t block_size, last_block, anchor_block, flags;
     unsigned seen_anchor;
 };
-int sevenzip_udf_discover(void *, sevenzip_udf_read, sevenzip_udf_descriptor,
-    sevenzip_udf_reset, sevenzip_udf_status, uint64_t, struct sevenzip_udf_discovery *);
+int sevenzip_udf_discover(void *, sevenzip_udf_read, sevenzip_udf_descriptor, sevenzip_udf_reset,
+                          sevenzip_udf_status, uint64_t, struct sevenzip_udf_discovery *);
 int sevenzip_udf_probe(const void *, size_t);
 int sevenzip_udf_fileset(void *, sevenzip_udf_read, uint32_t, uint16_t, uint32_t, void *);
 int sevenzip_udf_filename(const void *, int, void *, int);
 int sevenzip_udf_dstring(const void *, int, void *, int);
 int sevenzip_udf_symlink(void *, int, void *, int);
 int sevenzip_udf_metadata_create(void *, sevenzip_udf_open_file, sevenzip_udf_read,
-    sevenzip_udf_close_file, sevenzip_udf_status, uint32_t, uint32_t, uint16_t, uint16_t, const void *,
-    struct sevenzip_udf_metadata **);
+                                 sevenzip_udf_close_file, sevenzip_udf_status, uint32_t, uint32_t,
+                                 uint16_t, uint16_t, const void *, struct sevenzip_udf_metadata **);
 void sevenzip_udf_metadata_free(struct sevenzip_udf_metadata *);
-int sevenzip_udf_metadata_map(struct sevenzip_udf_metadata *, uint32_t, uint32_t,
-                            uint16_t *, uint32_t *);
+int sevenzip_udf_metadata_map(struct sevenzip_udf_metadata *, uint32_t, uint32_t, uint16_t *,
+                              uint32_t *);
 int sevenzip_udf_virtual_create(void *, sevenzip_udf_open_file, sevenzip_udf_read_file,
-    sevenzip_udf_close_file, uint32_t, uint32_t, uint64_t, uint32_t, uint32_t, uint16_t, uint16_t,
-    int, struct sevenzip_udf_virtual **);
+                                sevenzip_udf_close_file, uint32_t, uint32_t, uint64_t, uint32_t,
+                                uint32_t, uint16_t, uint16_t, int, struct sevenzip_udf_virtual **);
 void sevenzip_udf_virtual_free(struct sevenzip_udf_virtual *);
-int sevenzip_udf_virtual_map(struct sevenzip_udf_virtual *, uint32_t, uint32_t,
-                            uint16_t *, uint32_t *);
-int sevenzip_udf_sparing_create(void *, sevenzip_udf_read, uint32_t, uint32_t,
-                                const void *, struct sevenzip_udf_sparing **);
+int sevenzip_udf_virtual_map(struct sevenzip_udf_virtual *, uint32_t, uint32_t, uint16_t *,
+                             uint32_t *);
+int sevenzip_udf_sparing_create(void *, sevenzip_udf_read, uint32_t, uint32_t, const void *,
+                                struct sevenzip_udf_sparing **);
 void sevenzip_udf_sparing_free(struct sevenzip_udf_sparing *);
 void sevenzip_udf_sparing_root(struct sevenzip_udf_sparing *, uint32_t);
-int sevenzip_udf_partition(void *, sevenzip_udf_open_file, sevenzip_udf_close_file,
-                           uint32_t, uint32_t, uint32_t, uint32_t, const void *, uint32_t *);
-int sevenzip_udf_sparing_span(const struct sevenzip_udf_sparing *, uint32_t,
-                              uint32_t *, uint32_t *);
-int sevenzip_udf_icb(void *, sevenzip_udf_read, sevenzip_udf_iget,
-                     sevenzip_udf_inode_block, uint32_t, const uint32_t *,
-                     uint32_t, uint16_t *, uint32_t *, void *, int, struct sevenzip_udf_inode *);
-int sevenzip_udf_extents(void *, sevenzip_udf_read, sevenzip_udf_extent,
-                         uint32_t, uint32_t, uint16_t, unsigned, int,
-                         const void *, uint32_t, uint64_t, uint32_t);
+int sevenzip_udf_partition(void *, sevenzip_udf_open_file, sevenzip_udf_close_file, uint32_t,
+                           uint32_t, uint32_t, uint32_t, const void *, uint32_t *);
+int sevenzip_udf_sparing_span(const struct sevenzip_udf_sparing *, uint32_t, uint32_t *,
+                              uint32_t *);
+int sevenzip_udf_icb(void *, sevenzip_udf_read, sevenzip_udf_iget, sevenzip_udf_inode_block,
+                     uint32_t, const uint32_t *, uint32_t, uint16_t *, uint32_t *, void *, int,
+                     struct sevenzip_udf_inode *);
+int sevenzip_udf_extents(void *, sevenzip_udf_read, sevenzip_udf_extent, uint32_t, uint32_t,
+                         uint16_t, unsigned, int, const void *, uint32_t, uint64_t, uint32_t);
 #ifdef __cplusplus
 }
 #endif

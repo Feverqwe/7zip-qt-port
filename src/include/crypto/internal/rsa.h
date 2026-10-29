@@ -29,55 +29,51 @@
  * @qinv_sz     : length in bytes of qinv field
  */
 struct rsa_key {
-	const u8 *n;
-	const u8 *e;
-	const u8 *d;
-	const u8 *p;
-	const u8 *q;
-	const u8 *dp;
-	const u8 *dq;
-	const u8 *qinv;
-	size_t n_sz;
-	size_t e_sz;
-	size_t d_sz;
-	size_t p_sz;
-	size_t q_sz;
-	size_t dp_sz;
-	size_t dq_sz;
-	size_t qinv_sz;
+    const u8 *n;
+    const u8 *e;
+    const u8 *d;
+    const u8 *p;
+    const u8 *q;
+    const u8 *dp;
+    const u8 *dq;
+    const u8 *qinv;
+    size_t n_sz;
+    size_t e_sz;
+    size_t d_sz;
+    size_t p_sz;
+    size_t q_sz;
+    size_t dp_sz;
+    size_t dq_sz;
+    size_t qinv_sz;
 };
 
-int rsa_parse_pub_key(struct rsa_key *rsa_key, const void *key,
-		      unsigned int key_len);
+int rsa_parse_pub_key(struct rsa_key *rsa_key, const void *key, unsigned int key_len);
 
-int rsa_parse_priv_key(struct rsa_key *rsa_key, const void *key,
-		       unsigned int key_len);
+int rsa_parse_priv_key(struct rsa_key *rsa_key, const void *key, unsigned int key_len);
 
 #define RSA_PUB (true)
 #define RSA_PRIV (false)
 
-static inline int rsa_set_key(struct crypto_akcipher *child,
-			      unsigned int *key_size, bool is_pubkey,
-			      const void *key, unsigned int keylen)
-{
-	int err;
+static inline int rsa_set_key(struct crypto_akcipher *child, unsigned int *key_size, bool is_pubkey,
+                              const void *key, unsigned int keylen) {
+    int err;
 
-	*key_size = 0;
+    *key_size = 0;
 
-	if (is_pubkey)
-		err = crypto_akcipher_set_pub_key(child, key, keylen);
-	else
-		err = crypto_akcipher_set_priv_key(child, key, keylen);
-	if (err)
-		return err;
+    if (is_pubkey)
+        err = crypto_akcipher_set_pub_key(child, key, keylen);
+    else
+        err = crypto_akcipher_set_priv_key(child, key, keylen);
+    if (err)
+        return err;
 
-	/* Find out new modulus size from rsa implementation */
-	err = crypto_akcipher_maxsize(child);
-	if (err > PAGE_SIZE)
-		return -ENOTSUPP;
+    /* Find out new modulus size from rsa implementation */
+    err = crypto_akcipher_maxsize(child);
+    if (err > PAGE_SIZE)
+        return -ENOTSUPP;
 
-	*key_size = err;
-	return 0;
+    *key_size = err;
+    return 0;
 }
 
 extern struct crypto_template rsa_pkcs1pad_tmpl;

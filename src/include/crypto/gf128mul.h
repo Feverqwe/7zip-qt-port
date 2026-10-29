@@ -169,23 +169,21 @@ void gf128mul_lle(be128 *a, const be128 *b);
  * They are defined here for performance.
  */
 
-static inline u64 gf128mul_mask_from_bit(u64 x, int which)
-{
-	/* a constant-time version of 'x & ((u64)1 << which) ? (u64)-1 : 0' */
-	return ((s64)(x << (63 - which)) >> 63);
+static inline u64 gf128mul_mask_from_bit(u64 x, int which) {
+    /* a constant-time version of 'x & ((u64)1 << which) ? (u64)-1 : 0' */
+    return ((s64)(x << (63 - which)) >> 63);
 }
 
 /* needed by XTS */
-static inline void gf128mul_x_ble(le128 *r, const le128 *x)
-{
-	u64 a = le64_to_cpu(x->a);
-	u64 b = le64_to_cpu(x->b);
+static inline void gf128mul_x_ble(le128 *r, const le128 *x) {
+    u64 a = le64_to_cpu(x->a);
+    u64 b = le64_to_cpu(x->b);
 
-	/* equivalent to gf128mul_table_be[b >> 63] (see crypto/gf128mul.c): */
-	u64 _tt = gf128mul_mask_from_bit(a, 63) & 0x87;
+    /* equivalent to gf128mul_table_be[b >> 63] (see crypto/gf128mul.c): */
+    u64 _tt = gf128mul_mask_from_bit(a, 63) & 0x87;
 
-	r->a = cpu_to_le64((a << 1) | (b >> 63));
-	r->b = cpu_to_le64((b << 1) ^ _tt);
+    r->a = cpu_to_le64((a << 1) | (b >> 63));
+    r->b = cpu_to_le64((b << 1) ^ _tt);
 }
 
 void gf128mul_x8_ble(le128 *r, const le128 *x);
@@ -193,9 +191,9 @@ void gf128mul_x8_ble(le128 *r, const le128 *x);
 /* 64k table optimization, implemented for bbe */
 
 struct gf128mul_64k {
-	struct {
-		be128 t[256];
-	} *t[16];
+    struct {
+        be128 t[256];
+    } *t[16];
 };
 
 /* First initialize with the constant factor with which you
