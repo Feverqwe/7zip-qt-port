@@ -4,7 +4,7 @@
     <context>
         <name>AboutDialog</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/AboutDialog.cpp" line="+67" />
+            <location filename="../src/dialogs/about/AboutDialog.cpp" line="+67" />
             <source>An independent file manager based on 7‑Zip.</source>
             <translation>Независимый файловый менеджер на основе 7‑Zip.</translation>
         </message>
@@ -37,7 +37,7 @@
     <context>
         <name>ArchiveRedesign</name>
         <message>
-            <location filename="../src/createarchivedialog_language.cpp" line="+60" />
+            <location filename="../src/dialogs/compress/createarchivedialog_language.cpp" line="+60" />
             <source>Metadata settings…</source>
             <translation>Настройки метаданных…</translation>
         </message>
@@ -57,7 +57,7 @@
             <translation>Имя архива</translation>
         </message>
         <message>
-            <location filename="../src/createarchivedialog.cpp" line="+244" />
+            <location filename="../src/dialogs/compress/createarchivedialog.cpp" line="+244" />
             <location line="+2" />
             <location line="+57" />
             <source>Destination folder</source>
@@ -69,14 +69,14 @@
             <translation>Обзор…</translation>
         </message>
         <message>
-            <location filename="../src/createarchivedialog_language.cpp" line="+15" />
+            <location filename="../src/dialogs/compress/createarchivedialog_language.cpp" line="+15" />
             <location line="+2" />
             <location line="+4" />
             <source>Compression memory limit:</source>
             <translation>Лимит памяти для сжатия:</translation>
         </message>
         <message>
-            <location filename="../src/createarchivedialog_compression.cpp" line="+59" />
+            <location filename="../src/dialogs/compress/createarchivedialog_compression.cpp" line="+59" />
             <source>Compression:</source>
             <translation>Сжатие:</translation>
         </message>
@@ -86,7 +86,7 @@
             <translation>Распаковка:</translation>
         </message>
         <message>
-            <location filename="../src/createarchivedialog_advanced.cpp" line="+40" />
+            <location filename="../src/dialogs/compress/createarchivedialog_advanced.cpp" line="+40" />
             <source>Compression settings</source>
             <translation>Параметры сжатия</translation>
         </message>
@@ -106,14 +106,14 @@
             <translation>Параметры командной строки</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/ExtractDialog.cpp" line="+332" />
-            <location filename="../src/createarchivedialog_advanced.cpp" line="+126" />
+            <location filename="../src/dialogs/extract/ExtractDialog.cpp" line="+332" />
+            <location filename="../src/dialogs/compress/createarchivedialog_advanced.cpp" line="+126" />
             <source>Modified</source>
             <translation>Изменено</translation>
         </message>
         <message>
             <location line="-259" />
-            <location filename="../src/mainwindow_language.cpp" line="+120" />
+            <location filename="../src/filemanager/window/mainwindow_language.cpp" line="+120" />
             <source>Extract</source>
             <translation>Распаковать</translation>
         </message>
@@ -133,18 +133,18 @@
             <translation>Дополнительные параметры</translation>
         </message>
         <message>
-            <location filename="../src/createarchivedialog.cpp" line="+101" />
+            <location filename="../src/dialogs/compress/createarchivedialog.cpp" line="+101" />
             <source>Create archive</source>
             <translation>Создать архив</translation>
         </message>
         <message>
-            <location filename="../src/createarchivedialog_encryption.cpp" line="+10" />
+            <location filename="../src/dialogs/compress/createarchivedialog_encryption.cpp" line="+10" />
             <location line="+6" />
             <source>Protect with a password</source>
             <translation>Защитить паролем</translation>
         </message>
         <message>
-            <location filename="../src/qtcompressoptionscontrols.cpp" line="+107" />
+            <location filename="../src/dialogs/compress/qtcompressoptionscontrols.cpp" line="+107" />
             <source>Links and metadata</source>
             <translation>Ссылки и метаданные</translation>
         </message>
@@ -162,7 +162,7 @@
     <context>
         <name>BenchmarkReport</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/Bench.cpp" line="+2682" />
+            <location filename="../src/benchmark/Bench.cpp" line="+2682" />
             <source>Processor groups: %1 : </source>
             <translation>Группы процессоров: %1 : </translation>
         </message>
@@ -308,7 +308,7 @@
             <translation>Итого:</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/BenchmarkDialog.cpp" line="+1094" />
+            <location filename="../src/benchmark/BenchmarkDialog.cpp" line="+1094" />
             <source>Compr Decompr Total   CPU</source>
             <translation>Сжат. Распак. Всего  ЦП</translation>
         </message>
@@ -323,7 +323,7 @@
             <translation>%1 пот.: частота (МГц):</translation>
         </message>
         <message>
-            <location filename="../src/qtbenchmarkmetrics.cpp" line="+19" />
+            <location filename="../src/benchmark/qtbenchmarkmetrics.cpp" line="+19" />
             <source>Result</source>
             <translation>Результат</translation>
         </message>
@@ -336,7 +336,7 @@
     <context>
         <name>BrowseDialog2</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/BrowseDialog2.cpp" line="+725" />
+            <location filename="../src/dialogs/browse/BrowseDialog2.cpp" line="+725" />
             <source>Could not open the temporary item.</source>
             <translation>Не удалось открыть временный объект.</translation>
         </message>
@@ -355,8 +355,8 @@
     <context>
         <name>CommandMenus</name>
         <message>
-            <location filename="../src/mainwindow_menus.cpp" line="+90" />
-            <location filename="../src/qtpanelcontextmenu.cpp" line="+108" />
+            <location filename="../src/filemanager/window/mainwindow_menus.cpp" line="+90" />
+            <location filename="../src/filemanager/panels/qtpanelcontextmenu.cpp" line="+108" />
             <source>Checksums</source>
             <translation>Контрольные суммы</translation>
         </message>
@@ -377,7 +377,7 @@
             <translation>Сортировка</translation>
         </message>
         <message>
-            <location filename="../src/qtprogramfilemenu.cpp" line="+106" />
+            <location filename="../src/filemanager/qtprogramfilemenu.cpp" line="+106" />
             <source>Open as</source>
             <translation>Открыть как</translation>
         </message>
@@ -400,7 +400,7 @@
     <context>
         <name>CreateArchiveDialog</name>
         <message>
-            <location filename="../src/createarchivedialog.cpp" line="+51" />
+            <location filename="../src/dialogs/compress/createarchivedialog.cpp" line="+51" />
             <source>Incorrect archive path</source>
             <translation>Неверный путь к архиву</translation>
         </message>
@@ -408,7 +408,7 @@
     <context>
         <name>DeviceSelectionDialog</name>
         <message>
-            <location filename="../src/deviceselectiondialog.cpp" line="+231" />
+            <location filename="../src/devices/deviceselectiondialog.cpp" line="+231" />
             <source>Read access was not authorized. You can try again.</source>
             <translation>Доступ на чтение не разрешён. Можно попробовать снова.</translation>
         </message>
@@ -531,10 +531,10 @@
     <context>
         <name>DialogRedesign</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/CopyDialog.cpp" line="+59" />
-            <location filename="../src/CPP/7zip/UI/FileManager/EditDialog.cpp" line="+42" />
-            <location filename="../src/CPP/7zip/UI/FileManager/ListViewDialog.cpp" line="+106" />
-            <location filename="../src/qtbenchmarkcontrols.cpp" line="+148" />
+            <location filename="../src/dialogs/copy/CopyDialog.cpp" line="+59" />
+            <location filename="../src/dialogs/edit/EditDialog.cpp" line="+42" />
+            <location filename="../src/dialogs/listview/ListViewDialog.cpp" line="+106" />
+            <location filename="../src/benchmark/qtbenchmarkcontrols.cpp" line="+148" />
             <source>Copy</source>
             <translation>Копировать</translation>
         </message>
@@ -549,7 +549,7 @@
             <translation>Объединить</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/OverwriteDialog.cpp" line="+160" />
+            <location filename="../src/dialogs/overwrite/OverwriteDialog.cpp" line="+160" />
             <source>Existing file</source>
             <translation>Существующий файл</translation>
         </message>
@@ -579,22 +579,22 @@
             <translation>Пропустить все</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/PasswordDialog.cpp" line="+34" />
+            <location filename="../src/dialogs/password/PasswordDialog.cpp" line="+34" />
             <source>Continue</source>
             <translation>Продолжить</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/SplitDialog.cpp" line="+42" />
+            <location filename="../src/dialogs/split/SplitDialog.cpp" line="+42" />
             <source>Split</source>
             <translation>Разделить</translation>
         </message>
         <message>
-            <location filename="../src/qtlinkcontrols.cpp" line="+156" />
+            <location filename="../src/fileops/links/qtlinkcontrols.cpp" line="+156" />
             <source>Create link</source>
             <translation>Создать ссылку</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/ComboDialog.cpp" line="+86" />
+            <location filename="../src/dialogs/combo/ComboDialog.cpp" line="+86" />
             <source>Create</source>
             <translation>Создать</translation>
         </message>
@@ -609,30 +609,30 @@
             <translation>Снять выделение</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/BrowseDialog.cpp" line="+170" />
+            <location filename="../src/dialogs/browse/BrowseDialog.cpp" line="+170" />
             <source>Choose folder</source>
             <translation>Выбрать папку</translation>
         </message>
         <message>
             <location line="+1" />
-            <location filename="../src/CPP/7zip/UI/FileManager/ComboDialog.cpp" line="+2" />
-            <location filename="../src/qtcompressoptionscontrols.cpp" line="-17" />
+            <location filename="../src/dialogs/combo/ComboDialog.cpp" line="+2" />
+            <location filename="../src/dialogs/compress/qtcompressoptionscontrols.cpp" line="-17" />
             <source>Save</source>
             <translation>Сохранить</translation>
         </message>
         <message>
             <location line="+1" />
-            <location filename="../src/CPP/7zip/UI/FileManager/ListViewDialog.cpp" line="+9" />
+            <location filename="../src/dialogs/listview/ListViewDialog.cpp" line="+9" />
             <source>Open</source>
             <translation>Открыть</translation>
         </message>
         <message>
-            <location filename="../src/qtprogresscontrols.cpp" line="+179" />
+            <location filename="../src/ui/progress/qtprogresscontrols.cpp" line="+179" />
             <source>Details</source>
             <translation>Подробности</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/AboutDialog.cpp" line="-18" />
+            <location filename="../src/dialogs/about/AboutDialog.cpp" line="-18" />
             <source>Close</source>
             <translation>Закрыть</translation>
         </message>
@@ -640,7 +640,7 @@
     <context>
         <name>ExtractDialog</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/ExtractDialog.cpp" line="-72" />
+            <location filename="../src/dialogs/extract/ExtractDialog.cpp" line="-72" />
             <source>Destination folder name</source>
             <translation>Имя папки назначения</translation>
         </message>
@@ -648,7 +648,7 @@
     <context>
         <name>FSDrives</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/FSDrives.cpp" line="+100" />
+            <location filename="../src/filemanager/providers/FSDrives.cpp" line="+100" />
             <source>Unknown</source>
             <translation>Неизвестный</translation>
         </message>
@@ -691,7 +691,7 @@
     <context>
         <name>FSFolder</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/FSFolder.cpp" line="+881" />
+            <location filename="../src/filemanager/providers/FSFolder.cpp" line="+881" />
             <source>Could not create file: %1</source>
             <translation>Не удалось создать файл: %1</translation>
         </message>
@@ -719,7 +719,7 @@
     <context>
         <name>FSFolderCopy</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp" line="+325" />
+            <location filename="../src/filemanager/providers/FSFolderCopy.cpp" line="+325" />
             <source>Cannot copy file onto itself: %1</source>
             <translation>Нельзя скопировать файл в самого себя: %1</translation>
         </message>
@@ -815,7 +815,7 @@
     <context>
         <name>FoldersPage</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/FoldersPage.cpp" line="+69" />
+            <location filename="../src/settings/FoldersPage.cpp" line="+69" />
             <source>Removable-drive detection is available on Windows.</source>
             <translation>Определение сменных носителей доступно в Windows.</translation>
         </message>
@@ -823,7 +823,7 @@
     <context>
         <name>FscryptKeyDialog</name>
         <message>
-            <location filename="../src/fscryptkeydialog.cpp" line="+41" />
+            <location filename="../src/crypto/fscrypt/fscryptkeydialog.cpp" line="+41" />
             <source>Open encrypted filesystem</source>
             <translation>Открыть зашифрованную файловую систему</translation>
         </message>
@@ -906,7 +906,7 @@
     <context>
         <name>LangPage</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/LangPage.cpp" line="+78" />
+            <location filename="../src/settings/LangPage.cpp" line="+78" />
             <source>Language: %1
 Locale: %2</source>
             <translation>Язык: %1
@@ -916,7 +916,7 @@ Locale: %2</source>
     <context>
         <name>LargeQuantity</name>
         <message>
-            <location filename="../src/qtlanguageservices.cpp" line="+92" />
+            <location filename="../src/localization/qtlanguageservices.cpp" line="+92" />
             <source>%1 B</source>
             <translation>%1 Б</translation>
         </message>
@@ -941,7 +941,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>MemDialog</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/MemDialog.cpp" line="+215" />
+            <location filename="../src/dialogs/mem/MemDialog.cpp" line="+215" />
             <source>File: %1</source>
             <translation>Файл: %1</translation>
         </message>
@@ -949,7 +949,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>MemoryUnits</name>
         <message>
-            <location filename="../src/qtlangcontrols.cpp" line="+23" />
+            <location filename="../src/localization/qtlangcontrols.cpp" line="+23" />
             <source>GB / %1 GB (RAM)</source>
             <translation>ГБ / %1 ГБ (ОЗУ)</translation>
         </message>
@@ -959,12 +959,12 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>ГБ</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/MemDialog.cpp" line="-14" />
+            <location filename="../src/dialogs/mem/MemDialog.cpp" line="-14" />
             <source>%1 GB : %2</source>
             <translation>%1 ГБ : %2</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/CompressDialog.cpp" line="+109" />
+            <location filename="../src/dialogs/compress/CompressDialog.cpp" line="+109" />
             <source>%1 MB : </source>
             <translation>%1 МБ : </translation>
         </message>
@@ -984,7 +984,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>%1 ТБ</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/UpdateCallbackGUI2.cpp" line="+60" />
+            <location filename="../src/gui/UpdateCallbackGUI2.cpp" line="+60" />
             <location line="+8" />
             <source>%1 MiB</source>
             <translation>%1 МиБ</translation>
@@ -993,7 +993,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>MenuPage</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/MenuPage.cpp" line="+81" />
+            <location filename="../src/settings/MenuPage.cpp" line="+81" />
             <location line="+50" />
             <source>Shell integration is unavailable in this build.</source>
             <translation>Интеграция с оболочкой недоступна в этой сборке.</translation>
@@ -1007,7 +1007,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>OptionsDialog</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/OptionsDialog.cpp" line="+214" />
+            <location filename="../src/settings/OptionsDialog.cpp" line="+214" />
             <source>7-Zip</source>
             <translation>7-Zip</translation>
         </message>
@@ -1025,7 +1025,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>PanelSelection</name>
         <message numerus="yes">
-            <location filename="../src/qtlanguageservices.cpp" line="-84" />
+            <location filename="../src/localization/qtlanguageservices.cpp" line="-84" />
             <source>Selected objects: %Ln</source>
             <translation>
                 <numerusform>Выбран %Ln объект</numerusform>
@@ -1042,7 +1042,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>PanelSplitter</name>
         <message>
-            <location filename="../src/qtfilemanagersplitter.cpp" line="+24" />
+            <location filename="../src/filemanager/qtfilemanagersplitter.cpp" line="+24" />
             <source>Resize file panels</source>
             <translation>Изменить размеры файловых панелей</translation>
         </message>
@@ -1055,12 +1055,12 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>QtOperation</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp" line="+117" />
+            <location filename="../src/archive/agent/ArchiveFolderOut.cpp" line="+117" />
             <source>The archive changed on disk. Refresh it before editing.</source>
             <translation>Архив изменился на диске. Обновите его перед редактированием.</translation>
         </message>
         <message>
-            <location filename="../src/qtarchivewritelease.cpp" line="+71" />
+            <location filename="../src/archive/resources/qtarchivewritelease.cpp" line="+71" />
             <source>Could not lock the archive for writing.</source>
             <translation>Не удалось заблокировать архив для записи.</translation>
         </message>
@@ -1070,7 +1070,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Архив уже открыт другой операцией для записи.</translation>
         </message>
         <message>
-            <location filename="../src/qtoperationprotocol.cpp" line="+281" />
+            <location filename="../src/operations/qtoperationprotocol.cpp" line="+281" />
             <source>Invalid operation message.</source>
             <translation>Некорректное сообщение операции.</translation>
         </message>
@@ -1090,7 +1090,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Неподдерживаемое или повреждённое сообщение операции.</translation>
         </message>
         <message>
-            <location filename="../src/qtoperationprocess.cpp" line="+94" />
+            <location filename="../src/operations/qtoperationprocess.cpp" line="+94" />
             <source>An operation process is already running.</source>
             <translation>Процесс операции уже запущен.</translation>
         </message>
@@ -1110,7 +1110,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Не удалось получить состояние процесса операции (%1).</translation>
         </message>
         <message>
-            <location filename="../src/qtoperationlauncher.cpp" line="+41" />
+            <location filename="../src/operations/qtoperationlauncher.cpp" line="+41" />
             <source>Operation startup acknowledgement was not received.</source>
             <translation>Не получено подтверждение приёма задания.</translation>
         </message>
@@ -1155,7 +1155,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Процесс операции завершился без передачи полного результата.</translation>
         </message>
         <message>
-            <location filename="../src/qtoperationendpoint.cpp" line="+154" />
+            <location filename="../src/operations/qtoperationendpoint.cpp" line="+154" />
             <source>Expected one operation job.</source>
             <translation>Ожидалось одно задание операции.</translation>
         </message>
@@ -1163,7 +1163,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>RootFolder</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/RootFolder.cpp" line="+87" />
+            <location filename="../src/filemanager/providers/RootFolder.cpp" line="+87" />
             <source>Volumes</source>
             <translation>Тома</translation>
         </message>
@@ -1171,7 +1171,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SettingsRedesign</name>
         <message>
-            <location filename="../src/qtfmoptionslayout.cpp" line="+168" />
+            <location filename="../src/settings/qtfmoptionslayout.cpp" line="+168" />
             <source>Interface language</source>
             <translation>Язык интерфейса</translation>
         </message>
@@ -1222,12 +1222,12 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Разделы настроек</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/OptionsDialog.cpp" line="-68" />
+            <location filename="../src/settings/OptionsDialog.cpp" line="-68" />
             <source>Save</source>
             <translation>Сохранить</translation>
         </message>
         <message>
-            <location filename="../src/qtfmoptionslayout.cpp" line="-160" />
+            <location filename="../src/settings/qtfmoptionslayout.cpp" line="-160" />
             <source>Display</source>
             <translation>Отображение</translation>
         </message>
@@ -1257,7 +1257,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Сведения об установленном переводе</translation>
         </message>
         <message>
-            <location filename="../src/qtsystempagepresentation.cpp" line="+119" />
+            <location filename="../src/platform/associations/qtsystempagepresentation.cpp" line="+119" />
             <source>Choose file types to open with Sevenzip.</source>
             <translation>Выберите типы файлов, которые нужно открывать в Sevenzip.</translation>
         </message>
@@ -1292,7 +1292,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Снять выбор</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/SettingsPage.cpp" line="+50" />
+            <location filename="../src/settings/SettingsPage.cpp" line="+50" />
             <source>Appearance</source>
             <translation>Оформление</translation>
         </message>
@@ -1312,8 +1312,8 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Тёмное</translation>
         </message>
         <message>
-            <location filename="../src/qtfmoptionslayout.cpp" line="+109" />
-            <location filename="../src/qtsystempagepresentation.cpp" line="-79" />
+            <location filename="../src/settings/qtfmoptionslayout.cpp" line="+109" />
+            <location filename="../src/platform/associations/qtsystempagepresentation.cpp" line="-79" />
             <source>Changed</source>
             <translation>Изменено</translation>
         </message>
@@ -1338,7 +1338,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Временные файлы</translation>
         </message>
         <message numerus="yes">
-            <location filename="../src/qtsystempagepresentation.cpp" line="-11" />
+            <location filename="../src/platform/associations/qtsystempagepresentation.cpp" line="-11" />
             <source>%n selected formats</source>
             <translation>
                 <numerusform>Выбран %n формат</numerusform>
@@ -1365,7 +1365,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZip</name>
         <message>
-            <location filename="../src/qtupstreamtranslations.h" line="+16" />
+            <location filename="../src/localization/qtupstreamtranslations.h" line="+16" />
             <source>7-Zip</source>
             <comment>0</comment>
             <translation>7-Zip</translation>
@@ -4140,7 +4140,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZipDiagnostics</name>
         <message>
-            <location filename="../src/qtdiagnostictext.cpp" line="+175" />
+            <location filename="../src/ui/diagnostics/qtdiagnostictext.cpp" line="+175" />
             <source>Some FAT table entries could not be read. Free space is unknown; some files or directories may be incomplete or unreadable.</source>
             <translation>Часть таблицы FAT прочитать не удалось. Свободное место неизвестно; некоторые файлы и каталоги могут быть неполными или недоступными.</translation>
         </message>
@@ -4525,7 +4525,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Носитель сообщил об ошибках. Часть данных может быть потеряна.</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/Update.cpp" line="+46" />
+            <location filename="../src/archive/operations/Update.cpp" line="+46" />
             <source>SFX file is not specified</source>
             <translation>SFX-модуль не указан</translation>
         </message>
@@ -4589,7 +4589,7 @@ Are you sure you want to split archive into such volumes?</source>
         </message>
         <message>
             <location line="+80" />
-            <location filename="../src/CPP/7zip/UI/Common/HashCalc.cpp" line="+419" />
+            <location filename="../src/archive/hashing/HashCalc.cpp" line="+419" />
             <source>Scanning error</source>
             <translation>Ошибка сканирования</translation>
         </message>
@@ -4630,7 +4630,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>7-Zip не удалось найти функцию MAPISendMail</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/UpdatePair.cpp" line="+94" />
+            <location filename="../src/archive/operations/UpdatePair.cpp" line="+94" />
             <source>Duplicate filename in archive:</source>
             <translation>Повторяющееся имя файла в архиве:</translation>
         </message>
@@ -4645,7 +4645,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Конфликт имён файлов на диске и в архиве:</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp" line="+49" />
+            <location filename="../src/archive/callbacks/ArchiveExtractCallback.cpp" line="+49" />
             <source>Cannot create file with auto name</source>
             <translation>Не удалось создать файл с автоматически выбранным именем</translation>
         </message>
@@ -4656,7 +4656,7 @@ Are you sure you want to split archive into such volumes?</source>
         </message>
         <message>
             <location line="+2" />
-            <location filename="../src/CPP/7zip/UI/FileManager/ExtractCallback.cpp" line="+737" />
+            <location filename="../src/filemanager/ExtractCallback.cpp" line="+737" />
             <source>Cannot delete output file</source>
             <translation>Не удалось удалить выходной файл</translation>
         </message>
@@ -4782,7 +4782,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Не удалось задать атрибут файла</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/Extract.cpp" line="+177" />
+            <location filename="../src/archive/operations/Extract.cpp" line="+177" />
             <source>Cannot create output directory</source>
             <translation>Не удалось создать выходную папку</translation>
         </message>
@@ -4798,9 +4798,9 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Объект является папкой</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/OpenArchive.cpp" line="+1235" />
-            <location filename="../src/CPP/7zip/UI/FileManager/FM.cpp" line="+185" />
-            <location filename="../src/CPP/7zip/UI/GUI/GUI.cpp" line="+369" />
+            <location filename="../src/archive/opening/OpenArchive.cpp" line="+1235" />
+            <location filename="../src/filemanager/FM.cpp" line="+185" />
+            <location filename="../src/gui/GUI.cpp" line="+369" />
             <source>Unknown error</source>
             <translation>Неизвестная ошибка</translation>
         </message>
@@ -4810,7 +4810,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Неизвестное предупреждение</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/ArchiveCommandLine.cpp" line="+363" />
+            <location filename="../src/archive/operations/ArchiveCommandLine.cpp" line="+363" />
             <source>Incorrect item in listfile.
 Check charset encoding and -scs switch.</source>
             <translation>Неверная запись в файле списка.
@@ -4828,7 +4828,7 @@ Check charset encoding and -scs switch.</source>
         </message>
         <message>
             <location line="+3" />
-            <location filename="../src/CPP/Common/Wildcard.cpp" line="+644" />
+            <location filename="../src/fileops/patterns/Wildcard.cpp" line="+644" />
             <source>Empty file path</source>
             <translation>Пустой путь к файлу</translation>
         </message>
@@ -5015,7 +5015,7 @@ Check charset encoding and -scs switch.</source>
             <translation>Неверное число повторений теста производительности</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/EnumDirItems.cpp" line="+1299" />
+            <location filename="../src/archive/operations/EnumDirItems.cpp" line="+1299" />
             <source>Cannot find archive</source>
             <translation>Не удалось найти архив</translation>
         </message>
@@ -5025,12 +5025,12 @@ Check charset encoding and -scs switch.</source>
             <translation>Повторяющийся путь к архиву:</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/HashCalc.cpp" line="-329" />
+            <location filename="../src/archive/hashing/HashCalc.cpp" line="-329" />
             <source>Can't create hasher</source>
             <translation>Не удалось создать модуль вычисления контрольной суммы</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/LoadCodecs.cpp" line="+527" />
+            <location filename="../src/archive/codecs/LoadCodecs.cpp" line="+527" />
             <source>cannot load file as datafile library</source>
             <translation>Не удалось загрузить файл как библиотеку данных</translation>
         </message>
@@ -5045,14 +5045,14 @@ Check charset encoding and -scs switch.</source>
             <translation>Ошибка загрузки кодека: </translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/ExtractCallback.cpp" line="-689" />
+            <location filename="../src/filemanager/ExtractCallback.cpp" line="-689" />
             <source>Reading</source>
             <translation>Чтение</translation>
         </message>
         <message>
             <location line="+296" />
-            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="+1132" />
-            <location filename="../src/CPP/Windows/ErrorMsg.cpp" line="+146" />
+            <location filename="../src/ui/progress/ProgressDialog2.cpp" line="+1132" />
+            <location filename="../src/platform/errors/ErrorMsg.cpp" line="+146" />
             <source>Error #%1</source>
             <translation>Ошибка № %1</translation>
         </message>
@@ -5072,26 +5072,26 @@ Check charset encoding and -scs switch.</source>
             <translation>Не удалось подобрать имя файла</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/FM.cpp" line="-3" />
-            <location filename="../src/CPP/7zip/UI/GUI/GUI.cpp" line="-3" />
+            <location filename="../src/filemanager/FM.cpp" line="-3" />
+            <location filename="../src/gui/GUI.cpp" line="-3" />
             <source>Error: %1</source>
             <translation>Ошибка: %1</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Explorer/ContextMenu.cpp" line="+1035" />
-            <location filename="../src/CPP/7zip/UI/FileManager/FM.cpp" line="+58" />
-            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="-915" />
+            <location filename="../src/platform/shell/ContextMenu.cpp" line="+1035" />
+            <location filename="../src/filemanager/FM.cpp" line="+58" />
+            <location filename="../src/ui/progress/ProgressDialog2.cpp" line="-915" />
             <location line="+917" />
             <source>Error</source>
             <translation>Ошибка</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="-185" />
+            <location filename="../src/ui/progress/ProgressDialog2.cpp" line="-185" />
             <source>Progress Error</source>
             <translation>Ошибка выполнения операции</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/GUI.cpp" line="-318" />
+            <location filename="../src/gui/GUI.cpp" line="-318" />
             <source>7-Zip cannot find the code that works with archives.</source>
             <translation>7-Zip не удалось найти модуль для работы с архивами.</translation>
         </message>
@@ -5111,17 +5111,17 @@ Check charset encoding and -scs switch.</source>
             <translation>Неподдерживаемая команда</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Common/Update.cpp" line="-772" />
+            <location filename="../src/archive/operations/Update.cpp" line="-772" />
             <source>Could not make the SFX archive executable</source>
             <translation>Не удалось сделать SFX-архив исполняемым</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/ExtractGUI.cpp" line="+42" />
+            <location filename="../src/gui/ExtractGUI.cpp" line="+42" />
             <source>Incorrect output directory path</source>
             <translation>Неверный путь к выходной папке</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/UpdateGUI.cpp" line="+377" />
+            <location filename="../src/gui/UpdateGUI.cpp" line="+377" />
             <source>It must be one command</source>
             <translation>Должна быть указана одна команда</translation>
         </message>
@@ -5131,7 +5131,7 @@ Check charset encoding and -scs switch.</source>
             <translation>Нет модулей обновления архивов</translation>
         </message>
         <message>
-            <location filename="../src/CPP/Common/CommandLineParser.cpp" line="+108" />
+            <location filename="../src/app/commands/CommandLineParser.cpp" line="+108" />
             <source>Unknown switch:</source>
             <translation>Неизвестный ключ:</translation>
         </message>
@@ -5157,7 +5157,7 @@ Check charset encoding and -scs switch.</source>
             <translation>Слишком длинный ключ:</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp" line="-79" />
+            <location filename="../src/filemanager/providers/FSFolderCopy.cpp" line="-79" />
             <source>Cannot copy folder as alternate stream</source>
             <translation>Нельзя скопировать папку как альтернативный поток</translation>
         </message>
@@ -5167,12 +5167,12 @@ Check charset encoding and -scs switch.</source>
             <translation>Не удалось найти файл: </translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/App.cpp" line="+231" />
+            <location filename="../src/filemanager/App.cpp" line="+231" />
             <source>Cannot copy files onto itself</source>
             <translation>Нельзя копировать файлы в самих себя</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/LinkDialog.cpp" line="+52" />
+            <location filename="../src/dialogs/link/LinkDialog.cpp" line="+52" />
             <source>Cannot reproduce reparse point</source>
             <translation>Не удалось воссоздать точку повторного анализа</translation>
         </message>
@@ -5182,21 +5182,21 @@ Check charset encoding and -scs switch.</source>
             <translation>Воссозданная точка повторного анализа отличается от исходной</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp" line="+73" />
+            <location filename="../src/archive/agent/UpdateCallbackAgent.cpp" line="+73" />
             <source>WARNING: </source>
             <translation>ПРЕДУПРЕЖДЕНИЕ: </translation>
         </message>
         <message>
             <location line="+20" />
-            <location filename="../src/CPP/7zip/UI/FileManager/ExtractCallback.cpp" line="+282" />
-            <location filename="../src/CPP/7zip/UI/FileManager/LinkDialog.cpp" line="+51" />
+            <location filename="../src/filemanager/ExtractCallback.cpp" line="+282" />
+            <location filename="../src/dialogs/link/LinkDialog.cpp" line="+51" />
             <location line="+31" />
-            <location filename="../src/CPP/7zip/UI/GUI/BenchmarkDialog.cpp" line="-972" />
+            <location filename="../src/benchmark/BenchmarkDialog.cpp" line="-972" />
             <source>ERROR: </source>
             <translation>ОШИБКА: </translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/LinkDialog.cpp" line="+112" />
+            <location filename="../src/dialogs/link/LinkDialog.cpp" line="+112" />
             <source>Incorrect link type</source>
             <translation>Неверный тип ссылки</translation>
         </message>
@@ -5216,12 +5216,12 @@ Check charset encoding and -scs switch.</source>
             <translation>Внутренняя ошибка преобразования</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/PanelDrag.cpp" line="+183" />
+            <location filename="../src/filemanager/panels/PanelDrag.cpp" line="+183" />
             <source>Can't create temp folder</source>
             <translation>Не удалось создать временную папку</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp" line="+31" />
+            <location filename="../src/filemanager/panels/PanelSplitFile.cpp" line="+31" />
             <source>File write error</source>
             <translation>Ошибка записи файла</translation>
         </message>
@@ -5236,7 +5236,7 @@ Check charset encoding and -scs switch.</source>
             <translation>Нет данных</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/VerCtrl.cpp" line="+100" />
+            <location filename="../src/filemanager/VerCtrl.cpp" line="+100" />
             <source>Write error</source>
             <translation>Ошибка записи</translation>
         </message>
@@ -5263,7 +5263,7 @@ Use `Revert` to recover timestamp.</source>
             <translation>Нет файла для отмены изменений</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/BenchmarkDialog.cpp" line="+434" />
+            <location filename="../src/benchmark/BenchmarkDialog.cpp" line="+434" />
             <source>Can't create thread</source>
             <translation>Не удалось создать поток</translation>
         </message>
@@ -5303,23 +5303,23 @@ Use `Revert` to recover timestamp.</source>
             <translation>Внутренняя ошибка потока бенчмарка</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/CompressDialog.cpp" line="-1130" />
-            <location filename="../src/createarchivedialog.cpp" line="-86" />
+            <location filename="../src/dialogs/compress/CompressDialog.cpp" line="-1130" />
+            <location filename="../src/dialogs/compress/createarchivedialog.cpp" line="-86" />
             <source>Incorrect archive path</source>
             <translation>Неверный путь к архиву</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/Common/MultiOutStream.cpp" line="+128" />
+            <location filename="../src/archive/streams/MultiOutStream.cpp" line="+128" />
             <source>zero size last volume</source>
             <translation>Нулевой размер последнего тома</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/AltStreamsFolder.cpp" line="+592" />
+            <location filename="../src/filemanager/providers/AltStreamsFolder.cpp" line="+592" />
             <source>Cannot copy file onto itself</source>
             <translation>Нельзя скопировать файл на себя</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/PanelMenu.cpp" line="+580" />
+            <location filename="../src/filemanager/panels/PanelMenu.cpp" line="+580" />
             <source>Open WARNING:</source>
             <translation>ПРЕДУПРЕЖДЕНИЕ при открытии:</translation>
         </message>
@@ -5329,19 +5329,19 @@ Use `Revert` to recover timestamp.</source>
             <translation>Не удалось открыть файл как архив ожидаемого типа</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/PanelOperations.cpp" line="+161" />
+            <location filename="../src/filemanager/panels/PanelOperations.cpp" line="+161" />
             <location line="+7" />
             <source>Set Comment Error</source>
             <translation>Ошибка записи комментария</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Agent/ArchiveFolderOut.cpp" line="+271" />
-            <location filename="../src/CPP/7zip/UI/FileManager/PanelListNotify.cpp" line="+303" />
+            <location filename="../src/archive/agent/ArchiveFolderOut.cpp" line="+271" />
+            <location filename="../src/filemanager/panels/PanelListNotify.cpp" line="+303" />
             <source>Error: </source>
             <translation>Ошибка: </translation>
         </message>
         <message>
-            <location filename="../src/CPP/Windows/ErrorMsg.cpp" line="-118" />
+            <location filename="../src/platform/errors/ErrorMsg.cpp" line="-118" />
             <source>Internal Error: The failure in hardware (RAM or CPU), OS or program</source>
             <translation>Внутренняя ошибка: сбой оборудования (ОЗУ или ЦП), ОС или программы</translation>
         </message>
@@ -5376,7 +5376,7 @@ Use `Revert` to recover timestamp.</source>
             <translation>E_INVALIDARG : Один или несколько аргументов недопустимы</translation>
         </message>
         <message>
-            <location filename="../src/qtdiagnostictext.cpp" line="-39" />
+            <location filename="../src/ui/diagnostics/qtdiagnostictext.cpp" line="-39" />
             <source>Missing volume: %1</source>
             <translation>Отсутствует том: %1</translation>
         </message>
@@ -5394,7 +5394,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>SystemPage</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/SystemPage.cpp" line="+189" />
+            <location filename="../src/settings/SystemPage.cpp" line="+189" />
             <source>Association changes are unavailable for this format.</source>
             <translation>Изменение ассоциации для этого формата недоступно.</translation>
         </message>
@@ -5410,7 +5410,7 @@ Use `Revert` to recover timestamp.</source>
         </message>
         <message>
             <location line="+117" />
-            <location filename="../src/qtsystempagepresentation.cpp" line="-109" />
+            <location filename="../src/platform/associations/qtsystempagepresentation.cpp" line="-109" />
             <source>%1 Archive</source>
             <translation>Архив %1</translation>
         </message>
@@ -5418,7 +5418,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>VersionControl</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/MyLoadMenu.cpp" line="+46" />
+            <location filename="../src/filemanager/MyLoadMenu.cpp" line="+46" />
             <source>Ver Edit (&amp;1)</source>
             <translation>Редактировать (&amp;1)</translation>
         </message>
@@ -5441,7 +5441,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivebackend</name>
         <message>
-            <location filename="../src/archivebackend.cpp" line="+76" />
+            <location filename="../src/archive/backend/archivebackend.cpp" line="+76" />
             <location line="+41" />
             <location line="+66" />
             <location line="+17" />
@@ -5465,12 +5465,12 @@ Use `Revert` to recover timestamp.</source>
             <translation>Сначала откройте архив и проверьте его содержимое.</translation>
         </message>
         <message>
-            <location filename="../src/archivebackend_test.cpp" line="+186" />
+            <location filename="../src/archive/backend/archivebackend_test.cpp" line="+186" />
             <source>Operation canceled.</source>
             <translation>Операция отменена.</translation>
         </message>
         <message>
-            <location filename="../src/archivebackend.cpp" line="-38" />
+            <location filename="../src/archive/backend/archivebackend.cpp" line="-38" />
             <source>Selected file is missing from the archive: %1</source>
             <translation>Выбранный файл отсутствует в архиве: %1</translation>
         </message>
@@ -5488,7 +5488,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivebackend_codecs</name>
         <message>
-            <location filename="../src/archivebackend_codecs.cpp" line="+311" />
+            <location filename="../src/archive/backend/archivebackend_codecs.cpp" line="+311" />
             <source>All files</source>
             <translation>Все файлы</translation>
         </message>
@@ -5506,7 +5506,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivebackend_completion</name>
         <message>
-            <location filename="../src/archivebackend_test.cpp" line="-5" />
+            <location filename="../src/archive/backend/archivebackend_test.cpp" line="-5" />
             <source>Archive opened.</source>
             <translation>Архив открыт.</translation>
         </message>
@@ -5524,7 +5524,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivebackend_compression</name>
         <message>
-            <location filename="../src/archivebackend_compression.cpp" line="+16" />
+            <location filename="../src/archive/backend/archivebackend_compression.cpp" line="+16" />
             <source>Delete after compression is available only in Add and replace mode.</source>
             <translation>Удаление после сжатия доступно только в режиме добавления и замены.</translation>
         </message>
@@ -5562,7 +5562,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivebackend_hash</name>
         <message>
-            <location filename="../src/archivebackend_hash.cpp" line="+16" />
+            <location filename="../src/archive/backend/archivebackend_hash.cpp" line="+16" />
             <source>Another operation is still running.</source>
             <translation>Другая операция ещё выполняется.</translation>
         </message>
@@ -5600,7 +5600,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivebackend_sourceextract</name>
         <message>
-            <location filename="../src/archivebackend_sourceextract.cpp" line="+39" />
+            <location filename="../src/archive/backend/archivebackend_sourceextract.cpp" line="+39" />
             <source>Another operation is still running.</source>
             <translation>Другая операция ещё выполняется.</translation>
         </message>
@@ -5613,7 +5613,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivebackend_validation</name>
         <message>
-            <location filename="../src/archivebackend_validation.cpp" line="+290" />
+            <location filename="../src/archive/backend/archivebackend_validation.cpp" line="+290" />
             <source>Already exists in the destination folder: %1</source>
             <translation>В папке назначения уже существует: %1</translation>
         </message>
@@ -5677,7 +5677,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivecodeccatalog</name>
         <message>
-            <location filename="../src/archivecodeccatalog.cpp" line="+29" />
+            <location filename="../src/archive/codecs/archivecodeccatalog.cpp" line="+29" />
             <source>Could not prepare the codec runtime snapshot.</source>
             <translation>Не удалось подготовить снимок модулей движка.</translation>
         </message>
@@ -5695,7 +5695,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivecodecprobe</name>
         <message>
-            <location filename="../src/archivecodecprobe.cpp" line="+121" />
+            <location filename="../src/archive/codecs/archivecodecprobe.cpp" line="+121" />
             <source>Codec discovery cancelled.</source>
             <translation>Поиск модуля форматов отменён.</translation>
         </message>
@@ -5708,7 +5708,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivedevice</name>
         <message>
-            <location filename="../src/archivedevice.cpp" line="+115" />
+            <location filename="../src/archive/resources/archivedevice.cpp" line="+115" />
             <location line="+17" />
             <source>Could not verify the filesystem features for direct reading.</source>
             <translation>Не удалось проверить возможности файловой системы для прямого чтения.</translation>
@@ -5727,7 +5727,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivesfxmodule</name>
         <message>
-            <location filename="../src/archivesfxmodule.cpp" line="+58" />
+            <location filename="../src/archive/sfx/archivesfxmodule.cpp" line="+58" />
             <source>The official SFX module is missing or incompatible.</source>
             <translation>Официальный модуль SFX отсутствует или несовместим.</translation>
         </message>
@@ -5735,7 +5735,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>createarchivedialog_advanced</name>
         <message>
-            <location filename="../src/createarchivedialog_advanced.cpp" line="-103" />
+            <location filename="../src/dialogs/compress/createarchivedialog_advanced.cpp" line="-103" />
             <source>File sharing restrictions apply only on Windows.</source>
             <translation>Ограничение совместного доступа к файлам используется только в Windows.</translation>
         </message>
@@ -5748,7 +5748,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>createarchivedialog_resources</name>
         <message>
-            <location filename="../src/createarchivedialog_resources.cpp" line="+56" />
+            <location filename="../src/dialogs/compress/createarchivedialog_resources.cpp" line="+56" />
             <source>Limit: %1 / RAM: %2</source>
             <translation>Лимит: %1 / RAM: %2</translation>
         </message>
@@ -5766,7 +5766,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>createarchivedialog_sfx</name>
         <message>
-            <location filename="../src/createarchivedialog_sfx.cpp" line="+29" />
+            <location filename="../src/dialogs/compress/createarchivedialog_sfx.cpp" line="+29" />
             <source>An official SFX module for this platform is unavailable.</source>
             <translation>Официальный модуль SFX для этой платформы недоступен.</translation>
         </message>
@@ -5779,7 +5779,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>createarchivedialog_volumes</name>
         <message>
-            <location filename="../src/createarchivedialog_volumes.cpp" line="+18" />
+            <location filename="../src/dialogs/compress/createarchivedialog_volumes.cpp" line="+18" />
             <source>For example: 10M or 10M 20M. Leave empty for a single archive.</source>
             <translation>Например: 10M или 10M 20M. Пустое поле — один архив.</translation>
         </message>
@@ -5787,54 +5787,54 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>deviceaccess</name>
         <message>
-            <location filename="../src/deviceauthclient_mac.cpp" line="+109" />
+            <location filename="../src/devices/deviceauthclient_mac.cpp" line="+109" />
             <source>macOS denied device access after administrator authorization. Enable Full Disk Access for Sevenzip in System Settings &gt; Privacy &amp; Security, then restart Sevenzip and try again.</source>
             <translation>macOS запретила доступ к устройству после ввода пароля администратора. Включите Sevenzip в «Системные настройки → Конфиденциальность и безопасность → Полный доступ к диску», затем перезапустите Sevenzip и повторите попытку.</translation>
         </message>
         <message>
-            <location filename="../src/deviceaccess_linux.cpp" line="+65" />
+            <location filename="../src/devices/deviceaccess_linux.cpp" line="+65" />
             <source>Could not inspect devices through UDisks2.</source>
             <translation>Не удалось получить сведения об устройствах через UDisks2.</translation>
         </message>
         <message>
             <location line="+62" />
-            <location filename="../src/deviceaccess_win.cpp" line="+276" />
+            <location filename="../src/devices/deviceaccess_win.cpp" line="+276" />
             <source>Could not open the selected device.</source>
             <translation>Не удалось открыть выбранное устройство.</translation>
         </message>
         <message>
             <location line="+41" />
-            <location filename="../src/deviceaccess_mac.mm" line="+112" />
+            <location filename="../src/devices/deviceaccess_mac.mm" line="+112" />
             <source>The selected device is no longer available.</source>
             <translation>Выбранное устройство больше недоступно.</translation>
         </message>
         <message>
             <location line="+6" />
-            <location filename="../src/deviceaccess_mac.mm" line="+6" />
+            <location filename="../src/devices/deviceaccess_mac.mm" line="+6" />
             <source>The device is in use. Unmount its volumes before reading it directly.</source>
             <translation>Устройство используется. Перед прямым чтением размонтируйте его тома.</translation>
         </message>
         <message>
             <location line="+30" />
             <location line="+11" />
-            <location filename="../src/deviceaccess_mac.mm" line="+31" />
+            <location filename="../src/devices/deviceaccess_mac.mm" line="+31" />
             <source>The device changed or became unavailable.</source>
             <translation>Устройство изменилось или стало недоступно.</translation>
         </message>
         <message>
-            <location filename="../src/deviceaccess_mac.mm" line="-106" />
+            <location filename="../src/devices/deviceaccess_mac.mm" line="-106" />
             <location line="+8" />
-            <location filename="../src/deviceaccess_win.cpp" line="-109" />
+            <location filename="../src/devices/deviceaccess_win.cpp" line="-109" />
             <source>Could not inspect attached devices.</source>
             <translation>Не удалось получить сведения о подключённых устройствах.</translation>
         </message>
         <message>
-            <location filename="../src/deviceaccess_win.cpp" line="-75" />
+            <location filename="../src/devices/deviceaccess_win.cpp" line="-75" />
             <source>External disk</source>
             <translation>Внешний диск</translation>
         </message>
         <message>
-            <location filename="../src/deviceauthclient_mac.cpp" line="-24" />
+            <location filename="../src/devices/deviceauthclient_mac.cpp" line="-24" />
             <source>The device helper did not respond.</source>
             <translation>Помощник для доступа к устройству не ответил.</translation>
         </message>
@@ -5850,12 +5850,12 @@ Use `Revert` to recover timestamp.</source>
         </message>
         <message>
             <location line="+11" />
-            <location filename="../src/deviceauthclient_win.cpp" line="+150" />
+            <location filename="../src/devices/deviceauthclient_win.cpp" line="+150" />
             <source>Could not prepare device authorization.</source>
             <translation>Не удалось подготовить запрос прав для устройства.</translation>
         </message>
         <message>
-            <location filename="../src/deviceauthclient_win.cpp" line="+20" />
+            <location filename="../src/devices/deviceauthclient_win.cpp" line="+20" />
             <source>Could not authorize access to this device.</source>
             <translation>Не удалось получить разрешение на доступ к устройству.</translation>
         </message>
@@ -5863,7 +5863,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>mainwindow</name>
         <message>
-            <location filename="../src/mainwindow.cpp" line="+175" />
+            <location filename="../src/filemanager/window/mainwindow.cpp" line="+175" />
             <source> %1 items</source>
             <translation> %1 объектов</translation>
         </message>
@@ -5886,7 +5886,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>mainwindow_archive_transfer</name>
         <message>
-            <location filename="../src/mainwindow_archive_transfer.cpp" line="+79" />
+            <location filename="../src/filemanager/window/mainwindow_archive_transfer.cpp" line="+79" />
             <source>Could not roll back destination archive. Check both archives.</source>
             <translation>Не удалось откатить целевой архив. Проверьте оба архива.</translation>
         </message>
@@ -5914,7 +5914,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>mainwindow_archivecommands</name>
         <message>
-            <location filename="../src/mainwindow_archivecommands.cpp" line="+244" />
+            <location filename="../src/filemanager/window/mainwindow_archivecommands.cpp" line="+244" />
             <source>Could not create destination folder: %1</source>
             <translation>Не удалось создать папку назначения: %1</translation>
         </message>
@@ -5936,8 +5936,8 @@ Use `Revert` to recover timestamp.</source>
             <translation>Операция отменена.</translation>
         </message>
         <message>
-            <location filename="../src/archivebackend_validation.cpp" line="+19" />
-            <location filename="../src/mainwindow_archivecommands.cpp" line="-145" />
+            <location filename="../src/archive/backend/archivebackend_validation.cpp" line="+19" />
+            <location filename="../src/filemanager/window/mainwindow_archivecommands.cpp" line="-145" />
             <location line="+8" />
             <location line="+161" />
             <source>Source extraction is unavailable for this archive.</source>
@@ -5947,7 +5947,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>mainwindow_archiveopening</name>
         <message>
-            <location filename="../src/mainwindow_archiveopening.cpp" line="+116" />
+            <location filename="../src/filemanager/window/mainwindow_archiveopening.cpp" line="+116" />
             <source>Archive opened.</source>
             <translation>Архив открыт.</translation>
         </message>
@@ -5965,7 +5965,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>mainwindow_backendevents</name>
         <message>
-            <location filename="../src/mainwindow_backendevents.cpp" line="+101" />
+            <location filename="../src/filemanager/window/mainwindow_backendevents.cpp" line="+101" />
             <source>Files extracted but not deleted from archive. </source>
             <translation>Файлы извлечены, но не удалены из архива. </translation>
         </message>
@@ -5978,7 +5978,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>mainwindow_columns</name>
         <message>
-            <location filename="../src/mainwindow_columns.cpp" line="+24" />
+            <location filename="../src/filemanager/window/mainwindow_columns.cpp" line="+24" />
             <source>Order</source>
             <translation>Порядок</translation>
         </message>
@@ -5986,7 +5986,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>mainwindow_filelist</name>
         <message>
-            <location filename="../src/mainwindow_filelist.cpp" line="+135" />
+            <location filename="../src/filemanager/window/mainwindow_filelist.cpp" line="+135" />
             <source>Could not read folder.</source>
             <translation>Не удалось прочитать папку.</translation>
         </message>
@@ -6004,7 +6004,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>mainwindow_fileoperations</name>
         <message>
-            <location filename="../src/mainwindow_fileoperations.cpp" line="+319" />
+            <location filename="../src/filemanager/window/mainwindow_fileoperations.cpp" line="+319" />
             <source>Items copied into the archive.</source>
             <translation>Объекты скопированы в архив.</translation>
         </message>
@@ -6033,7 +6033,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>mainwindow_language</name>
         <message>
-            <location filename="../src/mainwindow_language.cpp" line="-83" />
+            <location filename="../src/filemanager/window/mainwindow_language.cpp" line="-83" />
             <source>Order</source>
             <translation>Порядок</translation>
         </message>
@@ -6046,7 +6046,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>mainwindow_menus</name>
         <message>
-            <location filename="../src/mainwindow_menus.cpp" line="-313" />
+            <location filename="../src/filemanager/window/mainwindow_menus.cpp" line="-313" />
             <source>Archive</source>
             <translation>Архив</translation>
         </message>
@@ -6069,12 +6069,12 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>mainwindow_panel</name>
         <message>
-            <location filename="../src/mainwindow_archivelist.cpp" line="+251" />
+            <location filename="../src/filemanager/window/mainwindow_archivelist.cpp" line="+251" />
             <source>Read only · limited access</source>
             <translation>Только чтение · с ограничениями</translation>
         </message>
         <message>
-            <location filename="../src/mainwindow_panel.cpp" line="+137" />
+            <location filename="../src/filemanager/window/mainwindow_panel.cpp" line="+137" />
             <location line="+95" />
             <source>File list</source>
             <translation>Список файлов</translation>
@@ -6090,8 +6090,8 @@ Use `Revert` to recover timestamp.</source>
             <translation>Путь к папке или архиву</translation>
         </message>
         <message>
-            <location filename="../src/mainwindow_archivelist.cpp" line="+1" />
-            <location filename="../src/mainwindow_panel.cpp" line="+51" />
+            <location filename="../src/filemanager/window/mainwindow_archivelist.cpp" line="+1" />
+            <location filename="../src/filemanager/window/mainwindow_panel.cpp" line="+51" />
             <source>Read only</source>
             <translation>Только чтение</translation>
         </message>
@@ -6099,7 +6099,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>mainwindow_refresh</name>
         <message>
-            <location filename="../src/mainwindow_refresh.cpp" line="+147" />
+            <location filename="../src/filemanager/window/mainwindow_refresh.cpp" line="+147" />
             <source>Could not update archive (%1).</source>
             <translation>Не удалось обновить архив (%1).</translation>
         </message>
@@ -6112,7 +6112,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>mainwindow_root</name>
         <message>
-            <location filename="../src/mainwindow_root.cpp" line="+53" />
+            <location filename="../src/filemanager/window/mainwindow_root.cpp" line="+53" />
             <source>Could not read root folder.</source>
             <translation>Не удалось прочитать корневую папку.</translation>
         </message>
@@ -6128,7 +6128,7 @@ Use `Revert` to recover timestamp.</source>
             <translation>Не удалось открыть файл как архив. Для этого типа файлов не назначено приложение. Попробовать открыть его во внешнем приложении?</translation>
         </message>
         <message>
-            <location filename="../src/qtassociatedfileservices.cpp" line="+100" />
+            <location filename="../src/platform/associations/qtassociatedfileservices.cpp" line="+100" />
             <source>Could not open file: %1</source>
             <translation>Не удалось открыть файл: %1</translation>
         </message>
@@ -6141,7 +6141,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qtassociationplatform_linux</name>
         <message>
-            <location filename="../src/qtassociationplatform_linux.cpp" line="+137" />
+            <location filename="../src/platform/associations/qtassociationplatform_linux.cpp" line="+137" />
             <source>All-users associations are managed by the system administrator.</source>
             <translation>Ассоциациями всех пользователей управляет системный администратор.</translation>
         </message>
@@ -6154,7 +6154,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qtassociationplatform_mac</name>
         <message>
-            <location filename="../src/qtassociationplatform_mac.cpp" line="+26" />
+            <location filename="../src/platform/associations/qtassociationplatform_mac.cpp" line="+26" />
             <source>An application bundle and macOS 12 or later are required.</source>
             <translation>Требуется application bundle и macOS 12 или новее.</translation>
         </message>
@@ -6167,7 +6167,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qtassociationplatform_win</name>
         <message>
-            <location filename="../src/qtassociationplatform_win.cpp" line="+54" />
+            <location filename="../src/platform/associations/qtassociationplatform_win.cpp" line="+54" />
             <source>Registers the 7-Zip handler. Windows may keep your default app choice; choose the default app in Windows Settings if needed.</source>
             <translation>Регистрирует обработчик 7-Zip. Windows может сохранить выбранное приложение по умолчанию; при необходимости измените его в настройках Windows.</translation>
         </message>
@@ -6175,7 +6175,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qtassociationservices</name>
         <message>
-            <location filename="../src/qtassociationservices.cpp" line="+58" />
+            <location filename="../src/platform/associations/qtassociationservices.cpp" line="+58" />
             <source>No association service</source>
             <translation>Служба файловых ассоциаций недоступна</translation>
         </message>
@@ -6183,7 +6183,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qtcompressoptionscontrols</name>
         <message>
-            <location filename="../src/qtcompressoptionscontrols.cpp" line="-114" />
+            <location filename="../src/dialogs/compress/qtcompressoptionscontrols.cpp" line="-114" />
             <source>Override the format default for this option.</source>
             <translation>Задать значение вместо настройки формата по умолчанию.</translation>
         </message>
@@ -6207,7 +6207,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qtdevicecommands</name>
         <message>
-            <location filename="../src/qtfilesystemreadprompt.cpp" line="+18" />
+            <location filename="../src/archive/resources/qtfilesystemreadprompt.cpp" line="+18" />
             <source>Open read-only with limitations?</source>
             <translation>Открыть для чтения с ограничениями?</translation>
         </message>
@@ -6223,7 +6223,7 @@ Use `Revert` to recover timestamp.</source>
             <translation>Открыть для чтения</translation>
         </message>
         <message>
-            <location filename="../src/qtdevicecommands.cpp" line="+34" />
+            <location filename="../src/devices/qtdevicecommands.cpp" line="+34" />
             <source>This filesystem uses features that are not supported for direct reading.</source>
             <translation>Эта файловая система использует возможности, которые не поддерживаются при прямом чтении.</translation>
         </message>
@@ -6241,7 +6241,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qtfilemanagercommandworkflows</name>
         <message>
-            <location filename="../src/qtfilemanagercommandworkflows.cpp" line="+122" />
+            <location filename="../src/filemanager/qtfilemanagercommandworkflows.cpp" line="+122" />
             <source>Open archive</source>
             <translation>Открыть архив</translation>
         </message>
@@ -6249,7 +6249,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qtfilemanagershellmenu</name>
         <message>
-            <location filename="../src/qtfilemanagershellmenu.cpp" line="+173" />
+            <location filename="../src/filemanager/qtfilemanagershellmenu.cpp" line="+173" />
             <source>Open archive in new window</source>
             <translation>Открыть архив в новом окне</translation>
         </message>
@@ -6282,7 +6282,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qtfilesystemreadprompt</name>
         <message>
-            <location filename="../src/qtfilesystemreadprompt.cpp" line="-11" />
+            <location filename="../src/archive/resources/qtfilesystemreadprompt.cpp" line="-11" />
             <source>Open archive with limitations?</source>
             <translation>Открыть архив с ограничениями?</translation>
         </message>
@@ -6295,7 +6295,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qtfiletransfertransaction</name>
         <message>
-            <location filename="../src/qtfiletransfertransaction.cpp" line="+261" />
+            <location filename="../src/fileops/transfer/qtfiletransfertransaction.cpp" line="+261" />
             <source> Some items may have been moved.</source>
             <translation> Часть объектов могла быть перемещена.</translation>
         </message>
@@ -6387,7 +6387,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qthelpservices</name>
         <message>
-            <location filename="../src/qthelpservices.cpp" line="+254" />
+            <location filename="../src/help/qthelpservices.cpp" line="+254" />
             <location line="+8" />
             <source>7-Zip Help</source>
             <translation>Справка 7-Zip</translation>
@@ -6406,7 +6406,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qtlinkcontrols</name>
         <message>
-            <location filename="../src/qtlinkcontrols.cpp" line="-74" />
+            <location filename="../src/fileops/links/qtlinkcontrols.cpp" line="-74" />
             <source>This link type is available only on Windows.</source>
             <translation>Этот тип ссылки доступен только в Windows.</translation>
         </message>
@@ -6414,7 +6414,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qtprogramfilemenu</name>
         <message>
-            <location filename="../src/qtprogramfilemenu.cpp" line="+17" />
+            <location filename="../src/filemanager/qtprogramfilemenu.cpp" line="+17" />
             <source>Open as archive</source>
             <translation>Открыть как архив</translation>
         </message>
@@ -6437,7 +6437,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>qttempbrowsepresentation</name>
         <message>
-            <location filename="../src/qttempbrowsepresentation.cpp" line="+304" />
+            <location filename="../src/platform/temp/qttempbrowsepresentation.cpp" line="+304" />
             <source>In use by an active operation or session</source>
             <translation>Используется текущей операцией или сеансом</translation>
         </message>
@@ -6470,7 +6470,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>volumeoperations</name>
         <message>
-            <location filename="../src/volumeoperations.cpp" line="+227" />
+            <location filename="../src/fileops/volumes/volumeoperations.cpp" line="+227" />
             <source>Could not save combined file.</source>
             <translation>Не удалось сохранить объединённый файл.</translation>
         </message>
@@ -6592,7 +6592,7 @@ The limit is the total size of these extracted files. Older cached files are rem
             <translation>Нужно восстановить управление подключением</translation>
         </message>
         <message>
-            <location filename="../src/qtfilemanagermountcommands.cpp" line="+12" />
+            <location filename="../src/filemanager/qtfilemanagermountcommands.cpp" line="+12" />
             <source>Mount read-only…</source>
             <translation>Подключить только для чтения…</translation>
         </message>
@@ -6602,7 +6602,7 @@ The limit is the total size of these extracted files. Older cached files are rem
             <translation>Подключения только для чтения…</translation>
         </message>
         <message>
-            <location filename="../src/qtarchivemountmanagerdialog.cpp" line="+17" />
+            <location filename="../src/mount/qtarchivemountmanagerdialog.cpp" line="+17" />
             <location line="+44" />
             <source>Read-only mounts</source>
             <translation>Подключения только для чтения</translation>
@@ -6676,9 +6676,9 @@ The limit is the total size of these extracted files. Older cached files are rem
             <translation>Отключить принудительно</translation>
         </message>
         <message>
-            <location filename="../src/qtarchivemountmanager.cpp" line="+20" />
+            <location filename="../src/mount/qtarchivemountmanager.cpp" line="+20" />
             <location line="+11" />
-            <location filename="../src/qtmountsettings.cpp" line="+18" />
+            <location filename="../src/mount/qtmountsettings.cpp" line="+18" />
             <source>Mount read-only</source>
             <translation>Подключение только для чтения</translation>
         </message>
@@ -6703,7 +6703,7 @@ The limit is the total size of these extracted files. Older cached files are rem
             <translation>Подключить</translation>
         </message>
         <message>
-            <location filename="../src/qtarchivemountmanager.cpp" line="+1" />
+            <location filename="../src/mount/qtarchivemountmanager.cpp" line="+1" />
             <source>The bundled SMB server is missing or cannot be executed.</source>
             <translation>Встроенный SMB-сервер отсутствует или не запускается.</translation>
         </message>
@@ -6771,7 +6771,7 @@ The limit is the total size of these extracted files. Older cached files are rem
     <context>
         <name>QtArchiveMountSession</name>
         <message>
-            <location filename="../src/qtarchivemountsession.cpp" line="+15" />
+            <location filename="../src/mount/qtarchivemountsession.cpp" line="+15" />
             <source>The system returned no mount path.</source>
             <translation>Система не сообщила путь подключения.</translation>
         </message>
@@ -6804,7 +6804,7 @@ The limit is the total size of these extracted files. Older cached files are rem
     <context>
         <name>QtMountExtractionPrompt</name>
         <message>
-            <location filename="../src/qtmountextractionprompt.cpp" line="+11" />
+            <location filename="../src/mount/qtmountextractionprompt.cpp" line="+11" />
             <source>Extract for mounted access</source>
             <translation>Извлечение для подключения</translation>
         </message>
@@ -6832,7 +6832,7 @@ This file requires extraction before another application can read it. The source
             <translation>Извлечь</translation>
         </message>
         <message>
-            <location filename="../src/qtmountextractionprompt.cpp" line="+13" />
+            <location filename="../src/mount/qtmountextractionprompt.cpp" line="+13" />
             <source>Use unverified extracted data</source>
             <translation>Использовать непроверенные извлечённые данные</translation>
         </message>
@@ -6871,7 +6871,7 @@ Data may be incomplete or have checksum errors. This choice does not repair or v
             <translation>Не удалось прочитать системный список подключённых томов.</translation>
         </message>
         <message>
-            <location filename="../src/qtnativemountjob_linux.cpp" line="+58" />
+            <location filename="../src/mount/qtnativemountjob_linux.cpp" line="+58" />
             <source>Could not unmount the read-only volume: %1</source>
             <translation>Не удалось отключить том только для чтения: %1</translation>
         </message>
@@ -6884,7 +6884,7 @@ Check that your distribution's CIFS support and cifs-utils are installed.</sourc
         </message>
         <message>
             <location line="+24" />
-            <location filename="../src/qtnativemountjob_win.cpp" line="+137" />
+            <location filename="../src/mount/qtnativemountjob_win.cpp" line="+137" />
             <source>A system mount operation is already active.</source>
             <translation>Системная операция подключения уже выполняется.</translation>
         </message>
@@ -6929,7 +6929,7 @@ Check that your distribution's CIFS support and cifs-utils are installed.</sourc
             <translation>Системная команда umount недоступна.</translation>
         </message>
         <message>
-            <location filename="../src/qtnativemountjob_win.cpp" line="-35" />
+            <location filename="../src/mount/qtnativemountjob_win.cpp" line="-35" />
             <source>The system SMB client failed: %1</source>
             <translation>Ошибка системного клиента SMB: %1</translation>
         </message>
@@ -6944,7 +6944,7 @@ Check that your distribution's CIFS support and cifs-utils are installed.</sourc
             <translation>Разрешите подключение с той же учётной записью Windows, в которой запущен Sevenzip.</translation>
         </message>
         <message>
-            <location filename="../src/qtnativemountjob_mac.mm" line="+58" />
+            <location filename="../src/mount/qtnativemountjob_mac.mm" line="+58" />
             <source>The private mount directory is unavailable.</source>
             <translation>Защищённая папка подключения недоступна.</translation>
         </message>
@@ -6952,7 +6952,7 @@ Check that your distribution's CIFS support and cifs-utils are installed.</sourc
     <context>
         <name>QtSmbMountPlatform</name>
         <message>
-            <location filename="../src/qtsmbmountplatform_remote.cpp" line="+56" />
+            <location filename="../src/mount/qtsmbmountplatform_remote.cpp" line="+56" />
             <location line="+121" />
             <source>The system mount helper stopped unexpectedly.</source>
             <translation>Системный помощник подключения неожиданно завершился.</translation>

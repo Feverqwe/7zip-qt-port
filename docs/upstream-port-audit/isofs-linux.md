@@ -442,7 +442,7 @@ code/distribution materials.
 
 New local integration, without external implementation imports:
 
-- `src/fs/nls/system.c`/`.h`: OS conversion/availability boundary and CP437
+- `src/text/nls/system.c`/`.h`: OS conversion/availability boundary and CP437
   case conversion. macOS/Linux use `iconv`; Windows uses
   `MultiByteToWideChar`/`WideCharToMultiByte` with explicit codepage IDs.
   Linux NLS implements tables and kernel services; it has no portable native
@@ -536,8 +536,8 @@ retained Unicode helpers.
 `scripts/nls-system-assessment.py` builds the existing C owners from an explicit
 pre-change source snapshot with CMake and the existing ccache. For example,
 export the reference commit from the report with `git archive` into the task's
-existing review area, selecting `src/fs/nls`, `src/fs/fat/fat.h`, `src/fatreader.h`,
-`src/isonames.h` and `src/include/uapi/linux/msdos_fs.h`, then run:
+existing review area, selecting `src/fs/nls`, `src/formats/fat/fat.h`, `src/formats/fat/fatreader.h`,
+`src/formats/iso/isonames.h` and `src/compat/linux/include/uapi/linux/msdos_fs.h`, then run:
 
 ```sh
 python3 scripts/nls-system-assessment.py --reference-root <reference-snapshot> --backend adapter

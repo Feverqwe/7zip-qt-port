@@ -9,12 +9,18 @@
     "docs/interop/qcow2.rst": "55c4d0fa03fe0690f444b3ed5ba58e7b075b7ba3f30778a6087e92ac6bc0d5d4"
   },
   "local_integration": [
-    "src/dependencies/qemu.cppm",
-    "src/dependencies/qemu.h"
+    "src/dependencies/qemu/qemu.cppm",
+    "src/dependencies/qemu/qemu.h",
+    "src/dependencies/qemu/qcow.h"
   ],
   "adapted": {
-    "block/qcow.c": "src/block/qcow.c",
-    "block/qcow2.c": "src/block/qcow2.c",
-    "block/qcow2.h": "src/block/qcow2.h"
+    "block/qcow.c": "src/dependencies/qemu/qcow.c",
+    "block/qcow2.c": "src/dependencies/qemu/qcow2.c",
+    "block/qcow2.h": "src/dependencies/qemu/qcow2.h"
+  },
+  "owners": {
+    "block/qcow.c": "src/dependencies/qemu/qcow.c",
+    "block/qcow2.c": "src/dependencies/qemu/qcow2.c",
+    "block/qcow2.h": "src/dependencies/qemu/qcow2.h"
   }
 }

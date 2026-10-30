@@ -32,10 +32,10 @@ class Table(C.Structure):
 def reference(output, source_root, reuse=False):
     project = output / "reference"
     project.mkdir(parents=True, exist_ok=True)
-    if not reuse and not (source_root / "src/fs/nls/nls_cp437.c").is_file():
+    if not reuse and not (source_root / "src/text/nls/nls_cp437.c").is_file():
         raise ValueError("--reference-root must contain the pre-conversion NLS owners; "
                          "use the documented baseline snapshot or --reuse-reference")
-    sources = sorted((source_root / "src/fs/nls").glob("*.c"))
+    sources = sorted((source_root / "src/text/nls").glob("*.c"))
     paths = "\n".join(json.dumps(p.as_posix()) for p in sources)
     source_root = source_root.as_posix()
     cmake = f'''cmake_minimum_required(VERSION 3.21)
@@ -230,7 +230,7 @@ set(CMAKE_C_STANDARD 11)
 find_program(CACHE_PROGRAM ccache REQUIRED)
 set(CMAKE_C_COMPILER_LAUNCHER "${{CACHE_PROGRAM}}")
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-add_library(nls_adapter SHARED "{root}/src/fs/nls/registry.c" "{root}/src/fs/nls/system.c")
+add_library(nls_adapter SHARED "{root}/src/text/nls/registry.c" "{root}/src/text/nls/system.c")
 target_include_directories(nls_adapter PRIVATE "{root}/src")
 if(NOT WIN32)
     find_package(Iconv REQUIRED)

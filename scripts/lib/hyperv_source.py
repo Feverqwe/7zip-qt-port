@@ -3,16 +3,14 @@
 from concurrent.futures import ThreadPoolExecutor
 import json
 import os
-import re
 from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
-import tempfile
 import time
 
 from .source_snapshot_time import version_time_ns
 
-SOURCE_DIRS = {".agents", "cmake", "docs", "ports", "scripts", "src", "tests", "third_party", "resources",
+SOURCE_DIRS = {".agents", "cmake", "docs", "examples", "ports", "scripts", "src", "tests", "third_party", "resources",
                "translations", "tools", "triplets"}
 SOURCE_FILES = {".clang-format", ".clang-tidy", ".gitattributes", ".gitignore", "AGENTS.md",
                 "CMakeLists.txt", "CMakePresets.json", "LICENSE", "README.md",
@@ -27,10 +25,10 @@ def source_name(name):
     if path.parts[:2] == ("scripts", "config") and path.name.endswith(".local.json"):
         return False
     return (not path.is_absolute() and ".." not in path.parts and bool(path.parts)
-            and (path.parts[0] in SOURCE_DIRS or name in SOURCE_FILES or name == "upstream.bundle"))
+            and (path.parts[0] in SOURCE_DIRS or name in SOURCE_FILES))
 
 
-def stage_tree(root, upstream, destination, cache, source_times=False):
+def stage_tree(root, destination, source_times=False):
     for args in (["git", "diff", "--check"], ["git", "diff", "--cached", "--check"]):
         subprocess.run(args, cwd=root, check=True)
     files = subprocess.check_output(["git", "ls-files", "-z", "--cached", "--others",
@@ -81,27 +79,6 @@ def stage_tree(root, upstream, destination, cache, source_times=False):
         except BaseException:
             pool.shutdown(wait=True, cancel_futures=True)
             raise
-    baseline = json.loads((destination / "docs/upstream-baseline.json").read_text())
-    revision = baseline["revision"]
-    if not re.fullmatch(r"[0-9a-f]{40}", revision):
-        raise ValueError("Invalid pinned upstream revision")
-    cache.mkdir(parents=True, exist_ok=True)
-    bundle = cache / f"upstream-{revision}.bundle"
-    if not bundle.exists():
-        with tempfile.TemporaryDirectory(dir=cache) as temporary:
-            mirror = Path(temporary) / "source.git"
-            subprocess.run(["git", "init", "-q", "--bare", str(mirror)], check=True)
-            available = upstream.exists() and subprocess.run(
-                ["git", "-C", str(upstream), "cat-file", "-e", revision + "^{commit}"],
-                env=dict(os.environ, GIT_NO_LAZY_FETCH="1"),
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
-            origin = str(upstream) if available else baseline["repository"]
-            subprocess.run(["git", "-C", str(mirror), "fetch", origin, revision], check=True)
-            subprocess.run(["git", "-C", str(mirror), "update-ref", "refs/heads/runner-baseline", revision], check=True)
-            staged = Path(temporary) / "upstream.bundle"
-            subprocess.run(["git", "-C", str(mirror), "bundle", "create", str(staged), "runner-baseline"], check=True)
-            staged.replace(bundle)
-    shutil.copy2(bundle, destination / "upstream.bundle")
     diff = subprocess.check_output(["git", "diff", "HEAD", "--", "src", "CMakeLists.txt", "cmake"], cwd=root)
     context = {"revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip(),
                "branch": subprocess.check_output(["git", "symbolic-ref", "--quiet", "--short", "HEAD"], cwd=root, text=True).strip(),

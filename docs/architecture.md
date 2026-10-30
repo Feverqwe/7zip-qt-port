@@ -10,20 +10,75 @@ Detailed dated component investigations remain in the
 
 ## Repository boundary
 
-`src/CPP/7zip/` contains adapted upstream SDK modules at their original paths;
-`src/gpl/CPP/7zip/` contains the complete Linux/GPL archive readers used by both
-the application and console through the same external format modules.
-`third_party/7zip/` contains reusable upstream dependencies. Local Qt integration
-lives under `src/`. Preserve one authoritative implementation per module and
-portable upstream types. [AGENTS.md](../AGENTS.md#source-port-requirements)
-owns the source-port rules; the [manifest](upstream-baseline.json) owns revisions.
+Sevenzip Desktop is an independent application based on 7-Zip and other recorded
+dependencies. Its functional owners determine the project source layout.
+Borrowed implementations retain their provenance, licenses and reusable native
+types without requiring the project to reproduce an upstream directory tree.
+[AGENTS.md](../AGENTS.md#source-port-requirements) owns these rules;
+the [manifest](upstream-baseline.json) owns 7-Zip revisions and inventory.
 The [reader ownership audit](upstream-port-audit/license-variants.md) records the
 shared probes/compression dependencies and engine/module boundaries. The core
 does not retain parallel SDK filesystem readers.
 
-The application is a C++23 / Qt 6 Widgets host for original FileManager/Agent/GUI
-logic. Qt adapters replace Win32 presentation, event delivery and native services.
-The official archive engine remains responsible for formats and compression.
+The application uses C++23 / Qt 6 Widgets and reuses FileManager/Agent/GUI logic.
+Qt adapters provide presentation, event delivery and native services.
+The 7-Zip-based native engine remains responsible for archive formats and
+compression; project filesystem readers are shared by the application and
+console through the same external format modules.
+
+## Module directories and source ownership
+
+Project-owned code and adaptations belong to their functional module directories.
+A module keeps its interface, implementation, private helpers and platform
+variants together. A C++ named module's interface is part of that owner, not a
+reason to leave its implementation or adapter files in the project source root.
+The same ownership rule applies to native libraries, format plugins and Qt
+components. Module-specific build definitions and tests follow the same owner;
+shared test helpers have a separate test owner.
+
+Unchanged dependency sources are stored in local archives under
+`third_party/<dependency>/`, preserving the used dependency's internal directory
+structure inside each archive. Builds expand verified sources into their own
+build directories; adapted project sources remain ordinary files in their owning
+modules. Unchanged licenses and provenance stay under the corresponding
+`third_party/<dependency>/`, including when only adapted sources are used and
+there is no source archive for that dependency. Adapted dependency modules keep
+their source, interfaces and integration together under `src/dependencies/`.
+A project module may consume
+several dependencies, and several modules may consume one shared dependency.
+Shared project code likewise has one source owner and build target; consumers
+link it without duplicating sources. License boundaries, including GPLv2, GPLv3
+and unRAR-bearing components, remain explicit in the build.
+
+All 7-Zip inputs needed to build the application, native engine, console and SFX
+must be owned by this repository. Ordinary builds, runtime preparation, packaging
+and their tests must use these local sources. External upstream checkouts belong
+to provenance verification, update review and original-reference comparisons.
+Origin paths and hashes are explicit baseline metadata; local paths must not
+implicitly determine upstream ownership. If a native build needs an intermediate
+tree, it is generated from local owners and does not dictate their source layout.
+
+FileManager, archive integration, format readers, codecs, cryptography, platform
+services and presentation now have their own module directories under `src/`.
+Dependency facades keep their headers, C++ module interfaces and local native
+adapters together. Linux compatibility retains the header namespaces required by
+its C interfaces inside its own module, rather than determining the application
+tree. Tests follow component owners, with shared fixture code in `tests/support/`
+and owner-specific support directories. Component build definitions stay with
+their owners; `cmake/components/` composes shared production libraries and
+`cmake/tests/` registers scenarios without changing directory scope.
+
+The 7-Zip dependency is archived locally. Application builds expand unchanged
+units; generated forwarding headers preserve foreign include spellings while
+the compiler reads and tracks the single live project module header. Native
+runtime/SFX preparation expands the recorded native source set, rebasing project
+include paths into that generated build view. These adapters preserve dependency
+contracts without placing an upstream-shaped source tree in the project.
+The baselines record original paths, current owners and local dependency archives
+explicitly. Modified libsmb2 sources belong to its project module; generated
+forwarding units connect them to the dependency's original build rules and keep
+compiler dependency tracking live. Final cross-platform acceptance is pending;
+[development](development.md) documents the current commands.
 
 External C libraries keep their original compilation language and provenance.
 C++ dependency facades own resource lifetimes and bounded buffer interfaces;

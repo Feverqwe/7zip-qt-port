@@ -12,5 +12,8 @@
     "lib/kstrtox.h": "7af24f296c90d0fb561f5f8d5daa893e315042d16c21af71d79e0f03e3ee3a8c",
     "include/linux/ctype.h": "eb8af725f1e42866009e36ed110bc03d0b6e3eb522b475573e7226530f803d50"
   },
-  "scope": "OcteonTX CPT TAR archive reader, microcode consumer boundary, numeric conversion and end-marker predicate; firmware acquisition and hardware upload excluded."
+  "scope": "OcteonTX CPT TAR archive reader, microcode consumer boundary, numeric conversion and end-marker predicate; firmware acquisition and hardware upload excluded.",
+  "owners": {
+    "lib/string.c": "src/compat/linux/core/string.c"
+  }
 }

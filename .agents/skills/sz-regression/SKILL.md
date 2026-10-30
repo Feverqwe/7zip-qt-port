@@ -26,4 +26,4 @@ Do not replace behavior tests with source-text assertions or treat a startup
 smoke test as archive-feature coverage.
 
 For layout work use [UI contracts](../../../docs/ui-layout-contracts.md) and
-`tests/layout_inspection.h` for affected views/states and geometry reports.
+`tests/ui/support/layout_inspection.h` for affected views/states and geometry reports.

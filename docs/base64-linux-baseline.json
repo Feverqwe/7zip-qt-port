@@ -9,5 +9,10 @@
     "lib/base64.c": "832166e9b148438a27b56c92fd8c77814b5ac33ae0aefa6f73221df6f3b6f2aa",
     "lib/tests/base64_kunit.c": "9f74d6b700a38018c13e21a965a5949c5ccad2d187fb699f61fea208d4e20b0f"
   },
-  "scope": "Reference comparison and compiled decoder only; original 7-Zip Base64 decoding loop retained."
+  "scope": "Reference comparison and compiled decoder only; original 7-Zip Base64 decoding loop retained.",
+  "owners": {
+    "fs/crypto/fname.c": "src/crypto/fscrypt/fname.c",
+    "include/linux/base64.h": "src/compat/linux/include/linux/base64.h",
+    "lib/base64.c": "src/compat/linux/core/base64.c"
+  }
 }

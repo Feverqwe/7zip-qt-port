@@ -105,7 +105,7 @@ is not inferred from those reports.
 ### Offline Help and About (P1-15.1)
 
 References: pinned HelpUtils/MyLoadMenu/CompressDialog topic calls and exact
-official CHM HTML/CSS with [pinned release provenance](../../resources/7zip/help-provenance.json).
+official CHM HTML/CSS with [pinned release provenance](../../third_party/7zip-help/help-provenance.json).
 QTextBrowser replaces Win32 CHM presentation, retaining pages/links/fragments.
 Help follows the application palette, including already open topics. Page,
 table and syntax backgrounds, text and links remain readable in light/dark

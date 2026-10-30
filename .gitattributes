@@ -1,19 +1,9 @@
 # Keep unchanged upstream source bytes, including its whitespace. Local source,
 # tests and documentation retain Git's default whitespace checks.
-third_party/7zip/**/*.h -whitespace
-third_party/7zip/**/*.cpp -whitespace
-third_party/7zip/**/*.c -whitespace
-third_party/7zip/**/*.rc -whitespace
-# Linux baseline source and license notices also retain their original bytes.
-third_party/linux/** -text -whitespace
-# The SMB reference baseline pins original source bytes and notices too.
-third_party/libsmb2/** -text -whitespace
-# Official libzstd C dependencies keep original bytes on all platforms.
-src/zstd/** -text -whitespace
-# Preserve hashes of original language/distribution assets on every platform.
-resources/7zip/Lang/* -text -whitespace
-resources/7zip/License.txt -text -whitespace
-resources/7zip/Help/** -text -whitespace
+third_party/** -text -whitespace
+third_party/*/source.tar.xz binary
+# Adapted Help assets retain their inherited distribution line endings.
+src/help/content/*.htm -text -whitespace
 # Pinned overlay recipes and notices retain their source bytes. Patch context
 # lines intentionally contain a space even when the original line is empty.
 ports/qttools/** -text

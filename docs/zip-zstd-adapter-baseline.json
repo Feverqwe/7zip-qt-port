@@ -9,11 +9,11 @@
     "DOC/License.txt": "500467e51bb9f6f69473aad243befa5e5dbc35c007c5847d831a115776710880"
   },
   "adapted": {
-    "CPP/7zip/Compress/ZstdEncoder.cpp": "src/CPP/7zip/Compress/ZstdEncoder.cpp",
-    "CPP/7zip/Compress/ZstdEncoder.h": "src/CPP/7zip/Compress/ZstdEncoder.h",
-    "CPP/7zip/Archive/Zip/ZipAddCommon.cpp": "src/CPP/7zip/Archive/Zip/ZipAddCommon.cpp",
-    "CPP/7zip/Archive/Zip/ZipHeader.h": "src/CPP/7zip/Archive/Zip/ZipHeader.h",
-    "DOC/License.txt": "src/zstd/7zip-zstd-LICENSE.txt"
+    "CPP/7zip/Compress/ZstdEncoder.cpp": "src/codecs/zstd/ZstdEncoder.cpp",
+    "CPP/7zip/Compress/ZstdEncoder.h": "src/codecs/zstd/ZstdEncoder.h",
+    "CPP/7zip/Archive/Zip/ZipAddCommon.cpp": "src/formats/zip/ZipAddCommon.cpp",
+    "CPP/7zip/Archive/Zip/ZipHeader.h": "src/formats/zip/ZipHeader.h",
+    "DOC/License.txt": "third_party/zstd/7zip-zstd-LICENSE.txt"
   },
   "scope": "CEncoder streaming loop and error mapping; ZIP method-93 writer dispatch and extract-version convention. Advanced fork-only properties, decoder, registration and non-ZIP coder property serialization omitted.",
   "kind": "adapted-code",
@@ -35,5 +35,12 @@
     "CPP/7zip/Archive/Zip/ZipHeader.h": [
       "NArchive::NZip::NFileHeader::NCompressionMethod::kExtractVersion_Zstd"
     ]
+  },
+  "owners": {
+    "CPP/7zip/Compress/ZstdEncoder.cpp": "src/codecs/zstd/ZstdEncoder.cpp",
+    "CPP/7zip/Compress/ZstdEncoder.h": "src/codecs/zstd/ZstdEncoder.h",
+    "CPP/7zip/Archive/Zip/ZipAddCommon.cpp": "src/formats/zip/ZipAddCommon.cpp",
+    "CPP/7zip/Archive/Zip/ZipHeader.h": "src/formats/zip/ZipHeader.h",
+    "DOC/License.txt": "third_party/zstd/7zip-zstd-LICENSE.txt"
   }
 }

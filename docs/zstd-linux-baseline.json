@@ -40,5 +40,8 @@
     "lib/zstd/zstd_compress_module.c": "d4763cc6b8c3d58d6b76dd40dd8b0ac1792b63cccbce8a5bf028a583d9b1ae26",
     "lib/zstd/zstd_decompress_module.c": "e8c325e429ed62e88f3b5d8ecebe4ef2a9f104771ca756cc8e2a32b2c9512305"
   },
-  "scope": "Reference comparison and compiled decoder only; original 7-Zip Zstd algorithms retained."
+  "scope": "Reference comparison and compiled decoder only; original 7-Zip Zstd algorithms retained.",
+  "owners": {
+    "lib/xxhash.c": "src/compat/linux/core/xxhash.c"
+  }
 }

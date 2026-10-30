@@ -16,8 +16,11 @@ For development, start with the [toolchain and build instructions](docs/developm
 and [documentation map](docs/README.md). The maintainer's Hyper-V infrastructure
 is optional; local builds do not need access to it.
 
-This project ports the original 7-Zip sources. Before changing a ported feature,
-compare its upstream implementation and preserve usable code and notices.
+Sevenzip is an independent application based on 7-Zip and other dependencies.
+Before changing borrowed functionality, compare its recorded original
+implementation and preserve usable code and notices. Project sources follow
+local module ownership; dependencies under `third_party/` retain their internal
+structure.
 [AGENTS.md](AGENTS.md) describes the source-port and repository conventions;
 the [port audit](docs/upstream-port-audit.md) records provenance and adaptations.
 

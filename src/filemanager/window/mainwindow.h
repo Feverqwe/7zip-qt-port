@@ -1,0 +1,444 @@
+#pragma once
+#include <optional>
+struct QtOperationResult;
+
+#include "archive/agent/Agent.h"
+#include "archive/backend/archivebackend.h"
+#include "devices/deviceselectiondialog.h"
+#include "dialogs/combo/alias.h"
+#include "dialogs/compress/createarchivedialog.h"
+#include "dialogs/copy/alias.h"
+#include "dialogs/extract/alias.h"
+#include "filemanager/App.h"
+#include "filemanager/providers/qtfolderprojection.h"
+#include "filemanager/qtfilemanagersplitter.h"
+#include "filemanager/views/filetable.h"
+#include "fileops/scanner/filesystemscanner.h"
+#include "fileops/transfer/filetransferoperation.h"
+#include "fileops/volumes/volumeoperations.h"
+#include "settings/dialog_alias.h"
+
+#include <QAction>
+#include <QActionGroup>
+#include <QApplication>
+#include <QComboBox>
+#include <QDateTime>
+#include <QDesktopServices>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDir>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QEvent>
+#include <QFile>
+#include <QFileDialog>
+#include <QFileIconProvider>
+#include <QFileInfo>
+#include <QFormLayout>
+#include <QHBoxLayout>
+#include <QHash>
+#include <QHeaderView>
+#include <QInputDialog>
+#include <QKeyEvent>
+#include <QKeySequence>
+#include <QLabel>
+#include <QLineEdit>
+#include <QListView>
+#include <QListWidget>
+#include <QMainWindow>
+#include <QMap>
+#include <QMenu>
+#include <QMenuBar>
+#include <QMessageBox>
+#include <QMimeData>
+#include <QPainter>
+#include <QPersistentModelIndex>
+#include <QPlainTextEdit>
+#include <QPointer>
+#include <QPushButton>
+#include <QRegularExpression>
+#include <QSettings>
+#include <QSignalBlocker>
+#include <QSizePolicy>
+#include <QStackedWidget>
+#include <QStandardPaths>
+#include <QStatusBar>
+#include <QStringView>
+#include <QStyle>
+#include <QTimer>
+#include <QToolBar>
+#include <QToolButton>
+#include <QUrl>
+#include <QUuid>
+#include <QVBoxLayout>
+#include <QWidget>
+#include <array>
+#include <functional>
+#include <memory>
+#include <vector>
+
+class QtFileListHover;
+class CProgressDialog;
+class IQtProgressTransport;
+class IQtTrashService;
+struct QtFileManagerStartup;
+
+class MainWindow : public QMainWindow {
+  public:
+    explicit MainWindow(ArchiveBackend *backend = nullptr,
+                        std::function<bool(const QUrl &)> fileOpener = {},
+                        IQtTrashService *trashService = nullptr,
+                        const QtFileManagerStartup *startup = nullptr,
+                        DeviceSelectionServices deviceServices = DeviceSelectionServices::system());
+
+    void openArchive(const QString &path);
+    void openPath(const QString &path);
+
+    void extractTo(const QString &destination, bool onlySelected = false,
+                   const QString &password = {}, const ExtractionOptions &options = {});
+
+    void testArchive();
+
+  private:
+    DeviceSelectionServices deviceServices_;
+    QLabel *deviceReadOnly_ = nullptr;
+    friend class QtAppPresentation;
+    friend class QtVolumeWindowServices;
+    friend class QtFileManagerWindowServices;
+    friend class QtFileManagerCommands;
+    friend class QtFileManagerDrag;
+    friend class QtFileManagerShellMenu;
+    friend class QtProgramFileMenu;
+    friend class QtPanelContextMenu;
+    friend class QtFileManagerInitServices;
+    void initializeFileManagerWindow(const QtFileManagerStartup *startup);
+    void createFileManagerWindow(const QtFileManagerStartup *startup, bool panelsDefined,
+                                 UInt32 splitterPos);
+    HRESULT openArchiveAs(const QString &path, const QString &type);
+    void closeEvent(QCloseEvent *event) override;
+    void changeEvent(QEvent *event) override;
+    void reloadLangItems();
+    void refreshToolbarTexts();
+    void quiesceOperations();
+    bool canHandleExternalUpdate() const;
+    bool runExternalArchiveUpdate(CPanel &panel, const QtArchiveUpdateBody &body);
+    QMenu *createMenusAndToolbar();
+    void createFileActions(QMenu *menu, QToolBar *toolbar);
+    void createFileExtras(QMenu *menu, QToolBar *toolbar);
+    void createViewModes(QMenu *viewMenu);
+    void createFavoritesMenu(QMenu *favoritesMenu);
+    void createViewOptions(QMenu *viewMenu);
+    void createToolbarOptions(QMenu *viewMenu);
+    void rebuildSourceMenus();
+    void activateSingleClickedRow(int row);
+    void createFilePanel(QMenu *editMenu, unsigned index);
+    void storePanelUi(unsigned index);
+    void restorePanelUi(unsigned index);
+    void activatePanelUi(unsigned index);
+    void withPanelProjection(unsigned index, const std::function<void()> &body);
+    unsigned scanningPanelMask() const;
+    unsigned panelIndexFor(QObject *object) const;
+    void togglePanels();
+    QString copyDefaultDestination() const;
+    bool transferToArchivePanel(const QString &destination, bool move,
+                                const CRecordVector<UInt32> &indices);
+    bool transferBetweenArchivePanels(const QString &destination, bool move,
+                                      const CRecordVector<UInt32> &indices);
+    void rememberTransferDestination(const QString &path);
+    void refreshTransferDestination(unsigned index);
+    void createFileTable(QWidget *central);
+    void configureColumns(bool initialized = false);
+    void updateIconColumn();
+    void saveColumns();
+    void showColumnsMenu(const QPoint &pos);
+    void redrawTimestampColumns();
+    void redrawSourceProperties();
+    void createPanelActions(QMenu *editMenu);
+    void createIconList(QWidget *central);
+    void connectFilesystemScanner();
+    void failFilesystemListing(HRESULT result);
+    void connectBackend();
+    void backendFinished(bool ok, const QString &message, HRESULT result,
+                         bool messageDisplayed = false);
+    bool extractWithSource(const QString &destination, bool onlySelected, const QString &password,
+                           const ExtractionOptions &options, const QStringList &names,
+                           const CRecordVector<UInt32> *explicitIndices = nullptr);
+    bool startPendingArchiveMove(bool ok);
+    bool finishArchiveState(bool ok);
+    void closeProgressDialog(bool finished = false);
+    void beginWorkerProgress(const QString &label, const QString &detail,
+                             std::function<void()> cancel);
+
+    enum class State { Filesystem, Namespace, Loading, Viewing, Operating };
+    void setViewMode(int mode);
+
+  public:
+    ~MainWindow() override;
+
+  private:
+    void startVolume(VolumeOperation::Mode mode);
+    void launchVolume(VolumeOperation *operation, const UString &title, const QString &source,
+                      UInt64 totalSize, std::function<void()> completion);
+    void showItemContextMenu(unsigned owner, QAbstractItemView *view, const QPoint &pos);
+    void applySortMode(bool enableSorting = false);
+    void sortIndicatorChanged(unsigned panel, int column, Qt::SortOrder order);
+    static QIcon toolbarIcon(int kind);
+    static QString toolbarSettingsPath();
+    void recordVisitedPath(const QString &path);
+    void showFoldersHistory();
+    void refreshBookmarks();
+    void saveBookmark(int index);
+    void openBookmark(int index);
+    void updateToolbar();
+    void applyFlatView(bool enabled);
+    void showSettings();
+    void applyFileListSettings(const CFmSettings &settings);
+    void updateFilesystemIcons();
+    bool eventFilter(QObject *watched, QEvent *event) override;
+    bool handlePanelKey(QObject *watched, QKeyEvent *key);
+    bool handlePanelListKey(QKeyEvent *key);
+    bool overridePanelKey(const QKeyEvent &key) const;
+    void configureShortcuts();
+    QAction *panelShortcut(const QKeyEvent &key) const;
+    bool reservedPanelKey(const QKeyEvent &key) const;
+    bool isPanelEditorFocused() const;
+    QList<QAction *> panelShortcutActions_;
+    void updatePanelModifier(const QKeyEvent &key);
+    void handleSelectionClick(int row);
+    HRESULT showDirectory(const QString &path, bool remember, bool sourceAlreadyBound = false,
+                          bool updateAddress = true);
+    HRESULT renderRootFolder(bool updateAddress = true);
+    HRESULT appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex);
+    void appendParentEntry();
+    void updateParentEntry();
+    QStringList selectedPaths() const;
+    void selectPaths(const QStringList &paths);
+    void completeListSelection();
+    void refreshCurrent(const CSelectedState *preserved = nullptr);
+    HRESULT reloadPanelPresentation(unsigned index, const CSelectedState &selection);
+    HRESULT startFilesystemListing(bool sourceAlreadyBound, bool updateAddress);
+    HRESULT refreshFilesystem(const CSelectedState &selection, bool sourceAlreadyBound);
+    void restoreListSelection(const CSelectedState &selection);
+    struct FilesystemSignature;
+    void pollAutoRefresh();
+    void restoreAutoRefreshViewport();
+    FilesystemSignature filesystemSignature(const QString &path) const;
+    void SelectAll(bool select);
+    void InvertSelection();
+    void SelectSpec(bool select);
+    void SelectByType(bool select);
+    HRESULT navigateTo(const QString &path, bool sourceAddress = false);
+    void activateRow(int row, Qt::KeyboardModifiers modifiers);
+    void activateItems(Qt::KeyboardModifiers modifiers);
+    void goBack();
+    void goUp();
+    void goParent();
+    enum class RootLocation { Namespace, Drives };
+    void goRoot(bool remember = true, RootLocation location = RootLocation::Namespace);
+    QString archiveDisplayPath() const;
+    HRESULT renderBoundFolder(bool updateAddress = true);
+    bool isNestedArchive() const;
+    void showArchiveFolder(const QString &folder);
+    HRESULT renderArchiveFolder(bool updateAddress = true);
+    HRESULT appendArchiveEntry(CAgentFolder &folder, unsigned index, const QString &prefix,
+                               bool flat);
+    void setState(State state);
+    void refreshActions();
+    void refreshPanelStatus();
+    void showPanelStatus(unsigned panel, const CPanelStatus &status);
+    void showSelectedProperties();
+    void calculateHash(const QString &method);
+    void begin(const QString &label, const QString &detail);
+    void startProgressDialog(const QString &label, const QString &detail);
+    void openNestedArchive(const QString &entry);
+    void extractArchives();
+    void runArchiveBatchCommand(bool test);
+    HRESULT launchGuiArchiveTest(const UStringVector &paths, bool hashMode);
+    bool canLaunchGuiFilesystemOperation();
+    HRESULT launchGuiHash(const UStringVector &paths, const UString &method,
+                          const UString &basePrefix = UString(), bool enterToDirs = true);
+    HRESULT launchGuiArchiveCompress(const UString &folder, const UString &name,
+                                     const UString &type, bool addExtension,
+                                     const UStringVector &paths, bool email, bool showDialog);
+    HRESULT launchGuiArchiveExtract(const UStringVector &paths, const UString &folder,
+                                    bool showDialog, bool elimDup, UInt32 writeZone);
+    HRESULT observeGuiArchiveOperation(QtOperationLauncher *operation, const QString &error);
+    void refreshGuiOutputPanel(unsigned index, const QtOperationResult &result);
+    void createDialog();
+    QStringList selectedFilesystemPaths();
+    void transferFiles(const QStringList &sources, const QString &destination, bool move,
+                       bool directPath = false, bool refreshSource = true);
+    void executeCopyDestination(bool move, bool copyToSame, unsigned sourceIndex,
+                                const QString &destination, const CRecordVector<UInt32> &indices,
+                                bool useDestPanel, bool useTemp);
+    struct RenameEdit {
+        unsigned Panel;
+        CMyComPtr<IFolderFolder> Folder;
+        QPersistentModelIndex Item;
+        quint32 SourceIndex;
+        QString Path;
+    };
+    void connectRenameEditor(QAbstractItemView &view);
+    void beginRename(int row);
+    void finishDeferredRename(const RenameEdit &edit, const QString &name);
+    void finishFilesystemRename(quint32 sourceIndex, const QString &originalPath,
+                                const QString &name);
+    QStringList selectedArchivePaths();
+    QStringList archivePathsForIndices(const CRecordVector<UInt32> &indices);
+    QStringList selectedArchiveItemsPaths();
+    CRecordVector<UInt32> sourceOperatedIndices();
+
+    ArchiveBackend *backend_ = nullptr;
+    std::unique_ptr<IQtTrashService> nativeTrashService_;
+    IQtTrashService *trashService_ = nullptr;
+    CMyComPtr<IFolderManager> folderManager_;
+    std::unique_ptr<class QtAssociatedFileServices> associatedFileServices_;
+    std::unique_ptr<class QtAppPresentation> appPresentation_;
+    std::unique_ptr<class QtFileManagerDrag> drag_;
+    std::unique_ptr<class QtFileManagerCommands> commands_;
+    std::unique_ptr<class QtProgramFileMenu> programFileMenu_;
+    std::function<bool(const QUrl &)> fileOpener_;
+    QString archive_;
+    QString displayArchive_;
+    QString archivePassword_;
+    QString archiveFolder_;
+    CApp app_;
+    QAction *saveBookmarks_[10]{};
+    QAction *openBookmarks_[10]{};
+    State state_ = State::Filesystem;
+    bool configuringColumns_ = false;
+    QAction *sortActions_[5]{};
+    QAction *timeActions_[5]{};
+    QAction *utcTimeAction_ = nullptr;
+    QAction *autoRefreshAction_ = nullptr;
+    QAction *viewActions_[4]{};
+    QAction *flatView_ = nullptr;
+    QAction *twoPanelsAction_ = nullptr;
+    bool scanningDisk_ = false;
+    bool scanningArchive_ = false;
+    QtFolderProjection *listProjection_ = nullptr;
+    struct FilesystemSignature {
+        QDateTime modified;
+        QDateTime metadataChanged;
+        qint64 size = 0;
+        bool exists = false;
+        bool directory = false;
+        bool operator==(const FilesystemSignature &other) const {
+            return modified == other.modified && metadataChanged == other.metadataChanged &&
+                   size == other.size && exists == other.exists && directory == other.directory;
+        }
+    };
+    struct PanelUiState {
+        QWidget *container = nullptr;
+        QLineEdit *path = nullptr;
+        QComboBox *pathCombo = nullptr;
+        FileTable *table = nullptr;
+        QListView *iconList = nullptr;
+        QStackedWidget *viewStack = nullptr;
+        std::array<QLabel *, 4> statusLabels{};
+        QtFileListHover *tableHover = nullptr;
+        QtFileListHover *iconHover = nullptr;
+        QString directory;
+        QString returnDirectory;
+        QString archive;
+        QString displayArchive;
+        QString archivePassword;
+        QString archiveFolder;
+        QStringList history;
+        State state = State::Filesystem;
+        bool scanningDisk = false;
+        bool scanningArchive = false;
+        FilesystemScanner *filesystemScanner = nullptr;
+        QtFolderProjection *listProjection = nullptr;
+        QHash<QString, FilesystemSignature> autoRefreshSnapshot;
+        QString autoRefreshTopPath;
+        int autoRefreshScrollValue = -1;
+        std::optional<CSelectedState> pendingSelection;
+        std::optional<QStringList> pendingSelectedPaths;
+    };
+    std::array<PanelUiState, 2> panelUi_;
+    QtFileManagerSplitter *panelSplitter_ = nullptr;
+    unsigned projectedPanel_ = 0;
+    unsigned panelProjectionDepth_ = 0;
+    QHash<QString, FilesystemSignature> autoRefreshSnapshot_;
+    QString autoRefreshTopPath_;
+    int autoRefreshScrollValue_ = -1;
+    QTimer *autoRefreshTimer_ = nullptr;
+    FilesystemScanner *filesystemScanner_ = nullptr;
+    std::optional<CSelectedState> scanSelectedState_;
+    std::optional<QStringList> scanSelectedPaths_;
+    State previousState_ = State::Filesystem;
+    bool creating_ = false;
+    bool updatingArchive_ = false;
+    enum class ArchiveMoveStage { None, Extracting, Removing };
+    ArchiveMoveStage archiveMoveStage_ = ArchiveMoveStage::None;
+    CRecordVector<UInt32> archiveMoveIndices_;
+    std::optional<unsigned> transferDestinationPanel_;
+    QLineEdit *path_ = nullptr;
+    QComboBox *pathCombo_ = nullptr;
+    QString directory_;
+    QString returnDirectory_;
+    QStringList history_;
+    FileTable *table_ = nullptr;
+    QListView *iconList_ = nullptr;
+    Qt::KeyboardModifiers selectionClickModifiers_ = Qt::NoModifier;
+    bool selectionClickLeft_ = false;
+    bool selectionShiftSequence_ = false;
+    bool rightControlPressed_ = false;
+    QStackedWidget *viewStack_ = nullptr;
+    QPointer<CProgressDialog> progress_;
+    std::unique_ptr<IQtProgressTransport> progressTransport_;
+    bool sourceArchiveProgress_ = false;
+    QString operationName_;
+    QString currentDetail_;
+    QAction *toolbarAdd_ = nullptr;
+    QAction *extract_ = nullptr;
+    QAction *test_ = nullptr;
+    QAction *infoAction_ = nullptr;
+    QAction *back_ = nullptr;
+    QAction *up_ = nullptr;
+    QAction *root_ = nullptr;
+    QAction *openItem_ = nullptr;
+    QAction *openInside_ = nullptr;
+    QAction *openInsideOne_ = nullptr;
+    QAction *openInsideParser_ = nullptr;
+    QAction *openOutside_ = nullptr;
+    QAction *exitAction_ = nullptr;
+    QAction *parent_ = nullptr;
+    QAction *selectAll_ = nullptr;
+    QAction *copy_ = nullptr;
+    QAction *move_ = nullptr;
+    QAction *remove_ = nullptr;
+    QAction *rename_ = nullptr;
+    std::optional<RenameEdit> renameEdit_;
+    bool renameActivationPending_ = false;
+    QAction *split_ = nullptr;
+    QAction *combine_ = nullptr;
+    VolumeOperation *volumeOperation_ = nullptr;
+    FileTransferOperation *fileTransfer_ = nullptr;
+    QPointer<QDialog> overwriteDialog_;
+    QAction *viewFile_ = nullptr;
+    QAction *editFile_ = nullptr;
+    QAction *diffFiles_ = nullptr;
+    QAction *properties_ = nullptr;
+    QAction *hashActions_[11]{};
+    QAction *createFolder_ = nullptr;
+    QAction *createFile_ = nullptr;
+    QAction *refresh_ = nullptr;
+    QAction *settingsAction_ = nullptr;
+    CFmSettings fileListSettings_;
+    QtFileListHover *tableHover_ = nullptr;
+    QtFileListHover *iconHover_ = nullptr;
+    QAction *foldersHistory_ = nullptr;
+    QAction *deselectAll_ = nullptr;
+    QAction *invertSelection_ = nullptr;
+    QAction *selectMask_ = nullptr;
+    QAction *deselectMask_ = nullptr;
+    QAction *selectType_ = nullptr;
+    QAction *deselectType_ = nullptr;
+    QAction *archiveToolbarOption_ = nullptr;
+    QAction *standardToolbarOption_ = nullptr;
+    QAction *largeButtonsOption_ = nullptr;
+    QAction *buttonTextOption_ = nullptr;
+    QAction *toolbarGroupSeparator_ = nullptr;
+};

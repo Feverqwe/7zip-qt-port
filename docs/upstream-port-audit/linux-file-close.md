@@ -7,7 +7,7 @@ metadata and destruction paths, their `FileIO.h` owners, the COM adapters in
 `CPP/7zip/Common/FileStreams.cpp`, and close/cleanup/publication consumers in
 `MultiOutStream.cpp`, native `UI/Common/Update.cpp` and QtArchiveVolumeOutput.
 The complete FileIO implementation was identical to the recorded upstream
-before adaptation; it moves to `src/CPP/Windows/FileIO.cpp` as its sole copy.
+before adaptation; it moves to `src/fileops/native/FileIO.cpp` as its sole copy.
 Existing private Windows include roots resolve its unchanged source dependencies,
 including `StdAfx.h`, `FileIO.h`, `FileName.h` and device `C/Alloc.h`.
 

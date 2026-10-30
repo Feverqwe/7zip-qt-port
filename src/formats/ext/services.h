@@ -1,0 +1,309 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* Immutable-image services for the transferred Linux ext4 readers. */
+#ifndef SEVENZIP_EXT4_SERVICES_H
+#define SEVENZIP_EXT4_SERVICES_H
+#define EXT4_GOOD_OLD_INODE_SIZE 128
+#define EXT4_OS_LINUX 0
+#define EXT4_ROOT_INO 2
+#define EXT4_BOOT_LOADER_INO 5
+#define EXT4_NDIR_BLOCKS 12
+#define EXT4_ORPHAN_FS 0x0004
+#define EXT4_INODE_EXTENTS 19
+#define EXT4_FIRST_INO(sb) (EXT4_SB(sb)->s_first_ino)
+#define EXT4_ENC_UTF8_12_1 1
+#define UNICODE_MAJ_SHIFT 16
+#define UNICODE_MIN_SHIFT 8
+#define UNICODE_AGE(MAJ, MIN, REV)                                                                 \
+    (((unsigned int)(MAJ) << UNICODE_MAJ_SHIFT) | ((unsigned int)(MIN) << UNICODE_MIN_SHIFT) |     \
+     ((unsigned int)(REV)))
+int ext4_encoding_init(struct super_block *, struct ext4_super_block *);
+#define EXT4_GOOD_OLD_REV 0
+#define EXT4_GOOD_OLD_FIRST_INO 11
+#define EXT4_EXTRA_TIMESTAMP_MAX (((int64_t)1 << 34) - 1 + INT32_MIN)
+#define EXT4_NON_EXTRA_TIMESTAMP_MAX INT32_MAX
+#define EXT4_TIMESTAMP_MIN INT32_MIN
+#define NSEC_PER_SEC 1000000000L
+#define is_power_of_2(n) ((n) && !((n) & ((n) - 1)))
+#define i_size_read(inode) ((inode)->i_size)
+#define IS_CASEFOLDED(inode) (((inode)->flags & 0x40000000U) != 0)
+#define IS_ENCRYPTED(inode) (((inode)->flags & 0x00000800U) != 0)
+#define S_ISCHR(mode) (((mode) & 0170000) == 0020000)
+#define S_ISBLK(mode) (((mode) & 0170000) == 0060000)
+#define S_ISFIFO(mode) (((mode) & 0170000) == 0010000)
+#define S_ISSOCK(mode) (((mode) & 0170000) == 0140000)
+#define DIV_ROUND_UP_ULL(value, divisor) (((value) + (divisor) - 1) / (divisor))
+#define __ext4_error(...) ((void)0)
+loff_t ext4_max_bitmap_size(int, int);
+#define EXT4_MAX_REC_LEN 65535
+#define EXT4_DIR_ROUND 3
+#define EXT4_FT_DIR_CSUM 0xDE
+#define EXT4_MIN_INLINE_DATA_SIZE 60
+#define EXT4_INLINE_DOTDOT_SIZE 4
+#define EXT4_XATTR_SYSTEM_DATA "data"
+#include "compat/linux/include/linux/fs_dirent.h"
+#define i_checksum_lo osd2.linux2.l_i_checksum_lo
+#define i_blocks_high osd2.linux2.l_i_blocks_high
+typedef u32 ext4_lblk_t;
+#define S_ISLNK(mode) (((mode) & 0170000) == 0120000)
+#define S_ISREG(mode) (((mode) & 0170000) == 0100000)
+#define S_ISDIR(mode) (((mode) & 0170000) == 0040000)
+struct ext4_sb_info {
+    struct super_block *s_sb;
+    struct ext4_super_block *s_es;
+    u32 s_csum_seed, s_desc_size, s_desc_per_block, s_inode_size;
+    u32 s_groups_count, s_gdb_count, s_itb_per_group;
+    u32 s_cluster_ratio, s_cluster_bits, s_inodes_per_group, s_blockfile_groups;
+    u64 s_blocks_per_group, s_clusters_per_group;
+    u32 s_first_ino, s_want_extra_isize;
+    u32 s_hash_seed[4];
+    unsigned int s_def_hash_version, s_hash_unsigned;
+    loff_t s_bitmap_maxbytes;
+    u32 s_mount_state;
+    void *s_group_desc;
+    u8 *s_archive_group_available;
+    struct ext4_system_blocks *s_system_blks;
+    const struct ext_block_services *block_services;
+    struct journal_s *s_journal;
+    const struct ext_xattr_services *xattr_services;
+};
+struct fsverity_operations;
+struct ext4_extent_header;
+struct sevenzip_asymmetric_trust;
+struct super_block {
+    unsigned int s_blocksize, s_blocksize_bits;
+    struct ext4_sb_info info;
+    const struct fsverity_operations *s_vop;
+    loff_t s_maxbytes;
+    int64_t s_time_min, s_time_max;
+    unsigned int s_time_gran;
+    u64 s_archive_bytes;
+    bool s_archive_partial, s_archive_merge_metadata;
+    u32 s_archive_limitations;
+};
+struct ext4_inode_info {
+    u32 i_csum_seed, i_inline_size, i_flags;
+    u16 i_extra_isize, i_inline_off;
+    unsigned long i_state_flags;
+    u64 i_file_acl;
+    __le32 i_data[EXT4_N_BLOCKS];
+};
+struct inode {
+    struct super_block *i_sb;
+    u32 i_ino, flags;
+    u32 i_flags;
+    u64 i_size;
+    u64 i_blocks;
+    u16 i_mode;
+    u32 i_generation, i_nlink, i_atime_sec, i_mtime_sec, i_ctime_sec, i_version;
+    int error;
+    bool bad_inode;
+    struct ext4_inode_info info;
+    struct buffer_head raw;
+    unsigned int i_blkbits;
+    struct inode *i_mapping;
+    void *verity_context;
+    const struct sevenzip_asymmetric_trust *verity_trust;
+    bool verity_require_signatures;
+    const struct sevenzip_fscrypt_inode *fscrypt_owner;
+};
+typedef struct journal_s {
+    struct inode *j_inode;
+} journal_t;
+typedef int ext4_grpblk_t;
+#define EXT4_B2C(sbi, blk) ((blk) >> (sbi)->s_cluster_bits)
+#define EXT4_NUM_B2C(sbi, blks) (((blks) + (sbi)->s_cluster_ratio - 1) >> (sbi)->s_cluster_bits)
+unsigned long _find_next_zero_bit(const unsigned long *, unsigned long, unsigned long);
+#define ext4_find_next_zero_bit(data, size, offset)                                                \
+    _find_next_zero_bit((const unsigned long *)(data), size, offset)
+static inline bool ext4_test_bit(unsigned int bit, const void *data) {
+    return (((const u8 *)data)[bit / 8] & (1U << (bit % 8))) != 0;
+}
+ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *, struct ext4_group_desc *, ext4_group_t,
+                                     struct buffer_head *);
+ext4_fsblk_t ext4_valid_block_bitmap_padding(struct super_block *, ext4_group_t,
+                                             struct buffer_head *);
+struct ext4_iloc {
+    struct buffer_head *bh;
+    unsigned int offset;
+};
+struct dir_private_info {
+    u64 cookie;
+};
+struct file {
+    struct inode *inode;
+    void *private_data;
+};
+struct dir_context {
+    loff_t pos;
+    ext_dir_emit emit;
+    void *context;
+    int error;
+};
+#define EXT4_SB(sb) (&(sb)->info)
+#define EXT4_I(inode) (&(inode)->info)
+#define EXT4_INODE_SIZE(sb) (EXT4_SB(sb)->s_inode_size)
+#define EXT4_BLOCK_SIZE(sb) ((sb)->s_blocksize)
+#define EXT4_INODES_PER_GROUP(sb) le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_per_group)
+#define EXT4_CLUSTERS_PER_GROUP(sb) le32_to_cpu(EXT4_SB(sb)->s_es->s_clusters_per_group)
+#define EXT4_FITS_IN_INODE(raw, ei, field)                                                         \
+    (offsetof(struct ext4_inode, field) + sizeof((raw)->field) <=                                  \
+     EXT4_GOOD_OLD_INODE_SIZE + (ei)->i_extra_isize)
+#define EXT_FEATURE(name, field, bit)                                                              \
+    static inline bool ext4_has_feature_##name(const struct super_block *sb) {                     \
+        return (le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_##field) & (1U << bit)) != 0;             \
+    }
+EXT_FEATURE(metadata_csum, ro_compat, 10)
+EXT_FEATURE(gdt_csum, ro_compat, 4)
+EXT_FEATURE(sparse_super, ro_compat, 0)
+EXT_FEATURE(sparse_super2, compat, 9)
+EXT_FEATURE(64bit, incompat, 7)
+EXT_FEATURE(meta_bg, incompat, 4)
+EXT_FEATURE(ea_inode, incompat, 10)
+EXT_FEATURE(csum_seed, incompat, 13)
+EXT_FEATURE(filetype, incompat, 1)
+EXT_FEATURE(encrypt, incompat, 16)
+EXT_FEATURE(journal, compat, 2)
+EXT_FEATURE(flex_bg, incompat, 9)
+EXT_FEATURE(huge_file, ro_compat, 3)
+EXT_FEATURE(largedir, incompat, 14)
+EXT_FEATURE(casefold, incompat, 17)
+EXT_FEATURE(extra_isize, ro_compat, 6)
+EXT_FEATURE(dir_index, compat, 5)
+EXT_FEATURE(bigalloc, ro_compat, 9)
+int ext4_handle_clustersize(struct super_block *);
+#define EXT4_INODE_INDEX 12
+#define is_dx(dir)                                                                                 \
+    (ext4_has_feature_dir_index((dir)->i_sb) && ext4_test_inode_flag((dir), EXT4_INODE_INDEX))
+#define EXT4_HTREE_LEVEL_COMPAT 2
+#define EXT4_HTREE_LEVEL 3
+#define ERR_BAD_DX_DIR (-4094)
+#define HASH_NB_ALWAYS 1
+int ext4_hash_info_init(struct super_block *);
+int ext4_inode_info_init(struct super_block *, struct ext4_super_block *);
+#define EXT4_INODE_HUGE_FILE 18
+#define EXT4_INODE_INLINE_DATA 28
+#define ext4_test_inode_flag(inode, flag) (((inode)->flags & (1U << (flag))) != 0)
+#define EXT4_CLUSTER_SIZE(sb) (1024U << le32_to_cpu(EXT4_SB(sb)->s_es->s_log_cluster_size))
+int ext4_inode_is_fast_symlink(struct inode *);
+u64 ext4_inode_blocks(struct ext4_inode *, struct ext4_inode_info *, struct inode *);
+int ext4_ext_check_inode(struct inode *);
+int __ext4_ext_check(const char *, unsigned int, struct inode *, struct ext4_extent_header *, int,
+                     ext4_fsblk_t, ext4_lblk_t);
+#define ext4_error_inode_err(inode, ...) ((inode)->error = -EFSCORRUPTED)
+#define EXT4_BLOCKS_PER_GROUP(sb) le32_to_cpu(EXT4_SB(sb)->s_es->s_blocks_per_group)
+#define EXT4_BG_INODE_ZEROED 4
+#define ext4_debug(...) ((void)0)
+#define ext4_msg(...) ((void)0)
+#define sb_rdonly(sb) true
+#define ext4_lock_group(sb, group) ((void)0)
+#define ext4_unlock_group(sb, group) ((void)0)
+int ext4_check_descriptors(struct super_block *, ext4_fsblk_t, ext4_group_t *);
+#define EXT4_DESC_SIZE(sb) (EXT4_SB(sb)->s_desc_size)
+#define EXT4_DESC_PER_BLOCK(sb) (EXT4_SB(sb)->s_desc_per_block)
+#define EXT4_MAX_BLOCK_FILE_PHYS 0xFFFFFFFF
+static inline u32 ext_do_div(u64 *value, u32 divisor) {
+    u32 remainder = (u32)(*value % divisor);
+    *value /= divisor;
+    return remainder;
+}
+#define do_div(value, divisor) ext_do_div(&(value), (divisor))
+#ifndef min
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+void kfree_link(void *);
+void *ext4_read_inline_link(struct inode *);
+#define sb_bdev_nr_blocks(sb) ((sb)->s_archive_bytes >> (sb)->s_blocksize_bits)
+int generic_check_addressable(unsigned, u64);
+int ext4_check_geometry(struct super_block *, struct ext4_super_block *);
+#define EXT4_MIN_DESC_SIZE_64BIT 64
+static inline ext4_group_t ext4_get_groups_count(struct super_block *sb) {
+    return EXT4_SB(sb)->s_groups_count;
+}
+static inline struct ext4_group_desc *ext4_get_group_desc(struct super_block *sb, u32 group,
+                                                          void *bh) {
+    (void)bh;
+    if (EXT4_SB(sb)->s_archive_group_available &&
+        !(EXT4_SB(sb)->s_archive_group_available[group] & EXT_GROUP_DESCRIPTOR))
+        return NULL;
+    return (struct ext4_group_desc *)((u8 *)EXT4_SB(sb)->s_group_desc +
+                                      (size_t)group * EXT4_DESC_SIZE(sb));
+}
+ext4_fsblk_t ext4_block_bitmap(struct super_block *, struct ext4_group_desc *);
+ext4_fsblk_t ext4_inode_bitmap(struct super_block *, struct ext4_group_desc *);
+ext4_fsblk_t ext4_inode_table(struct super_block *, struct ext4_group_desc *);
+unsigned long ext4_bg_num_gdb(struct super_block *, ext4_group_t);
+unsigned int ext4_num_base_meta_blocks(struct super_block *, ext4_group_t);
+int ext4_setup_system_zone(struct super_block *);
+void ext4_release_system_zone(struct super_block *);
+int ext4_sb_block_valid(struct super_block *, struct inode *, ext4_fsblk_t, unsigned int);
+int ext4_inode_block_valid(struct inode *, ext4_fsblk_t, unsigned int);
+int ext4_check_blockref(const char *, unsigned int, struct inode *, __le32 *, unsigned int);
+static inline bool ext4_has_unknown_ext4_incompat_features(struct super_block *sb) {
+    return (EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(~EXT4_FEATURE_INCOMPAT_SUPP)) != 0;
+}
+#define EXT4_DIRENT_TAIL(block, size)                                                              \
+    ((struct ext4_dir_entry_tail *)((char *)(block) + (size) - sizeof(struct ext4_dir_entry_tail)))
+#define ext4_raw_inode(iloc) ((struct ext4_inode *)((iloc)->bh->b_data + (iloc)->offset))
+static inline int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc) {
+    iloc->bh = &inode->raw;
+    iloc->offset = 0;
+    return 0;
+}
+/* State is initialized while the archive owns the unpublished inode, then
+ * consumed by the original read paths; no concurrent kernel bitops apply. */
+static inline int ext4_test_inode_state(struct inode *inode, int bit) {
+    return (EXT4_I(inode)->i_state_flags >> bit) & 1UL;
+}
+static inline void ext4_set_inode_state(struct inode *inode, int bit) {
+    EXT4_I(inode)->i_state_flags |= 1UL << bit;
+}
+#define file_inode(file) ((file)->inode)
+#define inode_eq_iversion(inode, cookie) ((cookie) == 1)
+#define inode_query_iversion(inode) 1
+#define EXT4_ERROR_INODE(inode, ...) ((inode)->error = -EFSCORRUPTED)
+#define __ext4_error_inode(inode, ...) ((inode)->error = -EFSCORRUPTED)
+#define ext4_error_inode(inode, ...) ((inode)->error = -EFSCORRUPTED)
+#define __ext4_warning_inode(inode, ...) ((inode)->error = -EFSCORRUPTED)
+#define ext4_error_file(file, ...) ((file)->inode->error = -EFSCORRUPTED)
+static inline bool dir_emit(struct dir_context *ctx, const char *name, int len, u64 ino,
+                            unsigned int type) {
+    ctx->error = ctx->emit(ctx->context, (u32)ino, type, name, len);
+    return ctx->error == 0;
+}
+int ext4_bg_has_super(struct super_block *, ext4_group_t);
+int ext4_superblock_csum_verify(struct super_block *, struct ext4_super_block *);
+int ext4_check_feature_compatibility(struct super_block *, struct ext4_super_block *);
+int ext4_group_desc_csum_verify(struct super_block *, u32, struct ext4_group_desc *);
+ext4_fsblk_t descriptor_loc(struct super_block *, ext4_fsblk_t, int);
+int ext4_inode_bitmap_csum_verify(struct super_block *, struct ext4_group_desc *,
+                                  struct buffer_head *);
+int ext4_block_bitmap_csum_verify(struct super_block *, struct ext4_group_desc *,
+                                  struct buffer_head *);
+int ext4_inode_csum_verify(struct inode *, struct ext4_inode *, struct ext4_inode_info *);
+int ext4_iget_extra_inode(struct inode *, struct ext4_inode *, struct ext4_inode_info *);
+int ext4_find_inline_data_nolock(struct inode *);
+int ext4_read_inline_data(struct inode *, void *, unsigned int, struct ext4_iloc *);
+int ext4_read_inline_dir(struct file *, struct dir_context *, int *);
+int __ext4_check_dir_entry(const char *, unsigned int, struct inode *, struct file *,
+                           struct ext4_dir_entry_2 *, struct buffer_head *, char *, int,
+                           unsigned int);
+#define ext4_check_dir_entry(dir, file, de, bh, buf, size, offset)                                 \
+    __ext4_check_dir_entry(__func__, __LINE__, dir, file, de, bh, buf, size, offset)
+struct ext4_extent_header;
+int ext4_extent_block_csum_verify(struct inode *, struct ext4_extent_header *);
+int ext4_dirblock_csum_verify(struct inode *, struct buffer_head *);
+int ext4_dx_csum_verify(struct inode *, struct ext4_dir_entry *);
+typedef enum {
+    EXT4_IGET_NORMAL = 0,
+    EXT4_IGET_SPECIAL = 0x0001,
+    EXT4_IGET_HANDLE = 0x0002,
+    EXT4_IGET_BAD = 0x0004,
+    EXT4_IGET_EA_INODE = 0x0008,
+    EXT4_IGET_NOWAIT = 0x0010
+} ext4_iget_flags;
+int check_igot_inode(struct inode *, ext4_iget_flags, const char *, unsigned int);
+#define EXT4_EA_INODE_FL 0x00200000U
+#define is_bad_inode(inode) ((inode)->bad_inode)
+#define make_bad_inode(inode) ((inode)->bad_inode = true)
+int __ext4_iget(struct inode *, ext4_iget_flags, const char *, unsigned int);
+#endif

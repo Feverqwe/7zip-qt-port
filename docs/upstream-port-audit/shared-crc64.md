@@ -52,7 +52,7 @@ also adds CRC32 to this CMake library; its native runtime closure remains CRC64-
 
 Use the existing [update procedure](../upstream-update.md). Reproduce the
 original SDK baseline with `scripts/upstream_baseline.py verify/review`, selecting
-`src/C/XzCrc64.c` and `src/C/XzCrc64Opt.c` for review. Reproduce library originals
+`src/checksums/crc64/XzCrc64.c` and `src/checksums/crc64/XzCrc64Opt.c` for review. Reproduce library originals
 and proposed updates with `reference-verify/reference-review`, passing
 `--manifest docs/erofs-liblzma-baseline.json` and a checkout containing the
 recorded revision. Compare full original units and local adapters before

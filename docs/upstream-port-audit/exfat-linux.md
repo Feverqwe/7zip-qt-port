@@ -258,8 +258,8 @@ increments above 199; timestamps without UTC-valid also depended on the host
 timezone instead of the driver's default zero offset.
 
 Original `exfat_get_entry_time` and `exfat_adjust_tz` bodies are now compiled
-as C in `src/fs/exfat/misc.c`, using the existing authoritative
-`src/kernel/time/time.c:mktime64`. The latter retains its GPL-2.0 notice and
+as C in `src/formats/exfat/misc.c`, using the existing authoritative
+`src/compat/linux/time/time.c:mktime64`. The latter retains its GPL-2.0 notice and
 Linux source baseline; its original source hash is added to the exFAT manifest.
 All seventeen previous baseline source/license hashes were verified again.
 The module remains a separate GPL format module; standalone 7zz is unchanged.
@@ -299,7 +299,7 @@ Complete bodies, types, root-chain setup/validation, entry classification,
 cached-entry lifetime and `nls.c` output consumers were compared before adding
 this previously absent read feature. All eighteen baseline hashes were verified.
 
-Both original C readers now live in `src/fs/exfat/dir.c`; root-chain walking,
+Both original C readers now live in `src/formats/exfat/dir.c`; root-chain walking,
 first-match selection, deleted/unused entry handling, length limit, endian
 conversion and buffer release branches are retained. Omitted scope consists of
 write-side free-entry hints and their root VFS inode, plus the VFS mutex:
@@ -352,7 +352,7 @@ The original count loop now runs after loading the selected bitmap and stores
 partial-word mask are retained. Bitmap word/pointer/stride and mask constants
 use the existing explicit 64-bit service on LLP64 as well as LP64. A per-sector
 archive cancellation checkpoint also covers cached scans. Original
-`__sw_hweight32`/`__sw_hweight64` bodies live in `src/lib/hweight.c`, compiled
+`__sw_hweight32`/`__sw_hweight64` bodies live in `src/compat/linux/core/hweight.c`, compiled
 as C with their GPL-2.0 notice. Kernel export/include transport is omitted;
 the fixed word-width service chooses the software 64-bit branch without CPU
 instruction requirements. The 8/16-bit helpers are not dependencies and are

@@ -7,7 +7,7 @@ function(sevenzip_add_dependency_facade dependency core)
         string(TOUPPER "${dependency}" dependency_macro)
         add_library(${facade} STATIC)
         target_sources(${facade} PUBLIC FILE_SET CXX_MODULES
-            FILES src/dependencies/${dependency}.cppm)
+            FILES src/dependencies/${dependency}/${dependency}.cppm)
         target_link_libraries(${facade} PRIVATE ${core})
         target_compile_definitions(${facade} INTERFACE SEVENZIP_USE_${dependency_macro}_MODULE)
         set_target_properties(${facade} PROPERTIES
@@ -30,11 +30,11 @@ sevenzip_add_dependency_facade(linux_erofs sevenzip_erofs_core)
 if(SEVENZIP_ENABLE_DEPENDENCY_MODULES)
     # Qt disables automatic scanning on qt_add_executable targets. This shared
     # source imports the facade in both the plugin and its Qt test executable.
-    set_source_files_properties(src/squashfszlib.cpp
-        src/CPP/7zip/Compress/BrotliDecoder.cpp src/CPP/7zip/Archive/BrotliHandler.cpp
-        src/lz4framestream.cpp src/lzipstream.cpp src/smbreadonlyserver.cpp src/xfsarchivereader.cpp
-        src/erofsarchivereader.cpp src/erofsarchiveattributes.cpp src/erofshandler.cpp
-        tests/lz4_frame_tests.cpp tests/lzip_tests.cpp tests/smb_readonly_server_tests.cpp
+    set_source_files_properties(src/formats/squashfs/squashfszlib.cpp
+        src/codecs/brotli/BrotliDecoder.cpp src/formats/brotli/BrotliHandler.cpp
+        src/formats/lz4/lz4framestream.cpp src/formats/lzip/lzipstream.cpp src/mount/smb/smbreadonlyserver.cpp src/formats/xfs/xfsarchivereader.cpp
+        src/formats/erofs/erofsarchivereader.cpp src/formats/erofs/erofsarchiveattributes.cpp src/formats/erofs/erofshandler.cpp
+        tests/formats/lz4/lz4_frame_tests.cpp tests/formats/lzip/lzip_tests.cpp tests/mount/smb_readonly_server_tests.cpp
         PROPERTIES CXX_SCAN_FOR_MODULES ON)
     sevenzip_configure_module_cache(sevenzip_squashfs)
     sevenzip_configure_module_cache(sevenzip_brotli)

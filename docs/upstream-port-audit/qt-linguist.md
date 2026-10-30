@@ -93,7 +93,7 @@ Resource-ID helpers now read the same Qt catalog, keeping upstream caller names,
 resource IDs, fallback branches, colon handling and standard-button mappings.
 The English ID bridge imports all 444 original entries from the official 26.04
 release assets. Original archive URL and hashes remain in
-`resources/7zip/provenance.json`; the original files are no longer runtime assets.
+`third_party/7zip-help/provenance.json`; the original files are no longer runtime assets.
 Comparison with the pinned RC string tables identified 14 additional translatable
 messages, now added to the bridge and Russian catalog. CRC/SHA algorithm names
 and the codec-icon extension map remain data, not translated UI prose.

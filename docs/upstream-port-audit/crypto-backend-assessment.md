@@ -146,7 +146,7 @@ trees и compiler caches. Full gate и slow suites не запускались.
 `b88c6bc09339de32f7d18bbab900686b244f42ba` из
 <https://github.com/ip7z/7zip.git>. Полный исходный unit и SHA256 закреплены
 в [baseline](../upstream-baseline.json); его единственный адаптированный владелец
-теперь `src/CPP/7zip/Crypto/HmacSha1.cpp`, включая native runtime overlay.
+теперь `src/crypto/hmac/HmacSha1.cpp`, включая native runtime overlay.
 Лицензия 7-Zip и исходные notices сохранены.
 
 Для нулевой длины ключа пропускается только `memcpy`: SDK может передать

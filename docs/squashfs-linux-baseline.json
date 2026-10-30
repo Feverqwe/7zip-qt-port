@@ -78,5 +78,32 @@
     "include/linux/lz4.h": "lz4-frame-baseline.json: lib/lz4.h",
     "lib/lz4/lz4_decompress.c": "lz4-frame-baseline.json: lib/lz4.c",
     "lib/lz4/lz4defs.h": "lz4-frame-baseline.json: lib/lz4.h"
+  },
+  "owners": {
+    "fs/squashfs/block.c": "src/formats/squashfs/block.c",
+    "fs/squashfs/cache.c": "src/formats/squashfs/cache.c",
+    "fs/squashfs/decompressor.c": "src/formats/squashfs/decompressor.c",
+    "fs/squashfs/decompressor.h": "src/formats/squashfs/decompressor.h",
+    "fs/squashfs/decompressor_single.c": "src/formats/squashfs/decompressor_single.c",
+    "fs/squashfs/export.c": "src/formats/squashfs/export.c",
+    "fs/squashfs/file.c": "src/formats/squashfs/file.c",
+    "fs/squashfs/fragment.c": "src/formats/squashfs/fragment.c",
+    "fs/squashfs/id.c": "src/formats/squashfs/id.c",
+    "fs/squashfs/lz4_wrapper.c": "src/formats/squashfs/lz4_wrapper.c",
+    "fs/squashfs/lzo_wrapper.c": "src/formats/squashfs/lzo_wrapper.c",
+    "fs/squashfs/page_actor.c": "src/formats/squashfs/page_actor.c",
+    "fs/squashfs/page_actor.h": "src/formats/squashfs/page_actor.h",
+    "fs/squashfs/squashfs.h": "src/formats/squashfs/squashfs.h",
+    "fs/squashfs/squashfs_fs.h": "src/formats/squashfs/squashfs_fs.h",
+    "fs/squashfs/squashfs_fs_i.h": "src/formats/squashfs/squashfs_fs_i.h",
+    "fs/squashfs/squashfs_fs_sb.h": "src/formats/squashfs/squashfs_fs_sb.h",
+    "fs/squashfs/xattr.c": "src/formats/squashfs/xattr.c",
+    "fs/squashfs/xattr.h": "src/formats/squashfs/xattr.h",
+    "fs/squashfs/xattr_id.c": "src/formats/squashfs/xattr_id.c",
+    "fs/squashfs/xz_wrapper.c": "src/formats/squashfs/xz_wrapper.c",
+    "include/linux/kdev_t.h": "src/compat/linux/include/linux/kdev_t.h",
+    "include/linux/lzo.h": "src/compat/linux/include/linux/lzo.h",
+    "lib/lzo/lzo1x_decompress_safe.c": "src/codecs/lzo/lzo1x_decompress_safe.c",
+    "lib/lzo/lzodefs.h": "src/codecs/lzo/lzodefs.h"
   }
 }

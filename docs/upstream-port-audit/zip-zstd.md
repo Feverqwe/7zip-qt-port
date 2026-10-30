@@ -218,7 +218,7 @@ log 31, а libzstd ограничивает его 30; runtime 32-bit не пр�
 На macOS arm64 собран diagnostic probe из неизменённых official common/
 decompress C units через существующий compiler cache (`ZSTD_DISABLE_ASM`).
 Он вызывает только libzstd public APIs и не содержит decoder implementation.
-Использованы существующие `tests/zstd_fixture.py`: 22 valid и 14 malformed cases,
+Использованы существующие `tests/formats/zstd/support/zstd_fixture.py`: 22 valid и 14 malformed cases,
 плюс empty input, size overflow, пять window boundaries и frame с sector padding —
 44 inputs. Для каждого сравнены SDK sidecar extraction, single-pass,
 default/max-window stream и остановка после первого frame. Вход/выход —
@@ -279,7 +279,7 @@ Feature branch: `feature/zstd-decoder-libzstd`, baseline Desktop `67d50fbc`.
 Замена сохраняет upstream `C/ZstdDec.c` framing/state/result API, raw/RLE
 partial reads, window/output bounds, XXH64, metadata, skipped/concatenated
 frames и consumed/unused bytes. Его единственный owner перемещён в
-`src/C/ZstdDec.c`. Полный оригинал SDK 26.05
+`src/codecs/zstd/ZstdDec.c`. Полный оригинал SDK 26.05
 `b88c6bc09339de32f7d18bbab900686b244f42ba`, repository
 <https://github.com/ip7z/7zip.git>, закреплён SHA256 в существующем
 [SDK manifest](../upstream-baseline.json). C++ Code/Read и все consumers
@@ -318,11 +318,11 @@ block API возвращает размер до проверки frame size/che
 
 Повторяемая source verification/review использует команды выше; SDK:
 `python3 scripts/upstream_baseline.py verify --upstream <sdk-checkout>` и
-`review --upstream <sdk-checkout> --new-revision <commit> --path src/C/ZstdDec.c --output <report>`.
+`review --upstream <sdk-checkout> --new-revision <commit> --path src/codecs/zstd/ZstdDec.c --output <report>`.
 Новый snapshot сравнивается с полным original и локальным parser, не заменяет
 частичную адаптацию полным SDK module.
 Текущее отличие parser от исходного SDK воспроизводится отдельно:
-`git -C <sdk-checkout> show b88c6bc09339de32f7d18bbab900686b244f42ba:C/ZstdDec.c | diff -u --label SDK-original - src/C/ZstdDec.c`.
+`git -C <sdk-checkout> show b88c6bc09339de32f7d18bbab900686b244f42ba:C/ZstdDec.c | diff -u --label SDK-original - src/codecs/zstd/ZstdDec.c`.
 Такой diff сохранён в `build/zstd-recovery/source-review.md`: кроме удаления
 SDK compressed-block implementation, context/allocator glue и raw/RLE history
 registration frame parser не переписывался. Разница форматирования отдельно

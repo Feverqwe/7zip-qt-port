@@ -7,7 +7,7 @@
 ## Producers и отчёты
 
 Найдите suite и producer по имени диалога в контракте и текущих tests.
-`tests/layout_inspection.h` предоставляет запись widget JSON.
+`tests/ui/support/layout_inspection.h` предоставляет запись widget JSON.
 Соберите producer через `build.sh`, затем запустите выбранные suites через
 `ctest.sh`; [verify](../development.md#local-commands) умеет выбрать targets
 и требуемые fixtures по CTest registrations.

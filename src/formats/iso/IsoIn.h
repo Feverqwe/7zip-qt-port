@@ -1,0 +1,386 @@
+// Archive/IsoIn.h
+
+#ifndef ZIP7_INC_ARCHIVE_ISO_IN_H
+#define ZIP7_INC_ARCHIVE_ISO_IN_H
+
+#include "Common/MyCom.h"
+
+#include "7zip/IStream.h"
+
+#include "7zip/Archive/Iso/IsoHeader.h"
+#include "formats/iso/IsoItem.h"
+
+namespace NArchive {
+namespace NIso {
+
+struct CUnexpectedEndException {};
+struct CHeaderErrorException {};
+// Read-side fields of Linux isofs_options; device/VFS mount services stay outside the archive.
+struct CReadOptions {
+    bool NoRock = false, NoJoliet = false, NoCompress = false;
+    bool Hide = false, ShowAssociated = false, Cruft = false;
+    UInt32 SbSector = 0;
+};
+
+struct CDir : public CDirRecord {
+    CDir *Parent = NULL;
+    CObjectVector<CDir> _subItems;
+    CObjectVector<CDirRecord> DirectorySections;
+    bool DirectoryRead = false;
+
+    CDir() = default;
+    CDir(const CDir &) = default;
+    CDir &operator=(const CDir &) = default;
+    ~CDir() { Clear(); }
+
+    void Clear() {
+        CDir *current = this;
+        for (;;) {
+            if (!current->_subItems.IsEmpty()) {
+                CDir &child = current->_subItems.Back();
+                if (!child._subItems.IsEmpty()) {
+                    child.Parent = current;
+                    current = &child;
+                } else
+                    current->_subItems.DeleteBack();
+            } else {
+                if (current == this)
+                    break;
+                CDir *owner = current->Parent;
+                owner->_subItems.DeleteBack();
+                current = owner;
+            }
+        }
+        Parent = NULL;
+        DirectorySections.Clear();
+        DirectoryRead = false;
+    }
+
+    AString GetPath(bool checkSusp, unsigned skipSize) const {
+        AString s;
+
+        unsigned len = 0;
+        const CDir *cur = this;
+
+        for (;;) {
+            unsigned curLen;
+            cur->GetNameCur(checkSusp, skipSize, curLen);
+            len += curLen;
+            cur = cur->Parent;
+            if (!cur || !cur->Parent)
+                break;
+            len++;
+        }
+
+        char *p = s.GetBuf_SetEnd(len) + len;
+
+        cur = this;
+
+        for (;;) {
+            unsigned curLen;
+            const Byte *name = cur->GetNameCur(checkSusp, skipSize, curLen);
+            p -= curLen;
+            if (curLen != 0)
+                memcpy(p, name, curLen);
+            cur = cur->Parent;
+            if (!cur || !cur->Parent)
+                break;
+            p--;
+            *p = CHAR_PATH_SEPARATOR;
+        }
+
+        return s;
+    }
+
+    void GetPathU(UString &s) const {
+        s.Empty();
+
+        unsigned len = 0;
+        const CDir *cur = this;
+
+        for (;;) {
+            unsigned curLen = (unsigned)(cur->FileId.Size() / 2);
+            const Byte *fid = cur->FileId;
+
+            unsigned i;
+            for (i = 0; i < curLen; i++)
+                if (fid[i * 2] == 0 && fid[i * 2 + 1] == 0)
+                    break;
+            len += i;
+            cur = cur->Parent;
+            if (!cur || !cur->Parent)
+                break;
+            len++;
+        }
+
+        wchar_t *p = s.GetBuf_SetEnd(len) + len;
+
+        cur = this;
+
+        for (;;) {
+            unsigned curLen = (unsigned)(cur->FileId.Size() / 2);
+            const Byte *fid = cur->FileId;
+
+            unsigned i;
+            for (i = 0; i < curLen; i++)
+                if (fid[i * 2] == 0 && fid[i * 2 + 1] == 0)
+                    break;
+            curLen = i;
+
+            p -= curLen;
+            for (i = 0; i < curLen; i++)
+                p[i] = (wchar_t)(((wchar_t)fid[i * 2] << 8) | fid[i * 2 + 1]);
+            cur = cur->Parent;
+            if (!cur || !cur->Parent)
+                break;
+            p--;
+            *p = WCHAR_PATH_SEPARATOR;
+        }
+    }
+};
+
+struct CDateTime {
+    Byte Raw[17];
+    UInt16 Year;
+    Byte Month;
+    Byte Day;
+    Byte Hour;
+    Byte Minute;
+    Byte Second;
+    Byte Hundredths;
+    signed char GmtOffset; // min intervals from -48 (West) to +52 (East) recorded.
+
+    bool NotSpecified() const {
+        for (unsigned i = 0; i < 16; ++i)
+            if (Raw[i] != 0 && Raw[i] != '0' && Raw[i] != ' ')
+                return false;
+        return true;
+    }
+
+    bool GetFileTime(NWindows::NCOM::CPropVariant &prop) const {
+        if (NotSpecified())
+            return false;
+        for (unsigned i = 0; i < 16; ++i)
+            if (Raw[i] < '0' || Raw[i] > '9')
+                return false;
+        unsigned char date[17];
+        memcpy(date, Raw, sizeof(date));
+        const timespec64 time = sevenzip_iso_long_date(date);
+        if (time.tv_sec < -11644473600LL)
+            return false;
+        prop.SetAsTimeFrom_Ft64_Prec(UInt64(time.tv_sec + 11644473600LL) * 10000000 +
+                                         time.tv_nsec / 100,
+                                     k_PropVar_TimePrec_Base + 2);
+        return true;
+    }
+};
+
+struct CBootRecordDescriptor {
+    Byte BootSystemId[32]; // a-characters
+    Byte BootId[32];       // a-characters
+    Byte BootSystemUse[1977];
+};
+
+struct CBootValidationEntry {
+    Byte PlatformId;
+    Byte Id[24]; // to identify the manufacturer/developer of the CD-ROM.
+};
+
+struct CBootInitialEntry {
+    bool Bootable;
+    Byte BootMediaType;
+    UInt16 LoadSegment;
+    /* This is the load segment for the initial boot image. If this
+       value is 0 the system will use the traditional segment of 7C0. If this value
+       is non-zero the system will use the specified segment. This applies to x86
+       architectures only. For "flat" model architectures (such as Motorola) this
+       is the address divided by 10. */
+    Byte SystemType;    // This must be a copy of byte 5 (System Type) from the
+                        // Partition Table found in the boot image.
+    UInt16 SectorCount; // This is the number of virtual/emulated sectors the system
+                        // will store at Load Segment during the initial boot procedure.
+    UInt32 LoadRBA;     // This is the start address of the virtual disk. CDs use
+                        // Relative/Logical block addressing.
+
+    Byte VendorSpec[20];
+
+    UInt32 GetSize() const {
+        // if (BootMediaType == NBootMediaType::k1d44Floppy) (1440 << 10);
+        return (UInt32)SectorCount * 512;
+    }
+
+    bool Parse(const Byte *p);
+    AString GetName() const;
+};
+
+struct CVolumeDescriptor {
+    Byte VolFlags;
+    Byte SystemId[32];      // a-characters. An identification of a system
+                            // which can recognize and act upon the content of the Logical
+                            // Sectors with logical Sector Numbers 0 to 15 of the volume.
+    Byte VolumeId[32];      // d-characters. An identification of the volume.
+    UInt32 VolumeSpaceSize; // the number of Logical Blocks in which the Volume Space of the volume
+                            // is recorded
+    Byte EscapeSequence[32];
+    UInt16 VolumeSetSize;
+    UInt16 VolumeSequenceNumber; // the ordinal number of the volume in the Volume Set of which the
+                                 // volume is a member.
+    UInt16 LogicalBlockSize;
+    UInt32 PathTableSize;
+    UInt32 LPathTableLocation;
+    UInt32 LOptionalPathTableLocation;
+    UInt32 MPathTableLocation;
+    UInt32 MOptionalPathTableLocation;
+    CDirRecord RootDirRecord;
+    Byte VolumeSetId[128];
+    Byte PublisherId[128];
+    Byte DataPreparerId[128];
+    Byte ApplicationId[128];
+    Byte CopyrightFileId[37];
+    Byte AbstractFileId[37];
+    Byte BibFileId[37];
+    CDateTime CTime;
+    CDateTime MTime;
+    CDateTime ExpirationTime;
+    CDateTime EffectiveTime;
+    // Byte FileStructureVersion; // = 1;
+    Byte ApplicationUse[512];
+
+    bool IsJoliet() const {
+        const Byte b = EscapeSequence[2];
+        return (EscapeSequence[0] == 0x25 && EscapeSequence[1] == 0x2F &&
+                (b == 0x40 || b == 0x43 || b == 0x45));
+    }
+
+    UInt64 Get_VolumeSpaceSize_inBytes() const {
+        return (UInt64)VolumeSpaceSize * LogicalBlockSize;
+    }
+};
+
+struct CRef {
+    const CDir *Dir;
+    UInt32 Index;
+    UInt32 NumExtents;
+    UInt64 TotalSize;
+    bool Valid;
+};
+
+const unsigned kBlockSize = 1 << 11;
+
+class CInArchive {
+    UInt64 _position;
+    unsigned m_BufferPos;
+    unsigned m_BufferSize;
+
+    void Skip(size_t size);
+    void SkipZeros(size_t size);
+    Byte ReadByte();
+    void ReadBytes(Byte *data, UInt32 size);
+    UInt16 ReadUInt16();
+    UInt32 ReadUInt32Le();
+    UInt32 ReadUInt32Be();
+    UInt32 ReadUInt32();
+    UInt64 ReadUInt64();
+    unsigned ReadDigits(unsigned numDigits);
+    void ReadDateTime(CDateTime &d);
+    void ReadRecordingDateTime(CRecordingDateTime &t);
+    void ReadDirRecord(CDirRecord &r, unsigned len, bool isJolietDescriptor = false);
+
+    void ReadBootRecordDescriptor(CBootRecordDescriptor &d);
+    void ReadVolumeDescriptor(CVolumeDescriptor &d);
+
+    void SeekToBlock(UInt32 blockIndex);
+    void SeekToPosition(UInt64 position);
+    CRef ReadExtentGroup(CDir &parent, unsigned &index);
+    HRESULT ReadDir(CDir &d, unsigned level, const CRef *sections = NULL);
+    HRESULT ReadDirRecords(CDir &d, bool root, const CRef *sections);
+    unsigned DirSectionCount(const CDir &d, const CRef *sections) const;
+    const CDirRecord &DirSection(const CDir &d, const CRef *sections, unsigned index) const;
+    void CreateRefs(CDir &d);
+
+    void ReadBootInfo();
+    HRESULT Open2();
+    sevenzip_iso_state _rockState{};
+    HRESULT _rockResult = S_OK;
+    static int RockRead(void *, uint64_t, void *, size_t);
+    static int RockRelocate(void *, uint32_t, sevenzip_iso_inode *);
+    HRESULT ReadRock(CDirRecord &, bool namesOnly = false);
+    HRESULT ReadDirectory(CDir &);
+    HRESULT ReadName(CDirRecord &);
+    HRESULT SelectRockVolume(int primary, int joliet);
+
+  public:
+    char NameMapping = 0;
+    int NameCharset = 0;
+    CReadOptions ReadOptions;
+    HRESULT Open(IInStream *inStream, IArchiveOpenCallback *openCallback);
+    void Clear();
+
+    UInt64 _fileSize;
+    UInt64 PhySize;
+
+    CRecordVector<CRef> Refs;
+    CObjectVector<CVolumeDescriptor> VolDescs;
+    int MainVolDescIndex;
+    // UInt32 BlockSize;
+    CObjectVector<CBootInitialEntry> BootEntries;
+
+  private:
+    bool _bootIsDefined;
+
+  public:
+    bool IsArc;
+    bool UnexpectedEnd;
+    bool HeadersError;
+    bool TooDeepDirs;
+    bool TooBigMetadata;
+    bool SelfLinkedDirs;
+    bool IsSusp;
+    unsigned SuspSkipSize;
+
+  private:
+    int _expand_BootEntries_index;
+
+    CRecordVector<UInt64> UniqStartLocations;
+
+    void UpdatePhySize(const UInt64 start, const UInt64 size) {
+        const UInt64 end = start + size;
+        if (PhySize < end)
+            PhySize = end;
+    }
+
+  public:
+    bool IsJoliet() const { return VolDescs[MainVolDescIndex].IsJoliet(); }
+
+    UInt64 GetBootItemSize(unsigned index) const;
+    bool CheckRecord(const CDirRecord &record) const;
+    bool CheckRef(const CRef &ref) const;
+    UInt64 GetExtentSize(const CRef &ref, UInt32 index, UInt64 offset) const;
+    bool IsSupported(const CRef &ref) const;
+    UInt64 GetUnpackSize(const CRef &ref) const {
+        const CDir &item = ref.Dir->_subItems[ref.Index];
+        if (item.RockDefined && item.RockInode.i_file_format == 2 &&
+            (item.RockInode.i_mode & 0170000) == 0100000)
+            return item.RockInode.i_size;
+        return ref.TotalSize;
+    }
+    UInt64 GetDataPosition(const CDirRecord &record) const {
+        return record.GetDataBlock() * VolDescs[MainVolDescIndex].LogicalBlockSize;
+    }
+
+  private:
+    CDir _rootDir;
+    IInStream *_stream;
+    IArchiveOpenCallback *_openCallback;
+    UInt64 _numFiles;
+    UInt64 _processedBytes;
+    UInt64 _processedBytes_prev;
+
+    Byte m_Buffer[kBlockSize];
+    CBootRecordDescriptor _bootDesc;
+};
+
+} // namespace NIso
+} // namespace NArchive
+
+#endif

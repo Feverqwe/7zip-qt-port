@@ -4,6 +4,13 @@ Start with [dependencies](#dependencies) for setup, [local commands](#local-comm
 for focused builds/tests, or [automation](#automation) for optional remote runners.
 Native runtime preparation and deployment requirements are described below.
 
+Sevenzip is an independent application based on 7-Zip. The required
+[source ownership model](architecture.md#module-directories-and-source-ownership)
+keeps all 7-Zip build inputs in this repository. Unchanged 7-Zip sources are
+archived locally and expanded into the build workspace; neither configuration
+nor runtime/SFX preparation requires a separate upstream checkout or fetch.
+Project module directory migration and final platform acceptance are pending.
+
 The Qt kit must include Remote Objects and its `repc` compiler. Install the
 `qtremoteobjects` module alongside the selected Qt version on all platforms.
 Both GUI processes must come from the same build: their generated operation
@@ -21,8 +28,8 @@ private-module warning and rejects a missing matching private SDK. Bundled packa
 same Qt runtime; this adds no separate runtime module.
 
 Native console SFX can be built from the recorded official baseline with
-`./scripts/build-sfx.sh [upstream-checkout] [artifact-directory]` on macOS/Linux.
-Defaults are the read-only sibling checkout and the preset’s deployment. The script extracts
+`./scripts/build-sfx.sh [artifact-directory]` on macOS/Linux.
+The default output is the release preset's SFX deployment. The script extracts
 an owned source snapshot, builds upstream SFXCon unchanged and writes
 `7zCon.sfx`, its license and a SHA-256/source/host/version JSON record. It refuses
 to replace an unowned module artifact. SFX builds retain their incremental outputs
@@ -31,12 +38,12 @@ in [the port audit](upstream-port-audit.md). Windows uses
 the official GUI `7z.sfx` runtime; this script does not create a Windows module.
 
 For Windows, use `scripts/build-sfx.ps1 -Architecture arm64` (or `x64`/`x86`)
-in a matching Visual Studio developer PowerShell. It requires Git, Python,
+in a matching Visual Studio developer PowerShell. It requires Python,
 MSVC/nmake, linker and resource compiler, snapshots the same recorded revision,
 and builds unchanged `Bundles/SFXWin/makefile` with `PLATFORM`. Optional
-`-UpstreamCheckout` and `-OutputDirectory` select the read-only source and output.
+`-OutputDirectory` selects the output.
 It writes `7z.sfx`, `7z.sfx.json` and `7z-LICENSE.txt`, refuses unowned/reparse-point
-artifacts, and never builds in the sibling checkout. The sidecar producer must
+artifacts, and uses the repository-owned source archive. The sidecar producer must
 match the Windows builder. Use a scoped Visual Studio developer environment
 rather than relying on the default SSH PATH.
 `build.sh` requests process-local English MSVC diagnostics (`VSLANG=1033`)
@@ -48,7 +55,7 @@ appear damaged, collect diagnostics before proposing a cache/build-tree repair;
 follow [cache retention](../AGENTS.md#validation-scope).
 
 Archive operations require the official native codec runtime.
-`./scripts/build-codec-runtime.sh [upstream-checkout] [artifact-directory]`
+`./scripts/build-codec-runtime.sh [artifact-directory]`
 builds `UI/Console` and `Bundles/Format7zF` from the pinned source
 with the engine adaptations selected in the [baseline](upstream-baseline.json),
 into the preset’s runtime deployment on macOS/Linux. It produces the reference `7z`, `7z.so`,
@@ -106,7 +113,7 @@ Use the build wrapper after preparing a deployment: it selects that preset's
 exact native module and refreshes stale module paths in the existing CMake cache.
 Completed package evidence and its limits are linked from [acceptance](ux-port-audit.md).
 On Windows, `scripts/build-codec-runtime.ps1 -Architecture arm64` (or `x64`/`x86`)
-uses a matching developer environment and the same optional source/output arguments
+uses a matching developer environment and the same optional output arguments
 as the SFX builder. It compiles unchanged Console/Format7zF makefiles and
 produces the reference client, native module, license and runtime manifest.
 Dependency facade interfaces also need CMake and Ninja. The native Make/NMake
@@ -115,7 +122,7 @@ the 7-Zip engine keeps its own build and C sources retain their language.
 Both codec-runtime builders retain their source/build directory across runs,
 preserve unchanged source timestamps and use the existing compiler cache when
 available. Runtime provenance records the adapted-source hashes; changing one
-invalidates the prepared-runtime cache. The sibling upstream remains read-only.
+invalidates the prepared-runtime cache. All source inputs come from this repository.
 For engine-only checks, `python3 scripts/prepare-runtime.py --codec-only`
 prepares the console and codec core without building SFX or external CMake modules.
 Do not install test-only codec fixtures in a production runtime. Earlier ARM64
@@ -437,10 +444,8 @@ not publish a cache hit. The builders also prepare the pinned reference client.
 `verify.py` uses the existing runtime by default. Pass `--prepare-runtime`
 to prepare or refresh it before verification. When the prepared
 module exists, `build.sh` configures its exact path, replacing a stale cached
-system module. The sibling upstream checkout stays read-only. If it is missing
-or lacks the pinned revision, preparation downloads that revision from the
-recorded upstream repository into a local build cache. Network access is needed
-only when the required source is not already available locally.
+system module. Pinned source archives are included in the repository, so runtime
+preparation requires neither an external upstream checkout nor source downloads.
 
 Remote verification uses the same command in the persistent guest worktree
 selected by the current Git branch; see [sync, locks and recovery](hyperv-runners.md#persistent-worktree).
@@ -612,7 +617,8 @@ There is no project pre-commit hook. Run `scripts/check.sh` manually according t
 
 ## Upstream checkout
 
-The sibling `../7zip-upstream` should point to `https://github.com/ip7z/7zip.git`. Clone it separately when absent:
+An optional reference checkout can point to `https://github.com/ip7z/7zip.git`.
+Use one for original-source comparison and upstream update review:
 
 ```sh
 git clone https://github.com/ip7z/7zip.git ../7zip-upstream

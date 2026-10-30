@@ -1,0 +1,327 @@
+#include "filemanager/views/filetable.h"
+#include "filemanager/panels/Panel.h"
+#include "filemanager/panels/PanelSort.h"
+#include "ui/theme/qtsemanticcolors.h"
+
+#include <QEvent>
+#include <QHeaderView>
+#include <QKeyEvent>
+#include <QMimeData>
+#include <QMouseEvent>
+#include <QPainter>
+#include <QScopedValueRollback>
+#include <QSignalBlocker>
+#include <QStyledItemDelegate>
+#include <QUrl>
+
+namespace {
+class FileColumnHeader final : public QHeaderView {
+  public:
+    using QHeaderView::QHeaderView;
+    bool columnClick = false;
+    bool dispatchingClick = false;
+    std::function<void()> sortClick;
+
+  protected:
+    void mousePressEvent(QMouseEvent *event) override {
+        {
+            const QScopedValueRollback<bool> click(dispatchingClick,
+                                                   event->button() == Qt::LeftButton);
+            QHeaderView::mousePressEvent(event);
+        }
+        finishSortClick();
+    }
+    void mouseReleaseEvent(QMouseEvent *event) override {
+        {
+            const QScopedValueRollback<bool> click(dispatchingClick,
+                                                   event->button() == Qt::LeftButton);
+            QHeaderView::mouseReleaseEvent(event);
+        }
+        finishSortClick();
+    }
+
+  private:
+    void finishSortClick() {
+        if (!sortClick)
+            return;
+        auto action = std::move(sortClick);
+        sortClick = {};
+        columnClick = true;
+        action();
+        columnClick = false;
+    }
+};
+
+bool sameColumnIdentity(const CPropColumn &left, const CPropColumn &right) {
+    return left.ID == right.ID && left.Type == right.Type && left.IsRawProp == right.IsRawProp &&
+           left.Name == right.Name;
+}
+class FileRowDelegate final : public QStyledItemDelegate {
+  public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+    void initStyleOption(QStyleOptionViewItem *option, const QModelIndex &index) const override {
+        QStyledItemDelegate::initStyleOption(option, index);
+        const auto *list = qobject_cast<QListView *>(parent());
+        // The shared table model aligns names to the left. LVS_ICON labels
+        // belong below the icon, centered within their own cell.
+        if (list && list->viewMode() == QListView::IconMode)
+            option->displayAlignment = Qt::AlignHCenter | Qt::AlignTop;
+    }
+    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override {
+        const QSize size = QStyledItemDelegate::sizeHint(option, index);
+        const auto *list = qobject_cast<QListView *>(parent());
+        // ListMode otherwise paints the full size hint across adjacent grid cells.
+        if (list && list->viewMode() == QListView::ListMode && list->gridSize().isValid())
+            return size.boundedTo(list->gridSize());
+        return size;
+    }
+    void updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option,
+                              const QModelIndex &index) const override {
+        QStyledItemDelegate::updateEditorGeometry(editor, option, index);
+#ifdef Q_OS_MACOS
+        // Leave room for Cocoa's external focus ring inside an icon/list cell.
+        if (qobject_cast<QListView *>(parent()) && editor->testAttribute(Qt::WA_MacShowFocusRect)) {
+            const int margin =
+                editor->style()->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, editor);
+            editor->setGeometry(editor->geometry().adjusted(margin, 0, -margin, 0));
+        }
+        if (qobject_cast<QTableView *>(parent()) &&
+            editor->testAttribute(Qt::WA_MacShowFocusRect)) {
+            // Cocoa paints QFocusFrame outside the editor. Keep its vertical
+            // margin inside the row, including the first visible row.
+            const int margin =
+                editor->style()->pixelMetric(QStyle::PM_FocusFrameVMargin, nullptr, editor);
+            editor->setGeometry(editor->geometry().adjusted(0, margin, 0, -margin));
+        }
+#endif
+    }
+    bool eventFilter(QObject *editor, QEvent *event) override {
+        if (event->type() == QEvent::KeyPress) {
+            const auto *key = static_cast<QKeyEvent *>(event);
+            if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) {
+                emit commitData(static_cast<QWidget *>(editor));
+                emit closeEditor(static_cast<QWidget *>(editor));
+                return true;
+            }
+        }
+        return QStyledItemDelegate::eventFilter(editor, event);
+    }
+    void paint(QPainter *painter, const QStyleOptionViewItem &original,
+               const QModelIndex &index) const override {
+        QStyleOptionViewItem option(original);
+        const auto *list = qobject_cast<QListView *>(parent());
+        if (list && list->viewMode() == QListView::IconMode) {
+            // Native styles can extend the label's focus/text area beyond
+            // the content rect. Reserve that margin inside the icon cell.
+            const int margin =
+                list->style()->pixelMetric(QStyle::PM_FocusFrameHMargin, &option, list);
+            option.rect.adjust(margin, 0, -margin, 0);
+        }
+        if (index.data(Qt::UserRole + 19).toBool())
+            option.state |= QStyle::State_Selected;
+        const QVariant foreground = index.data(Qt::ForegroundRole);
+        if (foreground.isValid())
+            for (const auto group : {QPalette::Active, QPalette::Inactive, QPalette::Disabled})
+                option.palette.setColor(
+                    group, QPalette::HighlightedText,
+                    QtSemanticColors::readable(qvariant_cast<QBrush>(foreground).color(),
+                                               option.palette.color(group, QPalette::Highlight)));
+        auto *table = dynamic_cast<const FileTable *>(parent());
+        const int primary = table ? table->columnForVisibleProperty(0) : -1;
+        if (!table || table->fullRowHighlight() || index.column() == (primary < 0 ? 0 : primary)) {
+            QStyledItemDelegate::paint(painter, option, index);
+            return;
+        }
+        if (option.state.testFlag(QStyle::State_Selected))
+            painter->fillRect(option.rect, option.palette.base());
+        QStyleOptionViewItem narrowed(option);
+        narrowed.state &= ~QStyle::State_Selected;
+        QStyledItemDelegate::paint(painter, narrowed, index);
+    }
+};
+} // namespace
+
+QAbstractItemDelegate *CreateFileRowDelegate(QWidget *parent) {
+    return new FileRowDelegate(parent);
+}
+
+FileTable::FileTable(int columns, QWidget *parent)
+    : QTableView(parent), model_(new FilePanelModel(*this)) {
+    setModel(model_);
+    QStringList labels;
+    for (int i = 0; i < columns; ++i)
+        labels << QString();
+    model_->setColumns(labels);
+    setItemDelegate(CreateFileRowDelegate(this));
+    setHorizontalHeader(new FileColumnHeader(Qt::Horizontal, this));
+    horizontalHeader()->setSectionsClickable(true);
+}
+
+void FileTable::invalidateLanguageText() { model_->invalidateLanguageText(); }
+
+bool FileTable::takeSourceColumnClick() {
+    auto *header = dynamic_cast<FileColumnHeader *>(horizontalHeader());
+    if (!header)
+        return false;
+    const bool clicked = header->columnClick;
+    header->columnClick = false;
+    return clicked;
+}
+
+bool FileTable::deferSourceColumnClick(std::function<void()> action) {
+    auto *header = dynamic_cast<FileColumnHeader *>(horizontalHeader());
+    if (!header || !header->dispatchingClick)
+        return false;
+    // Finish Qt's automatic sort before projecting the source click result.
+    header->sortClick = std::move(action);
+    return true;
+}
+
+const CPropColumn *FileTable::sourceColumn(int column) const {
+    if (!sourcePanel || column < 0)
+        return nullptr;
+    if (column < visibleColumnIndices.size()) {
+        const int index = visibleColumnIndices[column];
+        const CPropColumns &visible = sourcePanel->GetVisibleColumns();
+        if (index >= 0 && unsigned(index) < visible.Size())
+            return &visible[unsigned(index)];
+    }
+    const CPropColumns &columns = sourcePanel->GetColumns();
+    if (!sourceColumnIndices.isEmpty()) {
+        const int index = column < sourceColumnIndices.size() ? sourceColumnIndices[column] : -1;
+        if (index < 0 || unsigned(index) >= columns.Size())
+            return nullptr;
+        const CPropColumn &prop = columns[unsigned(index)];
+        return prop.ID == propertyId(column) && prop.IsRawProp == isRawProperty(column) ? &prop
+                                                                                        : nullptr;
+    }
+    // Standalone adapters without a publication map retain their ID binding.
+    const int index = columns.FindItem_for_PropID(propertyId(column));
+    return index >= 0 ? &columns[unsigned(index)] : nullptr;
+}
+
+int FileTable::columnForCatalogProperty(unsigned index) const {
+    return sourceColumnIndices.indexOf(int(index));
+}
+
+int FileTable::columnForVisibleProperty(unsigned index) const {
+    if (!sourcePanel || index >= sourcePanel->GetVisibleColumns().Size())
+        return -1;
+    if (!visibleColumnIndices.isEmpty())
+        return visibleColumnIndices.indexOf(int(index));
+    const CPropColumns &visible = sourcePanel->GetVisibleColumns();
+    const CPropColumn &prop = visible[index];
+    unsigned occurrence = 0;
+    for (unsigned previous = 0; previous < index; ++previous)
+        if (sameColumnIdentity(visible[previous], prop))
+            ++occurrence;
+    for (int column = 0; column < columnCount(); ++column) {
+        const CPropColumn *candidate = sourceColumn(column);
+        if (candidate && sameColumnIdentity(*candidate, prop)) {
+            if (occurrence == 0)
+                return column;
+            --occurrence;
+        }
+    }
+    return -1;
+}
+
+void FileTable::removeSourceColumn(unsigned index) {
+    const int column = visibleColumnIndices.indexOf(int(index));
+    if (column >= 0)
+        setColumnHidden(column, true);
+    for (int &visible : visibleColumnIndices) {
+        if (visible == int(index))
+            visible = -1;
+        else if (visible > int(index))
+            --visible;
+    }
+}
+
+void FileTable::appendSourceColumn(unsigned catalogIndex) {
+    const QSignalBlocker blocked(this);
+    const QSignalBlocker selectionBlocked(selectionModel());
+    const QModelIndexList selected = selectionModel()->selectedRows();
+    int column = -1;
+    for (int candidate = 0; candidate < sourceColumnIndices.size(); ++candidate)
+        if (sourceColumnIndices[candidate] == int(catalogIndex) &&
+            visibleColumnIndices[candidate] < 0) {
+            column = candidate;
+            break;
+        }
+    const unsigned index = sourcePanel->GetVisibleColumns().Size() - 1;
+    const CPropColumn &prop = sourcePanel->GetVisibleColumns()[index];
+    if (column < 0) {
+        column = columnCount();
+        propertyIds.append(prop.ID);
+        rawProperties.append(prop.IsRawProp);
+        sourceColumnIndices.append(int(catalogIndex));
+        visibleColumnIndices.append(-1);
+        QStringList labels;
+        for (int i = 0; i < column; ++i)
+            labels << model_->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
+        labels << ToQString(prop.Name);
+        model_->setColumns(labels);
+    } else {
+        model_->invalidateText(column);
+    }
+    visibleColumnIndices[column] = int(index);
+    setColumnWidth(column, qMax(32, int(prop.Width)));
+    setColumnHidden(column, false);
+    horizontalHeader()->moveSection(horizontalHeader()->visualIndex(column), columnCount() - 1);
+    for (const QModelIndex &row : selected)
+        selectionModel()->select(model()->index(row.row(), column), QItemSelectionModel::Select);
+}
+
+void FileTable::setFullRowHighlight(bool enabled) {
+    if (fullRowHighlight_ == enabled)
+        return;
+    fullRowHighlight_ = enabled;
+    viewport()->update();
+}
+
+void FileTable::startDrag(Qt::DropActions actions) {
+    if (dragStarter)
+        dragStarter();
+    else
+        QTableView::startDrag(actions);
+}
+void FileTable::handleDefaultKeyPress(QKeyEvent *event) { QTableView::keyPressEvent(event); }
+void FileIconList::handleDefaultKeyPress(QKeyEvent *event) { QListView::keyPressEvent(event); }
+void FileIconList::startDrag(Qt::DropActions actions) {
+    if (dragStarter)
+        dragStarter();
+    else
+        QListView::startDrag(actions);
+}
+
+void FileIconList::SetListViewMode(int mode) {
+    mode_ = mode;
+    setViewMode(mode == 0 ? QListView::IconMode : QListView::ListMode);
+    const int icon = style()->pixelMetric(
+        mode == 0 ? QStyle::PM_LargeIconSize : QStyle::PM_SmallIconSize, nullptr, this);
+    setIconSize(QSize(icon, icon));
+    const QFontMetrics metrics = fontMetrics();
+    const int margin = qMax(2, style()->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, this));
+    // Native LVS_ICON wraps labels. Keep room for two lines using the active
+    // platform's icon/font metrics, rather than a fixed pixel-height cell.
+    const int width = qMax(icon + 2 * margin, 12 * metrics.averageCharWidth() + 2 * margin);
+    setGridSize(mode == 0   ? QSize(width, icon + 2 * metrics.lineSpacing() + 3 * margin)
+                : mode == 1 ? QSize(qMax(180, width), qMax(icon, metrics.height()) + 2 * margin)
+                            : QSize());
+    setWordWrap(mode == 0);
+    setFlow(mode == 2 ? QListView::TopToBottom : QListView::LeftToRight);
+    setWrapping(true);
+    setResizeMode(QListView::Adjust);
+    setMovement(QListView::Static);
+}
+
+void FileIconList::changeEvent(QEvent *event) {
+    QListView::changeEvent(event);
+    if (mode_ >= 0 &&
+        (event->type() == QEvent::FontChange || event->type() == QEvent::StyleChange)) {
+        const bool drag = dragEnabled();
+        SetListViewMode(mode_);
+        setDragEnabled(drag);
+    }
+}

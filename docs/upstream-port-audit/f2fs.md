@@ -23,7 +23,7 @@ used as the application's archive backend.
 
 | Source | Baseline and local ownership |
 | --- | --- |
-| [GRUB](https://git.savannah.gnu.org/git/grub.git), `b07cc37ca64fe99260884e7325abc333374e098b` | [Manifest](../f2fs-grub-baseline.json): full original `grub-core/fs/f2fs.c`, `grub-core/fs/fshelp.c`, headers and COPYING hashes. Selected disk structures, superblock/checkpoint CRC and selection, NAT journal/table, node-path mapping, file/inline and directory readers live in `src/fs/f2fs/f2fs.c`; the fshelp transfer is `grub_fshelp_read_file`. |
+| [GRUB](https://git.savannah.gnu.org/git/grub.git), `b07cc37ca64fe99260884e7325abc333374e098b` | [Manifest](../f2fs-grub-baseline.json): full original `grub-core/fs/f2fs.c`, `grub-core/fs/fshelp.c`, headers and COPYING hashes. Selected disk structures, superblock/checkpoint CRC and selection, NAT journal/table, node-path mapping, file/inline and directory readers live in `src/formats/f2fs/f2fs.c`; the fshelp transfer is `grub_fshelp_read_file`. |
 | [f2fs-tools](https://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs-tools.git), `83fd39a184df96db5def895ddc55bf68e720ef76` | [Manifest](../f2fs-tools-baseline.json): complete original header/library/COPYING hashes. Selected modern inode/inline geometry helpers, disk fields/flags and `f2fs_inode_chksum` adapt into the same C owner. |
 
 The C implementation preserves GRUB's module organization, names, checkpoint/NAT

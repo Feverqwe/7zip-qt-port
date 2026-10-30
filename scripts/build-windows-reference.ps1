@@ -40,7 +40,7 @@ if (Test-Path -LiteralPath $output) {
     }
 }
 $null = New-Item -ItemType Directory -Path $output -Force
-$adapter = Join-Path $project 'tests/fixtures/native_reference_entry.cpp'
+$adapter = Join-Path $project 'tests/support/native_reference_entry.cpp'
 $signature = [ordered]@{
     revision = $revision
     repository = [string]$baseline.repository
@@ -146,7 +146,7 @@ Copy-Item -LiteralPath (Join-Path $snapshot 'DOC/License.txt') -Destination (Joi
     source = 'CPP/7zip/UI/FileManager/makefile'
     entrySource = 'CPP/7zip/UI/FileManager/FM.cpp'
     entrySha256 = $originalHash
-    adapter = 'tests/fixtures/native_reference_entry.cpp'
+    adapter = 'tests/support/native_reference_entry.cpp'
     adapterSha256 = (Get-FileHash -LiteralPath $adapter -Algorithm SHA256).Hash.ToLowerInvariant()
     registryKey = $registryKey
     registrySources = $registrySources

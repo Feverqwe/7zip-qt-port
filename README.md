@@ -1,8 +1,9 @@
 # Sevenzip
 
-A cross-platform port of the Windows 7-Zip File Manager for Windows, macOS and
-Linux. The interface uses Qt 6 Widgets, and archive operations use the official
-7-Zip engine. This is an independent project and is not an official 7-Zip release.
+An independent file and archive manager for Windows, macOS and Linux, based on
+7-Zip. The interface uses Qt 6 Widgets, and archive operations use the 7-Zip
+engine with project adaptations. Sevenzip has its own features and architecture;
+it is not an official 7-Zip release.
 
 This is an AI-driven project: AI coding agents play a central role in development,
 guided by human direction, review and testing.
@@ -56,16 +57,15 @@ The project is in an early release stage. See the
 
 ## Building from source
 
-Clone the project and the official upstream sources:
+Clone the project:
 
 ```sh
 git clone https://github.com/Feverqwe/7zip-qt-port.git
 cd 7zip-qt-port
-git clone https://github.com/ip7z/7zip.git ../7zip-upstream
 ```
 
-You need C and C++23 compilers, CMake 3.28+, Ninja, Qt 6 Widgets, `clang-format`
-and the official 7-Zip sources. macOS builds use the official Qt SDK and target macOS
+You need C and C++23 compilers, CMake 3.28+, Ninja, Qt 6 Widgets and `clang-format`.
+The 7-Zip source dependencies are included in the repository. macOS builds use the official Qt SDK and target macOS
 14.4 or later. Follow the [dependency setup](docs/development.md#dependencies)
 for your platform.
 

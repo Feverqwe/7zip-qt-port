@@ -146,39 +146,39 @@
     "include/crypto/blake2b.h": "0e5f63336d445ea5bd24817adac1d0d817bbdcf8a7c6ef655e54e39738b21f25"
   },
   "adapted": {
-    "include/uapi/linux/btrfs_tree.h": "src/include/uapi/linux/btrfs_tree.h",
-    "include/uapi/linux/btrfs.h": "src/fs/btrfs/compat.h",
-    "fs/btrfs/ctree.c": "src/fs/btrfs/ctree.c",
-    "fs/btrfs/ctree.h": "src/fs/btrfs/ctree.h",
-    "fs/btrfs/accessors.h": "src/fs/btrfs/accessors.h",
-    "include/uapi/linux/stddef.h": "src/fs/btrfs/compat.h",
-    "fs/btrfs/extent_io.h": "src/fs/btrfs/ctree.h",
-    "fs/btrfs/disk-io.h": "src/fs/btrfs/ctree.h",
-    "fs/btrfs/fs.h": "src/fs/btrfs/fs.h",
-    "fs/btrfs/volumes.c": "src/fs/btrfs/volumes.c",
-    "fs/btrfs/volumes.h": "src/fs/btrfs/volumes.h",
-    "fs/btrfs/tree-checker.c": "src/fs/btrfs/tree-checker.c",
-    "fs/btrfs/fs.c": "src/fs/btrfs/fs.c",
-    "fs/btrfs/disk-io.c": "src/fs/btrfs/disk-io.c",
-    "fs/btrfs/tree-checker.h": "src/fs/btrfs/volumes.h",
-    "fs/btrfs/root-tree.c": "src/fs/btrfs/root-tree.c",
-    "fs/btrfs/inode-item.c": "src/fs/btrfs/inode-item.c",
-    "fs/btrfs/file-item.c": "src/fs/btrfs/file-item.c",
-    "include/uapi/linux/stat.h": "src/fs/btrfs/compat.h",
-    "lib/crypto/blake2b.c": "src/lib/crypto/blake2b.c",
-    "include/crypto/blake2b.h": "src/include/crypto/blake2b.h",
-    "fs/btrfs/inode.c": "src/fs/btrfs/inode.c",
-    "fs/btrfs/extent_map.h": "src/fs/btrfs/extent_map.h",
-    "fs/btrfs/inode-item.h": "src/fs/btrfs/fs.h",
-    "fs/btrfs/dir-item.h": "src/fs/btrfs/fs.h",
-    "fs/btrfs/file-item.h": "src/fs/btrfs/fs.h",
-    "fs/btrfs/compression.c": "src/fs/btrfs/compression.c",
-    "fs/btrfs/compression.h": "src/fs/btrfs/compression.h",
-    "fs/btrfs/zlib.c": "src/fs/btrfs/zlib.c",
-    "fs/btrfs/lzo.c": "src/fs/btrfs/lzo.c",
-    "fs/btrfs/zstd.c": "src/fs/btrfs/zstd.c",
-    "fs/btrfs/xattr.c": "src/fs/btrfs/xattr.c",
-    "fs/btrfs/btrfs_inode.h": "src/fs/btrfs/fs.h"
+    "include/uapi/linux/btrfs_tree.h": "src/compat/linux/include/uapi/linux/btrfs_tree.h",
+    "include/uapi/linux/btrfs.h": "src/formats/btrfs/compat.h",
+    "fs/btrfs/ctree.c": "src/formats/btrfs/ctree.c",
+    "fs/btrfs/ctree.h": "src/formats/btrfs/ctree.h",
+    "fs/btrfs/accessors.h": "src/formats/btrfs/accessors.h",
+    "include/uapi/linux/stddef.h": "src/formats/btrfs/compat.h",
+    "fs/btrfs/extent_io.h": "src/formats/btrfs/ctree.h",
+    "fs/btrfs/disk-io.h": "src/formats/btrfs/ctree.h",
+    "fs/btrfs/fs.h": "src/formats/btrfs/fs.h",
+    "fs/btrfs/volumes.c": "src/formats/btrfs/volumes.c",
+    "fs/btrfs/volumes.h": "src/formats/btrfs/volumes.h",
+    "fs/btrfs/tree-checker.c": "src/formats/btrfs/tree-checker.c",
+    "fs/btrfs/fs.c": "src/formats/btrfs/fs.c",
+    "fs/btrfs/disk-io.c": "src/formats/btrfs/disk-io.c",
+    "fs/btrfs/tree-checker.h": "src/formats/btrfs/volumes.h",
+    "fs/btrfs/root-tree.c": "src/formats/btrfs/root-tree.c",
+    "fs/btrfs/inode-item.c": "src/formats/btrfs/inode-item.c",
+    "fs/btrfs/file-item.c": "src/formats/btrfs/file-item.c",
+    "include/uapi/linux/stat.h": "src/formats/btrfs/compat.h",
+    "lib/crypto/blake2b.c": "src/crypto/primitives/blake2b.c",
+    "include/crypto/blake2b.h": "src/compat/linux/include/crypto/blake2b.h",
+    "fs/btrfs/inode.c": "src/formats/btrfs/inode.c",
+    "fs/btrfs/extent_map.h": "src/formats/btrfs/extent_map.h",
+    "fs/btrfs/inode-item.h": "src/formats/btrfs/fs.h",
+    "fs/btrfs/dir-item.h": "src/formats/btrfs/fs.h",
+    "fs/btrfs/file-item.h": "src/formats/btrfs/fs.h",
+    "fs/btrfs/compression.c": "src/formats/btrfs/compression.c",
+    "fs/btrfs/compression.h": "src/formats/btrfs/compression.h",
+    "fs/btrfs/zlib.c": "src/formats/btrfs/zlib.c",
+    "fs/btrfs/lzo.c": "src/formats/btrfs/lzo.c",
+    "fs/btrfs/zstd.c": "src/formats/btrfs/zstd.c",
+    "fs/btrfs/xattr.c": "src/formats/btrfs/xattr.c",
+    "fs/btrfs/btrfs_inode.h": "src/formats/btrfs/fs.h"
   },
   "partial_imports": [
     {
@@ -188,7 +188,7 @@
         "btrfs_root",
         "btrfs_next_item"
       ],
-      "local": "src/fs/btrfs/ctree.h"
+      "local": "src/formats/btrfs/ctree.h"
     },
     {
       "source": "fs/btrfs/extent_io.h",
@@ -197,21 +197,21 @@
         "read_extent_buffer",
         "free_extent_buffer"
       ],
-      "local": "src/fs/btrfs/ctree.h"
+      "local": "src/formats/btrfs/ctree.h"
     },
     {
       "source": "fs/btrfs/tree-checker.h",
       "symbols": [
         "btrfs_tree_parent_check"
       ],
-      "local": "src/fs/btrfs/ctree.h"
+      "local": "src/formats/btrfs/ctree.h"
     },
     {
       "source": "include/uapi/linux/stddef.h",
       "symbols": [
         "__DECLARE_FLEX_ARRAY"
       ],
-      "local": "src/fs/btrfs/compat.h"
+      "local": "src/formats/btrfs/compat.h"
     },
     {
       "source": "include/uapi/linux/stat.h",
@@ -247,7 +247,7 @@
         "S_ISFIFO",
         "S_ISSOCK"
       ],
-      "local": "src/fs/btrfs/compat.h"
+      "local": "src/formats/btrfs/compat.h"
     },
     {
       "source": "fs/btrfs/volumes.h",
@@ -258,7 +258,7 @@
         "BTRFS_STRIPE_LEN_SHIFT",
         "BTRFS_STRIPE_LEN_MASK"
       ],
-      "local": "src/fs/btrfs/fs.h"
+      "local": "src/formats/btrfs/fs.h"
     },
     {
       "source": "fs/btrfs/volumes.h",
@@ -267,7 +267,7 @@
         "btrfs_raid_attr",
         "btrfs_stripe_nr_to_offset"
       ],
-      "local": "src/fs/btrfs/volumes.h"
+      "local": "src/formats/btrfs/volumes.h"
     },
     {
       "source": "fs/btrfs/fs.h",
@@ -278,21 +278,21 @@
         "BTRFS_SUPER_INFO_SIZE",
         "BTRFS_MIN_BLOCKSIZE"
       ],
-      "local": "src/fs/btrfs/fs.h"
+      "local": "src/formats/btrfs/fs.h"
     },
     {
       "source": "fs/btrfs/inode-item.h",
       "symbols": [
         "btrfs_inode_split_flags"
       ],
-      "local": "src/fs/btrfs/fs.h"
+      "local": "src/formats/btrfs/fs.h"
     },
     {
       "source": "fs/btrfs/dir-item.h",
       "symbols": [
         "btrfs_name_hash"
       ],
-      "local": "src/fs/btrfs/fs.h"
+      "local": "src/formats/btrfs/fs.h"
     },
     {
       "source": "fs/btrfs/extent_map.h",
@@ -302,7 +302,7 @@
         "btrfs_extent_map_compression",
         "btrfs_extent_map_end"
       ],
-      "local": "src/fs/btrfs/extent_map.h"
+      "local": "src/formats/btrfs/extent_map.h"
     },
     {
       "source": "include/uapi/linux/btrfs.h",
@@ -333,28 +333,28 @@
         "BTRFS_FEATURE_INCOMPAT_SIMPLE_QUOTA",
         "BTRFS_FEATURE_INCOMPAT_REMAP_TREE"
       ],
-      "local": "src/fs/btrfs/compat.h"
+      "local": "src/formats/btrfs/compat.h"
     },
     {
       "source": "fs/btrfs/ctree.h",
       "symbols": [
         "btrfs_is_fstree"
       ],
-      "local": "src/fs/btrfs/tree-checker.c"
+      "local": "src/formats/btrfs/tree-checker.c"
     },
     {
       "source": "fs/btrfs/disk-io.h",
       "symbols": [
         "btrfs_sb_offset"
       ],
-      "local": "src/fs/btrfs/disk-io.c"
+      "local": "src/formats/btrfs/disk-io.c"
     },
     {
       "source": "fs/btrfs/fs.c",
       "symbols": [
         "btrfs_csums"
       ],
-      "local": "src/fs/btrfs/fs.c"
+      "local": "src/formats/btrfs/fs.c"
     },
     {
       "source": "fs/btrfs/volumes.c",
@@ -373,7 +373,7 @@
         "map_blocks_raid56_read",
         "map_blocks_single"
       ],
-      "local": "src/fs/btrfs/volumes.c"
+      "local": "src/formats/btrfs/volumes.c"
     },
     {
       "source": "fs/btrfs/disk-io.c",
@@ -384,7 +384,7 @@
         "btrfs_validate_extent_buffer",
         "read_tree_block"
       ],
-      "local": "src/fs/btrfs/disk-io.c"
+      "local": "src/formats/btrfs/disk-io.c"
     },
     {
       "source": "fs/btrfs/tree-checker.c",
@@ -395,7 +395,7 @@
         "__btrfs_check_node",
         "btrfs_check_eb_owner"
       ],
-      "local": "src/fs/btrfs/tree-checker.c"
+      "local": "src/formats/btrfs/tree-checker.c"
     },
     {
       "source": "fs/btrfs/inode.c",
@@ -405,7 +405,7 @@
         "fixup_tree_root_location",
         "btrfs_get_extent"
       ],
-      "local": "src/fs/btrfs/inode.c"
+      "local": "src/formats/btrfs/inode.c"
     },
     {
       "source": "fs/btrfs/inode.c",
@@ -413,7 +413,7 @@
         "read_inline_extent",
         "uncompress_inline"
       ],
-      "local": "src/btrfsfilereader.c"
+      "local": "src/formats/btrfs/btrfsfilereader.c"
     },
     {
       "source": "fs/btrfs/file-item.c",
@@ -423,7 +423,7 @@
         "btrfs_file_extent_end",
         "btrfs_extent_item_to_extent_map"
       ],
-      "local": "src/fs/btrfs/file-item.c"
+      "local": "src/formats/btrfs/file-item.c"
     },
     {
       "source": "fs/btrfs/root-tree.c",
@@ -431,7 +431,7 @@
         "btrfs_find_root",
         "btrfs_read_root_item"
       ],
-      "local": "src/fs/btrfs/root-tree.c"
+      "local": "src/formats/btrfs/root-tree.c"
     },
     {
       "source": "fs/btrfs/tree-checker.c",
@@ -445,14 +445,14 @@
         "check_inode_item",
         "check_root_item"
       ],
-      "local": "src/fs/btrfs/tree-checker.c"
+      "local": "src/formats/btrfs/tree-checker.c"
     },
     {
       "source": "fs/btrfs/fs.c",
       "symbols": [
         "btrfs_csum"
       ],
-      "local": "src/fs/btrfs/fs.c"
+      "local": "src/formats/btrfs/fs.c"
     },
     {
       "source": "fs/btrfs/zlib.c",
@@ -460,7 +460,7 @@
         "zlib_decompress",
         "zlib_decompress_bio"
       ],
-      "local": "src/fs/btrfs/zlib.c"
+      "local": "src/formats/btrfs/zlib.c"
     },
     {
       "source": "fs/btrfs/lzo.c",
@@ -468,7 +468,7 @@
         "lzo_decompress",
         "lzo_decompress_bio"
       ],
-      "local": "src/fs/btrfs/lzo.c"
+      "local": "src/formats/btrfs/lzo.c"
     },
     {
       "source": "fs/btrfs/zstd.c",
@@ -476,7 +476,7 @@
         "zstd_decompress",
         "zstd_decompress_bio"
       ],
-      "local": "src/fs/btrfs/zstd.c"
+      "local": "src/formats/btrfs/zstd.c"
     },
     {
       "source": "fs/btrfs/compression.c",
@@ -484,7 +484,7 @@
         "compression_decompress",
         "btrfs_decompress_bio"
       ],
-      "local": "src/fs/btrfs/compression.c"
+      "local": "src/formats/btrfs/compression.c"
     },
     {
       "source": "fs/btrfs/xattr.c",
@@ -492,28 +492,28 @@
         "btrfs_listxattr",
         "btrfs_getxattr"
       ],
-      "local": "src/fs/btrfs/xattr.c"
+      "local": "src/formats/btrfs/xattr.c"
     },
     {
       "source": "fs/btrfs/accessors.h",
       "symbols": [
         "btrfs_item_ptr"
       ],
-      "local": "src/fs/btrfs/ctree.h"
+      "local": "src/formats/btrfs/ctree.h"
     },
     {
       "source": "fs/btrfs/volumes.c",
       "symbols": [
         "nr_data_stripes"
       ],
-      "local": "src/fs/btrfs/volumes.h"
+      "local": "src/formats/btrfs/volumes.h"
     },
     {
       "source": "fs/btrfs/btrfs_inode.h",
       "symbols": [
         "btrfs_inode"
       ],
-      "local": "src/fs/btrfs/fs.h",
+      "local": "src/formats/btrfs/fs.h",
       "scope": "Read-side root association; VFS inode storage is replaced by parsed file metadata."
     },
     {
@@ -523,7 +523,7 @@
         "read_tree_root_path",
         "btrfs_get_root_ref"
       ],
-      "local": "src/fs/btrfs/disk-io.c",
+      "local": "src/formats/btrfs/disk-io.c",
       "scope": "Caller-owned read root with no VFS/cache allocation; retained root-item lookup, block checksum/generation/level validation, exact root-node owner check and live-root reference check."
     },
     {
@@ -531,8 +531,49 @@
       "symbols": [
         "btrfs_read_tree_root"
       ],
-      "local": "src/fs/btrfs/fs.h",
+      "local": "src/formats/btrfs/fs.h",
       "scope": "Caller-owned compact root signature at the C stream boundary."
     }
-  ]
+  ],
+  "owners": {
+    "fs/btrfs/accessors.h": "src/formats/btrfs/accessors.h",
+    "fs/btrfs/compression.c": "src/formats/btrfs/compression.c",
+    "fs/btrfs/compression.h": "src/formats/btrfs/compression.h",
+    "fs/btrfs/ctree.c": "src/formats/btrfs/ctree.c",
+    "fs/btrfs/ctree.h": "src/formats/btrfs/ctree.h",
+    "fs/btrfs/disk-io.c": "src/formats/btrfs/disk-io.c",
+    "fs/btrfs/extent_map.h": "src/formats/btrfs/extent_map.h",
+    "fs/btrfs/file-item.c": "src/formats/btrfs/file-item.c",
+    "fs/btrfs/fs.c": "src/formats/btrfs/fs.c",
+    "fs/btrfs/fs.h": "src/formats/btrfs/fs.h",
+    "fs/btrfs/inode-item.c": "src/formats/btrfs/inode-item.c",
+    "fs/btrfs/inode.c": "src/formats/btrfs/inode.c",
+    "fs/btrfs/lzo.c": "src/formats/btrfs/lzo.c",
+    "fs/btrfs/root-tree.c": "src/formats/btrfs/root-tree.c",
+    "fs/btrfs/tree-checker.c": "src/formats/btrfs/tree-checker.c",
+    "fs/btrfs/volumes.c": "src/formats/btrfs/volumes.c",
+    "fs/btrfs/volumes.h": "src/formats/btrfs/volumes.h",
+    "fs/btrfs/xattr.c": "src/formats/btrfs/xattr.c",
+    "fs/btrfs/zlib.c": "src/formats/btrfs/zlib.c",
+    "fs/btrfs/zstd.c": "src/formats/btrfs/zstd.c",
+    "include/uapi/linux/btrfs_tree.h": "src/compat/linux/include/uapi/linux/btrfs_tree.h",
+    "lib/rbtree.c": "src/compat/linux/core/rbtree.c",
+    "include/linux/rbtree.h": "src/compat/linux/include/linux/rbtree.h",
+    "include/linux/rbtree_types.h": "src/compat/linux/include/linux/rbtree_types.h",
+    "include/linux/rbtree_augmented.h": "src/compat/linux/include/linux/rbtree_augmented.h",
+    "lib/crypto/blake2b.c": "src/crypto/primitives/blake2b.c",
+    "include/crypto/blake2b.h": "src/compat/linux/include/crypto/blake2b.h",
+    "include/uapi/linux/btrfs.h": "src/formats/btrfs/compat.h",
+    "include/uapi/linux/stddef.h": "src/formats/btrfs/compat.h",
+    "fs/btrfs/extent_io.h": "src/formats/btrfs/ctree.h",
+    "fs/btrfs/disk-io.h": "src/formats/btrfs/ctree.h",
+    "fs/btrfs/tree-checker.h": "src/formats/btrfs/volumes.h",
+    "include/uapi/linux/stat.h": "src/formats/btrfs/compat.h",
+    "fs/btrfs/inode-item.h": "src/formats/btrfs/fs.h",
+    "fs/btrfs/dir-item.h": "src/formats/btrfs/fs.h",
+    "fs/btrfs/file-item.h": "src/formats/btrfs/fs.h",
+    "fs/btrfs/btrfs_inode.h": "src/formats/btrfs/fs.h",
+    "LICENSES/preferred/GPL-2.0": "third_party/linux/LICENSES/preferred/GPL-2.0",
+    "LICENSES/exceptions/Linux-syscall-note": "third_party/linux/LICENSES/exceptions/Linux-syscall-note"
+  }
 }

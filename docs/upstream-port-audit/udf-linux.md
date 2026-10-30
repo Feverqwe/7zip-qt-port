@@ -296,7 +296,7 @@ pinned implementation. Для обычного выровненного header �
 с исходным вычислением. Невыровненный header отклоняется, в том числе inline;
 Linux inline policy здесь мягче. Эти отличия не выдаются за native parity.
 
-`src/fs/udf/vat.c` предоставляет inode/stream callbacks и владеет выбранным
+`src/formats/udf/vat.c` предоставляет inode/stream callbacks и владеет выбранным
 VAT handle; новых filesystem parsers в нём нет. `UdfLinux.cpp` связывает
 существующий FE/AD reader с этими services. Hidden VAT role сохраняет FE/EFE,
 strategy resolution и inline size validation. Поддержаны non-device inode types
@@ -499,7 +499,7 @@ journal/mount ownership и page cache остаются вне archive read scope
 `get_volume_descriptor_record`, `udf_process_sequence`, `udf_load_sequence`,
 `udf_check_anchor_block`, `udf_scan_anchors`, `udf_load_vrs`, `udf_sb_lvidiu`,
 а также geometry/revision checks в `udf_fill_super` и `lowlevel.c`.
-Эти 15 discovery/selection/helper bodies перенесены в `src/fs/udf/super.c`;
+Эти 15 discovery/selection/helper bodies перенесены в `src/formats/udf/super.c`;
 их структуры, constants, buffer ownership и зависимости включены в тот же
 изолированный GPL format module. `lowlevel.c` сохраняет только regular-file
 ветви last session/block: archive stream не предоставляет CD-ROM ioctls.
@@ -564,15 +564,15 @@ discovery, а не physical-CD acceptance или все UDF возможност
 `GetProperty`/`GetStream`/`Extract` и исходный extract callback, читающий
 `kpidSymLink`. Из того же pinned Linux commit перенесены полные
 `get_utf16_char`, `udf_name_conv_char`, `udf_name_from_CS0`,
-`udf_dstrCS0toChar`, `udf_get_filename` в `src/fs/udf/unicode.c` и
-`udf_pc_to_char` в `src/fs/udf/symlink.c`. Повторное сравнение всех шести bodies
+`udf_dstrCS0toChar`, `udf_get_filename` в `src/formats/udf/unicode.c` и
+`udf_pc_to_char` в `src/formats/udf/symlink.c`. Повторное сравнение всех шести bodies
 подтверждает единственную type adaptation: Linux 16-bit `wchar_t` именуется
 `fat_wchar_t`, как в существующем NLS module. Notices сохранены; write-side
 CS0 encoding и VFS folio/getattr operations не копируются.
 
 Используется прежний исходный `fs/nls/nls_base.c::utf32_to_utf8`; происхождение
 зафиксировано в [FAT/NLS audit](fat-linux.md). Общие объявления portable NLS ABI
-вынесены из FAT service header в `src/fs/nls/types.h`, без изменения layout
+вынесены из FAT service header в `src/text/nls/types.h`, без изменения layout
 или алгоритмов FAT/ISO. Unicode archive API использует default Linux UTF-8
 branch; mount charset overrides и обратная запись имён не экспонируются.
 Сохранены обе converter branches, включая имеющийся NLS callback ABI.
@@ -653,7 +653,7 @@ consumers, hidden VAT/metadata reader, properties, streams и extraction.
 Сохранён pinned commit из начала audit; [manifest](../udf-linux-baseline.json)
 включает `udftime.c` и общий dependency `kernel/time/time.c`.
 
-В `src/fs/udf/inode.c` дополнена оставшаяся часть исходного `udf_read_inode`;
+В `src/formats/udf/inode.c` дополнена оставшаяся часть исходного `udf_read_inode`;
 `udf_alloc_i_data` и `udf_convert_permissions` перенесены целиком. Теперь native
 C body проверяет FE/EFE/USE, allocation lengths и inline size, выбирает inode
 type, права, владельцев, link count, blocks, timestamps и named-stream metadata.
@@ -691,7 +691,7 @@ metadata inode без обычного file type не получает публ�
 внутренний hidden metadata backing reader остаётся подключён. Создание device
 nodes и native special-file I/O не входят в archive read boundary.
 
-`src/fs/udf/udftime.c` содержит исходный `udf_disk_stamp_to_time` без изменения
+`src/formats/udf/udftime.c` содержит исходный `udf_disk_stamp_to_time` без изменения
 body. Переиспользован ранее перенесённый Linux `mktime64`; его include теперь
 ограничен portable integer types, вместо зависимости от ISO service header.
 Все UDF archive/item time properties используют этот converter: timezone type,
@@ -735,14 +735,14 @@ USE обрабатывается C service как free-space descriptor, но н
 Полностью сравнены read-side `directory.c`, iterator/types в `udfdecl.h`,
 `dir.c::udf_readdir` и lookup consumers в `namei.c`, allocation mapper/cache,
 а также исходные 7-Zip FID parser, `ReadItem`, recursion/ref consumers и limits.
-Из прежнего pinned Linux commit в `src/fs/udf/directory.c` перенесены восемь
+Из прежнего pinned Linux commit в `src/formats/udf/directory.c` перенесены восемь
 полных bodies: `udf_verify_fi`, `udf_copy_fi`, `udf_fiiter_bread_blk`,
 `udf_fiiter_advance_blk`, `udf_fiiter_load_bhs`, `udf_fiiter_init`,
 `udf_fiiter_advance`, `udf_fiiter_release`. Inline `udf_dir_entry_len` и структуры
 перенесены с portable integer types. Повторное сравнение восьми bodies
 подтверждает описанные ниже адаптации; verify/copy/load/advance сохранены целиком.
 
-`src/fs/udf/dir.c` — archive-stream wrapper, не полный VFS `udf_readdir`:
+`src/formats/udf/dir.c` — archive-stream wrapper, не полный VFS `udf_readdir`:
 immutable one-pass enumeration не требует seek cookies, inode version state,
 dot emission и `dir_context`. Исходный iterator получает allocation list и
 inline bytes validated inode, использует `inode_bmap`, extent cache и прежний
@@ -818,7 +818,7 @@ mappers из закреплённого Linux commit. Повторно прос�
 projection, extent checks, metadata/VAT bootstrap, inode reads, comments и
 stream consumers. После реализации повторно сопоставлены изменённые bodies.
 
-В `src/fs/udf/super.c` перенесены исходный allocator и полный участок разбора
+В `src/formats/udf/super.c` перенесены исходный allocator и полный участок разбора
 таблицы из `udf_load_logicalvol`: domain, размер таблицы, число карт, обход,
 распознавание type1/virtual/sparable/metadata, revision и неизвестные типы.
 Два first-match scan из `udf_load_partdesc` выделены в C service, возвращающий
@@ -881,7 +881,7 @@ allocation/failed-inode/unlock dependencies в `fs/inode.c`; этот reference
 Сверены исходные 7-Zip `ReadFileItem`, `ReadItem`, cache maps, file/ref consumers,
 stream ownership и FE/EFE properties. После реализации повторно сравнены bodies.
 
-Исходный `__udf_iget` перенесён в `src/fs/udf/inode.c`: единственное изменение
+Исходный `__udf_iget` перенесён в `src/formats/udf/inode.c`: единственное изменение
 body — получение физического ключа через существующий archive partition mapper
 вместо kernel block-device boundary. Сохранены cached/new branches, hidden-role
 check, location assignment, `udf_read_inode`, failed-inode и unlock paths.
@@ -957,7 +957,7 @@ Full/slow/UI/physical-device acceptance не выполнялась.
 structures/flags и hidden inode consumers. Повторно сопоставлены 7-Zip PD/LVD
 projection, partition binding, sparable/VAT/metadata initialization, source
 callbacks, progress и candidate cleanup. После реализации C bodies сравнены
-повторно: четыре первые функции перенесены в `src/fs/udf/super.c` полностью.
+повторно: четыре первые функции перенесены в `src/formats/udf/super.c` полностью.
 Адаптации — portable `calloc` вместо kernel flex allocation, два typed uint32
 overflow helper calls и char-pointer casts. GPL C остаётся отдельным модулем.
 

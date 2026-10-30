@@ -49,7 +49,7 @@ was compared byte-for-byte with that official tarball. The mirror supplies a
 retrieval baseline, not an independent implementation. Unrelated benchmark
 code is omitted. Original examples and fixtures are pinned too.
 
-`src/lzipio.c` adapts `ffexample.c::ffdecompress`: bounded feed, read/write loop,
+`src/formats/lzip/lzipio.c` adapts `ffexample.c::ffdecompress`: bounded feed, read/write loop,
 finish signal and completion check are preserved; native read/write/progress
 callbacks replace stdio. The example permits unrestricted copying, distribution
 and modification. All header, dictionary, LZMA, CRC32, data/member-size and
@@ -60,12 +60,12 @@ branches. Encoder dependencies remain included as required by the original
 translation unit. Example CLI, signal/file management and resynchronization
 services are omitted. No new damaged-input recovery mode is introduced for Lzip.
 
-`src/lziphandler.cpp` reuses the existing LZ4/Brotli single-item native boundary:
+`src/formats/lzip/lziphandler.cpp` reuses the existing LZ4/Brotli single-item native boundary:
 Open/Close, properties, extraction callbacks/test mode and registration.
 Inherited upstream symbols and original bytes are pinned by
 `third_party/brotli/upstream.json` and its [audit](brotli.md).
 The adaptation changes signature/decoder and delegates concatenation to lzlib.
-`src/lzipstream.cpp` supplies native stream services; `cmake/Lzip.cmake` owns
+`src/formats/lzip/lzipstream.cpp` supplies native stream services; `src/formats/lzip/module.cmake` owns
 build/runtime registration. Original `ffexample.c` and `bbexample.c` are pinned
 for review of the partial decoder loop and test-fixture generation.
 

@@ -1,21 +1,27 @@
 # Reviewing an upstream 7-Zip update
 
-The complete current baseline is [upstream-baseline.json](upstream-baseline.json).
+The recorded 7-Zip source baseline is [upstream-baseline.json](upstream-baseline.json).
 It records the official repository, full default commit and every
-borrowed path. `exact` files under `third_party/7zip/` must match the original
-bytes; `adapted` files under `src/` retain their original relative path but need
-code review; `local` units have no upstream counterpart at their current
-paths. `overrides` records full commits for individual modules if an update is
-applied incrementally. The function/branch scope and reasons for local changes
+borrowed unit. `exact` identifies unchanged dependency units in the local source
+archive; their logical names retain the dependency's internal structure.
+`original_archive` pins the local container, and `originals` pins complete original
+members with SHA256. `origins` explicitly maps borrowed source owners to upstream
+paths; it does not infer provenance from their local directories. `adapted` files belong to
+project modules and need code review; original paths identify their provenance,
+not their required local location. `local` units are project integration rather
+than copies of an original inventory unit. `overrides` records full commits for
+individual modules if an update is applied incrementally. The function/branch
+scope and reasons for local changes
 remain in [the port audit](upstream-port-audit.md).
 `original_sha256` pins complete original inventory units for new selective imports;
 `verify` checks these hashes against each owner's recorded revision. Exact-file
 revision overrides also enter the native runtime snapshot and its cache/provenance,
 so a selective codec update reaches both static consumers and the standalone engine.
 
-Archive readers with Linux dependencies have one implementation under
-`src/gpl/CPP/`, preserving the upstream path below that source root. Both the
-application and console load these format modules. The [reader ownership
+Archive readers with Linux dependencies have one implementation in their owning
+format modules, following the project's
+[module directory organization](architecture.md#module-directories-and-source-ownership).
+Both the application and console load these format modules. The [reader ownership
 audit](upstream-port-audit/license-variants.md) records the shared portable support
 units. `extracted` maps transferred symbols and local units to their original
 handler owner; `original_sha256` pins that complete original inventory unit.
@@ -24,18 +30,30 @@ Review these units together with the full reader when updating upstream.
 `runtime_adapted` selects adapted engine modules for both dynamic and standalone
 runtime builds. Review these local changes during an upstream update as well;
 their compiled provenance and prepared-runtime cache include the source hashes.
-The builders refresh one owned source snapshot while retaining incremental
+The current builders refresh one owned source snapshot while retaining incremental
 compiler outputs. They do not compile in the upstream checkout. GPL reader
 sources are excluded from this overlay and built as separate CMake modules;
 the snapshot preparer rejects a full GPL reader in `runtime_adapted`.
 `runtime_dependencies` adds non-7-Zip C modules and headers needed by these
-modules, removing the owning `src/` or `third_party/` prefix in the snapshot.
+modules; `runtime_paths` explicitly maps their owners into the native snapshot.
 Colliding destination paths are rejected. Their source revisions and licenses
 belong in the existing port audit. Runtime fingerprints and transitive dependencies
 include them; generated native rules compile C sources as C while preserving
 incremental build outputs. `runtime_format_sources` selects dependencies linked
 only into Format7zF, such as probes and HFS compression shared with APFS. The
 console executable and original SFX do not link these format support objects.
+
+Native source snapshots read the repository-owned source archive, verify its
+container and member hashes, and apply explicitly mapped local owners.
+`dependency-snapshot` expands only unchanged units for application builds, so
+original headers do not mask their adapted owners. `header-snapshot` creates
+forwarding headers for foreign include contracts; these refer to live project
+owners rather than copying their implementation. Native snapshots rebase project
+include paths into their generated build view. `runtime_paths` records
+destinations for non-7-Zip native dependencies; `runtime_excluded` records owners
+that must remain in external format modules. Preserve original revisions/hashes
+when moving a project owner. Upstream Git access remains appropriate for the
+verification and update-review commands below.
 
 Native UI reference builds use `runtime-snapshot --original-only --no-build-rules`
 to retain the original makefiles as well as source bytes. This mode is separate
@@ -50,8 +68,8 @@ python3 scripts/upstream_baseline.py verify --upstream /tmp/7zip-update-review
 ```
 
 `verify` rejects missing/stale manifest entries, duplicate source owners across roots,
-unknown revisions, new upstream counterparts for local-only paths, and changed
-bytes in exact files. It checks the current working-tree inventory, including
+unknown revisions, changed original archive members and changed exact bytes.
+It checks the current working-tree inventory, including
 nonignored new sources and excluding deleted files, so source moves can be
 reviewed before staging.
 
@@ -63,7 +81,7 @@ python3 scripts/upstream_baseline.py review \
   --output /tmp/7zip-update-report.md
 git -C /tmp/7zip-update-review diff <old-commit> <full-commit> -- CPP/7zip/UI/FileManager/NetFolder.cpp
 git -C /tmp/7zip-update-review checkout <full-commit>
-git diff --no-index /tmp/7zip-update-review/CPP/7zip/UI/FileManager/NetFolder.cpp src/CPP/7zip/UI/FileManager/NetFolder.cpp
+git diff --no-index /tmp/7zip-update-review/CPP/7zip/UI/FileManager/NetFolder.cpp src/filemanager/providers/NetFolder.cpp
 ```
 
 The report lists changed recorded files and marks exact versus adapted owners.
@@ -81,7 +99,7 @@ checks. Use `./scripts/check.sh` only for the broader integration risks defined
 in [AGENTS.md](../AGENTS.md#validation-scope). A failed check leaves provenance at the
 last validated revision.
 
-Release resources have separate provenance in `resources/7zip/provenance.json`
+Release resources have separate provenance in `third_party/7zip-help/provenance.json`
 and `help-provenance.json`. Compare the recorded members with the matching
 official release installer as well: translations and CHM help are not covered
 by the source manifest. Preserve exact member bytes and update their provenance

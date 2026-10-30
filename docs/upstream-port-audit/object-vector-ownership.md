@@ -19,7 +19,7 @@ object-vector destructor. This reuses the original destruction algorithm;
 assignment, append and successful copy semantics remain unchanged. No source
 body, dependency or branch is omitted.
 
-The sole implementation moves to `src/CPP/Common/MyVector.h`. Its Common.h
+The sole implementation moves to `src/common/collections/MyVector.h`. Its Common.h
 dependency is rooted through the existing CPP include path. Project source
 include roots let unchanged upstream headers continue to use their original
 plain, one-level and two-level relative spellings after the move. This avoids

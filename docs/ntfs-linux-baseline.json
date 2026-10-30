@@ -62,5 +62,30 @@
     "fs/ntfs3/lib/decompress_common.c",
     "fs/ntfs3/lib/lzx_decompress.c",
     "fs/ntfs3/lib/xpress_decompress.c"
-  ]
+  ],
+  "owners": {
+    "fs/nls/nls_base.c": "src/text/nls/nls_base.c",
+    "fs/ntfs3/attrib.c": "src/formats/ntfs/attrib.c",
+    "fs/ntfs3/attrlist.c": "src/formats/ntfs/attrlist.c",
+    "fs/ntfs3/bitmap.c": "src/formats/ntfs/bitmap.c",
+    "fs/ntfs3/dir.c": "src/formats/ntfs/dir.c",
+    "fs/ntfs3/frecord.c": "src/formats/ntfs/frecord.c",
+    "fs/ntfs3/fsntfs.c": "src/formats/ntfs/fsntfs.c",
+    "fs/ntfs3/index.c": "src/formats/ntfs/index.c",
+    "fs/ntfs3/inode.c": "src/formats/ntfs/inode.c",
+    "fs/ntfs3/lib/decompress_common.c": "src/formats/ntfs/lib/decompress_common.c",
+    "fs/ntfs3/lib/decompress_common.h": "src/formats/ntfs/lib/decompress_common.h",
+    "fs/ntfs3/lib/lib.h": "src/formats/ntfs/lib/lib.h",
+    "fs/ntfs3/lib/lzx_decompress.c": "src/formats/ntfs/lib/lzx_decompress.c",
+    "fs/ntfs3/lib/xpress_decompress.c": "src/formats/ntfs/lib/xpress_decompress.c",
+    "fs/ntfs3/lznt.c": "src/formats/ntfs/lznt.c",
+    "fs/ntfs3/ntfs.h": "src/formats/ntfs/ntfs.h",
+    "fs/ntfs3/ntfs_fs.h": "src/formats/ntfs/ntfs_fs.h",
+    "fs/ntfs3/super.c": "src/formats/ntfs/super.c",
+    "fs/ntfs3/upcase.c": "src/formats/ntfs/upcase.c",
+    "fs/ntfs3/xattr.c": "src/formats/ntfs/xattr.c",
+    "include/asm-generic/bitops/__ffs.h": "src/compat/linux/include/asm-generic/bitops/__ffs.h",
+    "lib/find_bit.c": "src/compat/linux/core/find_bit.c",
+    "lib/hweight.c": "src/compat/linux/core/hweight.c"
+  }
 }

@@ -5,7 +5,7 @@
 `sevenzip.dependencies.zlib` экспортирует local C++ facade: RAII-владение raw
 inflate state, `std::span` для bounded input/output и Adler update. Он вызывает
 тот же pinned C API; исходные zlib units, их hashes и C compilation сохраняются.
-Новых заимствованных реализаций нет. `src/dependencies/zlib.h` — local
+Новых заимствованных реализаций нет. `src/dependencies/zlib/zlib.h` — local
 integration; header и module используют одну реализацию. Unsupported module
 toolchains подключают тот же API через header.
 
@@ -621,7 +621,7 @@ product code не менялся. Incremental macOS app build прошла. Full
 их metadata/cache/header dependencies, `inode.c` и SDK parser/stream callers.
 SDK baseline остаётся `9128b80e3a471108678e2b3ec3c985861c8d7b0f` из общего аудита.
 
-В `src/fs/squashfs/file.c` перенесены эти тела и исходные notices; файл
+В `src/formats/squashfs/file.c` перенесены эти тела и исходные notices; файл
 компилируется как C в том же отдельном GPL module. Dependency fields inode,
 superblock/meta-index и allocation adapter подключены к существующему C host.
 Внутренние blocklist entry points получили module prefix при экспорте в host;
@@ -1175,7 +1175,7 @@ GPL-модуль сохраняет читаемые данные файлов �
 диагностику. Ограничения размеров и адресов сохранены, записи/replay нет.
 
 Это адаптация archive lifetime/enumeration в существующем host glue
-`src/squashfsmetadata.c` и исходном SDK handler. Тела Linux xattr readers,
+`src/formats/squashfs/squashfsmetadata.c` и исходном SDK handler. Тела Linux xattr readers,
 их C-язык и GPL-изоляция сохранены; standalone engine без GPL-модуля
 сохраняет прежний scope. Изменение не доказывает полную устойчивость к
 повреждениям SquashFS: начальная загрузка таблиц, eager inode/directory

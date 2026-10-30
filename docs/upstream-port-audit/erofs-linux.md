@@ -32,7 +32,7 @@ Before substitution, the complete pinned Linux `decompressor_deflate.c`,
 SDK Deflate decoder and its buffer/finish services were compared. The original
 Linux body already calls zlib, but its page switching, pool/workspace and kernel
 API cannot serve a contiguous archive buffer directly. The small local
-`erofs_decode_deflate` in `src/erofsnativedecoders.c` connects the public API;
+`erofs_decode_deflate` in `src/formats/erofs/erofsnativedecoders.c` connects the public API;
 it introduces no decoding algorithm. Linux source hashes and mapped owners
 remain in [the existing inventory](../erofs-linux-baseline.json).
 
@@ -281,7 +281,7 @@ The archive boundary had an independent block loop and omitted Linux's
 synthetic `.` entry for `EROFS_I_DOT_OMITTED_BIT` directories. This was a normal
 directory-reading gap, separate from recovery of damaged images.
 
-The original iterator is now transferred into `src/fs/erofs/dir.c`, retaining
+The original iterator is now transferred into `src/formats/erofs/dir.c`, retaining
 block/entry position handling, initial-position alignment, bounded last-block
 length, callback stop, buffer release and final synthetic-dot handling. A narrow
 file/inode and `dir_emit_dot` bridge replaces VFS file/dentry services; callback
@@ -333,7 +333,7 @@ preserved; its private scalar/export bridge no longer includes crypto services.
 All scanner bodies otherwise match the pinned reference. Each separate module
 links its own required object; this does not add a cross-module runtime service.
 
-The original duplication helpers are transferred together into `src/mm/util.c`.
+The original duplication helpers are transferred together into `src/compat/linux/util.c`.
 Their bodies are unchanged except that `__kmemdup_nul` retains the archive
 bridge's existing `SIZE_MAX` allocation-overflow rejection. Host allocation
 replaces `kmalloc_track_caller`, GFP flags are ignored, and export annotations

@@ -18,7 +18,7 @@ The original header and hash registration remain unchanged.
 ## Portable SDK memory access — 2026-10-26
 
 The complete `C/CpuArch.h` at the SDK revision above moves from an unchanged
-dependency to the adapted owner `src/C/CpuArch.h`. The existing manifest pins
+dependency to the adapted owner `src/platform/cpu/CpuArch.h`. The existing manifest pins
 its original SHA256 and includes it in the console/core runtime overlay. One
 authoritative header serves C and C++ consumers; explicit include paths now
 resolve that owner. Notices, source language and CPU detection are retained.
@@ -38,21 +38,21 @@ from runtime acceptance; big-endian execution and performance are unverified.
 
 ## Shared checksum ownership
 
-- `src/C/Xxh64.c` retains SDK symbols, state layouts, seed zero and the
+- `src/checksums/xxhash/Xxh64.c` retains SDK symbols, state layouts, seed zero and the
   original streaming block/tail orchestration. Hash arithmetic and finalization
   use the existing pinned libzstd xxHash. A narrow adapter translates four SDK
   accumulator lanes, total length and pending bytes to the statically linked
   library state. This deliberately depends on the pinned state representation;
   review it on a library update. Digest does not mutate the caller's state.
   Architecture-specific SDK hash arithmetic is omitted.
-- `src/lib/xxhash.c` retains Linux's seeded `xxh32` service for EROFS and
+- `src/compat/linux/core/xxhash.c` retains Linux's seeded `xxh32` service for EROFS and
   delegates to the same XXH32. Its original Linux inventory/hash remains in
   `docs/erofs-linux-baseline.json`; no Linux hash arithmetic remains locally.
 - LZ4 Frame retains the unchanged official framing implementation and consumes
   the shared xxHash header through its include path. The bundled LZ4 xxHash
   `.c` and `.h` are removed locally; original hashes remain inventory-only
   references in `docs/lz4-frame-baseline.json`.
-- `src/CPP/7zip/Compress/ZlibDecoder.cpp` replaces only Adler32 arithmetic
+- `src/codecs/zlib/ZlibDecoder.cpp` replaces only Adler32 arithmetic
   with `adler32_z`. Empty updates preserve the supplied SDK seed. Output
   accounting still follows bytes actually accepted by the destination.
   Optional absent trailers, rejection of partial/incorrect trailers, the
@@ -139,7 +139,7 @@ Similar names and disabled historical bodies are not treated as live duplicates.
 
 ### Implemented ownership
 
-- `src/lib/crc/crc32-main.c::crc32_le` preserves Linux's raw seeded state API
+- `src/checksums/linux/crc32-main.c::crc32_le` preserves Linux's raw seeded state API
   around public `lzma_crc32`, complementing the incoming and returned state.
   Empty updates retain the seed. LZOP keeps its existing header/data/compressed
   checksum branches. The duplicate IEEE loop/table are removed; the existing
@@ -149,17 +149,17 @@ Similar names and disabled historical bodies are not treated as live duplicates.
   and its existing endian configuration. Added unchanged XZ units are
   `src/liblzma/check/crc32_fast.c`, `crc32_table_le.h` and `crc32_table_be.h`.
   The native core still needs only its existing CRC64 source closure.
-- `src/lib/crypto/sha512.c::sha512_blocks_generic` delegates full blocks to the
+- `src/crypto/primitives/sha512.c::sha512_blocks_generic` delegates full blocks to the
   existing SDK `CSha512`, `Sha512_Init` and `Sha512_Update`. Linux keeps its
   SHA-384/SHA-512 IVs, buffering, 128-bit length accounting, padding, HMAC,
   precomputed states and finalization. SDK finalization is not used.
-- `src/lib/crypto/sha3.c::sha3_keccakf_generic` keeps Linux endian conversion
+- `src/crypto/primitives/sha3.c::sha3_keccakf_generic` keeps Linux endian conversion
   and delegates the permutation to the existing SDK SHA-3 implementation.
   Linux still owns absorb buffering, domain separation, HMAC and incremental
   SHAKE output. The bridge imports native lanes into `CSha3`, then absorbs one
   complete zero SHA3-256 rate block: XOR with zero preserves the lanes before
   the SDK permutation. It adds no padding and does not call SDK finalization.
-- `src/lib/crypto/sdkhashblocks.c/.h` is local C integration. Its temporary SDK
+- `src/crypto/primitives/sdkhashblocks.c/.h` is local C integration. Its temporary SDK
   contexts are erased with existing `memzero_explicit`. The SDK bodies remain
   byte-exact. Their C objects now belong to `sevenzip_fscrypt_crypto`, also reused
   by ext/fs-verity consumers instead of compiling another set of those objects.
@@ -259,7 +259,7 @@ Linux streaming/finalization remains an intentional adaptation boundary.
 ## Shared CRC32C service
 
 The next continuation extracts the existing 7-Zip VHDX CRC32C implementation into
-`src/CPP/7zip/Archive/VhdxCrc.cpp`, with a C ABI in `VhdxCrc.h`. The complete original
+`src/formats/vhdx/VhdxCrc.cpp`, with a C ABI in `VhdxCrc.h`. The complete original
 `CPP/7zip/Archive/VhdxHandler.cpp` is pinned in the existing SDK manifest at
 `b88c6bc09339de32f7d18bbab900686b244f42ba`, repository
 <https://github.com/ip7z/7zip.git>, LGPL-2.1-or-later. Its SHA256 is
@@ -276,7 +276,7 @@ both complete inventory units before aligning that manifest with the engine.
   synchronized and subsequent access is read-only. Empty/null updates return
   the incoming raw state before pointer arithmetic. The C ABI explicitly uses
   cdecl on MSVC because native nmake compiles with a different default convention.
-- `src/CPP/7zip/Archive/VhdxHandler.cpp` retains the complete original reader;
+- `src/formats/vhdx/VhdxHandler.cpp` retains the complete original reader;
   only checksum implementation/initialization moves. `Crc32c_Calc` still applies
   the original initial/final complements. All header, region and log callers,
   checksum-field handling, parsing, extent/BAT, parent and stream behavior remain.
@@ -284,7 +284,7 @@ both complete inventory units before aligning that manifest with the engine.
   the equivalently formatted original keeps this separate from the extraction.
   The disabled log replay branch remains disabled. No new VHDX recovery behavior
   or source writes are introduced.
-- `src/xfschecksum.cpp` retains the bounds check and temporary zero/restore of
+- `src/formats/xfs/xfschecksum.cpp` retains the bounds check and temporary zero/restore of
   its caller-owned metadata checksum. Its duplicate table and loop are removed.
 - Linux `crc32c` preserves its raw seeded C API around the same service. Its
   duplicate Castagnoli table/loop and generator branch are removed; IEEE CRC32

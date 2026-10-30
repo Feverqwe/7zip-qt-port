@@ -100,7 +100,7 @@ belong in [the audit](upstream-port-audit.md).
 | External child/temp lifetime and pending modal close | `archive_external_lifetime`, `archive_external_security`, `temp_detached_launch`, `owned_temp` |
 | Window destruction joins workers and rejects obsolete callbacks | `worker_window_progress`, `large_list_window`, `app_lifecycle_window`, `binding_lifecycle` |
 | Nested error/wrong-password rollback and read-only refusal | `nested_edit_chain::rejectedInnerPasswordRestoresParent/readOnlyLevelPreventsChainWrites`; `nested_update` |
-| Reports omit editable values, including shown passwords | `compression_encryption::methodsAndShowPassword` verifies shown and masked report dumps omit both inputs; `tests/layout_inspection.cpp` report schema; current report/log scan in P3-02 evidence |
+| Reports omit editable values, including shown passwords | `compression_encryption::methodsAndShowPassword` verifies shown and masked report dumps omit both inputs; `tests/ui/support/layout_inspection.cpp` report schema; current report/log scan in P3-02 evidence |
 | Create source validation order, suppressible errors, unconditional memory/small-volume refusal and real writer recovery | `compression_error_policy` (EN/RU, disabled password controls, unknown-RAM fallback, unchanged settings/input and normal/compact message geometry); `source_archive_browse`, `compression_encryption`, `compression_limit`, `gui_error_policy` |
 | Saved compression values restore source nearest/clamped dictionary/order/solid and unavailable-thread behavior | `compression_profile_selection` (EN/RU, Cancel/restart, real accepted Create/list/test/extract and exact bytes); `compression_preferences`, `compression_dictionary`, `compression_order`, `compression_solid`, `compression_resources` |
 

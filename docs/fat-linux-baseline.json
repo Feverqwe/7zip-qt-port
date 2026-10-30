@@ -39,5 +39,14 @@
       "fs/nls/nls_cp437.c"
     ],
     "reason": "CP437 conversion and short-name case adaptation use native OS services; original hash retained."
+  },
+  "owners": {
+    "fs/fat/dir.c": "src/formats/fat/dir.c",
+    "fs/fat/fat.h": "src/formats/fat/fat.h",
+    "fs/fat/inode.c": "src/formats/fat/inode.c",
+    "fs/fat/misc.c": "src/formats/fat/misc.c",
+    "fs/nls/nls_base.c": "src/text/nls/nls_base.c",
+    "include/uapi/linux/msdos_fs.h": "src/compat/linux/include/uapi/linux/msdos_fs.h",
+    "LICENSES/exceptions/Linux-syscall-note": "third_party/linux/LICENSES/exceptions/Linux-syscall-note"
   }
 }

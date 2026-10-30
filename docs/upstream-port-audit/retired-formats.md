@@ -66,7 +66,7 @@ tool, for example:
 ```sh
 python3 scripts/upstream_baseline.py verify --upstream /path/to/7zip-reference
 python3 scripts/upstream_baseline.py review --upstream /path/to/7zip-reference \
-  --new-revision <candidate-commit> --path src/CPP/7zip/Bundles/Format7zF/Arc.mak \
+  --new-revision <candidate-commit> --path src/engine/build/Arc.mak \
   --output build/review/retired-formats/upstream-review.md
 ```
 

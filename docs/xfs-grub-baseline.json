@@ -10,11 +10,11 @@
     "include/grub/safemath.h": "ceb20344dab94bff2a6e13b5991e417e03913c5dfeae30f9f5882e31ba774d8f"
   },
   "adapted": {
-    "grub-core/fs/xfs.c": "src/grub/fs/xfs.c",
-    "grub-core/fs/fshelp.c": "src/grub/fs/fshelp.c",
-    "include/grub/fshelp.h": "src/grub/fs/xfs_compat.h",
-    "include/grub/types.h": "src/grub/fs/xfs_compat.h",
-    "include/grub/safemath.h": "src/grub/fs/xfs_compat.h"
+    "grub-core/fs/xfs.c": "src/dependencies/grub/include/grub/fs/xfs.c",
+    "grub-core/fs/fshelp.c": "src/dependencies/grub/include/grub/fs/fshelp.c",
+    "include/grub/fshelp.h": "src/dependencies/grub/include/grub/fs/xfs_compat.h",
+    "include/grub/types.h": "src/dependencies/grub/include/grub/fs/xfs_compat.h",
+    "include/grub/safemath.h": "src/dependencies/grub/include/grub/fs/xfs_compat.h"
   },
   "unchanged": {
     "COPYING": "third_party/grub/COPYING"
@@ -72,13 +72,21 @@
     ]
   },
   "local": [
-    "src/dependencies/grub_xfs.h",
-    "src/dependencies/grub_xfs.cppm",
-    "src/xfsreader.h",
-    "src/xfsreader.c",
-    "src/xfsarchivereader.h",
-    "src/xfsarchivereader.cpp",
-    "src/xfshandler.cpp",
-    "cmake/Xfs.cmake"
-  ]
+    "src/dependencies/grub_xfs/grub_xfs.h",
+    "src/dependencies/grub_xfs/grub_xfs.cppm",
+    "src/formats/xfs/xfsreader.h",
+    "src/formats/xfs/xfsreader.c",
+    "src/formats/xfs/xfsarchivereader.h",
+    "src/formats/xfs/xfsarchivereader.cpp",
+    "src/formats/xfs/xfshandler.cpp",
+    "src/formats/xfs/module.cmake"
+  ],
+  "owners": {
+    "COPYING": "third_party/grub/COPYING",
+    "grub-core/fs/xfs.c": "src/dependencies/grub/include/grub/fs/xfs.c",
+    "grub-core/fs/fshelp.c": "src/dependencies/grub/include/grub/fs/fshelp.c",
+    "include/grub/fshelp.h": "src/dependencies/grub/include/grub/fs/xfs_compat.h",
+    "include/grub/types.h": "src/dependencies/grub/include/grub/fs/xfs_compat.h",
+    "include/grub/safemath.h": "src/dependencies/grub/include/grub/fs/xfs_compat.h"
+  }
 }

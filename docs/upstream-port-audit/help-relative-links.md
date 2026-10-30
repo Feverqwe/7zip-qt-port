@@ -7,7 +7,7 @@ commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `CPP/7zip/UI/FileManager/HelpUtils.cpp/.h`, `ShowHelpWindow`:
 построение пути CHM и делегирование отображения HtmlHelp/hh.exe.
 Официальные страницы 26.03 и их контрольные суммы сохранены в
-[provenance](../../resources/7zip/help-provenance.json).
+[provenance](../../third_party/7zip-help/help-provenance.json).
 
 Сверены исходный HelpUtils, текущая загрузка темы, CSS, обработчик ссылок,
 история QTextBrowser и ссылки исходных HTML. В `fm/plugins/7-zip/add.htm`

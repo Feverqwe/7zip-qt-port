@@ -52,5 +52,26 @@
     "include/linux/crc-itu-t.h",
     "lib/crc/crc-itu-t.c",
     "kernel/time/time.c"
-  ]
+  ],
+  "owners": {
+    "fs/udf/dir.c": "src/formats/udf/dir.c",
+    "fs/udf/directory.c": "src/formats/udf/directory.c",
+    "fs/udf/inode.c": "src/formats/udf/inode.c",
+    "fs/udf/lowlevel.c": "src/formats/udf/lowlevel.c",
+    "fs/udf/misc.c": "src/formats/udf/misc.c",
+    "fs/udf/partition.c": "src/formats/udf/partition.c",
+    "fs/udf/super.c": "src/formats/udf/super.c",
+    "fs/udf/symlink.c": "src/formats/udf/symlink.c",
+    "fs/udf/udf_i.h": "src/formats/udf/udf_i.h",
+    "fs/udf/udf_sb.h": "src/formats/udf/udf_sb.h",
+    "fs/udf/udfdecl.h": "src/formats/udf/udfdecl.h",
+    "fs/udf/udfend.h": "src/formats/udf/udfend.h",
+    "fs/udf/udftime.c": "src/formats/udf/udftime.c",
+    "fs/udf/unicode.c": "src/formats/udf/unicode.c",
+    "lib/crc/crc-itu-t.c": "src/checksums/linux/crc-itu-t.c",
+    "include/linux/crc-itu-t.h": "src/compat/linux/include/linux/crc-itu-t.h",
+    "kernel/time/time.c": "src/compat/linux/time/time.c",
+    "fs/udf/ecma_167.h": "third_party/linux/fs/udf/ecma_167.h",
+    "fs/udf/osta_udf.h": "third_party/linux/fs/udf/osta_udf.h"
+  }
 }

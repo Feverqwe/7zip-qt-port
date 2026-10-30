@@ -8,8 +8,10 @@ conditional implementations and validation remain available in Git history.
 
 ## Source ownership
 
-Each complete reader has one owner under `src/gpl/CPP/`, preserving its upstream
-relative path: ext, FAT, NTFS, HFS, SquashFS, ISO, UDF, MBR and composite CPIO.
+Each complete reader has one owner in its project format module: ext, FAT, NTFS,
+HFS, SquashFS, ISO, UDF, MBR and composite CPIO. The
+[module reorganization](module-source-ownership.md) replaced the earlier
+upstream-shaped source directories without changing this ownership boundary.
 The SDK copies of fifteen source/header units are removed. SquashFS already had
 one owner. CramFS was retired separately and is outside this change.
 
@@ -21,7 +23,7 @@ in the owning [filesystem audit](filesystems-linux.md) and its component links.
 This change imports no new Linux algorithms and advances no reference baseline.
 
 Four portable dependencies formerly embedded in the duplicated handlers are
-extracted into shared units under `src/CPP/7zip/Archive`:
+extracted into shared units, now kept with their owning format modules:
 
 | Original owner | Transferred scope | Shared owners and consumers |
 | --- | --- | --- |
@@ -63,7 +65,7 @@ Complete GPL readers remain separate binary modules. GPLv2-only Linux code,
 GPLv3 GRUB readers and the unRAR-bearing core are not combined into one binary.
 Original notices and the existing component license files remain unchanged.
 The runtime preparer rejects full GPL readers in the core overlay. Source
-uniqueness now applies across both source roots, preventing renewed SDK copies.
+uniqueness follows explicit baseline owners, preventing renewed SDK copies.
 
 ## Validation
 

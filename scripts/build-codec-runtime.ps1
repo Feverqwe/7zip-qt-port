@@ -1,14 +1,12 @@
 # Prepare the official Windows console sidecar and codec module from pinned source.
 [CmdletBinding()]
 param(
-    [string]$UpstreamCheckout,
     [string]$OutputDirectory,
     [ValidateSet('arm64', 'x64', 'x86')]
     [string]$Architecture = $env:VSCMD_ARG_TGT_ARCH
 )
 $ErrorActionPreference = 'Stop'
 $scriptDirectory = [IO.Path]::GetDirectoryName($MyInvocation.MyCommand.Path)
-if (-not $UpstreamCheckout) { $UpstreamCheckout = Join-Path $scriptDirectory '../../7zip-upstream' }
 . (Join-Path $scriptDirectory 'lib/workspace.ps1')
 Initialize-SevenzipWorkspace (Split-Path -Parent $scriptDirectory)
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $env:SEVENZIP_ARTIFACT_ROOT 'dev/codec-runtime' }
@@ -22,7 +20,7 @@ $msvcBin = Get-SevenzipMsvcTools
 Write-Output "Using MSVC tools: $msvcBin"
 # Git Bash's GNU tar treats drive-letter paths as remote archive names.
 $tar = Join-Path $env:SystemRoot 'System32/tar.exe'
-foreach ($tool in @('git', $tar, 'nmake', 'cl', 'link', 'rc')) {
+foreach ($tool in @($tar, 'nmake', 'cl', 'link', 'rc')) {
     $null = Get-Command $tool -ErrorAction Stop
 }
 function Invoke-Checked([string]$Program, [string[]]$Arguments) {
@@ -34,8 +32,6 @@ $baseline = Get-Content -LiteralPath (Join-Path $projectRoot 'docs/upstream-base
     ConvertFrom-Json
 $revision = [string]$baseline.revision
 if ($revision -notmatch '^[0-9a-f]{40}$') { throw 'Invalid recorded upstream revision.' }
-$upstream = [IO.Path]::GetFullPath($UpstreamCheckout)
-Invoke-Checked 'git' @('-C', $upstream, 'cat-file', '-e', "$revision`^{commit}")
 $output = [IO.Path]::GetFullPath($OutputDirectory)
 $null = New-Item -ItemType Directory -Path $output -Force
 if ((Get-Item -LiteralPath $output).Attributes -band [IO.FileAttributes]::ReparsePoint) {
@@ -66,7 +62,7 @@ if ($existing.Count -gt 0) {
 $snapshot = Join-Path $output '.build-runtime'
 & {
     Invoke-Checked 'python' @((Join-Path $scriptDirectory 'upstream_baseline.py'),
-        'runtime-snapshot', '--snapshot', $snapshot, '--upstream', $upstream)
+        'runtime-snapshot', '--snapshot', $snapshot)
     Invoke-Checked 'python' @((Join-Path $scriptDirectory 'build-native-dependencies.py'),
         '--snapshot', $snapshot)
     $files = [ordered]@{}

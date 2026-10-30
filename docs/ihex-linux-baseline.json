@@ -8,5 +8,8 @@
     "include/linux/ihex.h": "d60e6c9f0c2b000018ec75bc504b32920f14e1173e80a1c0cd37fc0d382afcf4",
     "lib/hexdump.c": "8dc7763f4e57463bdd71dbc6c07dabc75c01ac42413c1ae09073794e859c7f2b"
   },
-  "scope": "ASCII Intel HEX AS102/IQS5xx readers, nibble conversion and distinction from binary ihex_binrec; hardware firmware update excluded."
+  "scope": "ASCII Intel HEX AS102/IQS5xx readers, nibble conversion and distinction from binary ihex_binrec; hardware firmware update excluded.",
+  "owners": {
+    "lib/hexdump.c": "src/compat/linux/core/hexdump.c"
+  }
 }

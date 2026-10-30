@@ -28,7 +28,7 @@ commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `CPP/7zip/UI/FileManager/HelpUtils.cpp/.h`, `ShowHelpWindow` и его вызовы
 из меню и диалогов. Страницы и CSS взяты без изменений из официального
 CHM 26.03; точный источник и контрольные суммы —
-[help-provenance.json](../../resources/7zip/help-provenance.json).
+[help-provenance.json](../../third_party/7zip-help/help-provenance.json).
 
 Сверены исходные ветви HtmlHelp/hh.exe, построение пути и темы, текущие
 Qt-вызовы, загрузка HTML/CSS, переходы по ссылкам и история. Upstream

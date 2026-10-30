@@ -36,5 +36,19 @@
     "exfat_raw.h",
     "include/linux/string.h",
     "lib/string.c"
-  ]
+  ],
+  "owners": {
+    "fs/exfat/balloc.c": "src/formats/exfat/balloc.c",
+    "fs/exfat/dir.c": "src/formats/exfat/dir.c",
+    "fs/exfat/exfat_fs.h": "src/formats/exfat/exfat_fs.h",
+    "fs/exfat/exfat_raw.h": "src/formats/exfat/exfat_raw.h",
+    "fs/exfat/fatent.c": "src/formats/exfat/fatent.c",
+    "fs/exfat/misc.c": "src/formats/exfat/misc.c",
+    "fs/exfat/super.c": "src/formats/exfat/super.c",
+    "kernel/time/time.c": "src/compat/linux/time/time.c",
+    "lib/hweight.c": "src/compat/linux/core/hweight.c",
+    "include/linux/string.h": "src/compat/linux/include/linux/string.h",
+    "lib/string.c": "src/compat/linux/core/string.c",
+    "LICENSES/preferred/GPL-2.0": "third_party/linux/LICENSES/preferred/GPL-2.0"
+  }
 }

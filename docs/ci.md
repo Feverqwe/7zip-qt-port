@@ -17,8 +17,11 @@ Local macOS builds default to the official shared Qt 6.12.0 kit and target
 macOS 14.4+. This avoids the external ICU/GLib dependency chain of Homebrew Qt;
 see [SDK setup](development.md#dependencies).
 
-Runtime/SFX builders compile private snapshots from the official repository and
-revision recorded in [the baseline](upstream-baseline.json).
+Runtime/SFX builders compile private source trees expanded from the local
+7-Zip archive and adaptations recorded in [the baseline](upstream-baseline.json).
+Release CI uses those same repository-owned inputs without fetching 7-Zip.
+Source ownership and pending directory migration are described in
+[architecture](architecture.md#module-directories-and-source-ownership).
 `scripts/install-qt-windows.py` adapts aqtinstall to the selected Qt kit's
 compiler-specific repository layout. Pins from the removed workflow are
 [historical evidence](archive/qt-port/workflow-evidence.md).

@@ -5,19 +5,12 @@ export PYTHONDONTWRITEBYTECODE=1
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$project_root/scripts/lib/toolchain.sh"
 sevenzip_select_toolchain release runtime
-upstream_checkout="${1:-$(python3 "$project_root/scripts/lib/toolchain.py" --root "$project_root" --upstream)}"
-artifact_dir="${2:-$SEVENZIP_ARTIFACT_ROOT/release/sfx}"
+artifact_dir="${1:-$SEVENZIP_ARTIFACT_ROOT/release/sfx}"
 python3 -B "$project_root/scripts/lib/build_paths.py" check-output --root "$project_root" --output "$artifact_dir" >/dev/null
 case "$(uname -s)" in
   Darwin|Linux) ;;
   *) printf 'This script builds Unix console SFX. Windows uses the official GUI 7z.sfx module.\n' >&2; exit 1 ;;
 esac
-revision="$(python3 - "$project_root/docs/upstream-baseline.json" <<'PY'
-import json, sys
-print(json.load(open(sys.argv[1]))["revision"])
-PY
-)"
-git -C "$upstream_checkout" cat-file -e "$revision^{commit}"
 mkdir -p "$artifact_dir"
 python3 - "$artifact_dir" <<'PY'
 import json, pathlib, sys
@@ -33,7 +26,7 @@ if any(path.exists() or path.is_symlink() for path in (module, manifest, license
 PY
 snapshot="$artifact_dir/.build-sfx"
 python3 "$project_root/scripts/upstream_baseline.py" runtime-snapshot --original-only \
-  --snapshot "$snapshot" --upstream "$upstream_checkout"
+  --snapshot "$snapshot"
 if [[ "$(uname -s)" == Darwin ]]; then
   if ! printf '#include <type_traits>\n' | "${CXX:-c++}" -x c++ -std=c++23 -fsyntax-only - >/dev/null 2>&1; then
     task_sfx_sdk="$(xcrun --show-sdk-path)"

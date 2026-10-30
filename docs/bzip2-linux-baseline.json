@@ -7,5 +7,8 @@
     "lib/decompress.c": "dd82cca38e7af2ad746f659cd45b6f94ecb05ce063a0068fe6e3d424d09554a1",
     "lib/decompress_bunzip2.c": "0dc424009d458e3c0c486cde834b28f743a50d27f5ff3544e70457407be59835"
   },
-  "scope": "Reference comparison only; original 7-Zip bzip2 decoder retained."
+  "scope": "Reference comparison only; original 7-Zip bzip2 decoder retained.",
+  "owners": {
+    "include/linux/crc32poly.h": "third_party/linux/include/linux/crc32poly.h"
+  }
 }

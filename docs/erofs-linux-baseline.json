@@ -95,7 +95,7 @@
   ],
   "generated": {
     "lib/crc/crc32table.h": {
-      "generator": "src/lib/crc/gen_crc32table.c",
+      "generator": "src/checksums/linux/gen_crc32table.c",
       "sha256": "bfdb0c425e2381003f5928ce7810a3ce2e4d96ffbfce790446a56068038679e5"
     }
   },
@@ -109,15 +109,15 @@
     "lib/xz/xz_private.h": "erofs-liblzma-baseline.json: src/liblzma/common/microlzma_decoder.c"
   },
   "local_integration": [
-    "src/dependencies/linux_erofs.h",
-    "src/dependencies/linux_erofs.cppm"
+    "src/dependencies/linux_erofs/linux_erofs.h",
+    "src/dependencies/linux_erofs/linux_erofs.cppm"
   ],
   "library_adapters": {
     "lib/crc/crc32-main.c": {
       "symbols": [
         "crc32_le"
       ],
-      "local": "src/lib/crc/crc32-main.c",
+      "local": "src/checksums/linux/crc32-main.c",
       "provider_manifest": "erofs-liblzma-baseline.json",
       "provider_symbols": [
         "lzma_crc32"
@@ -128,8 +128,42 @@
       "crc32c": {
         "provider_manifest": "upstream-baseline.json",
         "provider_symbol": "sevenzip_crc32c_update",
-        "local": "src/CPP/7zip/Archive/VhdxCrc.cpp"
+        "local": "src/formats/vhdx/VhdxCrc.cpp"
       }
     }
+  },
+  "owners": {
+    "fs/erofs/compress.h": "src/formats/erofs/compress.h",
+    "fs/erofs/data.c": "src/formats/erofs/data.c",
+    "fs/erofs/decompressor.c": "src/formats/erofs/decompressor.c",
+    "fs/erofs/decompressor_deflate.c": "src/formats/erofs/decompressor_deflate.c",
+    "fs/erofs/decompressor_lzma.c": "src/formats/erofs/decompressor_lzma.c",
+    "fs/erofs/decompressor_zstd.c": "src/formats/erofs/decompressor_zstd.c",
+    "fs/erofs/dir.c": "src/formats/erofs/dir.c",
+    "fs/erofs/erofs_fs.h": "src/formats/erofs/erofs_fs.h",
+    "fs/erofs/inode.c": "src/formats/erofs/inode.c",
+    "fs/erofs/internal.h": "src/formats/erofs/internal.h",
+    "fs/erofs/super.c": "src/formats/erofs/super.c",
+    "fs/erofs/xattr.c": "src/formats/erofs/xattr.c",
+    "fs/erofs/xattr.h": "src/formats/erofs/xattr.h",
+    "fs/erofs/zmap.c": "src/formats/erofs/zmap.c",
+    "fs/fs_dirent.c": "src/compat/linux/filesystem/fs_dirent.c",
+    "fs/posix_acl.c": "src/compat/linux/filesystem/posix_acl.c",
+    "include/linux/fs.h": "src/compat/linux/include/linux/fs.h",
+    "include/linux/fs_dirent.h": "src/compat/linux/include/linux/fs_dirent.h",
+    "include/linux/kdev_t.h": "src/compat/linux/include/linux/kdev_t.h",
+    "include/linux/string.h": "src/compat/linux/include/linux/string.h",
+    "include/uapi/linux/posix_acl.h": "src/compat/linux/include/uapi/linux/posix_acl.h",
+    "include/uapi/linux/posix_acl_xattr.h": "src/compat/linux/include/uapi/linux/posix_acl_xattr.h",
+    "lib/crc/crc32-main.c": "src/checksums/linux/crc32-main.c",
+    "lib/crc/gen_crc32table.c": "src/checksums/linux/gen_crc32table.c",
+    "lib/string.c": "src/compat/linux/core/string.c",
+    "lib/xxhash.c": "src/compat/linux/core/xxhash.c",
+    "mm/util.c": "src/compat/linux/util.c",
+    "LICENSES/deprecated/0BSD": "third_party/linux/LICENSES/deprecated/0BSD",
+    "LICENSES/exceptions/Linux-syscall-note": "third_party/linux/LICENSES/exceptions/Linux-syscall-note",
+    "LICENSES/preferred/BSD-2-Clause": "third_party/linux/LICENSES/preferred/BSD-2-Clause",
+    "LICENSES/preferred/BSD-3-Clause": "third_party/linux/LICENSES/preferred/BSD-3-Clause",
+    "include/linux/crc32poly.h": "third_party/linux/include/linux/crc32poly.h"
   }
 }

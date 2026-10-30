@@ -49,7 +49,7 @@ or unconnected read-feature placeholder was identified in this scope.
 
 The current module/source boundary is the
 [license variant split](license-variants.md). The GPL handler under
-`src/gpl/CPP/7zip/Archive/ExtHandler.cpp` connects the Linux C readers; the SDK
+`src/formats/ext/ExtHandler.cpp` connects the Linux C readers; the SDK
 variant retains its independent license scope and explicitly refuses mandatory
 payload features it cannot decode. Passing dynamic-module checks does not claim
 feature equality for standalone `7zz`. Older descriptions of a shared handler
@@ -157,7 +157,7 @@ not run. Whole ext and the parent format review remain active.
 
 Completed comparison with Linux `58161ead29e50d70a317ea26b472e0c7508e69da`
 of `crypto/{rsa,rsa_helper,rsassa-pkcs1,akcipher,sig}.c` and all twenty selected
-MPI C units linked by `cmake/Ext.cmake`. These units contain 97 local function
+MPI C units linked by `src/formats/ext/module.cmake`. These units contain 97 local function
 bodies: 82 match after comments/whitespace, nine have the adaptations below and
 six provide fixed-provider/context services. Also reviewed the five local
 provider functions in `akcipherprovider.c`/`sigprovider.c`, headers, complete

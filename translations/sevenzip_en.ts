@@ -4,7 +4,7 @@
 <context>
     <name>PanelSelection</name>
     <message numerus="yes">
-        <location filename="../src/qtlanguageservices.cpp" line="+13"/>
+        <location filename="../src/localization/qtlanguageservices.cpp" line="+13"/>
         <source>Selected objects: %Ln</source>
         <translation>
             <numerusform>Selected objects: %Ln</numerusform>
@@ -15,7 +15,7 @@
 <context>
     <name>SettingsRedesign</name>
     <message numerus="yes">
-        <location filename="../src/qtsystempagepresentation.cpp" line="+86"/>
+        <location filename="../src/platform/associations/qtsystempagepresentation.cpp" line="+86"/>
         <source>%n selected formats</source>
         <translation>
             <numerusform>%n selected format</numerusform>
@@ -26,7 +26,7 @@
 <context>
     <name>SevenZip</name>
     <message numerus="yes">
-        <location filename="../src/qtupstreamtranslations.h" line="+287"/>
+        <location filename="../src/localization/qtupstreamtranslations.h" line="+287"/>
         <source>%Ln bytes</source>
         <comment>3504</comment>
         <translation>

@@ -38,10 +38,10 @@
     "c/include/brotli/types.h": "ebbd136dc411cc8167636d6f54b66ad0c234dc18989265c37a28c242eaae2efd"
   },
   "local_integration": [
-    "cmake/Brotli.cmake",
+    "src/formats/brotli/module.cmake",
     "cmake/DependencyModules.cmake",
-    "src/dependencies/brotli.h",
-    "src/dependencies/brotli.cppm"
+    "src/dependencies/brotli/brotli.h",
+    "src/dependencies/brotli/brotli.cppm"
   ],
   "adapter_baseline": {
     "repository": "https://github.com/mcmilk/7-Zip-zstd.git",

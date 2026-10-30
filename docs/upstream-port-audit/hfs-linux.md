@@ -257,7 +257,7 @@ Linux читает target из первой страницы, ограничив
 останавливается на первом NUL. Прежняя archive property отклоняла любой NUL,
 пустой fork и размер больше 64 KiB, а остальные targets читала целиком.
 
-Исходное тело `page_get_link` перенесено без изменения в C `src/fs/namei.c`;
+Исходное тело `page_get_link` перенесено без изменения в C `src/compat/linux/filesystem/namei.c`;
 повторная source-сверка подтвердила все его ветви. Оно переиспользует уже
 существующий authoritative `nd_terminate_link` и exact delayed-call header.
 `__page_get_link` — узкий boundary к заранее прочитанной owned странице:
@@ -312,10 +312,10 @@ physical-size, fork-stream и extraction consumers. Прежний SDK путь 
 H+(4)/HX(5), хотя Linux допускает версии 4–5 для обеих сигнатур.
 
 Оригинальное тело `hfsplus_read_mdb` первоначально передано без изменения в C
-`src/fs/hfsplus/wrapper.c`; signature принимает byte pointer вместо GNU void
+`src/formats/hfs/plus/wrapper.c`; signature принимает byte pointer вместо GNU void
 arithmetic, а static linkage снята для узкого C boundary. Endian/unaligned
 services заменены portable adapters; constants и packed disk types остаются
-authoritative shared Linux header. Отдельный `src/fs/hfsplus/super.c` сохраняет
+authoritative shared Linux header. Отдельный `src/formats/hfs/plus/super.c` сохраняет
 version guard из `hfsplus_fill_super` с теми же constants и failure branch;
 VFS setup/cleanup не копируются. Все 58 baseline hashes и полный переданный
 MDB body повторно сверены. Новые C dependencies входят только в GPL-модуль.

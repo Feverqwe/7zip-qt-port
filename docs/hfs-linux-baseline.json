@@ -95,5 +95,21 @@
       "fs/hfs/trans.c"
     ],
     "reason": "Classic HFS support removed by product decision on 2026-10-24. HFS+/HFSX and embedded HFS+ wrappers remain. Original inventory hashes retained for historical review."
+  },
+  "owners": {
+    "fs/hfsplus/bfind.c": "src/formats/hfs/plus/bfind.c",
+    "fs/hfsplus/dir.c": "src/formats/hfs/plus/dir.c",
+    "fs/hfsplus/hfsplus_fs.h": "src/formats/hfs/plus/hfsplus_fs.h",
+    "fs/hfsplus/inode.c": "src/formats/hfs/plus/inode.c",
+    "fs/hfsplus/super.c": "src/formats/hfs/plus/super.c",
+    "fs/hfsplus/tables.c": "src/formats/hfs/plus/tables.c",
+    "fs/hfsplus/unicode.c": "src/formats/hfs/plus/unicode.c",
+    "fs/hfsplus/wrapper.c": "src/formats/hfs/plus/wrapper.c",
+    "fs/hfsplus/xattr.c": "src/formats/hfs/plus/xattr.c",
+    "include/linux/kdev_t.h": "src/compat/linux/include/linux/kdev_t.h",
+    "fs/namei.c": "src/compat/linux/filesystem/namei.c",
+    "include/linux/namei.h": "src/compat/linux/include/linux/namei.h",
+    "include/linux/delayed_call.h": "src/compat/linux/include/linux/delayed_call.h",
+    "include/linux/hfs_common.h": "third_party/linux/include/linux/hfs_common.h"
   }
 }

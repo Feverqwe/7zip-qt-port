@@ -202,7 +202,7 @@ df -Pk .
 """
         if prepare_runtime:
             script += (timing_command + ' runtime_start\n' + shlex.quote(config['python']) +
-                       ' scripts/prepare-runtime.py --upstream "$PWD/upstream" --preset ' +
+                       ' scripts/prepare-runtime.py --preset ' +
                        shlex.quote(preset) + '\n' +
                        timing_command + ' runtime_end\nexport SEVENZIP_RUNTIME_PREPARED=1\n')
         script += ('export PATH=' + shlex.quote(runtime_directory) + ':"$PATH"\n'
@@ -236,7 +236,7 @@ df -Pk .
                     f'cd /d "{root}"']
         if prepare_runtime:
             commands += [f'"{config["python"]}" scripts/lib/runner_timing.py runtime_start',
-                         f'"{config["python"]}" scripts/prepare-runtime.py --upstream upstream --preset {preset}',
+                         f'"{config["python"]}" scripts/prepare-runtime.py --preset {preset}',
                          'if errorlevel 1 exit /b %errorlevel%',
                          f'"{config["python"]}" scripts/lib/runner_timing.py runtime_end',
                          'set "SEVENZIP_RUNTIME_PREPARED=1"']
@@ -385,7 +385,7 @@ def run_platform(platform, local, source, preset, command, prepare_runtime,
     return result
 
 
-def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=False,
+def run_platforms(platforms, preset, command=None, prepare_runtime=False,
                   interactive=False, elevated=False, sync_checksum=False):
     clang_tidy_mode()
     diagnostic_environment()
@@ -408,7 +408,7 @@ def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=Fal
         with tempfile.TemporaryDirectory(prefix="source-", dir=directory(ROOT, "tmp")) as temporary:
             started = time.monotonic()
             source = Path(temporary)
-            stage_tree(ROOT, upstream, source, directory(ROOT, "cache") / "runners", source_times=True)
+            stage_tree(ROOT, source, source_times=True)
             summary["source_seconds"] = round(time.monotonic() - started, 3)
             report.write_text(json.dumps(summary, indent=2) + "\n")
             with ThreadPoolExecutor(max_workers=len(platforms)) as executor:
@@ -475,7 +475,6 @@ def parse_arguments(argv):
             subparser.add_argument("--elevated", action="store_true")
             subparser.add_argument("--sync-checksum", action="store_true",
                                    help="Compare contents instead of size/mtime with cp2")
-            subparser.add_argument("--upstream", type=Path, default=HARNESS.parent / "7zip-upstream")
             subparser.add_argument("--prepare-runtime", action="store_true",
                                    help="Prepare or refresh the native engine/SFX before the command")
         if action == "check":
@@ -525,7 +524,7 @@ def main():
             print(f"[{platform}] Worktree: {root}", flush=True)
             lock_command(record, root, "", args.action)
         return 0
-    return run_platforms(args.platforms, getattr(args, "preset", "dev"), args.upstream,
+    return run_platforms(args.platforms, getattr(args, "preset", "dev"),
                          args.command, args.prepare_runtime, args.interactive, args.elevated,
                          args.sync_checksum)
 

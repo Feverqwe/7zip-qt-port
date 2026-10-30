@@ -39,17 +39,17 @@
     "lz+entropy/lzlib/decoder.c": "third_party/lzlib/decoder.c",
     "lz+entropy/lzlib/encoder_base.c": "third_party/lzlib/encoder_base.c",
     "lz+entropy/lzlib/testsuite/fox.lz": "tests/fixtures/lzip/fox.lz",
-    "lz+entropy/lzlib/ffexample.c": "src/lzipio.c"
+    "lz+entropy/lzlib/ffexample.c": "src/formats/lzip/lzipio.c"
   },
   "integration": {
-    "src/lzipio.c": {
+    "src/formats/lzip/lzipio.c": {
       "reference": "lz+entropy/lzlib/ffexample.c",
       "symbols": [
         "ffdecompress"
       ],
       "scope": "native bounded read/write/progress callbacks and result mapping"
     },
-    "src/lziphandler.cpp": {
+    "src/formats/lzip/lziphandler.cpp": {
       "reference": "existing Lz4FrameHandler.cpp/BrotliHandler.cpp",
       "baseline": "third_party/brotli/upstream.json",
       "symbols": [
@@ -60,7 +60,7 @@
         "CHandler::GetArchiveProperty"
       ]
     },
-    "tests/lzip_tests.cpp": {
+    "tests/formats/lzip/lzip_tests.cpp": {
       "reference": "lz+entropy/lzlib/ffexample.c",
       "symbols": [
         "ffcompress"
@@ -69,14 +69,14 @@
     }
   },
   "local_integration": [
-    "src/dependencies/lzlib.h",
-    "src/dependencies/lzlib.cppm",
-    "src/dependencies/stream_callbacks.h",
+    "src/dependencies/lzlib/lzlib.h",
+    "src/dependencies/lzlib/lzlib.cppm",
+    "src/dependencies/streams/stream_callbacks.h",
     "cmake/DependencyModules.cmake",
-    "src/lzipio.h",
-    "src/lzipstream.cpp",
-    "src/lzipstream.h",
-    "cmake/Lzip.cmake"
+    "src/formats/lzip/lzipio.h",
+    "src/formats/lzip/lzipstream.cpp",
+    "src/formats/lzip/lzipstream.h",
+    "src/formats/lzip/module.cmake"
   ],
   "unchanged_dependencies": {
     "lz+entropy/lzlib/lzlib.c": "third_party/lzlib/lzlib.c",
@@ -92,5 +92,22 @@
     "lz+entropy/lzlib/fast_encoder.h": "third_party/lzlib/fast_encoder.h",
     "lz+entropy/lzlib/decoder.c": "third_party/lzlib/decoder.c",
     "lz+entropy/lzlib/encoder_base.c": "third_party/lzlib/encoder_base.c"
+  },
+  "owners": {
+    "lz+entropy/lzlib/lzlib.c": "third_party/lzlib/lzlib.c",
+    "lz+entropy/lzlib/encoder.c": "third_party/lzlib/encoder.c",
+    "lz+entropy/lzlib/decoder.h": "third_party/lzlib/decoder.h",
+    "lz+entropy/lzlib/fast_encoder.c": "third_party/lzlib/fast_encoder.c",
+    "lz+entropy/lzlib/encoder_base.h": "third_party/lzlib/encoder_base.h",
+    "lz+entropy/lzlib/lzip.h": "third_party/lzlib/lzip.h",
+    "lz+entropy/lzlib/COPYING": "third_party/lzlib/COPYING",
+    "lz+entropy/lzlib/cbuffer.c": "third_party/lzlib/cbuffer.c",
+    "lz+entropy/lzlib/encoder.h": "third_party/lzlib/encoder.h",
+    "lz+entropy/lzlib/lzlib.h": "third_party/lzlib/lzlib.h",
+    "lz+entropy/lzlib/fast_encoder.h": "third_party/lzlib/fast_encoder.h",
+    "lz+entropy/lzlib/decoder.c": "third_party/lzlib/decoder.c",
+    "lz+entropy/lzlib/encoder_base.c": "third_party/lzlib/encoder_base.c",
+    "lz+entropy/lzlib/testsuite/fox.lz": "tests/fixtures/lzip/fox.lz",
+    "lz+entropy/lzlib/ffexample.c": "src/formats/lzip/lzipio.c"
   }
 }

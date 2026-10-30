@@ -2,117 +2,117 @@
 function(sevenzip_add_port_component owner header)
     add_library(${owner} OBJECT ${ARGN} ${header})
     target_compile_features(${owner} PUBLIC cxx_std_23)
-    target_include_directories(${owner} PRIVATE src src/CPP third_party/7zip/CPP)
+    target_include_directories(${owner} PRIVATE src ${SEVENZIP_NATIVE_INCLUDE_DIR}/CPP ${SEVENZIP_7ZIP_SOURCE_DIR}/CPP)
     target_link_libraries(${owner} PRIVATE Qt6::Widgets sevenzip_common)
     set_target_properties(${owner} PROPERTIES AUTOUIC OFF)
 endfunction()
 
-sevenzip_add_port_component(sevenzip_archive_backend src/archivebackend.h
-    src/archivebackend.cpp
-    src/archivebackend_codecs.cpp
-    src/archivebackend_compression.cpp
-    src/archivebackend_hash.cpp
-    src/archivebackend_sourceextract.cpp
-    src/archivebackend_sourceupdate.cpp
-    src/archivebackend_validation.cpp
-    src/archivebackend_workerprogress.cpp src/archivebackend_transfer.cpp)
+sevenzip_add_port_component(sevenzip_archive_backend src/archive/backend/archivebackend.h
+    src/archive/backend/archivebackend.cpp
+    src/archive/backend/archivebackend_codecs.cpp
+    src/archive/backend/archivebackend_compression.cpp
+    src/archive/backend/archivebackend_hash.cpp
+    src/archive/backend/archivebackend_sourceextract.cpp
+    src/archive/backend/archivebackend_sourceupdate.cpp
+    src/archive/backend/archivebackend_validation.cpp
+    src/archive/backend/archivebackend_workerprogress.cpp src/archive/backend/archivebackend_transfer.cpp)
 target_link_libraries(sevenzip_archive_backend PRIVATE sevenzip_archive_transfer_backup)
-target_sources(sevenzip_archive_backend PRIVATE src/archivecodecpublication.h)
+target_sources(sevenzip_archive_backend PRIVATE src/archive/codecs/archivecodecpublication.h)
 
-sevenzip_add_port_component(sevenzip_compress_presentation src/createarchivedialog.h
-    src/createarchivedialog.cpp
-    src/createarchivedialog_advanced.cpp
-    src/createarchivedialog_compression.cpp
-    src/createarchivedialog_encryption.cpp
-    src/createarchivedialog_formats.cpp
-    src/createarchivedialog_language.cpp
-    src/createarchivedialog_preferences.cpp
-    src/createarchivedialog_resources.cpp
-    src/createarchivedialog_sfx.cpp
-    src/createarchivedialog_source.cpp
-    src/createarchivedialog_volumes.cpp)
+sevenzip_add_port_component(sevenzip_compress_presentation src/dialogs/compress/createarchivedialog.h
+    src/dialogs/compress/createarchivedialog.cpp
+    src/dialogs/compress/createarchivedialog_advanced.cpp
+    src/dialogs/compress/createarchivedialog_compression.cpp
+    src/dialogs/compress/createarchivedialog_encryption.cpp
+    src/dialogs/compress/createarchivedialog_formats.cpp
+    src/dialogs/compress/createarchivedialog_language.cpp
+    src/dialogs/compress/createarchivedialog_preferences.cpp
+    src/dialogs/compress/createarchivedialog_resources.cpp
+    src/dialogs/compress/createarchivedialog_sfx.cpp
+    src/dialogs/compress/createarchivedialog_source.cpp
+    src/dialogs/compress/createarchivedialog_volumes.cpp)
 
-sevenzip_add_port_component(sevenzip_dialog_screen src/qtdialogscreenservices.h
-    src/qtdialogscreenservices.cpp)
+sevenzip_add_port_component(sevenzip_dialog_screen src/ui/dialogs/qtdialogscreenservices.h
+    src/ui/dialogs/qtdialogscreenservices.cpp)
 
 if(APPLE OR WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(sevenzip_window_mount_sources src/qtfilemanagermountcommands.cpp)
+    set(sevenzip_window_mount_sources src/filemanager/qtfilemanagermountcommands.cpp)
 endif()
-sevenzip_add_port_component(sevenzip_main_window src/mainwindow.h
-    src/mainwindow.cpp
-    src/mainwindow_archive_transfer.cpp
-    src/mainwindow_archivecommands.cpp
-    src/mainwindow_guioperations.cpp
-    src/mainwindow_archivelist.cpp
-    src/mainwindow_archiveopening.cpp
-    src/mainwindow_backendevents.cpp
-    src/mainwindow_close.cpp
-    src/mainwindow_startup.cpp src/qtfilemanagersplitter.cpp
-    src/mainwindow_columns.cpp
-    src/mainwindow_refresh.cpp
-    src/mainwindow_dialogs.cpp
-    src/mainwindow_filelist.cpp
-    src/mainwindow_fileoperations.cpp
-    src/mainwindow_rename.cpp
-    src/mainwindow_language.cpp
-    src/mainwindow_menus.cpp
-    src/mainwindow_panel.cpp
-    src/mainwindow_panelkey.cpp
-    src/mainwindow_shortcuts.cpp
-    src/mainwindow_preferences.cpp
-    src/mainwindow_propertyinvalidation.cpp
-    src/mainwindow_root.cpp
-    src/mainwindow_selection.cpp
-    src/mainwindow_selectionpaths.cpp
-    src/mainwindow_twopanel.cpp
-    src/mainwindow_volumes.cpp
-    src/CPP/7zip/UI/FileManager/PanelKey.cpp
-    src/filepanelmodel.cpp src/filepanelmodel.h src/filetable.cpp src/filetable.h
-    src/qtapppresentation.cpp
-    src/qtfilemanagercommands.cpp
-    src/qtfilemanagercommandworkflows.cpp
-    src/qtfilemanagershellmenu.cpp
-    src/qtnativeshellmenu.cpp
-    src/qtprogramfilemenu.cpp
-    src/qtfilemanagerdrag.cpp
-    src/qtfilemanagerdragpresentation.cpp
-    src/qtfilemanagerdraginput.cpp
-    src/qtfilemenuprojection.cpp
+sevenzip_add_port_component(sevenzip_main_window src/filemanager/window/mainwindow.h
+    src/filemanager/window/mainwindow.cpp
+    src/filemanager/window/mainwindow_archive_transfer.cpp
+    src/filemanager/window/mainwindow_archivecommands.cpp
+    src/filemanager/window/mainwindow_guioperations.cpp
+    src/filemanager/window/mainwindow_archivelist.cpp
+    src/filemanager/window/mainwindow_archiveopening.cpp
+    src/filemanager/window/mainwindow_backendevents.cpp
+    src/filemanager/window/mainwindow_close.cpp
+    src/filemanager/window/mainwindow_startup.cpp src/filemanager/qtfilemanagersplitter.cpp
+    src/filemanager/window/mainwindow_columns.cpp
+    src/filemanager/window/mainwindow_refresh.cpp
+    src/filemanager/window/mainwindow_dialogs.cpp
+    src/filemanager/window/mainwindow_filelist.cpp
+    src/filemanager/window/mainwindow_fileoperations.cpp
+    src/filemanager/window/mainwindow_rename.cpp
+    src/filemanager/window/mainwindow_language.cpp
+    src/filemanager/window/mainwindow_menus.cpp
+    src/filemanager/window/mainwindow_panel.cpp
+    src/filemanager/window/mainwindow_panelkey.cpp
+    src/filemanager/window/mainwindow_shortcuts.cpp
+    src/filemanager/window/mainwindow_preferences.cpp
+    src/filemanager/window/mainwindow_propertyinvalidation.cpp
+    src/filemanager/window/mainwindow_root.cpp
+    src/filemanager/window/mainwindow_selection.cpp
+    src/filemanager/window/mainwindow_selectionpaths.cpp
+    src/filemanager/window/mainwindow_twopanel.cpp
+    src/filemanager/window/mainwindow_volumes.cpp
+    src/filemanager/panels/PanelKey.cpp
+    src/filemanager/views/filepanelmodel.cpp src/filemanager/views/filepanelmodel.h src/filemanager/views/filetable.cpp src/filemanager/views/filetable.h
+    src/filemanager/window/qtapppresentation.cpp
+    src/filemanager/qtfilemanagercommands.cpp
+    src/filemanager/qtfilemanagercommandworkflows.cpp
+    src/filemanager/qtfilemanagershellmenu.cpp
+    src/platform/shell/qtnativeshellmenu.cpp
+    src/filemanager/qtprogramfilemenu.cpp
+    src/filemanager/qtfilemanagerdrag.cpp
+    src/filemanager/qtfilemanagerdragpresentation.cpp
+    src/filemanager/qtfilemanagerdraginput.cpp
+    src/filemanager/qtfilemenuprojection.cpp
     ${sevenzip_window_mount_sources})
 if(APPLE OR WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(sevenzip_main_window PRIVATE sevenzip_mount_ui)
 endif()
 
-sevenzip_add_port_component(sevenzip_native_menu_presentation src/qtnativeshellmenupresentation.h
-    src/qtnativeshellmenupresentation.cpp)
+sevenzip_add_port_component(sevenzip_native_menu_presentation src/platform/shell/qtnativeshellmenupresentation.h
+    src/platform/shell/qtnativeshellmenupresentation.cpp)
 
-sevenzip_add_port_component(sevenzip_gui_entry src/qtguicommand.h src/qtguimain.cpp)
-sevenzip_add_port_component(sevenzip_file_manager_entry src/qtfilemanagerstartup.h
-    src/qtfilemanagermain.cpp)
+sevenzip_add_port_component(sevenzip_gui_entry src/gui/qtguicommand.h src/gui/qtguimain.cpp)
+sevenzip_add_port_component(sevenzip_file_manager_entry src/filemanager/qtfilemanagerstartup.h
+    src/filemanager/qtfilemanagermain.cpp)
 if(APPLE)
     target_sources(sevenzip_file_manager_entry PRIVATE
-        src/qtapplicationstartup.h src/qtapplicationstartup_mac.mm)
+        src/app/qtapplicationstartup.h src/app/qtapplicationstartup_mac.mm)
 endif()
 
-sevenzip_add_port_component(sevenzip_compress_source src/CPP/7zip/UI/GUI/CompressDialog.h
-    src/CPP/7zip/UI/GUI/CompressDialog.cpp)
+sevenzip_add_port_component(sevenzip_compress_source src/dialogs/compress/CompressDialog.h
+    src/dialogs/compress/CompressDialog.cpp)
 
-sevenzip_add_port_component(sevenzip_agent src/CPP/7zip/UI/Agent/Agent.h
-    src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/AgentProxy.cpp)
-sevenzip_add_port_component(sevenzip_panel_selection src/CPP/7zip/UI/FileManager/PanelSelect.h
-    src/CPP/7zip/UI/FileManager/PanelSelect.cpp)
-sevenzip_add_port_component(sevenzip_split_dialog src/CPP/7zip/UI/FileManager/SplitDialog.h
-    src/CPP/7zip/UI/FileManager/SplitDialog.cpp)
-sevenzip_add_port_component(sevenzip_panel_split src/CPP/7zip/UI/FileManager/PanelSplitFile.h
-    src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/qtvolumeprogress.h src/qtvolumeprogress.cpp
-    src/qtvolumeio.h src/qtvolumeio.cpp src/qtvolumeservices.h)
-sevenzip_add_port_component(sevenzip_file_transfer src/filetransferoperation.h
-    src/filetransferoperation.cpp src/qtfiletransfertransaction.cpp src/qtfiletransfertransaction.h)
-sevenzip_add_port_component(sevenzip_filesystem_scan src/filesystemscanner.h
-    src/filesystemscanner.cpp)
-sevenzip_add_port_component(sevenzip_volume_operations src/qtvolumetransaction.h
-    src/qtvolumetransaction.cpp src/volumeoperations.h
-    src/volumeoperations.cpp)
+sevenzip_add_port_component(sevenzip_agent src/archive/agent/Agent.h
+    src/archive/agent/Agent.cpp src/archive/agent/AgentProxy.cpp)
+sevenzip_add_port_component(sevenzip_panel_selection src/filemanager/panels/PanelSelect.h
+    src/filemanager/panels/PanelSelect.cpp)
+sevenzip_add_port_component(sevenzip_split_dialog src/dialogs/split/SplitDialog.h
+    src/dialogs/split/SplitDialog.cpp)
+sevenzip_add_port_component(sevenzip_panel_split src/filemanager/panels/PanelSplitFile.h
+    src/filemanager/panels/PanelSplitFile.cpp src/fileops/volumes/qtvolumeprogress.h src/fileops/volumes/qtvolumeprogress.cpp
+    src/fileops/volumes/qtvolumeio.h src/fileops/volumes/qtvolumeio.cpp src/fileops/volumes/qtvolumeservices.h)
+sevenzip_add_port_component(sevenzip_file_transfer src/fileops/transfer/filetransferoperation.h
+    src/fileops/transfer/filetransferoperation.cpp src/fileops/transfer/qtfiletransfertransaction.cpp src/fileops/transfer/qtfiletransfertransaction.h)
+sevenzip_add_port_component(sevenzip_filesystem_scan src/fileops/scanner/filesystemscanner.h
+    src/fileops/scanner/filesystemscanner.cpp)
+sevenzip_add_port_component(sevenzip_volume_operations src/fileops/volumes/qtvolumetransaction.h
+    src/fileops/volumes/qtvolumetransaction.cpp src/fileops/volumes/volumeoperations.h
+    src/fileops/volumes/volumeoperations.cpp)
 
 # Archive resources in this library call the typed backend even when a consumer
 # only opens an options page. Carry that implementation in the resource target
@@ -120,12 +120,12 @@ sevenzip_add_port_component(sevenzip_volume_operations src/qtvolumetransaction.h
 target_link_libraries(sevenzip_location PRIVATE
     sevenzip_archive_backend sevenzip_compress_source sevenzip_agent)
 target_sources(sevenzip_location PRIVATE
-    src/archivebackend_guioperations.cpp
-    src/archivebackend_nativeentries.cpp src/archivebackend_nativeentries.h
-    src/archivebackend_test.cpp)
+    src/archive/backend/archivebackend_guioperations.cpp
+    src/archive/backend/archivebackend_nativeentries.cpp src/archive/backend/archivebackend_nativeentries.h
+    src/archive/backend/archivebackend_test.cpp)
 
-sevenzip_add_port_component(sevenzip_panel_context_menu src/qtpanelcontextmenu.h
-    src/qtpanelcontextmenu.cpp)
+sevenzip_add_port_component(sevenzip_panel_context_menu src/filemanager/panels/qtpanelcontextmenu.h
+    src/filemanager/panels/qtpanelcontextmenu.cpp)
 set_target_properties(sevenzip_panel_context_menu PROPERTIES AUTOMOC OFF)
 
 # Dialog-only processes do not need the File Manager window composition.

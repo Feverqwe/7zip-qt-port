@@ -19,9 +19,9 @@ project ownership marker are refused.
 The local file is ignored by Git and excluded from runner source transfers.
 Linked worktrees use this file from the main checkout, so feature worktrees
 under `.worktrees/` need no separate machine configuration. Run the scripts in
-the feature worktree to send that branch's current source. Runner logs and the
-upstream bundle cache stay on the main checkout's ordinary disk;
-the default upstream checkout remains its sibling `7zip-upstream`.
+the feature worktree to send that branch's current source. Runner logs and
+compiler/tool caches stay on the main checkout's ordinary disk. Source archives
+travel with the project; no upstream Git bundle or separate checkout is needed.
 Keep passwords and private keys outside it; use SSH's normal authentication and
 host-key verification. An alternative file can be selected with
 `SEVENZIP_RUNNER_CONFIG`. Keep alternative private files outside the checkout

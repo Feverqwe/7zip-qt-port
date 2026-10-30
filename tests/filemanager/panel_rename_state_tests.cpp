@@ -1,0 +1,428 @@
+#include "filemanager/panels/Panel.h"
+#include "filemanager/providers/FSFolder.h"
+#include "filemanager/support/window_state_support.h"
+#include "filemanager/views/filetable.h"
+#include "localization/LangUtils.h"
+#include "platform/support/native_link_fixture.h"
+#include "ui/progress/ProgressDialog2.h"
+#include "ui/support/layout_inspection.h"
+#include <QEventLoop>
+#include <QFile>
+#include <QFocusFrame>
+#include <QLabel>
+#include <QMessageBox>
+#include <QPointer>
+#include <QScopeGuard>
+#include <QTemporaryDir>
+#include <QTimer>
+#include <QtTest>
+
+class PanelRenameStateTests final : public QObject, protected MainWindowTestSupport {
+    Q_OBJECT
+    static bool write(const QString &path, const QByteArray &bytes) {
+        QFile file(path);
+        return file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size();
+    }
+  private slots:
+    void activationUsesFocusedRow_data() {
+        QTest::addColumn<unsigned>("pane");
+        QTest::addColumn<bool>("alternative");
+        QTest::addColumn<bool>("icons");
+        QTest::addColumn<bool>("link");
+        for (unsigned pane : {0u, 1u})
+            for (bool alternative : {false, true})
+                for (bool icons : {false, true})
+                    QTest::newRow(
+                        qPrintable(QString("%1-%2-%3").arg(pane).arg(alternative).arg(icons)))
+                        << pane << alternative << icons << false;
+        QTest::newRow("link-table") << 0u << false << false << true;
+        QTest::newRow("link-icons-alternative") << 1u << true << true << true;
+    }
+    void activationUsesFocusedRow() {
+        QFETCH(unsigned, pane);
+        QFETCH(bool, alternative);
+        QFETCH(bool, icons);
+        QFETCH(bool, link);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        CFmSettings preferences;
+        preferences.Load(settings);
+        preferences.ShowDots = false;
+        preferences.AlternativeSelection = alternative;
+        preferences.Save(settings);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString original = QStringLiteral("focused 文件.txt");
+        const QString peer = QStringLiteral("marked δ.txt");
+        const QString renamed = QStringLiteral("renamed 空.txt");
+        QTemporaryDir linkTarget;
+        QVERIFY(linkTarget.isValid());
+        const QString target = linkTarget.filePath("keep-target.bin");
+        if (link) {
+            QVERIFY(write(target, "focus bytes"));
+            QVERIFY(CreateNativeSymbolicLink(fixture.filePath(original), target));
+        } else
+            QVERIFY(write(fixture.filePath(original), "focus bytes"));
+        QVERIFY(write(fixture.filePath(peer), "mark bytes"));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
+        auto *address = ui->findChild<QLineEdit *>("archivePath");
+        address->setFocus();
+        address->setText(fixture.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QTRY_COMPARE(view->rowCount(), 2);
+        view->sourcePanel->Set_AutoRefresh_Mode(false);
+        int focusedRow = -1;
+        for (int row = 0; row < view->rowCount(); ++row)
+            if (view->model()->index(row, 0).data(Qt::UserRole + 3).toString() == original)
+                focusedRow = row;
+        QVERIFY(focusedRow >= 0);
+        view->sourcePanel->SelectSpec(alternative ? ToUString(peer) : UString(L"*"), true);
+        view->selectionModel()->setCurrentIndex(view->model()->index(focusedRow, 0),
+                                                QItemSelectionModel::NoUpdate);
+        action(window, icons ? "viewMode0Action" : "viewMode3Action")->trigger();
+        auto *active =
+            icons ? static_cast<QAbstractItemView *>(ui->findChild<QListView *>("iconList"))
+                  : static_cast<QAbstractItemView *>(view);
+        QVERIFY(active);
+        active->setFocus();
+        UStringVector savedMarks;
+        view->sourcePanel->GetSelectedNames(savedMarks);
+        QVERIFY(action(window, "renameAction")->isEnabled());
+        action(window, "renameAction")->trigger();
+        QPointer<QLineEdit> editor = active->findChild<QLineEdit *>();
+        QVERIFY(editor);
+        QCOMPARE(editor->text(), original);
+        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+            window.resize(size);
+            QApplication::processEvents();
+            QVERIFY(editor);
+            QVERIFY(UiInspection::fullyVisible(*editor, window));
+            if (!icons)
+                QVERIFY(editor->height() >= editor->minimumSizeHint().height());
+            for (auto *frame : active->findChildren<QFocusFrame *>())
+                if (frame->isVisible() && frame->widget() == editor) {
+                    const QRect ring = UiInspection::bounds(*frame, *active->viewport());
+                    QVERIFY2(active->viewport()->rect().contains(ring),
+                             qPrintable(QString("focus frame %1,%2 %3x%4 exceeds parent %5x%6")
+                                            .arg(frame->x())
+                                            .arg(frame->y())
+                                            .arg(frame->width())
+                                            .arg(frame->height())
+                                            .arg(frame->parentWidget()->width())
+                                            .arg(frame->parentWidget()->height())));
+                    if (!icons) {
+                        const QRect row = view->visualRect(view->model()->index(focusedRow, 0));
+                        QVERIFY(ring.top() >= row.top());
+                        QVERIFY(ring.bottom() <= row.bottom());
+                    }
+                }
+            QVERIFY(UiInspection::writeReport(
+                window,
+                QString("rename-activation-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));
+        }
+        QTest::keyClick(editor, Qt::Key_Escape);
+        QTRY_VERIFY(!active->findChild<QLineEdit *>());
+        QVERIFY(QFileInfo::exists(fixture.filePath(original)));
+        UStringVector remainingMarks;
+        view->sourcePanel->GetSelectedNames(remainingMarks);
+        QCOMPARE(remainingMarks.Size(), savedMarks.Size());
+        FOR_VECTOR(i, savedMarks)
+        QCOMPARE(remainingMarks[i], savedMarks[i]);
+        action(window, "renameAction")->trigger();
+        editor = active->findChild<QLineEdit *>();
+        QVERIFY(editor);
+        editor->setText(renamed);
+        QTest::keyClick(editor, Qt::Key_Return);
+        QTRY_VERIFY(QFileInfo::exists(fixture.filePath(renamed)));
+        QVERIFY(!QFileInfo::exists(fixture.filePath(original)));
+        QFile preserved(fixture.filePath(peer));
+        QVERIFY(preserved.open(QIODevice::ReadOnly));
+        QCOMPARE(preserved.readAll(), QByteArray("mark bytes"));
+        QFile changed(fixture.filePath(renamed));
+        QVERIFY(changed.open(QIODevice::ReadOnly));
+        QCOMPARE(changed.readAll(), QByteArray("focus bytes"));
+        if (link) {
+            QVERIFY(QFileInfo(fixture.filePath(renamed)).isSymLink());
+            QCOMPARE(QFileInfo(fixture.filePath(renamed)).symLinkTarget(), target);
+            QFile untouched(target);
+            QVERIFY(untouched.open(QIODevice::ReadOnly));
+            QCOMPARE(untouched.readAll(), QByteArray("focus bytes"));
+        }
+    }
+    void editorPreservesSavedSelection_data() {
+        QTest::addColumn<unsigned>("sourceIndex");
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("collision");
+        QTest::addColumn<bool>("invalid");
+        for (unsigned index : {0u, 1u})
+            for (const QString language : {"-", "ru"})
+                for (int outcome : {0, 1, 2})
+                    QTest::newRow(
+                        qPrintable(QString("%1-%2-%3").arg(index).arg(language).arg(outcome)))
+                        << index << language << (outcome == 1) << (outcome == 2);
+    }
+    void editorPreservesSavedSelection() {
+        QFETCH(unsigned, sourceIndex);
+        QFETCH(QString, language);
+        QFETCH(bool, collision);
+        QFETCH(bool, invalid);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        SaveRegLang(ToUString(language), settings);
+        ReloadLang(settings);
+        CFmSettings preferences;
+        preferences.Load(settings);
+        preferences.ShowDots = false;
+        preferences.AlternativeSelection = false;
+        preferences.Save(settings);
+        const auto reset = qScopeGuard([&] {
+            SaveRegLang(L"-", settings);
+            ReloadLang(settings);
+        });
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString original = QStringLiteral("original 文件.txt");
+        const QString peer = QStringLiteral("peer δ.txt");
+        const QString renamed = invalid     ? QStringLiteral("..")
+                                : collision ? peer
+                                            : QStringLiteral("renamed 空.txt");
+        QVERIFY(write(fixture.filePath(original), "original bytes"));
+        QVERIFY(write(fixture.filePath(peer), "peer bytes"));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(sourceIndex));
+        auto *view = static_cast<FileTable *>(ui->findChild<FileTable *>("archiveTable"));
+        auto *address = ui->findChild<QLineEdit *>("archivePath");
+        address->setFocus();
+        address->setText(fixture.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QTRY_COMPARE(view->rowCount(), 2);
+        for (const auto &table : window.findChildren<FileTable *>("archiveTable"))
+            static_cast<FileTable *>(table)->sourcePanel->Set_AutoRefresh_Mode(false);
+        const auto findRow = [&](const QString &name) {
+            for (int row = 0; row < view->rowCount(); ++row)
+                if (view->model()->index(row, 0).data(Qt::UserRole + 3).toString() == name)
+                    return row;
+            return -1;
+        };
+        const int sourceRow = findRow(original);
+        const int peerRow = findRow(peer);
+        QVERIFY(sourceRow >= 0 && peerRow >= 0);
+        auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - sourceIndex));
+        auto *peerView = static_cast<FileTable *>(peerUi->findChild<FileTable *>("archiveTable"));
+        CMyComPtr<IFolderFolder> peerFolder = peerView->sourcePanel->GetFolder();
+        const UString peerPrefix = peerView->sourcePanel->GetCurrentFolderPrefix();
+        const int peerRows = peerView->rowCount();
+        view->selectRow(sourceRow);
+        view->setFocus();
+        QVERIFY(action(window, "renameAction")->isEnabled());
+        action(window, "renameAction")->trigger();
+        auto *editor = view->findChild<QLineEdit *>();
+        QVERIFY(editor);
+        // A selection change during the editor must survive its source snapshot.
+        view->selectionModel()->select(view->model()->index(peerRow, 0),
+                                       QItemSelectionModel::Select | QItemSelectionModel::Rows);
+        QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
+        bool errorShown = false;
+        QString errorText;
+        QMessageBox::Icon errorIcon = QMessageBox::NoIcon;
+        bool errorGeometry = true;
+        QEventLoop errorDelivery;
+        QTimer closeError;
+        connect(&closeError, &QTimer::timeout, &window, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets())
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
+                    errorShown = true;
+                    errorText = box->text();
+                    errorIcon = box->icon();
+                    if (invalid && !box->testAttribute(Qt::WA_DontShowOnScreen)) {
+                        for (const QSize size : {QSize(440, 220), QSize(340, 220)}) {
+                            box->resize(size);
+                            QApplication::processEvents();
+                            auto *label = box->findChild<QLabel *>("qt_msgbox_label");
+                            auto *ok = box->button(QMessageBox::Ok);
+                            errorGeometry &= label && ok &&
+                                             UiInspection::fullyVisible(*label, *box) &&
+                                             UiInspection::fullyVisible(*ok, *box);
+                            errorGeometry &=
+                                UiInspection::writeReport(*box, QString("rename-invalid-%1-%2")
+                                                                    .arg(QTest::currentDataTag())
+                                                                    .arg(size.width()));
+                        }
+                    }
+                    box->accept();
+                    errorDelivery.quit();
+                }
+        });
+        closeError.start(2);
+        CMyComPtr<IFolderFolder> retained = view->sourcePanel->GetFolder();
+        auto *filesystem = dynamic_cast<NFsFolder::CFSFolder *>((IFolderFolder *)retained);
+        QVERIFY(filesystem);
+        unsigned loads = 0;
+        const auto resetCheckBreak = qScopeGuard([&] { filesystem->CheckBreak = {}; });
+        filesystem->CheckBreak = [&](const QString &) {
+            ++loads;
+            return true;
+        };
+        editor->setText(renamed);
+        QTest::keyClick(editor, Qt::Key_Return);
+        if (collision || invalid) {
+            // Cocoa native modal callbacks need a real Qt event loop, rather
+            // than QTRY's manual processEvents pump. Keep the same 5s limit.
+            QTimer::singleShot(5000, &errorDelivery, &QEventLoop::quit);
+            if (!errorShown)
+                errorDelivery.exec();
+            QVERIFY(errorShown);
+        }
+        if (invalid) {
+            QCOMPARE(errorIcon, QMessageBox::Critical);
+            QCOMPARE(errorText, ToQString(HResultToMessage(E_INVALIDARG)));
+            QVERIFY(errorGeometry);
+        }
+        QTRY_COMPARE(view->model()->index(view->currentRow(), 0).data(Qt::UserRole + 3).toString(),
+                     collision || invalid ? original : renamed);
+        QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
+        closeError.stop();
+        filesystem->CheckBreak = {};
+        QCOMPARE(loads == 0, invalid);
+        QVERIFY(view->sourcePanel->ShouldDisplayItemText());
+        QVERIFY(view->sourcePanel->ShouldProcessNotifications());
+        QCOMPARE(view->sourcePanel->GetFolder(), (IFolderFolder *)retained);
+        QCOMPARE(peerView->sourcePanel->GetFolder(), (IFolderFolder *)peerFolder);
+        QCOMPARE(peerView->sourcePanel->GetCurrentFolderPrefix(), peerPrefix);
+        QCOMPARE(peerView->rowCount(), peerRows);
+        CRecordVector<UInt32> selected;
+        view->sourcePanel->Get_ItemIndices_Selected(selected);
+        QCOMPARE(selected.Size(), 2u);
+        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+            window.resize(size);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*view, window));
+            QVERIFY(UiInspection::writeReport(
+                window,
+                QString("rename-selection-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));
+        }
+        for (const auto &entry :
+             {qMakePair(collision || invalid ? original : renamed, QByteArray("original bytes")),
+              qMakePair(peer, QByteArray("peer bytes"))}) {
+            QFile payload(fixture.filePath(entry.first));
+            QVERIFY(payload.open(QIODevice::ReadOnly));
+            QCOMPARE(payload.readAll(), entry.second);
+        }
+    }
+    void sourceStateAndDeferredText_data() {
+        QTest::addColumn<bool>("alternative");
+        QTest::addColumn<bool>("collision");
+        QTest::addColumn<bool>("cancelLoad");
+        for (bool alternative : {false, true})
+            for (bool collision : {false, true})
+                for (bool cancelLoad : {false, true})
+                    QTest::newRow(qPrintable(
+                        QString("%1-%2-%3").arg(alternative).arg(collision).arg(cancelLoad)))
+                        << alternative << collision << cancelLoad;
+    }
+    void sourceStateAndDeferredText() {
+        QFETCH(bool, alternative);
+        QFETCH(bool, collision);
+        QFETCH(bool, cancelLoad);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString original = QStringLiteral("original 文件.txt");
+        const QString peer = QStringLiteral("peer δ.txt");
+        const QString renamed = collision ? peer : QStringLiteral("renamed 空.txt");
+        QVERIFY(write(fixture.filePath(original), "original bytes"));
+        QVERIFY(write(fixture.filePath(peer), "peer bytes"));
+        auto *filesystem = new NFsFolder::CFSFolder(fixture.path());
+        CMyComPtr<IFolderFolder> folder = filesystem;
+        CPanel panel(folder);
+        FileTable view(2);
+        view.sourcePanel = &panel;
+        view.textFolder = folder;
+        view.propertyIds = {kpidName, kpidSize};
+        view.setSelectionBehavior(QAbstractItemView::SelectRows);
+        panel.AttachSelectionView(&view);
+        panel.SetAlternativeSelection(alternative);
+        QCOMPARE(panel.LoadListItems(), S_OK);
+        const auto publish = [&] {
+            UInt32 count = 0;
+            folder->GetNumberOfItems(&count);
+            view.clearRows();
+            for (UInt32 i = 0; i < count; ++i) {
+                FilePanelModel::Row item;
+                item.sourceIndex = i;
+                item.name = ToQString(panel.GetItemName(i));
+                view.panelModel()->append(std::move(item));
+            }
+        };
+        publish();
+        QCOMPARE(panel.RefreshListCtrl(), S_OK);
+        int row = -1;
+        for (int i = 0; i < view.rowCount(); ++i)
+            if (panel.GetItemName(UInt32(i)) == ToUString(original))
+                row = i;
+        QVERIFY(row >= 0);
+        view.setCurrentCell(row, 0);
+        panel.SelectAll(true);
+        const QString cachedName = view.model()->index(row, 0).data().toString();
+        QCOMPARE(cachedName, original);
+        QTimer closeError;
+        connect(&closeError, &QTimer::timeout, &view, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets())
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
+                    box->accept();
+        });
+        closeError.start(2);
+        const HRESULT result = panel.OnEndLabelEdit(UInt32(row), ToUString(renamed));
+        closeError.stop();
+        QCOMPARE(result == S_OK, !collision);
+        const bool blank = view.model()->index(row, 0).data().toString().isEmpty();
+        const auto state = panel.TakeRefreshSelection();
+        QVERIFY2(blank && state.has_value(),
+                 qPrintable(QString("blank=%1 pending=%2").arg(blank).arg(state.has_value())));
+        QCOMPARE(view.model()->index(row, 0).data(Qt::EditRole).toString(), original);
+        QCOMPARE(view.model()->index(row, 0).data(Qt::UserRole + 6).toUInt(), UInt32(row));
+        QVERIFY(state->FocusedName_Defined);
+        QVERIFY(state->SelectFocused);
+        QCOMPARE(state->FocusedName, ToUString(collision ? original : renamed));
+        QCOMPARE(state->SelectedNames.Size(), 2u);
+        QVERIFY(state->SelectedNames.FindInSorted(ToUString(original)) >= 0);
+        QVERIFY(state->SelectedNames.FindInSorted(ToUString(peer)) >= 0);
+        QVERIFY(!panel.TakeRefreshSelection().has_value());
+        if (cancelLoad) {
+            filesystem->CheckBreak = [](const QString &) { return false; };
+            QCOMPARE(panel.LoadListItems(), E_ABORT);
+            QCOMPARE(panel.RefreshListCtrl(*state), E_ABORT);
+            QCOMPARE(view.rowCount(), 0);
+            filesystem->CheckBreak = {};
+        }
+        QCOMPARE(panel.LoadListItems(), S_OK);
+        publish();
+        QCOMPARE(panel.RefreshListCtrl(*state), S_OK);
+        const QString focused = collision ? original : renamed;
+        QCOMPARE(view.model()->index(view.currentRow(), 0).data().toString(), focused);
+        QCOMPARE(view.selectionModel()->selectedRows().size(), alternative ? 1 : 2);
+        CRecordVector<UInt32> selected;
+        panel.Get_ItemIndices_Selected(selected);
+        QCOMPARE(selected.Size(), alternative && !collision ? 1u : 2u);
+        QVERIFY(panel.ShouldProcessNotifications());
+        QCOMPARE(QFileInfo::exists(fixture.filePath(original)), collision);
+        for (const auto &entry : {qMakePair(focused, QByteArray("original bytes")),
+                                  qMakePair(peer, QByteArray("peer bytes"))}) {
+            QFile payload(fixture.filePath(entry.first));
+            QVERIFY(payload.open(QIODevice::ReadOnly));
+            QCOMPARE(payload.readAll(), entry.second);
+        }
+    }
+};
+#include "ui/support/review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(PanelRenameStateTests)
+#include "panel_rename_state_tests.moc"

@@ -53,7 +53,7 @@
   `UI/GUI/BenchmarkDialog.cpp`, `CPP/Common/Wildcard.h`,
   `CPP/Windows/{FileDir.h,Shell.h}`.
   Объявление `UI/GUI/CompressDialog.h::COptionsDialog` находится в Qt-заголовке
-  `src/qtcompressoptionsdialog.h`; оно обновлено там, без второго владельца.
+  `src/dialogs/compress/qtcompressoptionsdialog.h`; оно обновлено там, без второго владельца.
 
 Не применяются изменения удалённых Win32-boundary bodies: casts к `LPARAM`
 в MemDialog/SettingsPage заменены типизированными Qt controls; `FM.cpp`

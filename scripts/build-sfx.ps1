@@ -2,14 +2,12 @@
 # Builds unchanged upstream SFXWin from the recorded immutable source revision.
 [CmdletBinding()]
 param(
-    [string]$UpstreamCheckout,
     [string]$OutputDirectory,
     [ValidateSet('arm64', 'x64', 'x86')]
     [string]$Architecture = $env:VSCMD_ARG_TGT_ARCH
 )
 $ErrorActionPreference = 'Stop'
 $scriptDirectory = [IO.Path]::GetDirectoryName($MyInvocation.MyCommand.Path)
-if (-not $UpstreamCheckout) { $UpstreamCheckout = Join-Path $scriptDirectory '../../7zip-upstream' }
 . (Join-Path $scriptDirectory 'lib/workspace.ps1')
 Initialize-SevenzipWorkspace (Split-Path -Parent $scriptDirectory)
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $env:SEVENZIP_ARTIFACT_ROOT 'release/sfx' }
@@ -22,7 +20,7 @@ if ($env:VSCMD_ARG_TGT_ARCH -ne $Architecture) {
 . (Join-Path $scriptDirectory 'lib/msvc-toolchain.ps1')
 $msvcBin = Get-SevenzipMsvcTools
 Write-Output "Using MSVC tools: $msvcBin"
-foreach ($tool in @('git', 'python', 'nmake', 'cl', 'link', 'rc')) {
+foreach ($tool in @('python', 'nmake', 'cl', 'link', 'rc')) {
     $null = Get-Command $tool -ErrorAction Stop
 }
 function Invoke-Checked([string]$Program, [string[]]$Arguments) {
@@ -34,8 +32,6 @@ $baseline = Get-Content -LiteralPath (Join-Path $projectRoot 'docs/upstream-base
     ConvertFrom-Json
 $revision = [string]$baseline.revision
 if ($revision -notmatch '^[0-9a-f]{40}$') { throw 'Invalid recorded upstream revision.' }
-$upstream = [IO.Path]::GetFullPath($UpstreamCheckout)
-Invoke-Checked 'git' @('-C', $upstream, 'cat-file', '-e', "$revision`^{commit}")
 $output = [IO.Path]::GetFullPath($OutputDirectory)
 $null = New-Item -ItemType Directory -Path $output -Force
 if ((Get-Item -LiteralPath $output).Attributes -band [IO.FileAttributes]::ReparsePoint) {
@@ -62,7 +58,7 @@ if ($existing.Count -gt 0) {
 $snapshot = Join-Path $output '.build-sfx'
 & {
     Invoke-Checked 'python' @((Join-Path $scriptDirectory 'upstream_baseline.py'),
-        'runtime-snapshot', '--original-only', '--snapshot', $snapshot, '--upstream', $upstream)
+        'runtime-snapshot', '--original-only', '--snapshot', $snapshot)
     $bundle = Join-Path $snapshot 'CPP/7zip/Bundles/SFXWin'
     Push-Location -LiteralPath $bundle
     try {

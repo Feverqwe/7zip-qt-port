@@ -51,7 +51,7 @@ commit `964ba6a645545f47edc26452a35a18c726a5f1c4`:
 
 | Исходная единица | Перенос и адаптация |
 | --- | --- |
-| `CPP/7zip/Archive/BrotliHandler.cpp` | `src/CPP/7zip/Archive/BrotliHandler.cpp`: исходные namespace, CHandler/IInArchive/IArchiveOpenSeq, single-item properties, callbacks Extract, IsArc_Brotli и регистрация формата. Сохранены интерфейсы официального baseline; убраны IOutArchive/ISetProperties, UpdateArchive/UpdateItems и encoder dependencies |
+| `CPP/7zip/Archive/BrotliHandler.cpp` | `src/formats/brotli/BrotliHandler.cpp`: исходные namespace, CHandler/IInArchive/IArchiveOpenSeq, single-item properties, callbacks Extract, IsArc_Brotli и регистрация формата. Сохранены интерфейсы официального baseline; убраны IOutArchive/ISetProperties, UpdateArchive/UpdateItems и encoder dependencies |
 | `CPP/7zip/Compress/BrotliDecoder.h`, `.cpp` | Те же относительные пути в `src/`: CDecoder/ICompressCoder связывает 7-Zip streams с Google streaming API. Зависимость от BROTLIMT заменена узким raw-stream адаптером; свойства `.7z` и настройки threads не переносятся |
 | `C/zstdmt/brotli-mt_decompress.c::st_decompress`, `st_finish_decompress` | Основа цикла raw stream: NEEDS_MORE_INPUT/OUTPUT, EOF, decoder result, output flush и освобождение state. Алгоритм декодирования остаётся в Google C; std::unique_ptr освобождает state на всех HRESULT/error exits |
 
@@ -71,7 +71,7 @@ LGPL-2.1-or-later notice fork сохранён в `7zip-zstd-LICENSE.txt` и п�
 - `Common/StreamUtils`, `ProgressUtils`, `PropId`, PropVariant, MyWindows,
   MyString, IntToString, StringConvert, UTFConvert, Alloc: существующие
   переносимые зависимости; переиспользуются исходные bodies.
-- `src/brotlimodule.cpp`: archive-only exports из исходного
+- `src/codecs/brotli/brotlimodule.cpp`: archive-only exports из исходного
   `Archive/DllExports2.cpp::CreateObject` и
   `Compress/CodecExports.cpp::GetModuleProp`. Coder/hasher/global external-codec
   entrypoints и Windows DLL services не нужны этому самодостаточному модулю.
@@ -109,7 +109,7 @@ encodings. Это сознательный extraction-only scope, не полн�
 
 ## Интеграция и проверяемое поведение
 
-`cmake/Brotli.cmake` собирает модуль и добавляет его в `Formats/` dev-runtime;
+`src/formats/brotli/module.cmake` собирает модуль и добавляет его в `Formats/` dev-runtime;
 обычная сборка приложения зависит от его доставки. Unix/Windows install rules
 устанавливают модуль и notices. Google sources vendored, сетевой загрузки при
 configure/build нет. Существующие ArchiveCodecProbe/Catalog/Image отвечают за

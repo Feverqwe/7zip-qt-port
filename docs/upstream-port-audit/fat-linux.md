@@ -290,7 +290,7 @@ with full original bodies and required tables retained under their original path
   FILETIME adapter; no kernel timezone or mount state is recreated.
 - `fs/nls/nls_cp437.c`: conversion/case tables were initially transferred;
   now omitted in favor of native OS services, with the original hash retained.
-  The existing local OEM-name adapter moved to `src/fs/nls/fatnames.c`.
+  The existing local OEM-name adapter moved to `src/text/nls/fatnames.c`.
   `fs/nls/nls_base.c` retains the UTF-8 encoding table,
   `utf32_to_utf8`, `get_utf16` and `utf16s_to_utf8s` dependency closure.
 - `include/uapi/linux/msdos_fs.h`: disk structures and constants, with only
@@ -384,7 +384,7 @@ its declared physical size made the common archive layer reject the opening as
 unexpected EOF before useful access. These were separate reader/product gates.
 
 The complete original `fat_read_bpb` C body is now retained in
-`src/fs/fat/inode.c`, unchanged, alongside the earlier legacy BPB routines.
+`src/formats/fat/inode.c`, unchanged, alongside the earlier legacy BPB routines.
 The original `fat_valid_media` helper and narrow little-endian/type services
 supply its dependency closure. A bounded C bridge returns the dirty state using
 the `fat_fill_super` FAT12/16 versus FAT32 branch. Legacy normalization uses a

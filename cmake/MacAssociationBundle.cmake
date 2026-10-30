@@ -22,9 +22,9 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/resources/macos-bundle.plist.in"
 set(sevenzip_bundle_icon "${CMAKE_CURRENT_BINARY_DIR}/FM.icns")
 add_custom_command(OUTPUT "${sevenzip_bundle_icon}"
     COMMAND /usr/bin/sips -s format icns
-        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/FM.ico"
+        "${SEVENZIP_7ZIP_SOURCE_DIR}/CPP/7zip/UI/FileManager/FM.ico"
         --out "${sevenzip_bundle_icon}"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/FM.ico"
+    DEPENDS "${SEVENZIP_7ZIP_SOURCE_DIR}/CPP/7zip/UI/FileManager/FM.ico"
     VERBATIM)
 set_source_files_properties("${sevenzip_bundle_icon}" PROPERTIES
     GENERATED TRUE MACOSX_PACKAGE_LOCATION Resources)

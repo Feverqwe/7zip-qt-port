@@ -1,0 +1,1079 @@
+#include "7zip/Archive/IArchive.h"
+#include "Common/MyCom.h"
+#include "Windows/PropVariant.h"
+#include "archive/backend/archivebackend.h"
+#include "archive/codecs/archivecodeccatalog.h"
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QLibrary>
+#include <QProcess>
+#include <QSet>
+#include <QSignalSpy>
+#include <QTemporaryDir>
+#include <QtTest>
+
+namespace {
+class Input final : public IInStream, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_2(ISequentialInStream, IInStream)
+    QByteArray bytes_;
+    UInt64 position_ = 0;
+
+  public:
+    HRESULT failure = S_OK;
+    HRESULT readFailure = S_OK;
+    HRESULT seekFailure = E_FAIL;
+    UInt64 failSeekAt = UINT64_MAX;
+    bool failSeekOnce = false;
+    UInt64 lastSeek = 0;
+    explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
+    Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
+        if (processed)
+            *processed = 0;
+        if (failure != S_OK)
+            return failure;
+        if (readFailure != S_OK)
+            return readFailure;
+        size = UInt32(qMin<UInt64>(
+            size, position_ < UInt64(bytes_.size()) ? UInt64(bytes_.size()) - position_ : 0));
+        if (size)
+            memcpy(data, bytes_.constData() + position_, size);
+        position_ += size;
+        if (processed)
+            *processed = size;
+        return S_OK;
+    }
+    Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
+        if (failure != S_OK)
+            return failure;
+        if (origin == STREAM_SEEK_SET && UInt64(offset) == failSeekAt) {
+            if (failSeekOnce)
+                failSeekAt = UINT64_MAX;
+            return seekFailure;
+        }
+        if (origin > STREAM_SEEK_END)
+            return E_INVALIDARG;
+        const Int64 base = origin == STREAM_SEEK_SET   ? 0
+                           : origin == STREAM_SEEK_CUR ? Int64(position_)
+                                                       : bytes_.size();
+        if (offset < -base || (offset > 0 && base > INT64_MAX - offset))
+            return E_INVALIDARG;
+        position_ = UInt64(base + offset);
+        lastSeek = position_;
+        if (position)
+            *position = position_;
+        return S_OK;
+    }
+};
+
+class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveExtractCallback)
+  public:
+    Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return E_ABORT; }
+    Z7_COM7F_IMF(GetStream(UInt32, ISequentialOutStream **stream, Int32)) override {
+        *stream = nullptr;
+        return S_OK;
+    }
+    Z7_COM7F_IMF(PrepareOperation(Int32)) override { return S_OK; }
+    Z7_COM7F_IMF(SetOperationResult(Int32)) override { return S_OK; }
+};
+class CancelOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+  public:
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override { return E_ABORT; }
+};
+class CancelAt final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+    Input *input_;
+    UInt64 checkpoint_;
+    HRESULT result_;
+    bool fired_ = false;
+    bool exact_;
+
+  public:
+    CancelAt(Input *input, UInt64 checkpoint, HRESULT result = E_ABORT, bool exact = false)
+        : input_(input), checkpoint_(checkpoint), result_(result), exact_(exact) {}
+    bool fired() const { return fired_; }
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
+        if (!fired_ &&
+            (exact_ ? input_->lastSeek == checkpoint_ : input_->lastSeek >= checkpoint_)) {
+            fired_ = true;
+            return result_;
+        }
+        return S_OK;
+    }
+};
+class CancelOnce final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+    bool consumed_ = false;
+
+  public:
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
+        if (consumed_)
+            return S_OK;
+        consumed_ = true;
+        return E_ABORT;
+    }
+};
+class OpenProgress final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+  public:
+    bool closed = false;
+    unsigned calls = 0;
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
+        ++calls;
+        return closed ? E_FAIL : S_OK;
+    }
+};
+} // namespace
+
+class UdfStreamTests final : public QObject {
+    Q_OBJECT
+    QLibrary module_{QString::fromUtf8(SEVENZIP_UDF_CORE)};
+    CMyComPtr<IInArchive> archive_;
+    QJsonObject files_;
+    QJsonObject attributes_;
+    QByteArray bytes_;
+
+    void createArchive() {
+        archive_.Release();
+        QVERIFY2(module_.load(), qPrintable(module_.errorString()));
+        const auto count =
+            reinterpret_cast<Func_GetNumberOfFormats>(module_.resolve("GetNumberOfFormats"));
+        const auto property =
+            reinterpret_cast<Func_GetHandlerProperty2>(module_.resolve("GetHandlerProperty2"));
+        const auto create = reinterpret_cast<Func_CreateObject>(module_.resolve("CreateObject"));
+        QVERIFY(count && property && create);
+        UInt32 formats = 0;
+        QCOMPARE(count(&formats), S_OK);
+        for (UInt32 i = 0; i < formats; ++i) {
+            NWindows::NCOM::CPropVariant name;
+            QCOMPARE(property(i, NArchive::NHandlerPropID::kName, &name), S_OK);
+            if (name.vt != VT_BSTR || QString::fromWCharArray(name.bstrVal) != "Udf")
+                continue;
+            NWindows::NCOM::CPropVariant clsid;
+            QCOMPARE(property(i, NArchive::NHandlerPropID::kClassID, &clsid), S_OK);
+            GUID guid;
+            memcpy(&guid, clsid.bstrVal, sizeof(guid));
+            QCOMPARE(create(&guid, &IID_IInArchive, reinterpret_cast<void **>(&archive_)), S_OK);
+            return;
+        }
+        QFAIL("Prepared engine has no UDF handler");
+    }
+    void fixture(const QString &kind, bool metadata = false) {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString path = temporary.filePath("volume.udf");
+        QProcess process;
+        QStringList arguments{QString::fromUtf8(SEVENZIP_UDF_FIXTURE), kind, path};
+        if (metadata)
+            arguments.append("--metadata");
+        process.start(QString::fromUtf8(SEVENZIP_UDF_PYTHON), arguments);
+        QVERIFY(process.waitForFinished(10000));
+        QCOMPARE(process.exitCode(), 0);
+        const QJsonObject result =
+            QJsonDocument::fromJson(process.readAllStandardOutput()).object();
+        files_ = metadata ? result["files"].toObject() : result;
+        attributes_ = metadata ? result["attributes"].toObject() : QJsonObject{};
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        bytes_ = file.readAll();
+        QVERIFY(!bytes_.isEmpty());
+    }
+    CMyComPtr<IInStream> stream(const QString &name, bool skipDirectories = false) {
+        CMyComPtr<IInArchiveGetStream> provider;
+        if (archive_->QueryInterface(IID_IInArchiveGetStream,
+                                     reinterpret_cast<void **>(&provider)) != S_OK)
+            return {};
+        UInt32 count = 0;
+        if (archive_->GetNumberOfItems(&count) != S_OK)
+            return {};
+        for (UInt32 i = 0; i < count; ++i) {
+            if (skipDirectories) {
+                NWindows::NCOM::CPropVariant directory;
+                if (archive_->GetProperty(i, kpidIsDir, &directory) != S_OK ||
+                    directory.vt != VT_BOOL || directory.boolVal)
+                    continue;
+            }
+            NWindows::NCOM::CPropVariant path;
+            if (archive_->GetProperty(i, kpidPath, &path) != S_OK || path.vt != VT_BSTR ||
+                QString::fromWCharArray(path.bstrVal).replace('\\', '/') != name)
+                continue;
+            CMyComPtr<ISequentialInStream> sequential;
+            if (provider->GetStream(i, &sequential) != S_OK || !sequential)
+                return {};
+            CMyComPtr<IInStream> result;
+            sequential->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&result));
+            return result;
+        }
+        return {};
+    }
+    void check(IInStream *stream, const QByteArray &expected) {
+        QVERIFY(stream);
+        QCOMPARE(stream->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QByteArray actual;
+        for (;;) {
+            char data[37];
+            UInt32 count = 0;
+            QCOMPARE(stream->Read(data, sizeof(data), &count), S_OK);
+            if (!count)
+                break;
+            actual.append(data, count);
+            QVERIFY(actual.size() <= expected.size());
+        }
+        QCOMPARE(actual, expected);
+        UInt64 end = 0;
+        QCOMPARE(stream->Seek(0, STREAM_SEEK_END, &end), S_OK);
+        QCOMPARE(end, UInt64(expected.size()));
+    }
+
+  private slots:
+    void init() { createArchive(); }
+    void allocationStreams_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind : {"ua-table", "ua-table-fe", "ua-table-inline", "ua-table-indirect",
+                                 "ua-bitmap", "ua-backward-table", "ua-order-ro-first"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+        for (const char *kind : {"uc-unknown", "uc-bounded", "uc-indirect", "uc-sparable",
+                                 "uc-virtual", "uc-metadata", "uc-use-metadata"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+        for (const char *kind : {"pm-unknown-before", "pm-many", "pm-unknown-data",
+                                 "pm-duplicate-data", "pm-unknown-fsd"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+        for (const char *kind :
+             {"native", "sparse-short", "sparse-long", "hole-only", "allocated-hole", "eof-short",
+              "eof-long", "unused-tail", "inline", "directory-padded", "directory-inline",
+              "metadata-bootstrap", "implicit-tail", "implicit-hole", "eof-partition-tail",
+              "terminator-short", "terminator-long"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+        for (const char *kind :
+             {"ad-short", "ad-long", "ad-chain-short", "ad-chain-long", "ad-limit-16",
+              "ad-directory", "ad-cross-partition", "ad-zero", "ad-implicit-tail"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+        for (const char *kind : {"icb-file",
+                                 "icb-efe",
+                                 "icb-inline",
+                                 "icb-root",
+                                 "icb-directory",
+                                 "icb-chain",
+                                 "icb-limit-1024",
+                                 "icb-cross-partition",
+                                 "icb-ad-continuation",
+                                 "icb-metadata",
+                                 "icb-metadata-cross",
+                                 "icb-no-ie",
+                                 "icb-terminal",
+                                 "icb-empty-ie",
+                                 "icb-bad-ie-crc",
+                                 "icb-bad-ie-location",
+                                 "icb-reserved",
+                                 "icb-extent-short",
+                                 "icb-extent-long",
+                                 "icb-root-extent-zero"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+        for (const char *kind :
+             {"sp-packet", "sp-cross", "sp-reverse", "sp-backup", "sp-first-wins", "sp-no-table",
+              "sp-invalid-table", "sp-table-overrun", "sp-max-table", "sp-declared-zero",
+              "sp-reserved", "sp-sparse", "sp-icb", "sp-directory-cross", "sp-metadata"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+        for (const char *kind :
+             {"vat15-inline", "vat20-inline", "vat15-external", "vat20-external",
+              "vat20-extended-header", "vat20-previous", "vat15-offset", "vat20-sparse",
+              "vat20-unknown-newest", "vat20-cross-partition", "vat20-sparable"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+        for (const char *kind :
+             {"walk-zero-short", "walk-zero-long", "walk-zero-many", "walk-zero-chain-short",
+              "walk-zero-chain-long", "walk-active-eof", "walk-aed-tags", "walk-tail-short",
+              "walk-tail-long", "walk-cross-partition", "walk-metadata-zero",
+              "walk-metadata-zero-chain", "walk-metadata-cycle-mirror"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void metadataStreams_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"md-fragmented", "md-mirror-bootstrap", "md-mirror-lazy", "md-primary-only",
+              "md-bitmap-missing", "md-bitmap-present", "md-short-size", "md-ad-chain", "md-offset",
+              "md-sparable", "md-long-primary", "md-efe", "md-attributes", "metadata-hole",
+              "metadata-outside"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void metadataStreams() { allocationStreams(); }
+    void discoveryStreams_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind : {"ds-block-512",
+                                 "ds-block-1024",
+                                 "ds-block-2048",
+                                 "ds-block-4096",
+                                 "ds-block-4096-spaced",
+                                 "ds-lvd-size",
+                                 "ds-backup-last",
+                                 "ds-backup-middle",
+                                 "ds-bad-primary",
+                                 "ds-open-512",
+                                 "ds-last-minus-one",
+                                 "ds-last-minus-two",
+                                 "ds-last-minus-150",
+                                 "ds-last-minus-152",
+                                 "ds-main-reserve",
+                                 "ds-no-terminator",
+                                 "ds-stop-invalid",
+                                 "ds-vdp",
+                                 "ds-vdp-64",
+                                 "ds-prevailing-new",
+                                 "ds-prevailing-tie",
+                                 "ds-prevailing-older",
+                                 "ds-prevailing-lvd",
+                                 "ds-partitions-growth",
+                                 "ds-fsd-zero",
+                                 "ds-fsd-large",
+                                 "ds-nsr03",
+                                 "ds-direct-nsr",
+                                 "ds-vrs-type-version",
+                                 "ds-lvid-max",
+                                 "ds-lvid-chain",
+                                 "ds-lvid-missing",
+                                 "ds-lvid-cycle",
+                                 "ds-lvid-invalid-last",
+                                 "ds-lvid-short-use",
+                                 "ds-lvid-partial"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void discoveryStreams() { allocationStreams(); }
+    void directoryStreams_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"fi-header-split", "fi-name-split", "fi-impl-split", "fi-boundary", "fi-fragmented",
+              "fi-aed", "fi-long-partition", "fi-extent-short", "fi-inline-ea", "fi-inline-padding",
+              "fi-checksum", "fi-directory-hint", "fi-file-hint"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void directoryStreams() { allocationStreams(); }
+    void directoryFailuresAndCancellation() {
+        fixture("fi-empty");
+        CMyComPtr<IInStream> empty = new Input(bytes_);
+        QCOMPARE(archive_->Open(empty, nullptr, nullptr), S_OK);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        fixture("fi-aed");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        for (UInt64 sector : {UInt64(287), UInt64(290)}) {
+            input->failSeekAt = sector * 2048;
+            for (HRESULT error : {E_ABORT, E_FAIL}) {
+                input->seekFailure = error;
+                QCOMPARE(archive_->Open(input, nullptr, nullptr), error);
+                QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+                QCOMPARE(count, UInt32(0));
+            }
+            input->failSeekAt = UINT64_MAX;
+            for (HRESULT error : {E_ABORT, E_FAIL}) {
+                auto *callback = new CancelAt(input.operator->(), sector * 2048, error, true);
+                CMyComPtr<IArchiveOpenCallback> progress = callback;
+                QCOMPARE(archive_->Open(input, nullptr, progress), error);
+                QVERIFY(callback->fired());
+            }
+        }
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
+    void inodeAttributes_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind : {"ia-owner",
+                                 "ia-overflow",
+                                 "ia-high-owner",
+                                 "ia-permissions",
+                                 "ia-extra-permissions",
+                                 "ia-links",
+                                 "ia-directory",
+                                 "ia-undef",
+                                 "ia-vat-type",
+                                 "ia-realtime",
+                                 "ia-char",
+                                 "ia-block",
+                                 "ia-fifo",
+                                 "ia-socket",
+                                 "ia-device-chain",
+                                 "ia-device-subtypes",
+                                 "ia-device-tag-crc",
+                                 "ia-device-max",
+                                 "ia-device-payload",
+                                 "uc-use-short",
+                                 "uc-use-long",
+                                 "uc-use-inline",
+                                 "uc-use-chain",
+                                 "ia-unaligned-ea",
+                                 "ia-efe-owner",
+                                 "ia-efe-device",
+                                 "ia-hidden-zero-links",
+                                 "ia-time-zone",
+                                 "ia-time-negative-zone",
+                                 "ia-time-unspecified",
+                                 "ia-time-type0",
+                                 "ia-time-type2",
+                                 "ia-time-fraction",
+                                 "ia-time-bad-fraction",
+                                 "ia-time-leap",
+                                 "ia-time-month",
+                                 "ia-time-day"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void inodeAttributes() {
+        QFETCH(QString, kind);
+        fixture(kind, true);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QSet<QString> checked;
+        for (UInt32 i = 0; i < count; ++i) {
+            NWindows::NCOM::CPropVariant path;
+            QCOMPARE(archive_->GetProperty(i, kpidPath, &path), S_OK);
+            QCOMPARE(path.vt, VARTYPE(VT_BSTR));
+            const QString name = QString::fromWCharArray(path.bstrVal).replace('\\', '/');
+            if (!attributes_.contains(name))
+                continue;
+            checked.insert(name);
+            const QJsonObject expected = attributes_[name].toObject();
+            for (const auto &[key, property] : {std::pair{"mode", kpidPosixAttrib},
+                                                {"uid", kpidUserId},
+                                                {"gid", kpidGroupId},
+                                                {"links", kpidLinks},
+                                                {"major", kpidDeviceMajor},
+                                                {"minor", kpidDeviceMinor}}) {
+                if (!expected.contains(key))
+                    continue;
+                NWindows::NCOM::CPropVariant prop;
+                QCOMPARE(archive_->GetProperty(i, property, &prop), S_OK);
+                QCOMPARE(prop.vt, VARTYPE(VT_UI4));
+                QCOMPARE(prop.ulVal, UInt32(expected[key].toInteger()));
+            }
+            if (expected.contains("seconds")) {
+                NWindows::NCOM::CPropVariant time;
+                QCOMPARE(archive_->GetProperty(i, kpidMTime, &time), S_OK);
+                QCOMPARE(time.vt, VARTYPE(VT_FILETIME));
+                const UInt64 actual =
+                    ((UInt64)time.filetime.dwHighDateTime << 32) | time.filetime.dwLowDateTime;
+                const UInt64 wanted =
+                    UInt64(expected["seconds"].toInteger() + 11644473600LL) * 10000000 +
+                    expected["nanoseconds"].toInteger() / 100;
+                QCOMPARE(actual, wanted);
+            }
+            if (expected.contains("size")) {
+                NWindows::NCOM::CPropVariant size;
+                QCOMPARE(archive_->GetProperty(i, kpidSize, &size), S_OK);
+                QCOMPARE(size.vt, VARTYPE(VT_UI8));
+                QCOMPARE(size.uhVal.QuadPart, UInt64(expected["size"].toInteger()));
+            }
+            if (kind == "ia-device-payload" || kind.startsWith("uc-use-")) {
+                CMyComPtr<IInArchiveGetStream> provider;
+                QCOMPARE(archive_->QueryInterface(IID_IInArchiveGetStream,
+                                                  reinterpret_cast<void **>(&provider)),
+                         S_OK);
+                CMyComPtr<ISequentialInStream> data;
+                QCOMPARE(provider->GetStream(i, &data), E_NOTIMPL);
+                QVERIFY(!data);
+            }
+            if (kind.startsWith("uc-use-")) {
+                for (PROPID property : {kpidMTime, kpidATime, kpidCTime, kpidChangeTime}) {
+                    NWindows::NCOM::CPropVariant time;
+                    QCOMPARE(archive_->GetProperty(i, property, &time), S_OK);
+                    QCOMPARE(time.vt, VARTYPE(VT_EMPTY));
+                }
+            }
+        }
+        QCOMPARE(checked.size(), attributes_.size());
+        const bool metadataOnly = kind == "ia-device-payload" || kind.startsWith("uc-use-");
+        for (auto i = files_.begin(); i != files_.end(); ++i)
+            if (!metadataOnly || i.key() != "alpha.bin")
+                check(stream(i.key()), QByteArray::fromHex(i.value().toString().toLatin1()));
+        const QString retainedName = metadataOnly ? "nested/tail.bin" : "alpha.bin";
+        auto retained = stream(retainedName);
+        const QByteArray expected = QByteArray::fromHex(files_[retainedName].toString().toLatin1());
+        QCOMPARE(archive_->Close(), S_OK);
+        archive_.Release();
+        check(retained, expected);
+    }
+    void namespaceStreams_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"ns-latin1",        "ns-utf16",        "ns-slash",       "ns-nul",
+              "ns-surrogate",     "ns-dot",          "ns-dotdot",      "ns-collapse",
+              "ns-limit",         "ns-spaces",       "ns-bad-code",    "ns-odd16",
+              "ns-empty",         "ns-hidden-file",  "ns-hidden-dir",  "ns-link-inline",
+              "ns-link-external", "ns-link-long",    "ns-link-chain",  "ns-link-parent",
+              "ns-link-root",     "ns-link-reset",   "ns-link-origin", "ns-link-unicode",
+              "ns-link-mangle",   "ns-link-unknown", "ns-link-empty"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void namespaceStreams() {
+        QFETCH(QString, kind);
+        fixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QSet<QString> actual;
+        for (UInt32 i = 0; i < count; ++i) {
+            NWindows::NCOM::CPropVariant path, dir;
+            QCOMPARE(archive_->GetProperty(i, kpidPath, &path), S_OK);
+            QCOMPARE(archive_->GetProperty(i, kpidIsDir, &dir), S_OK);
+            QCOMPARE(path.vt, VARTYPE(VT_BSTR));
+            if (dir.boolVal)
+                continue;
+            const QString name = QString::fromWCharArray(path.bstrVal).replace('\\', '/');
+            QVERIFY(files_.contains(name));
+            actual.insert(name);
+            const QByteArray expected = QByteArray::fromHex(files_[name].toString().toLatin1());
+            check(stream(name), expected);
+            if (name == "alpha.bin" && kind.startsWith("ns-link-")) {
+                NWindows::NCOM::CPropVariant target, size, mode;
+                QCOMPARE(archive_->GetProperty(i, kpidSymLink, &target), S_OK);
+                QCOMPARE(target.vt, VARTYPE(VT_BSTR));
+                QCOMPARE(QString::fromWCharArray(target.bstrVal), QString::fromUtf8(expected));
+                QCOMPARE(archive_->GetProperty(i, kpidSize, &size), S_OK);
+                QCOMPARE(size.uhVal.QuadPart, UInt64(expected.size()));
+                QCOMPARE(archive_->GetProperty(i, kpidPosixAttrib, &mode), S_OK);
+                QCOMPARE(mode.vt, VARTYPE(VT_UI4));
+                QCOMPARE(mode.ulVal, UInt32(0120777));
+            }
+        }
+        QCOMPARE(actual.size(), files_.size());
+        const QString name = files_.keys().first();
+        auto retained = stream(name);
+        const QByteArray expected = QByteArray::fromHex(files_[name].toString().toLatin1());
+        QCOMPARE(archive_->Close(), S_OK);
+        fixture("native");
+        CMyComPtr<IInStream> replacement = new Input(bytes_);
+        QCOMPARE(archive_->Open(replacement, nullptr, nullptr), S_OK);
+        archive_.Release();
+        check(retained, expected);
+    }
+    void symlinkFailuresAndCancellation() {
+        fixture("ns-link-external");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        input->failSeekAt = UInt64(272) * 2048;
+        for (HRESULT error : {E_ABORT, E_FAIL}) {
+            input->seekFailure = error;
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), error);
+        }
+        input->failSeekAt = UINT64_MAX;
+        for (HRESULT error : {E_ABORT, E_FAIL}) {
+            auto *callback = new CancelAt(input.operator->(), UInt64(272) * 2048, error, true);
+            CMyComPtr<IArchiveOpenCallback> progress = callback;
+            QCOMPARE(archive_->Open(input, nullptr, progress), error);
+            QVERIFY(callback->fired());
+        }
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto link = stream("alpha.bin");
+        QCOMPARE(archive_->Close(), S_OK);
+        archive_.Release();
+        check(link, QByteArray("nested/tail.bin"));
+    }
+    void allocationStreams() {
+        QFETCH(QString, kind);
+        fixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto alpha = stream("alpha.bin");
+        auto beta = stream("nested/tail.bin");
+        auto empty = stream("empty");
+        QVERIFY(alpha && beta && empty);
+        const QByteArray expected = QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1());
+        check(alpha, expected);
+        check(beta, QByteArray("directory payload"));
+        char first[17];
+        UInt32 count = 0;
+        QCOMPARE(alpha->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(alpha->Read(first, sizeof(first), &count), S_OK);
+        QCOMPARE(QByteArray(first, count), expected.left(17));
+        check(beta, QByteArray("directory payload"));
+        char next[17];
+        QCOMPARE(alpha->Read(next, sizeof(next), &count), S_OK);
+        QCOMPARE(QByteArray(next, count), expected.mid(17, 17));
+        check(empty, {});
+        QCOMPARE(archive_->Close(), S_OK);
+        fixture("native");
+        CMyComPtr<IInStream> replacement = new Input(bytes_);
+        QCOMPARE(archive_->Open(replacement, nullptr, nullptr), S_OK);
+        archive_.Release();
+        check(alpha, expected);
+        check(beta, QByteArray("directory payload"));
+    }
+    void metadataCacheKeySurvivesTransientMappingFailure() {
+        fixture("uc-rekey");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        input->failSeekAt = UInt64(390) * 2048;
+        input->failSeekOnce = true;
+        // The first key uses the mirror; the FE read then recovers the primary.
+        // Its physical alias must not inherit an inode cached under another key.
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_FALSE);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alias.bin"), QByteArray::fromHex(files_["alias.bin"].toString().toLatin1()));
+    }
+    void traversalStreams_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<bool>("success");
+        for (const char *kind : {"ut-depth-256", "ut-depth-512", "ut-depth-1022"})
+            QTest::newRow(kind) << QString::fromLatin1(kind) << true;
+        for (const char *kind : {"ut-depth-1023", "ut-cycle-root", "ut-cycle-parent"})
+            QTest::newRow(kind) << QString::fromLatin1(kind) << false;
+    }
+    void traversalStreams() {
+        QFETCH(QString, kind);
+        QFETCH(bool, success);
+        fixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), success ? S_OK : S_FALSE);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        if (!success) {
+            QCOMPARE(count, UInt32(0));
+            return;
+        }
+        const QString path = files_.begin().key();
+        QCOMPARE(count, UInt32(path.count('/') + 1));
+        auto retained = stream(path, true);
+        QVERIFY(retained);
+        const QByteArray expected = QByteArray::fromHex(files_[path].toString().toLatin1());
+        check(retained, expected);
+        QCOMPARE(archive_->Close(), S_OK);
+        fixture("native");
+        CMyComPtr<IInStream> replacement = new Input(bytes_);
+        QCOMPARE(archive_->Open(replacement, nullptr, nullptr), S_OK);
+        archive_.Release();
+        check(retained, expected);
+    }
+    void traversalFailuresAndCancellation() {
+        fixture("ut-depth-512");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        const UInt64 checkpoint = UInt64(257 + 100 + 2 * 127) * 2048;
+        for (HRESULT result : {E_FAIL, E_ABORT}) {
+            input->failSeekAt = checkpoint;
+            input->seekFailure = result;
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), result);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+            input->failSeekAt = UINT64_MAX;
+            CMyComPtr<IArchiveOpenCallback> cancel =
+                new CancelAt(input.operator->(), checkpoint, result);
+            QCOMPARE(archive_->Open(input, nullptr, cancel), result);
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const QString path = files_.begin().key();
+        check(stream(path, true), QByteArray::fromHex(files_[path].toString().toLatin1()));
+    }
+    void allocationSetupFailuresAndCancellation() {
+        fixture("ua-table");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        for (HRESULT result : {E_FAIL, E_ABORT}) {
+            input->failSeekAt = UInt64(277) * 2048;
+            input->seekFailure = result;
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), result);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+            input->failSeekAt = UINT64_MAX;
+            CMyComPtr<IArchiveOpenCallback> cancel =
+                new CancelAt(input.operator->(), UInt64(277) * 2048, result, true);
+            QCOMPARE(archive_->Open(input, nullptr, cancel), result);
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
+    void allocationSetupErrors() {
+        for (const char *kind :
+             {"ua-table-hidden", "ua-order-table-first", "ua-forward-table", "ua-bitmap-overflow",
+              "ua-use-length", "ua-reserve-metadata", "ua-reserve-vat"}) {
+            fixture(QString::fromLatin1(kind));
+            CMyComPtr<IInStream> input = new Input(bytes_);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_FALSE);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+    }
+    void hiddenRolesAndReopen() {
+        for (const char *kind :
+             {"uc-hidden-metadata", "uc-hidden-root", "uc-hidden-vat15", "uc-hidden-vat20"}) {
+            fixture(QString::fromLatin1(kind));
+            CMyComPtr<IInStream> damaged = new Input(bytes_);
+            QCOMPARE(archive_->Open(damaged, nullptr, nullptr), S_FALSE);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+            fixture("uc-metadata");
+            CMyComPtr<IInStream> input = new Input(bytes_);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+            check(stream("alias.bin"),
+                  QByteArray::fromHex(files_["alias.bin"].toString().toLatin1()));
+            QCOMPARE(archive_->Close(), S_OK);
+        }
+    }
+    void failuresAndCancellation() {
+        fixture("sparse-long");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto alpha = stream("alpha.bin");
+        QVERIFY(alpha);
+        input->failure = E_FAIL;
+        char data[23];
+        UInt32 count = 99;
+        QCOMPARE(alpha->Read(data, sizeof(data), &count), E_FAIL);
+        QCOMPARE(count, UInt32(0));
+        input->failure = S_OK;
+        CMyComPtr<IArchiveExtractCallback> callback = new Extract;
+        QCOMPARE(archive_->Extract(nullptr, UInt32(-1), 1, callback), E_ABORT);
+    }
+    void continuationOpenFailureAndCancellation() {
+        fixture("ad-chain-long");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        input->failSeekAt = UInt64(257 + 21) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        input->failSeekAt = UINT64_MAX;
+        CMyComPtr<IArchiveOpenCallback> cancel = new CancelOpen;
+        QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
+    void indirectIcbFailuresAndFallback() {
+        fixture("icb-file");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        input->failSeekAt = UInt64(257 + 23) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        input->failSeekAt = UINT64_MAX;
+        CMyComPtr<IArchiveOpenCallback> cancel =
+            new CancelAt(input.operator->(), UInt64(257 + 22) * 2048);
+        QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        input->failSeekAt = UInt64(257 + 22) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), {});
+        NWindows::NCOM::CPropVariant flags;
+        QCOMPARE(archive_->GetArchiveProperty(kpidErrorFlags, &flags), S_OK);
+        QCOMPARE(flags.vt, VARTYPE(VT_UI4));
+        QCOMPARE(flags.ulVal, UInt32(0));
+        input->failSeekAt = UINT64_MAX;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
+    void sparingLoaderErrorsAndCancellation() {
+        fixture("sp-first-wins");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        input->failSeekAt = UInt64(64) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), QByteArray(8192, 'X'));
+        input->failSeekAt = UINT64_MAX;
+        CMyComPtr<IArchiveOpenCallback> cancel = new CancelOnce;
+        QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto alpha = stream("alpha.bin");
+        QVERIFY(alpha);
+        input->failSeekAt = UInt64(335) * 2048;
+        char data[23];
+        count = 99;
+        QCOMPARE(alpha->Read(data, sizeof(data), &count), E_FAIL);
+        QCOMPARE(count, UInt32(0));
+        input->failSeekAt = UINT64_MAX;
+        check(alpha, QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
+    void discoveryFailuresAndCancellation() {
+        fixture("ds-block-2048");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        const QByteArray expected = QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1());
+        for (UInt64 offset : {UInt64(32768), UInt64(256 * 2048), UInt64(80 * 2048)}) {
+            input->failSeekAt = offset;
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+            check(stream("alpha.bin"), expected);
+            NWindows::NCOM::CPropVariant flags;
+            QCOMPARE(archive_->GetArchiveProperty(kpidErrorFlags, &flags), S_OK);
+            QCOMPARE(flags.vt, VARTYPE(VT_UI4));
+            QCOMPARE(flags.ulVal, UInt32(0));
+        }
+        input->seekFailure = E_ABORT;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_ABORT);
+        input->seekFailure = E_FAIL;
+        input->failSeekAt = UINT64_MAX;
+        for (HRESULT result : {E_ABORT, E_FAIL}) {
+            CMyComPtr<IArchiveOpenCallback> cancel =
+                new CancelAt(input.operator->(), UInt64(80 * 2048), result);
+            QCOMPARE(archive_->Open(input, nullptr, cancel), result);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+            input->failSeekAt = UInt64(257) * 2048;
+            input->seekFailure = result;
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), result);
+            input->failSeekAt = UINT64_MAX;
+        }
+        input->seekFailure = E_FAIL;
+        input->readFailure = E_FAIL;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        input->readFailure = S_OK;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), expected);
+    }
+    void guardedAllocationIoAndCancellation() {
+        fixture("walk-zero-chain-long");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        input->failSeekAt = UInt64(279) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        input->failSeekAt = UINT64_MAX;
+        for (HRESULT result : {E_ABORT, E_FAIL}) {
+            CMyComPtr<IArchiveOpenCallback> cancel =
+                new CancelAt(input.operator->(), UInt64(279) * 2048, result);
+            QCOMPARE(archive_->Open(input, nullptr, cancel), result);
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
+    void vatLoaderFailuresAndCancellation() {
+        fixture("vat20-previous");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        // Optional invalid/missing last entries do not prevent finding the previous VAT.
+        input->failSeekAt = UInt64(1399) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+        input->failSeekAt = UINT64_MAX;
+        CMyComPtr<IArchiveOpenCallback> cancel =
+            new CancelAt(input.operator->(), UInt64(1396) * 2048);
+        QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        CMyComPtr<IArchiveOpenCallback> failedProgress =
+            new CancelAt(input.operator->(), UInt64(1396) * 2048, E_FAIL);
+        QCOMPARE(archive_->Open(input, nullptr, failedProgress), E_FAIL);
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        fixture("vat20-external");
+        input.SetFromCls(new Input(bytes_));
+        input->failSeekAt = UInt64(390) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        input->failSeekAt = UINT64_MAX;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto alpha = stream("alpha.bin");
+        QVERIFY(alpha);
+        input->failSeekAt = UInt64(315) * 2048;
+        char data[23];
+        count = 99;
+        QCOMPARE(alpha->Read(data, sizeof(data), &count), E_FAIL);
+        QCOMPARE(count, UInt32(0));
+        input->failSeekAt = UINT64_MAX;
+        check(alpha, QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
+    void metadataMirrorErrorsAndLifetime() {
+        fixture("md-ad-chain");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        const QByteArray expected = QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1());
+        input->failSeekAt = UInt64(387) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), expected);
+        input->failSeekAt = UINT64_MAX;
+        for (HRESULT result : {E_ABORT, E_FAIL}) {
+            for (UInt64 sector : {UInt64(387), UInt64(390)}) {
+                CMyComPtr<IArchiveOpenCallback> cancel =
+                    new CancelAt(input.operator->(), sector * 2048, result);
+                QCOMPARE(archive_->Open(input, nullptr, cancel), result);
+                UInt32 count = 99;
+                QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+                QCOMPARE(count, UInt32(0));
+            }
+        }
+        CMyComPtr2<IArchiveOpenCallback, OpenProgress> progress;
+        progress.SetFromCls(new OpenProgress);
+        QCOMPARE(archive_->Open(input, nullptr, progress), S_OK);
+        const unsigned calls = progress->calls;
+        progress->closed = true;
+        input->failSeekAt = UInt64(390) * 2048;
+        auto alpha = stream("alpha.bin");
+        QVERIFY(alpha);
+        check(alpha, expected);
+        QCOMPARE(progress->calls, calls);
+        input->failure = E_FAIL;
+        char data[17];
+        UInt32 count = 99;
+        QCOMPARE(alpha->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(alpha->Read(data, sizeof(data), &count), E_FAIL);
+        QCOMPARE(count, UInt32(0));
+        input->failure = S_OK;
+        check(alpha, expected);
+
+        input->failSeekAt = UINT64_MAX;
+        input->failure = E_FAIL;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        input->failure = S_OK;
+        input->failSeekAt = UInt64(390) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), expected);
+        QCOMPARE(archive_->Close(), S_OK);
+        archive_.Release();
+        check(alpha, expected);
+    }
+    void backendExtraction_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<bool>("trailingData");
+        // Remapping leaves replaced records outside the active physical span.
+        // Keep the engine diagnostic even when the selected file is readable.
+        const QSet<QString> trailingCases = {"sp-directory-cross",
+                                             "sp-metadata",
+                                             "md-fragmented",
+                                             "md-mirror-lazy",
+                                             "md-ad-chain",
+                                             "walk-metadata-zero-chain",
+                                             "walk-metadata-cycle-mirror"};
+        for (const char *kind : {"sparse-long",
+                                 "ad-directory",
+                                 "ad-chain-long",
+                                 "ad-cross-partition",
+                                 "icb-efe",
+                                 "icb-root",
+                                 "icb-cross-partition",
+                                 "icb-metadata-cross",
+                                 "sp-reverse",
+                                 "sp-directory-cross",
+                                 "sp-metadata",
+                                 "vat15-inline",
+                                 "vat20-external",
+                                 "md-fragmented",
+                                 "md-mirror-lazy",
+                                 "md-ad-chain",
+                                 "md-sparable",
+                                 "walk-zero-chain-long",
+                                 "walk-metadata-zero-chain",
+                                 "walk-metadata-cycle-mirror",
+                                 "ds-block-1024",
+                                 "ds-block-4096-spaced",
+                                 "ds-backup-last",
+                                 "ds-vdp",
+                                 "ds-prevailing-new",
+                                 "ds-main-reserve",
+                                 "ns-utf16",
+                                 "ns-nul",
+                                 "ns-limit",
+                                 "ia-undef",
+                                 "ia-unaligned-ea",
+                                 "ia-efe-owner",
+                                 "fi-aed",
+                                 "fi-directory-hint"}) {
+            const QString name = QString::fromLatin1(kind);
+            QTest::newRow(kind) << name << trailingCases.contains(name);
+        }
+    }
+    void backendExtraction() {
+        QFETCH(QString, kind);
+        QFETCH(bool, trailingData);
+        fixture(kind);
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        QFile image(temporary.filePath(QString::fromUtf8("образ 空.udf")));
+        QVERIFY(image.open(QIODevice::WriteOnly));
+        QCOMPARE(image.write(bytes_), qint64(bytes_.size()));
+        image.close();
+        const QDir runtime(QString::fromUtf8(SEVENZIP_UDF_RUNTIME));
+        ArchiveBackend backend(nullptr, runtime.filePath(
+#ifdef Q_OS_WIN
+                                            "7z.exe"
+#else
+                                            "7z"
+#endif
+                                            ));
+        QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
+        const QString core = runtime.filePath(
+#ifdef Q_OS_WIN
+            "7z.dll"
+#else
+            "7z.so"
+#endif
+        );
+        QVERIFY(backend.discoverCodecCatalog(core));
+        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 15000);
+        QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
+        QVERIFY(backend.codecCatalog()->formatIndex("Udf") >= 0);
+        QVERIFY(!backend.codecCatalog()->canUpdate("Udf"));
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.list(image.fileName());
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        finished.clear();
+        const QString output = temporary.filePath("output");
+        QString name = "alpha.bin";
+        if (!files_.contains(name)) {
+            for (auto i = files_.begin(); i != files_.end(); ++i)
+                if (!i.value().toString().isEmpty() && !i.key().contains('/')) {
+                    name = i.key();
+                    break;
+                }
+        }
+        backend.extract(image.fileName(), output, {name});
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+        QCOMPARE(finished[0][0].toBool(), !trailingData);
+        if (trailingData)
+            QVERIFY(!finished[0][1].toString().isEmpty());
+        QFile file(QDir(output).filePath(name));
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const QByteArray expected = QByteArray::fromHex(files_[name].toString().toLatin1());
+        QCOMPARE(file.readAll(), expected);
+        finished.clear();
+        const QString saved = temporary.filePath("source.bin");
+        backend.extractSourceEntry(image.fileName(), name, saved, "Udf", {});
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+        QCOMPARE(finished[0][0].toBool(), !trailingData);
+        if (trailingData) {
+            QCOMPARE(backend.lastSourceExtractOperation(),
+                     Int32(NArchive::NExtract::NOperationResult::kDataAfterEnd));
+            QVERIFY(!QFileInfo::exists(saved));
+            return;
+        }
+        QFile source(saved);
+        QVERIFY(source.open(QIODevice::ReadOnly));
+        QCOMPARE(source.readAll(), expected);
+    }
+};
+
+QTEST_GUILESS_MAIN(UdfStreamTests)
+#include "udf_stream_tests.moc"

@@ -365,7 +365,7 @@ dialog is introduced.
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `CPP/7zip/UI/FileManager/CopyDialog.rc` and `CopyDialog.cpp::OnSize`.
-Implemented view: `src/CPP/7zip/UI/FileManager/CopyDialog.cpp`.
+Implemented view: `src/dialogs/copy/CopyDialog.cpp`.
 
 - Destination label precedes the editable path; Browse stays to its right.
 - Browse retains the original twenty-DLU utility-button width instead of the

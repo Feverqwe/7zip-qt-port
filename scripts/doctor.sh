@@ -24,10 +24,10 @@ check_command ninja
 check_command c++
 check_command clang-format
 
-if [[ -d ../7zip-upstream/.git ]]; then
-  printf 'OK   upstream     %s\n' "$(git -C ../7zip-upstream rev-parse --short HEAD)"
+if [[ -f third_party/7zip/source.tar.xz ]]; then
+  printf 'OK   7-Zip source archived in repository\n'
 else
-  printf 'MISS upstream     expected ../7zip-upstream\n'
+  printf 'MISS 7-Zip source expected third_party/7zip/source.tar.xz\n'
   failed=1
 fi
 

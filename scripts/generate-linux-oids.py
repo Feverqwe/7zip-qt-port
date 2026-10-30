@@ -8,17 +8,24 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from tools.dependencies.source_archives import SourceArchives
 
 
 def generate():
     root = Path(__file__).resolve().parent.parent
-    header = root / "src/include/linux/oid_registry.h"
+    header = root / "src/compat/linux/include/linux/oid_registry.h"
     names = re.findall(r"\b(OID_\w+),\s*/\*\s+[012][.0-9]*\s+\*/", header.read_text())
     with tempfile.TemporaryDirectory(prefix="linux-oids-") as temporary:
         output = Path(temporary) / "registry.c"
+        generator = Path(temporary) / "build_OID_registry"
+        generator.write_bytes(SourceArchives(root).read_bytes("third_party/linux/lib/build_OID_registry"))
         env = dict(os.environ, srctree=str(root))
-        subprocess.run(["perl", "third_party/linux/lib/build_OID_registry",
-                        "src/include/linux/oid_registry.h", str(output)],
+        subprocess.run(["perl", str(generator),
+                        "src/compat/linux/include/linux/oid_registry.h", str(output)],
                        cwd=root, env=env, check=True)
         data = output.read_text()
     # Preserve ordinal positions and bytes; array designators are unsupported
@@ -36,7 +43,7 @@ def generate():
     if len(re.findall(r"enum OID oid : (?:8|16);", data)) != 1:
         raise RuntimeError("Linux OID search field changed")
     data = re.sub(r"enum OID oid : (8|16);", r"unsigned int oid : \1;", data)
-    destination = root / "src/lib/oid_registry_data.c"
+    destination = root / "src/compat/linux/core/oid_registry_data.c"
     destination.write_text("/* SPDX-License-Identifier: GPL-2.0-or-later */\n" + data)
     print(f"Generated {len(names)} Linux OIDs")
 

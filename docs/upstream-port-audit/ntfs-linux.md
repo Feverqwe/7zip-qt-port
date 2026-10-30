@@ -536,7 +536,7 @@ staging удалён. Full/slow gate не требовался: NTFS и прям
 types в `ntfs.h`, `$AttrDef` loader из `super.c`, attribute/run readers и
 существующий полный SDK handler с extension merge, stream и property consumers.
 Используются те же полные Linux/SDK revisions выше. Пять перечисленных C
-function bodies перенесены без изменений под исходным путём `src/fs/ntfs3/xattr.c`;
+function bodies перенесены без изменений под исходным путём `src/formats/ntfs/xattr.c`;
 новый unit добавлен в существующий [Linux baseline](../ntfs-linux-baseline.json).
 Сохранены Paragon Software notice и GPL SPDX. C остаётся C11.
 
@@ -1114,7 +1114,7 @@ Native kernel дополняет pinned source comparison. Incremental builds/ca
 hash повторно сверены. SDK читал лишь version bytes и игнорировал dirty flags.
 
 Оригинальные C layout/constants `VOLUME_INFO`, minimum resident size и
-`is_attr_ext` подключены к `src/fs/ntfs3/super.c` через узкую projection function.
+`is_attr_ext` подключены к `src/formats/ntfs/super.c` через узкую projection function.
 Сохранены resident/extended-attribute checks, version/flags reads и dirty branch;
 kernel inode lookup/logging/state заменены выбранным SDK attribute и owned
 result. Существующий compat `ATTRIB` дополнен полем flags. Все GPL bodies/types
@@ -1180,7 +1180,7 @@ trees и compiler caches сохранены.
 attribute parsing, extension merge, metadata properties и extraction consumers.
 Используются те же pinned commits; borrowed scope учтён в существующем manifest.
 
-В `src/fs/ntfs3/attrlist.c` передано неизменённое тело `al_find_ex`.
+В `src/formats/ntfs/attrlist.c` передано неизменённое тело `al_find_ex`.
 Оригинальные `upcase_unicode_char`/`ntfs_cmp_names` из `upcase.c` подключены как
 C dependency с сохранением notices и полных bodies; `le_name` взят из `ntfs.h`.
 Kernel cache/inode services заменены уже прочитанным bounded list и owned SDK

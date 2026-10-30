@@ -293,6 +293,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 - [Извлечение потоков без сохранённого имени](upstream-port-audit/nameless-stream-extraction.md)
   — source default path для Copy/Extract из gzip, открытого внутри ext4.
 
+- [Локальное владение исходниками модулей](upstream-port-audit/module-source-ownership.md)
+  — оригинальные build inputs 7-Zip в репозитории и явные соответствия provenance.
+
 При изменении перенесённого модуля добавлять сюда ссылку на отдельную запись
 в `docs/upstream-port-audit/`. Указывать дату, retrievable source repository,
 полный commit, пути/символы, copied/adapted/omitted scope, зависимости и причины

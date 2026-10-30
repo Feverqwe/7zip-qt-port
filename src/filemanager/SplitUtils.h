@@ -1,0 +1,10 @@
+#pragma once
+
+#include "Common/MyString.h"
+#include "common/collections/MyVector.h"
+
+class QComboBox;
+
+bool ParseVolumeSizes(const UString &s, CRecordVector<UInt64> &values);
+void AddVolumeItems(QComboBox &volumeCombo);
+UInt64 GetNumberOfVolumes(UInt64 size, const CRecordVector<UInt64> &volSizes);

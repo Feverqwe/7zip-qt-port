@@ -1,7 +1,9 @@
 # Sevenzip Desktop agent guide
 
-This repository owns a C++23 / Qt 6 Widgets port of Windows 7-Zip File Manager
-for Windows, macOS, and Linux. The official source checkout is `../7zip-upstream`.
+Sevenzip Desktop is an independent C++23 / Qt 6 Widgets application for Windows,
+macOS, and Linux, based on 7-Zip and other recorded dependencies. It owns its
+architecture and source layout. Upstream repositories establish provenance and
+provide comparison/update references; they do not define the project tree.
 
 ## Source-port requirements
 
@@ -9,33 +11,59 @@ for Windows, macOS, and Linux. The official source checkout is `../7zip-upstream
   Before functional changes, inspect original bodies, callers, types and dependencies.
   Functional code inside `UI/` files is part of the port; replace Win32 presentation
   and platform services with Qt or narrow adapters without rewriting the whole module.
-- Preserve upstream symbols, module boundaries, algorithms and control flow.
-  Choose local paths to fit this project's architecture; mirroring an external
-  repository's directory tree is not a general requirement. Retain upstream-relative
-  paths where required by the 7-Zip source build/runtime overlay and include layout:
-  adapted sources under `src/<upstream-relative-path>` and unchanged dependencies
-  under `third_party/7zip/<upstream-relative-path>`. Keep one authoritative
-  implementation per module and reuse portable upstream types.
+- Preserve usable upstream algorithms, control flow and portable types. Organize
+  project-owned sources and adaptations by their local functional module, with
+  explicit provenance mappings to original paths/symbols. Do not mirror an
+  external repository's tree under `src/` or use existing overlay/include rules
+  as a reason to require that layout; adapt those rules when moving sources.
+  Under `third_party/<dependency>/`, preserve the used dependency's internal
+  structure inside its local source archive. Expand unchanged sources only into
+  owned build directories, checking archive/member hashes and safe output paths;
+  retain licenses and provenance beside the archive. Keep one authoritative
+  implementation per module.
+- Keep each project module's interface, implementation, private helpers and
+  platform variants in its owning directory. This applies to C++ named modules
+  and native libraries/plugins as well as Qt components. Shared code has its own
+  owner and target; consumers link it instead of copying it into their modules.
+  Reusable unchanged dependencies remain under `third_party/` and are linked
+  through their owners rather than copied into each consumer.
+- Keep adapted dependency modules together under `src/dependencies/<module>/`:
+  their sources, interfaces, wrappers and module-specific build definitions.
+  Unchanged licenses remain under `third_party/<dependency>/`, including when
+  that directory contains only notices because all used code is adapted.
+  Do not move those notices into adapted source modules or a shared licenses
+  collection merely to remove notice-only directories.
+- Keep all 7-Zip sources, headers, resources and build inputs needed for the
+  application, engine, console and SFX in this repository. Ordinary builds,
+  runtime preparation, packaging and their tests must use these local owners,
+  without reading, cloning, fetching or unpacking a separate upstream repository.
+  Separate upstream snapshots are for provenance verification, update review and
+  explicitly requested original-reference comparisons. Source archive extraction
+  must preserve useful incremental outputs and must not trigger network access.
 - Keep one authoritative archive reader, shared by the application and console
-  `7z` through the same external format modules. Linux/GPL readers live under
-  `src/gpl/CPP`, preserving upstream-relative paths; do not keep parallel SDK
-  implementations. Extract portable probes and shared compression dependencies
+  `7z` through the same external format modules. Linux/GPL readers belong to
+  their project format modules; do not keep parallel SDK implementations.
+  Extract portable probes and shared compression dependencies
   into common units when needed by the core. Keep GPLv2, GPLv3 and unRAR-bearing
   modules separate; full GPL readers are not overlaid into the core runtime.
   Record extractions and their original inventory units in the existing baseline.
-- Preserve the source language: upstream `C/` stays C and is compiled as C;
-  `CPP/` stays C++. Local UI/integration uses C++23 / Qt 6; necessary platform
+- Preserve the source language: imported C stays C and is compiled as C;
+  imported C++ stays C++. Local UI/integration uses C++23 / Qt 6; necessary platform
   bridges may use their native language, with the reason recorded in the audit.
   Use existing upstream headers and their C linkage at C/C++ boundaries.
-- New functional code requires evidence that no usable upstream implementation
-  exists. Existing independent logic is migration debt: replace the relevant part
-  when working on it without expanding into a repository-wide rewrite.
+- Before independently implementing borrowed archive/filesystem behavior, check
+  for a usable recorded upstream implementation and reuse it where available.
+  Independent replacements of that behavior remain migration debt; address the
+  relevant part when working on it without a repository-wide rewrite. Project
+  features and Qt/platform integration have their own functional owners and are
+  not migration debt merely because they have no upstream counterpart.
 - Keep archive operations behind `ArchiveBackend` and the official native engine.
   `7zFM` and `7zG` do not invoke console clients. Build and ship the official `7z`
   as an independent sidecar; do not build or ship `7zz`. Do not reimplement archive
   formats or compression.
-- Keep the sibling upstream checkout read-only. Copying source into this repository
-  is authorized; editing upstream or adding Qt to it requires a user request.
+- Keep any external reference checkout read-only. Copying source into this
+  repository is authorized; editing upstream or adding Qt to it requires a user
+  request. Reference checkout locations do not prescribe local source paths.
 - Record full upstream commit, retrievable source repository, paths/symbols,
   copied/adapted/omitted scope, dependencies and reasons in
   [the port audit](docs/upstream-port-audit.md). Preserve notices and licenses.
@@ -173,17 +201,15 @@ Source edits, tracked documentation, Git operations and validation belong to
 scripts would build or synchronize its source instead. Keep CMake build trees,
 runtime outputs and test artifacts local to the worktree; never symlink a shared
 `build/` across branches. Reuse the existing compiler cache and installed Qt kit
-(set `CMAKE_PREFIX_PATH` to the harness kit when needed). For local runtime
-preparation pass the absolute sibling upstream path from the harness root;
-do not assume `../7zip-upstream` is relative to a nested worktree. Helpers without
-an upstream override may use an already prepared runtime via their documented
-skip-preparation option.
+(set `CMAKE_PREFIX_PATH` to the harness kit when needed). Runtime/SFX preparation
+uses the worktree's recorded source archive and local adaptations. Helpers may
+use an already prepared runtime via their documented skip-preparation option.
 
 Remote runner commands automatically read the main checkout's private runner
-configuration and use its shared logs/bundle cache and sibling upstream default.
+configuration and use its shared logs and compiler/tool caches.
 They synchronize the invoking script's worktree and select its Git branch;
 the local worktree directory does not affect remote workspace identity.
-Explicit configuration/upstream overrides remain supported. Do not run two
+Explicit runner configuration overrides remain supported. Do not run two
 different tasks under the same branch name expecting isolated guest builds.
 Guests execute synchronized source copies: do not create/update a project Git
 repository there or add a separate source-hashing pass. Keep the existing local
@@ -229,10 +255,11 @@ Preserve unrelated working-tree changes and other tasks' memory entries.
   results; avoid workflow-heavy constructors/lambdas and hidden mutable globals.
 - Review splitting new glue around 400 lines/file, 80 lines/function or a second
   responsibility. These are review triggers, not limits on copied upstream modules.
-  Preserve upstream organization. Extract cohesive parts of large custom Qt files
+  Preserve coherent implementation units; an upstream directory tree does not
+  define project module ownership. Extract cohesive parts of large custom Qt files
   when practical; keep small fixes focused and explain deferred extraction.
-  Do not add independent features wholesale to `src/mainwindow.h` or unrelated
-  suites to `tests/ui_state_tests.cpp`.
+  Do not add independent features wholesale to the main window header or
+  unrelated suites to a window-state test component.
 - Test public behavior/signals with deterministic local fixtures; do not expose
   internals just for tests. Keep suites focused by component. Extractions preserve
   behavior/parity, move relevant regressions and update architecture boundaries.

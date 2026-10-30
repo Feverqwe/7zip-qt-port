@@ -13,9 +13,10 @@ import shlex
 import subprocess
 import time
 from lib.runtime_layout import codec_runtime, runtime_root, sanitizer_startup, sfx_runtime
-from lib.build_paths import directory as workspace_directory
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from tools.dependencies.source_archives import SourceArchives
 BUILDERS = ("build-codec-runtime.sh", "build-codec-runtime.ps1", "build-sfx.sh", "build-sfx.ps1",
             "upstream_baseline.py", "build-native-dependencies.py")
 MODULE_BUILD_INPUTS = ("tools/native-dependencies/CMakeLists.txt", "cmake/CxxStandard.cmake",
@@ -39,13 +40,21 @@ def fingerprint(root, sanitizer_runtime=True):
         probe = subprocess.run([*compiler], capture_output=True)
         version += probe.stdout + probe.stderr
     baseline = json.loads((root / "docs/upstream-baseline.json").read_text())
-    exact_overrides = sorted(set(baseline.get("overrides", {})) & set(baseline.get("exact", [])))
+    sources = SourceArchives(root, baseline)
+    exact_overrides = (sorted(set(baseline.get("overrides", {})) & set(baseline.get("exact", [])))
+                       if not baseline.get("original_archive") else [])
     return {"baseline": {key: baseline.get(key) for key in
                          ("repository", "revision", "overrides", "runtime_format_sources")},
-            "runtime_sources": {path: sha(root / path) for path in
+            "runtime_sources": {path: hashlib.sha256(sources.read_bytes(path)).hexdigest() for path in
                                 baseline.get("runtime_adapted", []) + exact_overrides +
                                 baseline.get("runtime_dependencies", [])},
+            "original_sources": {item["local"]: sha(root / item["local"])
+                                 for item in baseline.get("originals", {}).values() if "local" in item},
+            "original_archive": ({baseline["original_archive"]["local"]:
+                                  sha(root / baseline["original_archive"]["local"])}
+                                 if baseline.get("original_archive") else {}),
             "builders": {name: sha(root / "scripts" / name) for name in BUILDERS},
+            "source_archive_tool": sha(ROOT / "tools/dependencies/source_archives.py"),
             "module_build": {name: sha(root / name) for name in MODULE_BUILD_INPUTS},
             "cache_version": sha(Path(__file__)),
             "system": platform.system(), "architecture": platform.machine(),
@@ -72,35 +81,8 @@ def cache_valid(build, record, key, paths):
                and sha(build / name) == record["artifacts"][name] for name in paths)
 
 
-def prepare_upstream(root, upstream, baseline):
-    revision = baseline["revision"]
-
-    def contains_revision(directory):
-        return directory.exists() and subprocess.run(
-            ["git", "-C", str(directory), "cat-file", "-e", revision + "^{commit}"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
-
-    if contains_revision(upstream):
-        return upstream
-    runner_store = upstream == root / "upstream"
-    store = upstream if runner_store else workspace_directory(root, "cache") / "upstream.git"
-    if contains_revision(store):
-        return store
-    if not store.exists():
-        store.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["git", "init", "-q", "--bare", str(store)], check=True)
-    source = str(root / "upstream.bundle") if runner_store else baseline["repository"]
-    ref = "refs/heads/runner-baseline" if runner_store else revision
-    print(f"Preparing pinned upstream {revision} in {store}", flush=True)
-    subprocess.run(["git", "-C", str(store), "fetch", source, ref], check=True)
-    if not contains_revision(store):
-        raise ValueError(f"Upstream source {source} did not provide pinned commit {revision}")
-    return store
-
-
-def prepare(root, upstream, codec_only=False, sanitizer_runtime=True, preset="dev"):
+def prepare(root, codec_only=False, sanitizer_runtime=True, preset="dev"):
     root = root.resolve()
-    upstream = (root / upstream).resolve() if not upstream.is_absolute() else upstream.resolve()
     started = time.monotonic()
     build = runtime_root(root, preset)
     directory = codec_runtime(root, preset)
@@ -124,7 +106,6 @@ def prepare(root, upstream, codec_only=False, sanitizer_runtime=True, preset="de
     if stamp.is_symlink():
         raise ValueError("Refusing symlink runtime cache record")
     stamp.unlink(missing_ok=True)
-    upstream = prepare_upstream(root, upstream, key["baseline"])
     if platform.system() == "Windows":
         for name in (("build-codec-runtime.ps1",) if codec_only else
                      ("build-codec-runtime.ps1", "build-sfx.ps1")):
@@ -132,7 +113,7 @@ def prepare(root, upstream, codec_only=False, sanitizer_runtime=True, preset="de
             environment["SEVENZIP_RUNTIME_SANITIZERS"] = str(int(
                 sanitizer_runtime and name == "build-codec-runtime.ps1"))
             command = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "RemoteSigned",
-                       "-File", str(root / "scripts" / name), "-UpstreamCheckout", str(upstream),
+                       "-File", str(root / "scripts" / name),
                        "-Architecture", os.environ.get("VSCMD_ARG_TGT_ARCH", "x64")]
             command += ["-OutputDirectory", str(directory if name == "build-codec-runtime.ps1"
                                                 else sfx_directory)]
@@ -147,7 +128,7 @@ def prepare(root, upstream, codec_only=False, sanitizer_runtime=True, preset="de
                  ("compiler", "compiler_version", "environment")}, sort_keys=True).encode()).hexdigest()
             environment["SEVENZIP_RUNTIME_SANITIZERS"] = str(int(
                 sanitizer_runtime and name == "build-codec-runtime.sh"))
-            command = ["bash", str(root / "scripts" / name), str(upstream)]
+            command = ["bash", str(root / "scripts" / name)]
             command.append(str(directory if name == "build-codec-runtime.sh" else sfx_directory))
             subprocess.run(command,
                            cwd=root, env=environment, check=True)
@@ -159,9 +140,8 @@ def prepare(root, upstream, codec_only=False, sanitizer_runtime=True, preset="de
 
 
 def main():
-    from lib.toolchain import apply_environment, harness_root
+    from lib.toolchain import apply_environment
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--upstream", type=Path, default=harness_root(ROOT).parent / "7zip-upstream")
     parser.add_argument("--codec-only", action="store_true", help="Prepare engine variants without SFX")
     parser.add_argument("--preset", default="dev", help="Use the build preset's shared toolchain")
     parser.add_argument("--sanitizer-runtime", choices=["auto", "on", "off"], default="auto",
@@ -170,7 +150,7 @@ def main():
     apply_environment(ROOT, args.preset, require_qt=False)
     startup = (sanitizer_startup(ROOT, args.preset) if args.sanitizer_runtime == "auto"
                else args.sanitizer_runtime == "on")
-    prepare(ROOT, args.upstream, args.codec_only, startup, args.preset)
+    prepare(ROOT, args.codec_only, startup, args.preset)
 
 
 if __name__ == "__main__":

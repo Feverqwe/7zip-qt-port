@@ -308,7 +308,7 @@ and 340×390, writing current-build settings JSON reports. Rendered Windows
 parity remains unverified.
 
 Language reference: pinned `LangPage.rc`/`LangPage.cpp`; imported translation
-provenance is in resources/7zip/provenance.json. Qt Linguist catalogs replace
+provenance is in third_party/7zip-help/provenance.json. Qt Linguist catalogs replace
 native language files. The page keeps the label, combo and read-only scrollable
 language/locale report in source order; catalog completion is reviewed with
 the translation tools. `language` checks600×320/480×280; `language_ui` writes

@@ -208,7 +208,7 @@ whole workflow and pixel equality are not established by those initial views.
 ```
 
 CTest writes reports to `ui-reports/` in the selected CMake build directory
-(see [build workspace lookup](../development.md#local-commands)). `tests/layout_inspection.h`
+(see [build workspace lookup](../development.md#local-commands)). `tests/ui/support/layout_inspection.h`
 also supports other Qt tests through `UiInspection::writeReport(widget, tag)`.
 `SEVENZIP_UI_REPORT_DIR` overrides the output directory; standalone test runs
 default to `ui-reports/` in the current directory. `ui_layout`, `extract_dialog`,
@@ -241,7 +241,7 @@ This writes optional PNGs next to the JSON. Open only the affected screenshot.
 
 Reference: upstream commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `CPP/7zip/UI/GUI/ExtractDialog.rc`, desktop `IDD_EXTRACT`.
-Implemented view: `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`.
+Implemented view: `src/dialogs/extract/ExtractDialog.cpp`.
 
 - Destination label and editable history occupy the top; Browse is on the right.
 - Below the destination, the left column contains the optional folder-name

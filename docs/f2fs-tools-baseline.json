@@ -7,8 +7,8 @@
     "lib/libf2fs.c": "adaa2aecd97200d8a7caaf2731467ac04e268c7e988f26dc30706463b104d570"
   },
   "adapted": {
-    "include/f2fs_fs.h": "src/fs/f2fs/f2fs.c",
-    "lib/libf2fs.c": "src/fs/f2fs/f2fs.c"
+    "include/f2fs_fs.h": "src/formats/f2fs/f2fs.c",
+    "lib/libf2fs.c": "src/formats/f2fs/f2fs.c"
   },
   "selected_symbols": {
     "include/f2fs_fs.h": [
@@ -29,5 +29,10 @@
   "unchanged": {
     "COPYING": "third_party/grub/f2fs-tools-COPYING"
   },
-  "reference_only": []
+  "reference_only": [],
+  "owners": {
+    "COPYING": "third_party/grub/f2fs-tools-COPYING",
+    "include/f2fs_fs.h": "src/formats/f2fs/f2fs.c",
+    "lib/libf2fs.c": "src/formats/f2fs/f2fs.c"
+  }
 }

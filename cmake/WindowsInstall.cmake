@@ -52,7 +52,7 @@ install(FILES "${SEVENZIP_WINDOWS_RUNTIME}/LICENSE.txt"
 install(TARGETS sevenzip_exfat RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(TARGETS sevenzip_xfs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/grub/COPYING"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    "${SEVENZIP_7ZIP_SOURCE_DIR}/DOC/copying.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-xfs)
 install(TARGETS sevenzip_fat RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(TARGETS sevenzip_ext RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
@@ -64,10 +64,10 @@ install(TARGETS sevenzip_udf RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION
 install(TARGETS sevenzip_mbr RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/LGPL-2.0"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    "${SEVENZIP_7ZIP_SOURCE_DIR}/DOC/copying.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-udf)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    "${SEVENZIP_7ZIP_SOURCE_DIR}/DOC/copying.txt"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/Unicode-LICENSE.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-iso)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib/LICENSE"
@@ -77,15 +77,15 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/zlib-LICENSE.txt"
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/exceptions/Linux-syscall-note"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-iso)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    "${SEVENZIP_7ZIP_SOURCE_DIR}/DOC/copying.txt"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lzfse/LICENSE"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-hfs)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    "${SEVENZIP_7ZIP_SOURCE_DIR}/DOC/copying.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-ntfs)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/BSD-2-Clause"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    "${SEVENZIP_7ZIP_SOURCE_DIR}/DOC/copying.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-squashfs)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib/LICENSE"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-squashfs RENAME zlib-LICENSE.txt)
@@ -94,7 +94,7 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/BSD-2-Clause"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/BSD-3-Clause"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/crypto/asymmetric-NOTICES.txt"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    "${SEVENZIP_7ZIP_SOURCE_DIR}/DOC/copying.txt"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/exceptions/Linux-syscall-note"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-ext)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
@@ -105,27 +105,27 @@ install(TARGETS sevenzip_erofs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATI
 install(TARGETS sevenzip_f2fs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/grub/COPYING"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/grub/f2fs-tools-COPYING"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    "${SEVENZIP_7ZIP_SOURCE_DIR}/DOC/copying.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-f2fs)
 install(TARGETS sevenzip_btrfs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/exceptions/Linux-syscall-note"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/zlib-LICENSE.txt"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    "${SEVENZIP_7ZIP_SOURCE_DIR}/DOC/copying.txt"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/brotli/7zip-zstd-LICENSE.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-btrfs)
 install(TARGETS sevenzip_linux_frames RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/BSD-2-Clause"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/zlib-LICENSE.txt"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    "${SEVENZIP_7ZIP_SOURCE_DIR}/DOC/copying.txt"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/brotli/7zip-zstd-LICENSE.txt"
     DESTINATION "${notices_destination}/sevenzip-linux-frames")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/BSD-2-Clause"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/deprecated/0BSD"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/exceptions/Linux-syscall-note"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    "${SEVENZIP_7ZIP_SOURCE_DIR}/DOC/copying.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-erofs)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib/LICENSE"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-erofs RENAME zlib-LICENSE.txt)
@@ -145,8 +145,8 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lz4/lib/LICENSE"
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/brotli/LICENSE"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/brotli/7zip-zstd-LICENSE.txt"
     DESTINATION share/licenses/sevenzip-desktop/brotli)
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/zstd/LICENSE"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/zstd/7zip-zstd-LICENSE.txt"
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zstd/LICENSE"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zstd/7zip-zstd-LICENSE.txt"
     DESTINATION share/licenses/sevenzip-desktop/zstd-encoder)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-exfat)

@@ -23,10 +23,10 @@
     "lib/lz4frame.c": "third_party/lz4/lib/lz4frame.c",
     "lib/lz4frame.h": "third_party/lz4/lib/lz4frame.h",
     "lib/LICENSE": "third_party/lz4/lib/LICENSE",
-    "programs/lz4io.c": "src/lz4frameio.c"
+    "programs/lz4io.c": "src/formats/lz4/lz4frameio.c"
   },
   "integration": {
-    "src/CPP/7zip/Archive/Lz4FrameHandler.cpp": {
+    "src/formats/lz4/Lz4FrameHandler.cpp": {
       "reference": "existing LinuxFrameHandler.cpp and BrotliHandler.cpp",
       "scope": "native read-only single-item handler; inherited provenance in linux-frames.md and brotli.md",
       "upstream_baseline": "third_party/brotli/upstream.json",
@@ -38,7 +38,7 @@
         "CHandler::GetArchiveProperty"
       ]
     },
-    "src/lz4frameio.c": {
+    "src/formats/lz4/lz4frameio.c": {
       "reference": "programs/lz4io.c",
       "symbols": [
         "LZ4IO_decompressLZ4F (single-threaded)"
@@ -56,15 +56,26 @@
     "lib/LICENSE": "third_party/lz4/lib/LICENSE"
   },
   "local_integration": [
-    "src/dependencies/lz4.h",
-    "src/dependencies/lz4.cppm",
-    "src/dependencies/stream_callbacks.h",
+    "src/dependencies/lz4/lz4.h",
+    "src/dependencies/lz4/lz4.cppm",
+    "src/dependencies/streams/stream_callbacks.h",
     "cmake/DependencyModules.cmake",
-    "src/lz4frameio.h",
-    "src/lz4framestream.cpp",
-    "src/lz4framestream.h",
-    "cmake/Lz4.cmake",
-    "cmake/Lz4Frame.cmake"
+    "src/formats/lz4/lz4frameio.h",
+    "src/formats/lz4/lz4framestream.cpp",
+    "src/formats/lz4/lz4framestream.h",
+    "src/dependencies/lz4/module.cmake",
+    "src/formats/lz4/module.cmake"
   ],
-  "scope": "Official LZ4 Frame uses the existing libzstd XXH32 implementation via its header include path; bundled lib/xxhash.c and .h are inventory-only references and are omitted locally. No decoder/framing algorithms changed."
+  "scope": "Official LZ4 Frame uses the existing libzstd XXH32 implementation via its header include path; bundled lib/xxhash.c and .h are inventory-only references and are omitted locally. No decoder/framing algorithms changed.",
+  "owners": {
+    "lib/xxhash.c": "src/compat/linux/core/xxhash.c",
+    "lib/lz4.c": "third_party/lz4/lib/lz4.c",
+    "lib/lz4.h": "third_party/lz4/lib/lz4.h",
+    "lib/lz4hc.c": "third_party/lz4/lib/lz4hc.c",
+    "lib/lz4hc.h": "third_party/lz4/lib/lz4hc.h",
+    "lib/lz4frame.c": "third_party/lz4/lib/lz4frame.c",
+    "lib/lz4frame.h": "third_party/lz4/lib/lz4frame.h",
+    "lib/LICENSE": "third_party/lz4/lib/LICENSE",
+    "programs/lz4io.c": "src/formats/lz4/lz4frameio.c"
+  }
 }

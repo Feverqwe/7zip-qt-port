@@ -9,8 +9,8 @@ configuration for the identities and paths of your installation.
 
 For local linked worktrees, invoke the runner script in the feature worktree.
 It transfers that worktree's current source and uses its branch for the remote
-directory/lock. Private configuration, local run reports, bundle cache and the
-default sibling upstream checkout are resolved from the main checkout's harness;
+directory/lock. Private configuration, local run reports and shared tool/compiler
+caches are resolved from the main checkout's harness;
 see [configuration](runner-configuration.md) and
 [feature worktree rules](../AGENTS.md#feature-worktrees-and-shared-harness).
 
@@ -286,16 +286,12 @@ diagnoses are retained in the [environment record](archive/runner-environment-20
 Each check updates the selected branch worktree. Source scope, untracked files
 and exclusions are specified in [the synchronization contract](#persistent-worktree).
 
-The helper also includes an upstream Git bundle at the exact revision recorded
-in `docs/upstream-baseline.json`. `--upstream /path/to/7zip` overrides the default
-read-only sibling checkout. A temporary local mirror creates the bundle ref;
-the original checkout's refs, index and files remain untouched. No upstream
-network fetch is needed. Bundles are cached locally by revision. The guest keeps
-a bare `upstream/` object store and fetches the supplied bundle only when its
-pinned commit is missing. `prepare-runtime.py` verifies a toolchain/builder/source
+The helper includes the repository-owned source archives recorded in the
+baselines. It does not create an upstream Git bundle or object store.
+`prepare-runtime.py` verifies a toolchain/builder/source
 fingerprint and artifact hashes before reusing the dynamic engine, codec module,
 standalone client and SFX. Misses invoke the official project builders, which
-retain their owned upstream snapshots and incremental build outputs. All runtime binaries match
+retain their owned expanded source trees and incremental build outputs. All runtime binaries match
 the guest architecture and pinned source. Environment changes are process-local.
 
 Before transfer, the helper checks actual local staged/worktree diffs for

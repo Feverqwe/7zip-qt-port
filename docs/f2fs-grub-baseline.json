@@ -12,9 +12,9 @@
     "include/grub/safemath.h": "ceb20344dab94bff2a6e13b5991e417e03913c5dfeae30f9f5882e31ba774d8f"
   },
   "adapted": {
-    "grub-core/fs/f2fs.c": "src/fs/f2fs/f2fs.c",
-    "grub-core/fs/fshelp.c": "src/fs/f2fs/f2fs.c",
-    "include/grub/fshelp.h": "src/fs/f2fs/grub_compat.h"
+    "grub-core/fs/f2fs.c": "src/formats/f2fs/f2fs.c",
+    "grub-core/fs/fshelp.c": "src/formats/f2fs/f2fs.c",
+    "include/grub/fshelp.h": "src/formats/f2fs/grub_compat.h"
   },
   "selected_symbols": {
     "grub-core/fs/f2fs.c": "disk structures, checkpoint/NAT/node mapping, read_file and directory iteration; excludes GRUB registration, path lookup, labels and UUID presentation",
@@ -28,11 +28,11 @@
     ]
   },
   "local": [
-    "src/f2fsreader.h",
-    "src/f2fshandler.cpp",
-    "cmake/F2fs.cmake",
-    "src/f2fsarchivereader.cpp",
-    "src/f2fsarchivereader.h"
+    "src/formats/f2fs/f2fsreader.h",
+    "src/formats/f2fs/f2fshandler.cpp",
+    "src/formats/f2fs/module.cmake",
+    "src/formats/f2fs/f2fsarchivereader.cpp",
+    "src/formats/f2fs/f2fsarchivereader.h"
   ],
   "unchanged": {
     "COPYING": "third_party/grub/COPYING"
@@ -42,5 +42,11 @@
     "include/grub/err.h",
     "include/grub/safemath.h",
     "include/grub/types.h"
-  ]
+  ],
+  "owners": {
+    "COPYING": "third_party/grub/COPYING",
+    "grub-core/fs/f2fs.c": "src/formats/f2fs/f2fs.c",
+    "grub-core/fs/fshelp.c": "src/formats/f2fs/f2fs.c",
+    "include/grub/fshelp.h": "src/formats/f2fs/grub_compat.h"
+  }
 }

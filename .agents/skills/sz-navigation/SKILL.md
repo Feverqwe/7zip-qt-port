@@ -17,12 +17,17 @@ clangd --check=<source-file> --compile-commands-dir="$build_root/dev"
 The compilation database is `$build_root/dev/compile_commands.json`; do not
 assume a fixed path across branches, platforms or RAM/disk workspaces.
 
-Locate original code in the read-only
-`<harness-root>/../7zip-upstream/CPP/7zip/` (resolve the shared harness using
-`AGENTS.md`; do not resolve this path against a nested task worktree):
-`UI/FileManager` for 7zFM, `UI/Console` for CLI behavior, `Archive` for formats,
-`Compress`/`Crypto` for algorithms. Use `git log -S'literal' -- path` or
-`git blame` when history matters.
+Locate current code by its project module owner. The
+[7-Zip baseline](../../../docs/upstream-baseline.json) maps current owners to
+original paths; other dependency baselines record their own owners. Do not infer
+provenance from a project directory name. FileManager, archive/Agent integration,
+GUI, format readers and dependency facades have separate project directories.
+
+For original bytes, use the repository-owned source archive and the
+[baseline workflow](../../../docs/upstream-update.md). An explicitly selected
+read-only reference checkout is useful for upstream history and update review;
+it is not an ordinary build prerequisite or a model for the project tree.
+Use `git log -S'literal' -- path` or `git blame` when history matters.
 
 Trace complete bodies, callers, supporting types and platform dependencies,
 not just resources or names. Start with the current

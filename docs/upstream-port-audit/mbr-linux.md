@@ -111,7 +111,7 @@ receipt `20261020T054300Z-d8f6f98a`. Exact baseline verification — 422 exact,
 Solaris VTOC, Unixware slices и Minix subpartitions из того же Linux baseline.
 Поиск signatures/types в полном pinned 7-Zip checkout не обнаружил пригодного
 reader для этих labels. Исходные структуры и 336 строк subtype bodies/table
-сохранены без изменений в `src/block/partitions/msdos.c` и компилируются как C11.
+сохранены без изменений в `src/formats/mbr/msdos.c` и компилируются как C11.
 `nr_sects`, `start_sect` и signature helper также взяты из исходного C unit.
 Точный `include/linux/msdos_partition.h` хранится в `third_party/linux/`.
 [Source hashes и scope](../msdos-linux-baseline.json) закрепляют оригиналы.

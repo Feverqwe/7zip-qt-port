@@ -41,12 +41,12 @@ state transitions, block history, size/checksum checks and skippable handling.
 Official 7-Zip 26.05 has no modern LZ4 handler/decoder. The existing Linux
 legacy reader understands a different framing format.
 
-`src/lz4frameio.c::LZ4IO_decompressLZ4F` adapts the single-threaded
+`src/formats/lz4/lz4frameio.c::LZ4IO_decompressLZ4F` adapts the single-threaded
 `programs/lz4io.c::LZ4IO_decompressLZ4F` loop to bounded native streams and HRESULT
 I/O/progress cancellation. The original GPL-2.0-or-later notice is retained;
 the combined module uses GPL-2.0-only. The loop remains C with explicit cleanup;
 `LZ4F_getFrameInfo`/`LZ4F_decompress` retain all header, history, decoding and
-integrity algorithms. `src/lz4framestream.cpp` supplies narrow C++ COM services,
+integrity algorithms. `src/formats/lz4/lz4framestream.cpp` supplies narrow C++ COM services,
 contains exceptions at the C boundary, and maps results. FILE services, process
 termination, console preferences,
 sparse output, threading and producer commands are omitted. The complete

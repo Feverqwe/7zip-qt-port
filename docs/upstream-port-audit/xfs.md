@@ -59,12 +59,12 @@ records the common native/GPL provider, source mapping and validation.
 
 ## Transferred scope, dependencies and adaptations
 
-- `grub-core/fs/xfs.c` → `src/grub/fs/xfs.c`: superblock/version predicates,
+- `grub-core/fs/xfs.c` → `src/dependencies/grub/include/grub/fs/xfs.c`: superblock/version predicates,
   inode addressing and loading, extent decoding, bmap btree descent, inline
   and block/data directory iteration, symlink reads, inode timestamp helpers
   and file block mapping. Legacy signed seconds are retained as signed values.
   The XFS structures, upstream symbols and read control flow are retained.
-- `grub-core/fs/fshelp.c` → `src/grub/fs/fshelp.c`: selected
+- `grub-core/fs/fshelp.c` → `src/dependencies/grub/include/grub/fs/fshelp.c`: selected
   `grub_fshelp_read_file`, including sparse zero filling. Bootloader pathname
   lookup, symlink-following traversal and its stack are omitted: the existing
   archive layer owns paths and extraction safety.

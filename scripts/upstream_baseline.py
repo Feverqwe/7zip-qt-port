@@ -18,6 +18,8 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "docs/upstream-baseline.json"
+sys.path.insert(0, str(ROOT))
+from tools.dependencies.source_archives import SourceArchives
 
 
 def git(repo, *args):
@@ -27,7 +29,12 @@ def git(repo, *args):
     return result.stdout
 
 
-def source_path(path):
+def source_path(path, data=None):
+    if data and data.get("schema") == 2:
+        try:
+            return data["origins"][path]
+        except KeyError as error:
+            raise ValueError("Source owner has no recorded origin: " + path) from error
     if path == "third_party/7zip/License.txt":
         return "DOC/License.txt"
     if path.startswith("third_party/7zip/"):
@@ -41,8 +48,8 @@ def source_path(path):
 
 def load_manifest(path):
     data = json.loads(path.read_text(encoding="utf-8"))
-    if data.get("schema") != 1 or not re.fullmatch(r"[0-9a-f]{40}", data.get("revision", "")):
-        raise ValueError("Manifest requires schema 1 and a full commit hash")
+    if data.get("schema") not in (1, 2) or not re.fullmatch(r"[0-9a-f]{40}", data.get("revision", "")):
+        raise ValueError("Manifest requires a supported schema and a full commit hash")
     if data.get("repository") != "https://github.com/ip7z/7zip.git":
         raise ValueError("Unexpected upstream repository")
     groups = [data.get(name) for name in ("exact", "adapted", "local")]
@@ -51,7 +58,32 @@ def load_manifest(path):
     paths = [path for group in groups for path in group]
     if len(paths) != len(set(paths)):
         raise ValueError("Borrowed paths have multiple owners")
-    sources = [source_path(path) for path in paths]
+    if data["schema"] == 2:
+        borrowed = set(data["exact"] + data["adapted"])
+        if set(data.get("origins", {})) != borrowed:
+            raise ValueError("Every borrowed owner requires one explicit origin")
+        packed = data.get("original_archive")
+        if packed:
+            local = pathlib.PurePosixPath(packed.get("local", ""))
+            if (local.is_absolute() or ".." in local.parts or
+                    local.parts[:2] != ("third_party", "7zip") or
+                    not re.fullmatch(r"[0-9a-f]{64}", packed.get("sha256", ""))):
+                raise ValueError("Invalid original source archive")
+        for origin in data["origins"].values():
+            relative = pathlib.PurePosixPath(origin)
+            if relative.is_absolute() or ".." in relative.parts or not relative.parts:
+                raise ValueError("Unsafe original inventory path")
+        for origin, original in data.get("originals", {}).items():
+            relative = pathlib.PurePosixPath(origin)
+            local = pathlib.PurePosixPath(original.get("local", "third_party/7zip"))
+            if (relative.is_absolute() or ".." in relative.parts or not relative.parts or
+                    local.is_absolute() or ".." in local.parts or
+                    local.parts[:2] != ("third_party", "7zip") or
+                    not re.fullmatch(r"[0-9a-f]{64}", original.get("sha256", ""))):
+                raise ValueError("Invalid repository-owned original source")
+        sources = [source_path(path, data) for path in data["exact"] + data["adapted"]]
+    else:
+        sources = [source_path(path) for path in paths]
     if len(sources) != len(set(sources)):
         raise ValueError("Upstream module has multiple authoritative implementations")
     overrides = data.get("overrides", {})
@@ -72,21 +104,38 @@ def load_manifest(path):
     return data
 
 
-def tracked_paths():
+def tracked_paths(data):
+    roots = data.get("inventory_roots", ["third_party/7zip/", "src/CPP/", "src/C/", "src/gpl/"])
     snapshot = ROOT / ".runner-source.json"
     if os.environ.get("SEVENZIP_RUN_TOKEN") and snapshot.is_file():
         paths = [path for path in json.loads(snapshot.read_text())
-                 if path.startswith(("third_party/7zip/", "src/CPP/", "src/C/", "src/gpl/"))]
+                 if any(path.startswith(root.rstrip("/") + "/") for root in roots)]
     else:
         paths = git(ROOT, "ls-files", "--cached", "--others", "--exclude-standard",
-                    "third_party/7zip/", "src/CPP/", "src/C/", "src/gpl/").decode().splitlines()
+                    *roots).decode().splitlines()
     return {path for path in paths
-            if path != "third_party/7zip/README.md" and (ROOT / path).is_file()}
+            if (data.get("schema") == 2 or path != "third_party/7zip/README.md")
+            and (ROOT / path).is_file()}
 
 
 def check_inventory(data):
-    recorded = set(data["exact"] + data["adapted"] + data["local"])
-    current = tracked_paths()
+    recorded = set(data["adapted"] + data["local"])
+    if data.get("original_archive"):
+        recorded.add(data["original_archive"]["local"])
+        recorded.update(data.get("notices", {}))
+    else:
+        recorded.update(data["exact"])
+        recorded.update(original["local"] for original in data.get("originals", {}).values())
+    roots = data.get("inventory_roots", [])
+    for manifest in data.get("related_manifests", []):
+        related = pathlib.PurePosixPath(manifest)
+        if (related.is_absolute() or ".." in related.parts or
+                related.parts[0] not in ("docs", "third_party")):
+            raise ValueError("Invalid related source baseline")
+        reference = json.loads((ROOT / related).read_text())
+        recorded.update(path for path in reference.get("owners", {}).values()
+                        if any(path.startswith(root.rstrip("/") + "/") for root in roots))
+    current = tracked_paths(data)
     missing = current - recorded
     stale = recorded - current
     if missing or stale:
@@ -252,12 +301,152 @@ def runtime_header_dependencies(snapshot, members, overlays, extra_c=(), format_
                 output.write_text(content)
 
 
-def prepare_runtime_snapshot(data, snapshot, upstream, build_rules=True):
+def snapshot_path(snapshot, name):
+    relative = pathlib.PurePosixPath(name)
+    if (relative.is_absolute() or ".." in relative.parts or not relative.parts or
+            str(relative) != name or "\\" in name or ":" in name):
+        raise ValueError("Unsafe runtime source entry: " + name)
+    destination = snapshot / relative
+    if any(path.is_symlink() for path in [destination, *destination.parents]
+           if path == snapshot or snapshot in path.parents):
+        raise ValueError("Refusing linked runtime source: " + name)
+    return destination
+
+
+def runtime_content(data, owner, destination, content):
+    """Rebase project includes into the native build's generated source view."""
+    if data.get("schema") != 2 or not owner:
+        return content
+    destinations = {**data.get("origins", {}), **data.get("runtime_paths", {})}
+    def include(match):
+        name = match[2]
+        target = destinations.get("src/" + name) or destinations.get("third_party/" + name)
+        if target is None:
+            for candidate in (name, "CPP/" + name):
+                if candidate in data.get("originals", {}):
+                    target = candidate
+                    break
+        if target is None:
+            return match[0]
+        relative = posixpath.relpath(target, posixpath.dirname(destination))
+        return match[1] + relative + match[3]
+    text = content.decode("utf-8")
+    return re.sub(r'(^\s*#\s*include\s+")([^"\n]+)(")', include,
+                  text, flags=re.MULTILINE).encode("utf-8")
+
+
+def prepare_header_snapshot(data, snapshot):
+    """Expose foreign include contracts without constraining project directories."""
+    snapshot.mkdir(parents=True, exist_ok=True)
+    owner = snapshot / ".sevenzip-header-source.json"
+    if snapshot.is_symlink() or (any(snapshot.iterdir()) and not owner.is_file()):
+        raise ValueError("Refusing an unowned header compatibility directory")
+    previous = json.loads(owner.read_text()) if owner.exists() else {"files": []}
+    headers = {origin: path for path, origin in data.get("origins", {}).items()
+               if path in data["adapted"] and path.endswith((".h", ".hpp", ".inl"))}
+    headers.update(data.get("header_aliases", {}))
+    for name, path in headers.items():
+        source = ROOT / path
+        if source.is_symlink() or not source.is_file():
+            raise ValueError("Header compatibility requires a local source owner: " + path)
+        target = snapshot_path(snapshot, name)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if not path.startswith("src/"):
+            raise ValueError("Header compatibility requires a project module owner")
+        # Foreign code keeps its include spelling; the compiler still reads
+        # the single live module header and tracks its ordinary dependencies.
+        content = ('#include "' + path[len("src/"):] + '"\n').encode("utf-8")
+        if not target.exists() or target.read_bytes() != content:
+            target.write_bytes(content)
+    for name in set(previous["files"]) - set(headers):
+        snapshot_path(snapshot, name).unlink(missing_ok=True)
+    owner.write_text(json.dumps({"files": sorted(headers)}) + "\n")
+
+
+def original_sources(data, upstream=None):
+    """Read repository-owned inputs, or an explicitly selected review snapshot."""
+    if upstream is None:
+        if not data.get("originals"):
+            raise ValueError("The baseline has no repository-owned original sources")
+        packed = data.get("original_archive")
+        if packed:
+            owner = ROOT / packed["local"]
+            if owner.is_symlink() or not owner.is_file():
+                raise ValueError("Original archive must be a regular local file")
+            if hashlib.sha256(owner.read_bytes()).hexdigest() != packed["sha256"]:
+                raise ValueError("Original archive differs from baseline")
+            seen = set()
+            with tarfile.open(owner, "r:*") as archive:
+                for member in archive:
+                    if member.isdir():
+                        continue
+                    name = member.name
+                    relative = pathlib.PurePosixPath(name)
+                    if (not member.isfile() or relative.is_absolute() or ".." in relative.parts
+                            or name in seen or name not in data["originals"]):
+                        raise ValueError("Unsafe or unrecorded original archive member: " + name)
+                    content = archive.extractfile(member).read()
+                    if hashlib.sha256(content).hexdigest() != data["originals"][name]["sha256"]:
+                        raise ValueError("Archived original differs from baseline: " + name)
+                    seen.add(name)
+                    yield name, content, member.mode
+            if seen != set(data["originals"]):
+                raise ValueError("Original archive omits recorded source inputs")
+            return
+        for name, original in data["originals"].items():
+            source = ROOT / original["local"]
+            if source.is_symlink() or not source.is_file():
+                raise ValueError("Original source must be a regular local file: " + name)
+            content = source.read_bytes()
+            if hashlib.sha256(content).hexdigest() != original["sha256"]:
+                raise ValueError("Repository-owned original differs from baseline: " + name)
+            yield name, content, source.stat().st_mode
+        return
+    units = []
+    for entry in git(upstream, "ls-tree", "-rz", data["revision"]).split(b"\0"):
+        if not entry:
+            continue
+        metadata, name = entry.split(b"\t", 1)
+        mode, kind, identifier = metadata.split()
+        if kind != b"blob" or mode not in (b"100644", b"100755"):
+            raise ValueError("Unsupported original source entry: " + name.decode())
+        units.append((name.decode(), identifier, int(mode, 8) & 0o777))
+    # git archive applies checkout attributes such as eol=crlf. Provenance pins
+    # original blob bytes, independently of host and export presentation.
+    process = subprocess.Popen(["git", "-C", str(upstream), "cat-file", "--batch"],
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    try:
+        for name, identifier, mode in units:
+            process.stdin.write(identifier + b"\n")
+            process.stdin.flush()
+            header = process.stdout.readline().split()
+            if len(header) != 3 or header[0] != identifier or header[1] != b"blob":
+                raise ValueError("Unable to retrieve original source: " + name)
+            size = int(header[2])
+            content = process.stdout.read(size)
+            if len(content) != size or process.stdout.read(1) != b"\n":
+                raise ValueError("Truncated original source: " + name)
+            yield name, content, mode
+        process.stdin.close()
+        if process.wait():
+            raise ValueError("Unable to retrieve pinned reference source")
+    finally:
+        if not process.stdin.closed:
+            process.stdin.close()
+        process.stdout.close()
+        if process.poll() is None:
+            process.terminate()
+            process.wait()
+
+
+def prepare_runtime_snapshot(data, snapshot, upstream=None, build_rules=True, dependency_only=False):
     """Overlay only engine adaptations explicitly selected in the baseline."""
     paths = data.get("runtime_adapted", [])
     if not isinstance(paths, list) or paths != sorted(set(paths)) or set(paths) - set(data["adapted"]):
         raise ValueError("Runtime sources must be selected adapted upstream modules")
-    if any(path.startswith("src/gpl/") for path in paths):
+    isolated = set(data.get("runtime_excluded", []))
+    if (isolated.intersection(paths) or
+            data.get("schema") == 1 and any(path.startswith("src/gpl/") for path in paths)):
         raise ValueError("Full GPL format readers cannot be overlaid into the core runtime")
     snapshot.mkdir(parents=True, exist_ok=True)
     owner = snapshot / ".sevenzip-runtime-source.json"
@@ -270,8 +459,11 @@ def prepare_runtime_snapshot(data, snapshot, upstream, build_rules=True):
         owner.write_text(json.dumps({"producer": "sevenzip-runtime-source", "files": []}) + "\n")
     # A partial upstream update must reach the standalone engine as well as
     # statically linked consumers. Keep unchanged dependencies byte-exact.
-    exact_overrides = sorted(set(data.get("overrides", {})) & set(data["exact"]))
-    overlays = {source_path(path): ROOT / path for path in paths + exact_overrides}
+    exact_overrides = (sorted(set(data.get("overrides", {})) & set(data["exact"]))
+                       if not data.get("original_archive") else [])
+    overlays = {source_path(path, data): ROOT / path for path in paths + exact_overrides}
+    overlay_owners = {source_path(path, data): path for path in paths + exact_overrides}
+    archive_sources = SourceArchives(ROOT, data)
     # Non-7-Zip C/header dependencies retain their declared snapshot paths.
     dependencies = data.get("runtime_dependencies", [])
     if dependencies != sorted(set(dependencies)):
@@ -285,69 +477,56 @@ def prepare_runtime_snapshot(data, snapshot, upstream, build_rules=True):
     for path in dependencies:
         relative = pathlib.PurePosixPath(path)
         if (relative.parts[:1] not in (("src",), ("third_party",)) or ".." in relative.parts or
-                relative.suffix not in (".h", ".c", ".cpp", ".cppm") or path.startswith("src/gpl/") or
-                path in paths or (ROOT / path).is_symlink() or not (ROOT / path).is_file()):
+                relative.suffix not in (".h", ".c", ".cpp", ".cppm") or path in isolated or
+                (data.get("schema") == 1 and path.startswith("src/gpl/")) or
+                path in paths or not archive_sources.contains(path)):
             raise ValueError("Unsafe runtime source dependency: " + path)
-        destination = str(pathlib.PurePosixPath(*relative.parts[1:]))
+        destination = data.get("runtime_paths", {}).get(path)
+        if destination is None:
+            if data.get("schema") == 2:
+                raise ValueError("Runtime dependency has no recorded destination: " + path)
+            destination = str(pathlib.PurePosixPath(*relative.parts[1:]))
         if destination in overlays:
             raise ValueError("Duplicate runtime source destination: " + destination)
         dependency_paths[path] = destination
         overlays[destination] = ROOT / path
+        overlay_owners[destination] = path
     members = []
-    process = subprocess.Popen(["git", "-C", str(upstream), "archive", data["revision"]],
-                               stdout=subprocess.PIPE)
-    try:
-        with tarfile.open(fileobj=process.stdout, mode="r|") as archive:
-            for member in archive:
-                if member.isdir():
-                    continue
-                relative = pathlib.PurePosixPath(member.name)
-                if not member.isfile() or relative.is_absolute() or ".." in relative.parts:
-                    raise ValueError("Unsafe runtime source entry: " + member.name)
-                destination = snapshot / relative
-                source = overlays.get(member.name)
-                content = source.read_bytes() if source else archive.extractfile(member).read()
-                if destination.is_symlink() or (source and source.is_symlink()):
-                    raise ValueError("Refusing linked runtime source: " + member.name)
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                if not destination.exists() or destination.read_bytes() != content:
-                    destination.write_bytes(content)
-                    destination.chmod(member.mode)
-                members.append(member.name)
-        # Tar readers stop at the end marker, before git's final block padding.
-        # Drain it before waiting: the padding can fill a Windows pipe and keep
-        # git archive blocked while this process waits for its exit.
-        while process.stdout.read(65536):
-            pass
-        if process.wait():
-            raise ValueError("Unable to retrieve pinned runtime source")
-    finally:
-        process.stdout.close()
-        if process.poll() is None:
-            process.terminate()
-            process.wait()
+    selected = {source_path(path, data) for path in data["exact"]} if dependency_only else None
+    for name, original, mode in original_sources(data, upstream):
+        if selected is not None and name not in selected:
+            continue
+        destination = snapshot_path(snapshot, name)
+        source = overlays.get(name)
+        content = runtime_content(data, overlay_owners.get(name), name,
+                                  archive_sources.read_bytes(overlay_owners[name])) if source else original
+        if destination.is_symlink() or (source and source.is_symlink()):
+            raise ValueError("Refusing linked runtime source: " + name)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if not destination.exists() or destination.read_bytes() != content:
+            destination.write_bytes(content)
+            destination.chmod(mode)
+        members.append(name)
     for name, source in overlays.items():
         if name in members:
             continue
-        destination = snapshot / name
+        destination = snapshot_path(snapshot, name)
         if destination.is_symlink():
             raise ValueError("Refusing linked runtime dependency: " + name)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        content = source.read_bytes()
+        content = runtime_content(data, overlay_owners.get(name), name,
+                                  archive_sources.read_bytes(overlay_owners[name]))
         if not destination.exists() or destination.read_bytes() != content:
             destination.write_bytes(content)
         members.append(name)
     # Remove only previously owned source paths; retain all incremental outputs.
     for name in set(previous["files"]) - set(members):
-        relative = pathlib.PurePosixPath(name)
-        if relative.is_absolute() or ".." in relative.parts:
-            raise ValueError("Unsafe previous runtime source entry")
-        (snapshot / relative).unlink(missing_ok=True)
+        snapshot_path(snapshot, name).unlink(missing_ok=True)
     owner.write_text(json.dumps({"producer": "sevenzip-runtime-source", "files": members}) + "\n")
     hashes = {}
     for path in paths + exact_overrides + dependencies:
         source = ROOT / path
-        destination = snapshot / (dependency_paths[path] if path in dependencies else source_path(path))
+        destination = snapshot / (dependency_paths[path] if path in dependencies else source_path(path, data))
         if source.is_symlink() or destination.is_symlink() or not destination.is_file():
             raise ValueError("Runtime adaptation requires regular source files: " + path)
         hashes[path] = hashlib.sha256(destination.read_bytes()).hexdigest()
@@ -365,15 +544,26 @@ def verify(data, upstream):
     for revision in revisions:
         if git(upstream, "rev-parse", "--verify", revision + "^{commit}").decode().strip() != revision:
             raise ValueError("Recorded revision is unavailable: " + revision)
+    packed_originals = ({name: content for name, content, _ in original_sources(data)}
+                        if data.get("original_archive") else {})
+    for path, original in data.get("notices", {}).items():
+        if (ROOT / path).read_bytes() != packed_originals[original]:
+            raise ValueError("Retained notice differs from its original: " + path)
     for path in data["exact"] + data["adapted"]:
         revision = data.get("overrides", {}).get(path, data["revision"])
-        original = git(upstream, "show", revision + ":" + source_path(path))
+        original = git(upstream, "show", revision + ":" + source_path(path, data))
+        if packed_originals and packed_originals[source_path(path, data)] != original:
+            raise ValueError("Archived original differs from recorded upstream unit: " + path)
         expected = data.get("original_sha256", {}).get(path)
         if expected and hashlib.sha256(original).hexdigest() != expected:
             raise ValueError("Original source hash mismatch: " + path)
-        if path in data["exact"] and (ROOT / path).read_bytes() != original:
+        local = (packed_originals[source_path(path, data)] if data.get("original_archive")
+                 and path in data["exact"] else (ROOT / path).read_bytes())
+        if path in data["exact"] and local != original:
             raise ValueError("Exact vendor differs from baseline: " + path)
     for path in data["local"]:
+        if data.get("schema") == 2:
+            continue
         revision = data.get("overrides", {}).get(path, data["revision"])
         result = subprocess.run(
             ["git", "-C", str(upstream), "cat-file", "-e", revision + ":" + source_path(path)],
@@ -398,7 +588,7 @@ def review(data, upstream, new_revision, paths):
     rows.append("This report does not modify the port or sibling upstream checkout.\n")
     for path in selected:
         old = data.get("overrides", {}).get(path, data["revision"])
-        source = source_path(path)
+        source = source_path(path, data)
         status = git(upstream, "diff", "--name-status", old, new, "--", source).decode().strip()
         if not status:
             continue
@@ -472,13 +662,18 @@ def verify_reference(data, upstream, root=ROOT):
             raise ValueError("Reference source hash mismatch: " + path)
     # Linux baselines also use lists of adapted paths. Explicit maps additionally
     # locate the local owners for adaptation review (without pinning their bytes).
-    adapted = data.get("adapted", {})
+    adapted = data.get("owners", data.get("adapted", {}))
+    source_inputs = SourceArchives(root)
     if isinstance(adapted, dict):
         for source, local in adapted.items():
             relative = pathlib.PurePosixPath(local)
             if (source not in files or relative.is_absolute() or ".." in relative.parts or
-                    not (root / relative).is_file()):
+                    not source_inputs.contains(local)):
                 raise ValueError("Invalid adapted reference owner: " + local)
+            current = source_inputs.read_bytes(local)
+            unchanged = source in data.get("unchanged", {}) or source_inputs.is_archived(local)
+            if unchanged and hashlib.sha256(current).hexdigest() != files[source]:
+                raise ValueError("Unchanged reference owner differs from original: " + local)
     for path in data.get("adapted_edits", {}):
         if path not in files:
             raise ValueError("Reference edit absent from original inventory")
@@ -494,6 +689,7 @@ def review_reference(data, upstream, new_revision, paths, root=ROOT):
     if set(selected) - set(data["files"]):
         raise ValueError("Review path absent from reference baseline")
     old = data["revision"]
+    source_inputs = SourceArchives(root)
     rows = ["# Reference update review", "", "Repository: " + data["repository"],
             "Baseline: " + old, "Proposed: " + new, "",
             "Review dependencies, omitted scope and local fixes before updating the baseline.",
@@ -502,7 +698,7 @@ def review_reference(data, upstream, new_revision, paths, root=ROOT):
         rows += ["## " + path, ""]
         diff = git(upstream, "diff", "--no-ext-diff", "--no-textconv", old, new, "--", path).decode()
         rows += ["```diff", diff.rstrip(), "```", ""] if diff else ["Upstream unchanged.", ""]
-        adapted = data.get("adapted", {})
+        adapted = data.get("owners", data.get("adapted", {}))
         edits = data.get("adapted_edits", {})
         if (isinstance(adapted, dict) and path in adapted) or path in edits:
             original = git(upstream, "show", old + ":" + path)
@@ -516,7 +712,7 @@ def review_reference(data, upstream, new_revision, paths, root=ROOT):
                     rows += ["Recorded edits require review: " + str(error), ""]
             else:
                 local = adapted[path]
-                current = (root / local).read_bytes()
+                current = source_inputs.read_bytes(local)
             try:
                 original_text = original.decode("utf-8")
                 current_text = current.decode("utf-8")
@@ -539,7 +735,7 @@ def review_reference(data, upstream, new_revision, paths, root=ROOT):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("inventory", "verify", "review", "runtime-snapshot",
+    parser.add_argument("command", choices=("inventory", "verify", "review", "runtime-snapshot", "dependency-snapshot", "header-snapshot",
                                             "reference-verify", "reference-review"))
     parser.add_argument("--snapshot", type=pathlib.Path)
     parser.add_argument("--original-only", action="store_true",
@@ -570,15 +766,22 @@ def main():
                 print(f"Verified {count} original reference files at {data['revision']}")
             return 0
         data = load_manifest(args.manifest)
-        if args.command == "runtime-snapshot":
-            if not args.snapshot or not args.upstream:
-                raise ValueError("Runtime snapshot and upstream directories are required")
+        if args.command == "header-snapshot":
+            if not args.snapshot:
+                raise ValueError("Header snapshot directory is required")
+            prepare_header_snapshot(data, args.snapshot)
+            return 0
+        if args.command in ("runtime-snapshot", "dependency-snapshot"):
+            if not args.snapshot:
+                raise ValueError("Runtime snapshot directory is required")
             if args.no_build_rules and not args.original_only:
                 raise ValueError("--no-build-rules requires --original-only")
-            if args.original_only:
+            if args.original_only or args.command == "dependency-snapshot":
                 data = dict(data, runtime_adapted=[], runtime_dependencies=[],
                             runtime_format_sources=[], overrides={})
-            prepare_runtime_snapshot(data, args.snapshot, args.upstream, not args.no_build_rules)
+            prepare_runtime_snapshot(data, args.snapshot, args.upstream,
+                                     not args.no_build_rules and args.command != "dependency-snapshot",
+                                     dependency_only=args.command == "dependency-snapshot")
             return 0
         if args.command == "inventory":
             check_inventory(data)

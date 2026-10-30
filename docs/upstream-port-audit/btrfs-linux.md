@@ -40,12 +40,12 @@ current local differences; it does not claim comparison with a newer revision.
   private scalar bridge; packed attributes use a macro and MSVC packing scope.
   Flexible-array representation follows the UAPI convention, with its zero-size
   array spelling also used for MSVC. No ioctl interface or kernel API is exposed.
-- `include/uapi/linux/btrfs.h` → `src/fs/btrfs/compat.h`: public UUID/label sizes
+- `include/uapi/linux/btrfs.h` → `src/formats/btrfs/compat.h`: public UUID/label sizes
   feature flags and `enum btrfs_dev_stat_values`, needed by the complete tree ABI header.
   `include/uapi/linux/stddef.h::__DECLARE_FLEX_ARRAY` supplies the C wrapper and
   C++ zero-size spelling. Other bridge services are local: fixed-width types,
   allocation, errors and unaligned little-endian byte access.
-- `fs/btrfs/ctree.c` → `src/fs/btrfs/ctree.c`: complete comparison bodies,
+- `fs/btrfs/ctree.c` → `src/formats/btrfs/ctree.c`: complete comparison bodies,
   binary-search algorithm, node-slot read, previous-leaf and neighbouring-item
   traversal. Folio mapping in binary search becomes a contiguous-buffer read;
   kernel logging/assertion becomes returned errors. Path allocation/release
@@ -55,12 +55,12 @@ current local differences; it does not claim comparison with a newer revision.
   insert/delete, transaction setup, locking and concurrency retries are omitted.
   Nonzero write parameters are rejected. Input buffers have no local writers;
   this does not establish consistency of a live device being changed externally.
-- `fs/btrfs/ctree.h`, `extent_io.h`, `disk-io.h` → `src/fs/btrfs/ctree.h`:
+- `fs/btrfs/ctree.h`, `extent_io.h`, `disk-io.h` → `src/formats/btrfs/ctree.h`:
   selected path/root/extent-buffer/parent-check types and read-side declarations.
   Folios and kernel state are replaced by a private contiguous byte buffer and
   a borrowed filesystem context. Parent checks retain generation, owner, level
   and the first key.
-- `fs/btrfs/accessors.h` → `src/fs/btrfs/accessors.h`: selected header, node,
+- `fs/btrfs/accessors.h` → `src/formats/btrfs/accessors.h`: selected header, node,
   item/key, superblock, chunk, inode, root and extent read accessors. Buffer offsets use `size_t` to avoid the Win64
   `unsigned long` pointer-width mismatch. Disk structure layout is unchanged.
 - `fs/btrfs/volumes.c` and `volumes.h` → their `src/fs/btrfs` owners:
@@ -73,19 +73,19 @@ current local differences; it does not claim comparison with a newer revision.
   dependency is reused, with volume lifetime replacing map refcounts and locks.
   Duplicate system/chunk-tree mappings must agree; additions/physical addresses
   are checked for overflow. The last node pointer is validated as well.
-- `fs/btrfs/disk-io.c` → `src/fs/btrfs/disk-io.c`: complete superblock and system
+- `fs/btrfs/disk-io.c` → `src/formats/btrfs/disk-io.c`: complete superblock and system
   array validation flow, with kernel diagnostics omitted, owned UUID state and
   host-independent 4–64 KiB buffer support. Superblock checksum and tree block
   validation use a required checksum callback, with unknown/missing algorithms
   rejected. Tree reads validate checksum, UUID, address, generation, owner,
   level and first key; failed mirrors can be read without repairing the source.
-- `fs/btrfs/tree-checker.c` → `src/fs/btrfs/tree-checker.c`: complete common
+- `fs/btrfs/tree-checker.c` → `src/formats/btrfs/tree-checker.c`: complete common
   chunk validator and stripe-count checks; structural leaf/node ordering,
   bounds/overlap/packing checks and shared-subvolume ownership semantics.
   Item-specific validation is not all transferred: the consuming readers must
   validate variable-length bodies before interpreting them. Invalid profile
   bits are rejected before indexing the RAID geometry table.
-- `src/btrfsreader.c`, `btrfsreader.h`: local C stream/lifetime adapter around
+- `src/formats/btrfs/btrfsreader.c`, `btrfsreader.h`: local C stream/lifetime adapter around
   the Linux super → system chunks → chunk tree → root tree sequence. Its ABI
   provides only reading, device lookup, polling, checksum and decompression;
   it has no source write operation. The checksum-size table is selected from
@@ -93,7 +93,7 @@ current local differences; it does not claim comparison with a newer revision.
   File APIs now connect to inode/root/extent readers, native archive consumers
   and the concrete decompression boundary.
 - `disk-io.c::btrfs_read_tree_root/read_tree_root_path` and the live-reference
-  branch of `btrfs_get_root_ref` → `src/fs/btrfs/disk-io.c`: root-item lookup,
+  branch of `btrfs_get_root_ref` → `src/formats/btrfs/disk-io.c`: root-item lookup,
   checksum/generation/level validation and exact root-node owner validation.
   Kernel root allocation/cache becomes caller-owned compact state; traversal
   paths own their buffers. The generic descendant-owner rule still permits
@@ -110,7 +110,7 @@ current local differences; it does not claim comparison with a newer revision.
   `btrfs_file_extent_end` and `extent_map.h` retain the extent lookup,
   backtrack/forward traversal, holes, inline, preallocation, compression and
   shared-extent offsets. Kernel extent-map caching becomes a caller-owned map
-  and held path. `src/btrfsfilereader.c` supplies byte-buffer and file-lifetime
+  and held path. `src/formats/btrfs/btrfsfilereader.c` supplies byte-buffer and file-lifetime
   services, keeping volume lifetime separate. Source decoding is bounded to
   Linux's compressed-extent sizes and validated before copying a shared slice.
 - `file-item.c::btrfs_lookup_csum` plus the read-side checksum path supply data
@@ -147,7 +147,7 @@ current local differences; it does not claim comparison with a newer revision.
   `docs/zisofs-zlib-baseline.json`, with its license shipped by the ISO package.
   The shared portable LZO
   header now includes its `size_t` declaration instead of depending on include order.
-- `xattr.c::btrfs_listxattr/getxattr` → `src/fs/btrfs/xattr.c`: the read-only
+- `xattr.c::btrfs_listxattr/getxattr` → `src/formats/btrfs/xattr.c`: the read-only
   XATTR_ITEM walk and packed collision-chain name/data layout emit owned native
   attribute values through a callback; no xattr mutation code is transferred.
 - Native presentation reuses the project's existing EROFS archive integration,

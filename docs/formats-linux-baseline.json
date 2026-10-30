@@ -27,5 +27,12 @@
   "scope": "Discovery evidence for the shipped archive-format intersection; individual format audits own correctness and completeness.",
   "replaced_dependencies": {
     "lib/lz4/lz4_decompress.c": "lz4-frame-baseline.json: lib/lz4.c"
+  },
+  "owners": {
+    "fs/ntfs3/lib/lzx_decompress.c": "src/formats/ntfs/lib/lzx_decompress.c",
+    "fs/ntfs3/lib/xpress_decompress.c": "src/formats/ntfs/lib/xpress_decompress.c",
+    "lib/lzo/lzo1x_decompress_safe.c": "src/codecs/lzo/lzo1x_decompress_safe.c",
+    "lib/decompress_unlz4.c": "src/codecs/frames/decompress_unlz4.c",
+    "lib/decompress_unlzo.c": "src/codecs/frames/decompress_unlzo.c"
   }
 }

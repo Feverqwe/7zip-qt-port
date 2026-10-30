@@ -87,41 +87,41 @@
     "fs/nls/nls_utf8.c": "cb81da1afac9863df0f34fef7486be86883d3589ca02b326597e0a429af5d54d"
   },
   "adapted": {
-    "fs/isofs/compress.c": "src/fs/isofs/compress.c",
-    "fs/isofs/dir.c": "src/fs/isofs/dir.c",
-    "fs/isofs/inode.c": "src/fs/isofs/inode.c",
-    "fs/isofs/joliet.c": "src/fs/isofs/joliet.c",
-    "fs/isofs/rock.c": "src/fs/isofs/rock.c",
-    "fs/isofs/util.c": "src/fs/isofs/util.c",
-    "fs/nls/nls_base.c": "src/fs/nls/nls_base.c",
-    "include/uapi/linux/iso_fs.h": "src/include/uapi/linux/iso_fs.h",
-    "kernel/time/time.c": "src/kernel/time/time.c",
-    "include/linux/zlib.h": "src/fs/isofs/zisofscompat.h"
+    "fs/isofs/compress.c": "src/formats/iso/compress.c",
+    "fs/isofs/dir.c": "src/formats/iso/dir.c",
+    "fs/isofs/inode.c": "src/formats/iso/inode.c",
+    "fs/isofs/joliet.c": "src/formats/iso/joliet.c",
+    "fs/isofs/rock.c": "src/formats/iso/rock.c",
+    "fs/isofs/util.c": "src/formats/iso/util.c",
+    "fs/nls/nls_base.c": "src/text/nls/nls_base.c",
+    "include/uapi/linux/iso_fs.h": "src/compat/linux/include/uapi/linux/iso_fs.h",
+    "kernel/time/time.c": "src/compat/linux/time/time.c",
+    "include/linux/zlib.h": "src/formats/iso/zisofscompat.h"
   },
   "exact": [
     "fs/isofs/rock.h"
   ],
   "integration": {
-    "src/fs/isofs/zisofscompat.h": {
+    "src/formats/iso/zisofscompat.h": {
       "reference": "include/linux/zlib.h",
       "symbols": [
         "deflateBound"
       ],
       "scope": "Retained packed-size bound only, renamed zisofs_deflate_bound; all decoding uses official zlib API."
     },
-    "src/fs/nls/system.c": {
+    "src/text/nls/system.c": {
       "scope": "Local OS-service adapter: iconv on macOS/Linux; Win32 conversion API on Windows. No imported charset mappings."
     },
-    "src/fs/nls/registry.c": {
+    "src/text/nls/registry.c": {
       "scope": "Local stable charset/alias registration; native converter availability replaces Linux module lifetime."
     },
-    "src/fs/nls/charsets.inc": {
+    "src/text/nls/charsets.inc": {
       "scope": "Local OS API identifiers only; no copied charset mappings."
     },
-    "src/fs/nls/fatnames.c": {
+    "src/text/nls/fatnames.c": {
       "scope": "Existing local FAT OEM-name adapter moved from the removed CP437 owner; decodes through the shared native service."
     },
-    "src/fs/nls/nls_base.c": {
+    "src/text/nls/nls_base.c": {
       "reference": "fs/nls/nls_base.c",
       "symbols": [
         "utf32_to_utf8",
@@ -200,5 +200,19 @@
       "fs/nls/nls_koi8-u.c"
     ],
     "reason": "Charset tables replaced by native OS services; original hashes retained for source review. See isofs-linux.md, System charset services."
+  },
+  "owners": {
+    "fs/isofs/compress.c": "src/formats/iso/compress.c",
+    "fs/isofs/dir.c": "src/formats/iso/dir.c",
+    "fs/isofs/inode.c": "src/formats/iso/inode.c",
+    "fs/isofs/isofs.h": "src/formats/iso/isofs.h",
+    "fs/isofs/joliet.c": "src/formats/iso/joliet.c",
+    "fs/isofs/rock.c": "src/formats/iso/rock.c",
+    "fs/isofs/util.c": "src/formats/iso/util.c",
+    "include/uapi/linux/iso_fs.h": "src/compat/linux/include/uapi/linux/iso_fs.h",
+    "kernel/time/time.c": "src/compat/linux/time/time.c",
+    "fs/nls/nls_base.c": "src/text/nls/nls_base.c",
+    "include/linux/zlib.h": "src/formats/iso/zisofscompat.h",
+    "fs/isofs/rock.h": "third_party/linux/fs/isofs/rock.h"
   }
 }

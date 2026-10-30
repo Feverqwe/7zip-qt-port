@@ -120,7 +120,7 @@ QEMU Git commit; twelve `upstream_baseline` regressions passed on macOS, includi
 reference changes/deletions, local-fix preservation and original-hash mismatch.
 
 Adapted the original inline classification bodies and required enums/masks in
-`src/block/qcow2.h`, preserving QEMU's path, symbols, branches and MIT notice.
+`src/dependencies/qemu/qcow2.h`, preserving QEMU's path, symbols, branches and MIT notice.
 The C-compatible header remains an inline header: block-graph state/locks are
 replaced by explicit flags and GLib assertions by standard assertions. No C
 translation unit is converted to C++. Omitted QEMU allocation, mutation,
@@ -172,7 +172,7 @@ baseline. Compared the original 7-Zip `VhdxHandler.cpp::OpenParent` and
 `VhdHandler.cpp::Open2`, volume ownership, cycle/depth checks, and
 `COpenCallbackImp::GetStream` at the pinned 7-Zip revision.
 
-`src/block/qcow2.c` adapts QEMU's read-side extension loop/dispatch as C, preserving
+`src/dependencies/qemu/qcow2.c` adapts QEMU's read-side extension loop/dispatch as C, preserving
 its MIT notice. The block graph is replaced by a bounded read callback and an
 owned metadata result; it retains backing-format, external-data and crypto-header
 records. Feature/bitmap mutation and crypto-context creation are not imported
@@ -234,8 +234,8 @@ installed-package acceptance were not run for this focused step.
 Compared QEMU `block/qcow.c` at the pinned QEMU revision above:
 `qcow_open`, `get_cluster_offset`, `qcow_co_preadv`, `decompress_cluster`,
 `decompress_buffer`, and their compressed-writer caller. Adapted the descriptor
-decoding from `decompress_cluster` into `src/block/qcow.c`, with the narrow
-declaration in `src/block/qcow.h`; the C source and original MIT notice remain
+decoding from `decompress_cluster` into `src/dependencies/qemu/qcow.c`, with the narrow
+declaration in `src/dependencies/qemu/qcow.h`; the C source and original MIT notice remain
 intact. The baseline maps that original unit to its adapted owner and the runtime
 overlay compiles it as C. QEMU block-graph I/O and zlib are omitted: native stream
 I/O, cache and the existing official 7-Zip Deflate decoder perform those roles.
@@ -1400,7 +1400,7 @@ Runtime evidence on 2026-10-24:
 
 The initial macOS default run passed 429 of 459 suites before the test-fixture
 follow-ups above; it is not a passing full gate. `check.sh` itself stopped on
-formatting in the unchanged `src/crypto/ecrdsa_defs.h`. The untouched source/UI
+formatting in the unchanged `src/crypto/modes/ecrdsa_defs.h`. The untouched source/UI
 scenarios with unresolved results from that run are `ntfs_stream`, `udf_stream`,
 `iso_stream`, `language_dialog`, `panel_navigation`, `ui_layout`,
 `compression_encryption`, `panel_creation_path`, `panel_activation`, `panel_key`,
@@ -1444,7 +1444,7 @@ ownership are not reimplemented. The upstream mapping/event transport has no
 portable Qt Remote Objects implementation to transfer; this is a platform-service
 adaptation of the previously audited independent-process boundary.
 
-`src/operation.rep` defines immutable job data, output notifications, explicit
+`src/operations/operation.rep` defines immutable job data, output notifications, explicit
 accept/reject calls and a completion call with a delivery acknowledgement.
 `repc` generates marshalling and the interface signature. The application retains
 path/option/outcome validation, startup deadline, native crash/exit-code checks,

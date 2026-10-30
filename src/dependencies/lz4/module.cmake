@@ -1,0 +1,13 @@
+# One official raw decoder for Frame, legacy LZ4 and filesystem consumers.
+add_library(sevenzip_lz4 STATIC ${SEVENZIP_DEPENDENCY_DIR}/lz4/lib/lz4.c)
+target_include_directories(sevenzip_lz4 PUBLIC ${SEVENZIP_DEPENDENCY_DIR}/lz4/lib)
+set_target_properties(sevenzip_lz4 PROPERTIES AUTOMOC OFF AUTOUIC OFF
+    POSITION_INDEPENDENT_CODE ON C_STANDARD 99 C_STANDARD_REQUIRED ON)
+
+add_library(sevenzip_lz4_frame_core STATIC
+    src/formats/lz4/lz4frameio.c
+    ${SEVENZIP_DEPENDENCY_DIR}/lz4/lib/lz4hc.c ${SEVENZIP_DEPENDENCY_DIR}/lz4/lib/lz4frame.c)
+target_include_directories(sevenzip_lz4_frame_core PRIVATE ${SEVENZIP_DEPENDENCY_DIR}/zstd/lib/common)
+target_link_libraries(sevenzip_lz4_frame_core PUBLIC sevenzip_lz4 sevenzip_zstd)
+set_target_properties(sevenzip_lz4_frame_core PROPERTIES AUTOMOC OFF AUTOUIC OFF
+    POSITION_INDEPENDENT_CODE ON C_STANDARD 99 C_STANDARD_REQUIRED ON)

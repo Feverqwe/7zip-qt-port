@@ -1,0 +1,1305 @@
+// FatHandler.cpp
+
+#include "7zip/Archive/StdAfx.h"
+
+#include "platform/cpu/CpuArch.h"
+
+#include "Common/ComTry.h"
+#include "Common/IntToString.h"
+#include "Common/MyBuffer.h"
+#include "Common/MyBuffer2.h"
+#include "Common/MyCom.h"
+#include "Common/StringConvert.h"
+#include "Common/UTFConvert.h"
+#include "formats/fat/FatHeader.h"
+#include "formats/fat/fatreader.h"
+
+#include "Windows/PropVariant.h"
+#include "Windows/TimeUtils.h"
+
+#include "7zip/Common/LimitedStreams.h"
+#include "7zip/Common/ProgressUtils.h"
+#include "7zip/Common/RegisterArc.h"
+#include "7zip/Common/StreamUtils.h"
+
+#include "7zip/Compress/CopyCoder.h"
+
+#include "7zip/Archive/Common/ItemNameUtils.h"
+#include <set>
+
+#define Get16(p) GetUi16(p)
+#define Get32(p) GetUi32(p)
+#define Get16a(p) GetUi16a(p)
+#define Get32a(p) GetUi32a(p)
+
+#if 0
+#include <stdio.h>
+#define PRF(x) x
+#else
+#define PRF(x)
+#endif
+
+namespace NArchive {
+namespace NFat {
+
+static const unsigned kHeaderSize = 512;
+
+API_FUNC_IsArc IsArc_Fat_Linux(const Byte *p, size_t size);
+API_FUNC_IsArc IsArc_Fat_Linux(const Byte *p, size_t size) {
+    if (size < kHeaderSize)
+        return k_IsArc_Res_NEED_MORE;
+    CHeader h;
+    if (h.Parse(p))
+        return k_IsArc_Res_YES;
+    Byte normalized[kHeaderSize];
+    if (fat_linux_legacy_header(p, size, normalized) && h.Parse(normalized))
+        return k_IsArc_Res_YES;
+    return k_IsArc_Res_NO;
+}
+
+class CItem {
+    Z7_CLASS_NO_COPY(CItem)
+  public:
+    UInt32 Size;
+    Byte Attrib;
+    Byte CTime2;
+    UInt16 ADate;
+    CByteBuffer LongName; // if LongName.Size() == 0 : no long name
+                          // if LongName.Size() != 0 : it's NULL terminated UTF16-LE string.
+    char DosName[11];
+    Byte Flags;
+    UInt32 MTime;
+    UInt32 CTime;
+    UInt32 Cluster;
+    Int32 Parent;
+    bool DirectoryIncomplete = false;
+    bool FileIncomplete = false;
+    bool FileCrossLinked = false;
+
+    CItem() {}
+
+    // NT uses Flags to store Low Case status
+    bool NameIsLow() const { return (Flags & 0x8) != 0; }
+    bool ExtIsLow() const { return (Flags & 0x10) != 0; }
+    bool IsDir() const { return (Attrib & 0x10) != 0; }
+    void GetShortName(UString &dest) const;
+    void GetName(UString &name) const;
+};
+
+static char *CopyAndTrim(char *dest Z7_lifetimebound, const char *src, unsigned size,
+                         unsigned toLower) {
+    do {
+        if (src[(size_t)size - 1] != ' ') {
+            const unsigned range = toLower ? 'Z' - 'A' + 1 : 0;
+            do {
+                unsigned c = (Byte)*src++;
+                if ((unsigned)(c - 'A') < range)
+                    c += 0x20;
+                *dest++ = (char)c;
+            } while (--size);
+            break;
+        }
+    } while (--size);
+    *dest = 0;
+    return dest;
+}
+
+static void FatStringToUnicode(UString &dest, const char *s) {
+    char utf8[64];
+    const int size =
+        fat_linux_oem_name((const unsigned char *)s, (unsigned)strlen(s), utf8, sizeof(utf8));
+    if (size >= 0) {
+        AString encoded;
+        encoded.SetFrom(utf8, (unsigned)size);
+        ConvertUTF8ToUnicode(encoded, dest);
+    } else
+        dest.Empty();
+}
+
+void CItem::GetShortName(UString &shortName) const {
+    char utf8[73];
+    const int size = fat_linux_short_name((const unsigned char *)DosName, Flags, utf8);
+    AString encoded;
+    if (size > 0)
+        encoded.SetFrom(utf8, (unsigned)size);
+    ConvertUTF8ToUnicode(encoded, shortName);
+}
+
+// numWords != 0
+static unsigned ParseLongName(UInt16 *buf, unsigned numWords) {
+    unsigned i;
+    for (i = 0; i < numWords; i++) {
+        const unsigned c = Get16(buf + i);
+        if (c == 0)
+            break;
+    }
+    if (i == 0)
+        return 0;
+    SetUi16(buf + i, 0);
+    numWords -= i;
+    i++;
+    return i; // it includes NULL terminator
+}
+
+void CItem::GetName(UString &name) const {
+    if (LongName.Size() >= 2) {
+        const Byte *const p = LongName;
+        const unsigned numWords = ((unsigned)LongName.Size() - 2) / 2;
+        char utf8[4 * 260];
+        const int size = fat_linux_long_name(p, numWords, utf8, sizeof(utf8));
+        AString encoded;
+        if (size > 0)
+            encoded.SetFrom(utf8, (unsigned)size);
+        ConvertUTF8ToUnicode(encoded, name);
+    } else
+        GetShortName(name);
+    if (name.IsEmpty()) // it's unexpected
+        name = '_';
+    NItemName::NormalizeSlashes_in_FileName_for_OsPath(name);
+}
+
+static void GetVolName(const char dosName[11], NWindows::NCOM::CPropVariant &prop) {
+    char s[12];
+    CopyAndTrim(s, dosName, 11, false);
+    UString u;
+    FatStringToUnicode(u, AString(s));
+    prop = u;
+}
+
+struct CDatabase {
+    CObjectVector<CItem> Items;
+    UInt32 *Fat;
+    CHeader Header;
+    CMyComPtr<IInStream> InStream;
+    IArchiveOpenCallback *OpenCallback;
+    CAlignedBuffer ByteBuf;
+    CByteBuffer LfnBuf;
+
+    UInt32 NumFreeClusters;
+    UInt32 NumDirClusters;
+    UInt64 NumCurUsedBytes;
+    UInt64 PhySize;
+
+    UInt32 Vol_MTime;
+    bool SourceTruncated = false;
+    bool DirectoryLimitations = false;
+    bool RootDirectoryIncomplete = false;
+    bool FileLimitations = false;
+    bool TableLimitations = false;
+    bool CrossLinkedFiles = false;
+    char VolLabel[11];
+    bool VolItem_Defined;
+
+    CDatabase() : Fat(NULL) {}
+    ~CDatabase() { ClearAndClose(); }
+
+    void Clear();
+    void ClearAndClose();
+    HRESULT OpenProgressFat(bool changeTotal = true);
+    HRESULT OpenProgress();
+
+    void GetItemPath(UInt32 index, UString &s) const;
+    HRESULT Open();
+    HRESULT GetFileClusters(const CItem &item, CRecordVector<UInt32> &clusters,
+                            bool reportProgress = false, bool *directoryOverlap = NULL);
+    HRESULT ReadDir(Int32 parent, UInt32 cluster, unsigned level);
+    HRESULT ReadDirItems(Int32 parent, UInt32 cluster, unsigned level, HRESULT &callbackResult,
+                         CRecordVector<UInt32> &activeClusters);
+    HRESULT ReadFatData(Byte *data, CByteBuffer &known, UInt32 sector, UInt32 size);
+    void MarkDirectoryIncomplete(Int32 parent) {
+        DirectoryLimitations = true;
+        if (parent >= 0)
+            Items[(unsigned)parent].DirectoryIncomplete = true;
+        else
+            RootDirectoryIncomplete = true;
+    }
+
+    UInt64 GetHeadersSize() const {
+        return ((UInt64)Header.DataSector + ((UInt64)NumDirClusters << Header.SectorsPerClusterLog))
+               << Header.SectorSizeLog;
+    }
+    HRESULT SeekToSector(UInt32 sector);
+    HRESULT SeekToCluster(UInt32 cluster) { return SeekToSector(Header.ClusterToSector(cluster)); }
+};
+
+HRESULT CDatabase::SeekToSector(UInt32 sector) {
+    return InStream_SeekSet(InStream, (UInt64)sector << Header.SectorSizeLog);
+}
+
+void CDatabase::Clear() {
+    SourceTruncated = false;
+    DirectoryLimitations = false;
+    RootDirectoryIncomplete = false;
+    FileLimitations = false;
+    TableLimitations = false;
+    CrossLinkedFiles = false;
+    Header.Dirty = false;
+    PhySize = 0;
+    VolItem_Defined = false;
+    NumDirClusters = 0;
+    NumCurUsedBytes = 0;
+
+    Items.Clear();
+    delete[] Fat;
+    Fat = NULL;
+}
+
+void CDatabase::ClearAndClose() {
+    Clear();
+    InStream.Release();
+}
+
+HRESULT CDatabase::OpenProgressFat(bool changeTotal) {
+    if (!OpenCallback)
+        return S_OK;
+    if (changeTotal) {
+        const UInt32 fatBytes = Header.CalcFatSizeInSectors() << Header.SectorSizeLog;
+        const UInt64 numTotalBytes =
+            fatBytes + ((UInt64)(Header.FatSize - NumFreeClusters) << Header.ClusterSizeLog);
+        RINOK(OpenCallback->SetTotal(NULL, &numTotalBytes))
+    }
+    return OpenCallback->SetCompleted(NULL, &NumCurUsedBytes);
+}
+
+HRESULT CDatabase::OpenProgress() {
+    if (!OpenCallback)
+        return S_OK;
+    const UInt64 numItems = Items.Size();
+    return OpenCallback->SetCompleted(&numItems, &NumCurUsedBytes);
+}
+
+void CDatabase::GetItemPath(UInt32 index, UString &s) const {
+    UString name;
+    for (;;) {
+        const CItem &item = Items[index];
+        item.GetName(name);
+        if (item.Parent >= 0)
+            name.InsertAtFront(WCHAR_PATH_SEPARATOR);
+        s.Insert(0, name);
+        index = (UInt32)item.Parent;
+        if (item.Parent < 0)
+            break;
+    }
+}
+
+HRESULT CDatabase::ReadDirItems(Int32 parent, UInt32 cluster, unsigned level,
+                                HRESULT &callbackResult, CRecordVector<UInt32> &activeClusters) {
+    const unsigned startIndex = Items.Size();
+    if (startIndex >= (1 << 30) || level > 256)
+        return S_FALSE;
+
+    UInt32 blockSize = Header.ClusterSize();
+    const bool clusterMode = (Header.IsFat32() || parent >= 0);
+    if (clusterMode && !Header.IsValidCluster(cluster))
+        return S_FALSE;
+    blockSize = Header.SectorSize();
+    UInt32 clusterSectorsLeft = 0;
+    UInt64 nextSector = Header.RootDirSector;
+    UInt32 validBlockSize = 0;
+    bool gapAfterBlock = false;
+    if (!clusterMode) {
+        blockSize = Header.SectorSize();
+    }
+
+    ByteBuf.Alloc(blockSize);
+
+    const unsigned k_NumLfnRecords_MAX = 20; // 260 symbols limit (strict limit)
+    // const unsigned k_NumLfnRecords_MAX = 0x40 - 1; // 1260 symbols limit (relaxed limit)
+    const unsigned k_NumLfnBytes_in_Record = 13 * 2;
+    // we reserve 2 additional bytes for NULL terminator
+    LfnBuf.Alloc(k_NumLfnRecords_MAX * k_NumLfnBytes_in_Record + 2 * 1);
+
+    UInt32 curDirBytes_read = 0;
+    UInt32 sectorIndex = 0;
+    unsigned num_lfn_records = 0;
+    unsigned lfn_RecordIndex = 0;
+    int checkSum = -1;
+    bool is_record_error = false;
+
+    for (UInt32 pos = blockSize;; pos += 32) {
+        if (pos >= validBlockSize) {
+            if (gapAfterBlock) {
+                MarkDirectoryIncomplete(parent);
+                num_lfn_records = lfn_RecordIndex = 0;
+                checkSum = -1;
+                is_record_error = false;
+            }
+            pos = 0;
+
+            if (clusterMode && !clusterSectorsLeft) {
+                if (cluster & kFatItemUnknownMask)
+                    return S_FALSE;
+                if (Header.IsEoc(cluster))
+                    break;
+                if (!Header.IsValidCluster(cluster))
+                    return S_FALSE;
+                PRF(printf("\nCluster = %4X", cluster));
+                nextSector = Header.ClusterToSector(cluster);
+                clusterSectorsLeft = (UInt32)1 << Header.SectorsPerClusterLog;
+                const UInt32 newCluster = Fat[cluster];
+                if (newCluster & kFatItemActiveDirMask)
+                    return S_FALSE;
+                activeClusters.Add(cluster);
+                Fat[cluster] |= kFatItemActiveDirMask;
+                const bool firstVisit = (newCluster & kFatItemUsedByDirMask) == 0;
+                Fat[cluster] |= kFatItemUsedByDirMask;
+                cluster = newCluster & ~(kFatItemUsedByDirMask | kFatItemActiveDirMask);
+                if (firstVisit)
+                    NumDirClusters++;
+                // Do not interpret a BAD next-link as a physical directory
+                // at the FAT32 limit. Preserve the incomplete-directory
+                // result unless a known end marker is read in this cluster.
+                if (cluster == Header.BadCluster)
+                    cluster = 0;
+                if ((NumDirClusters & 0xFF) == 0) {
+                    callbackResult = OpenProgress();
+                    RINOK(callbackResult)
+                }
+                NumCurUsedBytes += Header.ClusterSize();
+            } else if (!clusterMode && sectorIndex++ >= Header.NumRootDirSectors)
+                break;
+
+            // if (curDirBytes_read > (1u << 28)) // do we need some relaxed limit for non-MS FATs?
+            if (curDirBytes_read >= (1u << 21)) // 2MB limit from FAT specification.
+                return S_FALSE;
+            HRESULT result = InStream_SeekSet(InStream, nextSector++ << Header.SectorSizeLog);
+            size_t size = blockSize;
+            if (result == S_OK)
+                result = ReadStream(InStream, ByteBuf, &size);
+            if (result == E_ABORT || result == E_OUTOFMEMORY)
+                return result;
+            callbackResult = OpenProgress();
+            RINOK(callbackResult)
+            if (result != S_OK)
+                size = 0;
+            gapAfterBlock = size != blockSize;
+            validBlockSize = (UInt32)size & ~(UInt32)31;
+            // A known end marker needs only its first byte; other records
+            // require all 32 bytes before their metadata can be interpreted.
+            if (validBlockSize < size && ByteBuf[validBlockSize] == 0)
+                ++validBlockSize;
+            if (clusterMode)
+                --clusterSectorsLeft;
+            curDirBytes_read += blockSize;
+            if (!validBlockSize)
+                continue;
+        }
+
+        if (is_record_error) {
+            Header.HeadersWarning = true;
+            num_lfn_records = 0;
+            lfn_RecordIndex = 0;
+            checkSum = -1;
+        }
+
+        const Byte *const p = ByteBuf + pos;
+
+        if (p[0] == 0) {
+            /*
+            // FreeDOS formats FAT partition with cluster chain longer than required.
+            if (clusterMode && !Header.IsEoc(cluster))
+              return S_FALSE;
+            */
+            break;
+        }
+
+        is_record_error = true;
+
+        if (p[0] == 0xE5) {
+            // deleted entry
+            if (num_lfn_records == 0)
+                is_record_error = false;
+            continue;
+        }
+        // else
+        {
+            const Byte attrib = p[11];
+            if (attrib == 0xF) {
+                // long file name (LFN) entry
+                const unsigned longIndex = p[0] & 0x3F;
+                if (longIndex == 0 || longIndex > k_NumLfnRecords_MAX || p[0] > 0x7F) {
+                    continue;
+                }
+                const bool isLast = (p[0] & 0x40) != 0;
+                if (num_lfn_records == 0 || isLast) {
+                    if (!isLast)
+                        continue; // orphan
+                    num_lfn_records = longIndex;
+                } else if (longIndex != lfn_RecordIndex) {
+                    continue;
+                }
+
+                lfn_RecordIndex = longIndex - 1;
+
+                // Linux consumes the standard LFN fields even when the reserved type
+                // or start-cluster fields contain stale values.
+                {
+                    Byte *const dest = LfnBuf + k_NumLfnBytes_in_Record * lfn_RecordIndex;
+                    memcpy(dest, p + 1, 5 * 2);
+                    memcpy(dest + 5 * 2, p + 14, 6 * 2);
+                    memcpy(dest + 11 * 2, p + 28, 2 * 2);
+                    if (isLast)
+                        checkSum = p[13];
+                    if (checkSum == p[13])
+                        is_record_error = false;
+                    // else return S_FALSE;
+                    continue;
+                }
+            }
+
+            if (lfn_RecordIndex) {
+                Header.HeadersWarning = true;
+                // return S_FALSE;
+            }
+            // lfn_RecordIndex = 0;
+
+            const unsigned type_in_attrib = attrib & 0x18;
+            if (attrib & 8) // volume entries are not files, even with stale dir bits
+            {
+                if (!VolItem_Defined && level == 0) {
+                    VolItem_Defined = true;
+                    memcpy(VolLabel, p, 11);
+                    Vol_MTime = Get32(p + 22);
+                    is_record_error = false;
+                }
+            } else if (memcmp(p, ".          ", 11) == 0 || memcmp(p, "..         ", 11) == 0) {
+                if (num_lfn_records == 0 && type_in_attrib == 0x10) // dir_flag
+                    is_record_error = false;
+            } else {
+                CItem &item = Items.AddNew();
+                memcpy(item.DosName, p, 11);
+                if (item.DosName[0] == 5)
+                    item.DosName[0] = (char)(Byte)0xE5; // 0xE5 is valid KANJI lead byte value.
+                item.Attrib = attrib;
+                item.Flags = p[12];
+                item.Size = Get32a(p + 28);
+                item.Cluster = Get16a(p + 26);
+                if (Header.NumFatBits > 16)
+                    item.Cluster |= ((UInt32)Get16a(p + 20) << 16);
+                else {
+                    // OS/2 and WinNT probably can store EA (extended atributes) in that field.
+                }
+                item.CTime = Get32(p + 14);
+                item.CTime2 = p[13];
+                item.ADate = Get16a(p + 18);
+                item.MTime = Get32(p + 22);
+                item.Parent = parent;
+                {
+                    if (!item.IsDir())
+                        NumCurUsedBytes += Header.GetFilePackSize(item.Size);
+                    // PRF(printf("\n%7d: %S", Items.Size(), GetItemPath(Items.Size() - 1)));
+                    PRF(printf("\n%7d" /* ": %S" */, Items.Size() /* , item.GetShortName() */);)
+                }
+                if (num_lfn_records == 0)
+                    is_record_error = false;
+                else if (checkSum >= 0 && lfn_RecordIndex == 0) {
+                    Byte sum = 0;
+                    for (unsigned i = 0; i < 11; i++)
+                        sum = (Byte)((sum << 7) + (sum >> 1) + p[i]);
+                    if (sum == checkSum) {
+                        const unsigned numWords =
+                            ParseLongName((UInt16 *)(void *)(Byte *)LfnBuf,
+                                          num_lfn_records * k_NumLfnBytes_in_Record / 2);
+                        if (numWords > 1) {
+                            // numWords includes NULL terminator
+                            item.LongName.CopyFrom(LfnBuf, numWords * 2);
+                            is_record_error = false;
+                        }
+                    }
+                }
+
+                if (
+                    // item.LongName.Size() < 20 ||  // for debug
+                    item.LongName.Size() <= 2 * 1 && memcmp(p, "           ", 11) == 0) {
+                    char s[16 + 16];
+                    const size_t numChars =
+                        (size_t)(ConvertUInt32ToString(Items.Size() - 1 - startIndex,
+                                                       MyStpCpy(s, "[NONAME]-")) -
+                                 s) +
+                        1;
+                    item.LongName.Alloc(numChars * 2);
+                    for (size_t i = 0; i < numChars; i++) {
+                        SetUi16a(item.LongName + i * 2, (Byte)s[i])
+                    }
+                    Header.HeadersWarning = true;
+                }
+            }
+            num_lfn_records = 0;
+        }
+    }
+
+    if (is_record_error)
+        Header.HeadersWarning = true;
+
+    return S_OK;
+}
+
+HRESULT CDatabase::ReadDir(Int32 parent, UInt32 cluster, unsigned level) {
+    const unsigned startIndex = Items.Size();
+    CRecordVector<UInt32> activeClusters;
+    struct CActiveDirectoryScope {
+        UInt32 *Fat;
+        const CRecordVector<UInt32> &Clusters;
+        ~CActiveDirectoryScope() {
+            FOR_VECTOR(i, Clusters)
+            Fat[Clusters[i]] &= ~kFatItemActiveDirMask;
+        }
+    } scope{Fat, activeClusters};
+    RINOK(OpenProgress())
+    HRESULT callbackResult = S_OK;
+    const HRESULT result = ReadDirItems(parent, cluster, level, callbackResult, activeClusters);
+    RINOK(callbackResult)
+    if (result == E_ABORT || result == E_OUTOFMEMORY)
+        return result;
+    if (result != S_OK)
+        MarkDirectoryIncomplete(parent);
+
+    const unsigned finishIndex = Items.Size();
+    for (unsigned i = startIndex; i < finishIndex; i++) {
+        const CItem &item = Items[i];
+        if (item.IsDir()) {
+            PRF(printf("\n---- %c%c%c%c%c", item.DosName[0], item.DosName[1], item.DosName[2],
+                       item.DosName[3], item.DosName[4]));
+            RINOK(ReadDir((int)i, item.Cluster, level + 1))
+        }
+    }
+    return S_OK;
+}
+
+HRESULT CDatabase::Open() {
+    Clear();
+    RINOK(InStream_SeekSet(InStream, 0))
+    bool numFreeClusters_Defined = false;
+    {
+        UInt32 buf32[kHeaderSize / 4];
+        RINOK(ReadStream_FALSE(InStream, buf32, kHeaderSize))
+        UInt64 fileSize;
+        RINOK(InStream_GetSize_SeekToEnd(InStream, fileSize))
+        if (!Header.Parse((Byte *)(void *)buf32)) {
+            if (!fat_linux_legacy_header(buf32, fileSize, buf32) ||
+                !Header.Parse((Byte *)(void *)buf32))
+                return S_FALSE;
+        }
+        const UInt64 fatEnd = ((UInt64)Header.GetFatSector() + Header.CalcFatSizeInSectors())
+                              << Header.SectorSizeLog;
+        if (fatEnd > fileSize)
+            return S_FALSE;
+        int dirty = 0;
+        if (fat_linux_volume_state(buf32, kHeaderSize, &dirty))
+            return S_FALSE;
+        Header.Dirty = dirty != 0;
+        SourceTruncated = fileSize < Header.GetPhySize();
+        PhySize = MyMin(fileSize, Header.GetPhySize());
+
+        /* we comment that check to support truncated images */
+        /*
+        if (fileSize < Header.GetPhySize())
+          return S_FALSE;
+        */
+
+        if (Header.IsFat32()) {
+            HRESULT result = S_FALSE;
+            if (((UInt64)Header.FsInfoSector << Header.SectorSizeLog) + kHeaderSize <= fileSize) {
+                result = SeekToSector(Header.FsInfoSector);
+                if (result == S_OK)
+                    result = ReadStream_FALSE(InStream, buf32, kHeaderSize);
+                if (result == E_ABORT || result == E_OUTOFMEMORY)
+                    return result;
+            }
+            if (result == S_OK && 0xaa550000 == Get32a(buf32 + 508 / 4) &&
+                0x41615252 == Get32a(buf32) && 0x61417272 == Get32a(buf32 + 484 / 4)) {
+                NumFreeClusters = Get32a(buf32 + 488 / 4);
+                numFreeClusters_Defined = (NumFreeClusters <= Header.FatSize - 2);
+            } else
+                Header.HeadersWarning = true;
+        }
+    }
+
+    // Linux's default statfs path recounts the FAT rather than trusting FSINFO.
+    numFreeClusters_Defined = false;
+    if (!numFreeClusters_Defined)
+        NumFreeClusters = 0;
+
+    CByteBuffer byteBuf;
+    CByteBuffer knownBuf;
+    Fat = new UInt32[Header.FatSize];
+
+    RINOK(OpenProgressFat())
+    if (Header.NumFatBits == 32) {
+        const UInt32 kBufSize = 1 << 15;
+        byteBuf.Alloc(kBufSize);
+        for (UInt32 i = 0;;) {
+            UInt32 size = Header.FatSize - i;
+            if (size == 0)
+                break;
+            const UInt32 kBufSize32 = kBufSize / 4;
+            if (size > kBufSize32)
+                size = kBufSize32;
+            const UInt32 readSize = Header.SizeToSectors(size * 4) << Header.SectorSizeLog;
+            RINOK(ReadFatData(byteBuf, knownBuf,
+                              Header.GetFatSector() + (i >> (Header.SectorSizeLog - 2)), readSize))
+            NumCurUsedBytes += readSize;
+
+            const UInt32 *src = (const UInt32 *)(const void *)(const Byte *)byteBuf;
+            UInt32 *dest = Fat + i;
+            const UInt32 *srcLim = src + size;
+            const UInt32 *const srcStart = src;
+            if (numFreeClusters_Defined)
+                do
+                    *dest++ = knownBuf[(src - srcStart) * 4 + 3] ? Get32a(src) & 0x0FFFFFFF
+                                                                 : kFatItemUnknownMask;
+                while (++src != srcLim);
+            else {
+                UInt32 numFreeClusters = 0;
+                do {
+                    const UInt32 v = knownBuf[(src - srcStart) * 4 + 3] ? Get32a(src) & 0x0FFFFFFF
+                                                                        : kFatItemUnknownMask;
+                    *dest++ = v;
+                    numFreeClusters += (UInt32)(v - 1) >> 31;
+                } while (++src != srcLim);
+                NumFreeClusters += numFreeClusters;
+            }
+            i += size;
+            if ((i & 0xFFFFF) == 0) {
+                RINOK(OpenProgressFat(!numFreeClusters_Defined))
+            }
+        }
+    } else {
+        const UInt32 kBufSize = (UInt32)Header.CalcFatSizeInSectors() << Header.SectorSizeLog;
+        NumCurUsedBytes += kBufSize;
+        byteBuf.Alloc(kBufSize);
+        Byte *p = byteBuf;
+        RINOK(ReadFatData(p, knownBuf, Header.GetFatSector(), kBufSize))
+        const UInt32 fatSize = Header.FatSize;
+        UInt32 *fat = &Fat[0];
+        if (Header.NumFatBits == 16)
+            for (UInt32 j = 0; j < fatSize; j++)
+                fat[j] = knownBuf[j * 2 + 1] ? Get16a(p + j * 2) : kFatItemUnknownMask;
+        else
+            for (UInt32 j = 0; j < fatSize; j++)
+                fat[j] = knownBuf[j * 3 / 2] && knownBuf[j * 3 / 2 + 1]
+                             ? (Get16(p + j * 3 / 2) >> ((j & 1) << 2)) & 0xFFF
+                             : kFatItemUnknownMask;
+
+        if (!numFreeClusters_Defined) {
+            UInt32 numFreeClusters = 0;
+            for (UInt32 i = 0; i < fatSize; i++)
+                numFreeClusters += (UInt32)(fat[i] - 1) >> 31;
+            NumFreeClusters = numFreeClusters;
+        }
+    }
+
+    // Entries zero and one are reserved, not allocatable data clusters.
+    NumFreeClusters -= (UInt32)(Fat[0] == 0) + (UInt32)(Fat[1] == 0);
+    RINOK(OpenProgressFat())
+
+    if (!(Fat[0] & kFatItemUnknownMask) && (Fat[0] & 0xFF) != Header.MediaType) {
+        // that case can mean error in FAT,
+        // but xdf file: (MediaType == 0xF0 && Fat[0] == 0xFF9)
+        // 19.00: so we use non-strict check
+        Header.HeadersWarning = true;
+    }
+
+    RINOK(ReadDir(-1, Header.RootCluster, 0))
+
+    FOR_VECTOR(i, Items) {
+        CItem &item = Items[i];
+        if (!item.IsDir()) {
+            CRecordVector<UInt32> clusters;
+            RINOK(GetFileClusters(item, clusters, true, &item.FileCrossLinked))
+            item.FileIncomplete = ((UInt64)clusters.Size() << Header.ClusterSizeLog) < item.Size;
+            FileLimitations |= item.FileIncomplete;
+            CrossLinkedFiles |= item.FileCrossLinked;
+        }
+        RINOK(OpenProgress())
+    }
+
+    return S_OK;
+}
+
+HRESULT CDatabase::ReadFatData(Byte *data, CByteBuffer &known, UInt32 sector, UInt32 size) {
+    known.Alloc(size);
+    memset(known, 0, size);
+    const UInt32 blockSize = Header.SectorSize();
+    const UInt64 tableBytes = ((UInt64)Header.FatSize * Header.NumFatBits + 7) / 8;
+    const UInt64 consumed = ((UInt64)sector - Header.GetFatSector()) << Header.SectorSizeLog;
+    const UInt32 required = (UInt32)MyMin((UInt64)size, tableBytes - consumed);
+    HRESULT result = SeekToSector(sector);
+    size_t read = 0;
+    if (result == S_OK) {
+        read = size;
+        result = ReadStream(InStream, data, &read);
+    }
+    if (result == E_ABORT || result == E_OUTOFMEMORY)
+        return result;
+    memset(known, 1, read);
+    RINOK(OpenProgressFat(false))
+    if (read >= required)
+        return S_OK;
+
+    // Retain the successful prefix, then isolate only the unavailable sectors.
+    for (UInt32 offset = (UInt32)read & ~(blockSize - 1); offset < size; offset += blockSize) {
+        result = SeekToSector(sector + (offset >> Header.SectorSizeLog));
+        read = 0;
+        if (result == S_OK) {
+            read = blockSize;
+            result = ReadStream(InStream, data + offset, &read);
+        }
+        if (result == E_ABORT || result == E_OUTOFMEMORY)
+            return result;
+        memset(known + offset, 1, read);
+        RINOK(OpenProgressFat(false))
+    }
+    for (UInt32 i = 0; i < required; ++i)
+        if (!known[i]) {
+            TableLimitations = true;
+            break;
+        }
+    return S_OK;
+}
+
+class CFileExtractionIO final : public IInStream,
+                                public ISequentialOutStream,
+                                public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_3(IInStream, ISequentialInStream, ISequentialOutStream)
+    HRESULT InputResult(HRESULT result) {
+        if (result != S_OK && result != E_ABORT && result != E_OUTOFMEMORY) {
+            SourceError = true;
+            return S_FALSE;
+        }
+        return result;
+    }
+
+  public:
+    CMyComPtr<IInStream> Input;
+    CMyComPtr<ISequentialOutStream> Output;
+    bool SourceError = false;
+    HRESULT OutputResult = S_OK;
+    Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
+        return InputResult(Input->Read(data, size, processed));
+    }
+    Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
+        return InputResult(Input->Seek(offset, origin, position));
+    }
+    Z7_COM7F_IMF(Write(const void *data, UInt32 size, UInt32 *processed)) override {
+        OutputResult = Output->Write(data, size, processed);
+        return OutputResult;
+    }
+};
+
+// clang-format off
+Z7_class_CHandler_final:
+    public IInArchive,
+    public IArchiveGetRawProps,
+    public IInArchiveGetStream,
+    public CMyUnknownImp,
+    CDatabase
+{
+    Z7_IFACES_IMP_UNK_3(IInArchive, IArchiveGetRawProps, IInArchiveGetStream)
+    HRESULT GetFileStream(UInt32 index, ISequentialInStream **stream, IInStream *source);
+    bool RootUnavailable = false;
+};
+// clang-format on
+
+HRESULT CDatabase::GetFileClusters(const CItem &item, CRecordVector<UInt32> &clusters,
+                                   bool reportProgress, bool *directoryOverlap) {
+    if (directoryOverlap)
+        *directoryOverlap = false;
+    const UInt32 numClusters = Header.GetNumClusters(item.Size);
+    clusters.ClearAndReserve(MyMin(numClusters, Header.FatSize - 2));
+    struct CActiveFileScope {
+        UInt32 *Fat;
+        const CRecordVector<UInt32> &Clusters;
+        CActiveFileScope(UInt32 *fat, const CRecordVector<UInt32> &clusters)
+            : Fat(fat), Clusters(clusters) {}
+        ~CActiveFileScope() {
+            FOR_VECTOR(i, Clusters)
+            Fat[Clusters[i] + 2] &= ~kFatItemActiveFileMask;
+        }
+    } scope(Fat, clusters);
+    UInt32 cluster = item.Cluster;
+    for (UInt32 i = 0; i < numClusters; ++i) {
+        if (!Header.IsValidCluster(cluster) || (Fat[cluster] & kFatItemActiveFileMask))
+            break;
+        if (directoryOverlap && (Fat[cluster] & kFatItemUsedByDirMask))
+            *directoryOverlap = true;
+        clusters.AddInReserved(cluster - 2);
+        UInt32 next = Fat[cluster];
+        next &= ~(kFatItemUsedByDirMask | kFatItemActiveDirMask);
+        Fat[cluster] |= kFatItemActiveFileMask;
+        // A BAD next-link is terminal even when its numeric value is also
+        // addressable as a first physical cluster at the FAT32 size limit.
+        cluster = next == Header.BadCluster ? Header.BadCluster + 1 : next;
+        if (reportProgress && (i & 0xFFFF) == 0) {
+            RINOK(OpenProgress())
+        }
+    }
+    // The inode size, not an EOF marker or allocated tail, bounds file data.
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
+    return GetFileStream(index, stream, InStream);
+}
+
+HRESULT CHandler::GetFileStream(UInt32 index, ISequentialInStream **stream, IInStream *source) {
+    COM_TRY_BEGIN
+    *stream = NULL;
+    const CItem &item = Items[index];
+    if (item.DirectoryIncomplete)
+        return S_FALSE;
+    CClusterInStream *streamSpec = new CClusterInStream;
+    CMyComPtr<ISequentialInStream> streamTemp = streamSpec;
+    streamSpec->Stream = source;
+    streamSpec->StartOffset = (UInt64)Header.DataSector << Header.SectorSizeLog;
+    streamSpec->BlockSizeLog = Header.ClusterSizeLog;
+    RINOK(GetFileClusters(item, streamSpec->Vector))
+    streamSpec->Size =
+        MyMin((UInt64)item.Size, (UInt64)streamSpec->Vector.Size() << Header.ClusterSizeLog);
+    if (item.Size && !streamSpec->Size)
+        return S_FALSE;
+    RINOK(streamSpec->InitAndSeek())
+    *stream = streamTemp.Detach();
+    return S_OK;
+    COM_TRY_END
+}
+
+static const Byte kProps[] = {
+    kpidPath,  kpidIsDir, kpidSize,   kpidPackSize,  kpidMTime,
+    kpidCTime, kpidATime, kpidAttrib, kpidShortName, kpidError,
+    // , kpidCharacts
+};
+
+enum {
+    kpidNumFats = kpidUserDefined
+    // kpidOemName,
+    // kpidVolName,
+    // kpidFileSysType
+};
+static const PROPID kpidReadLimitations = kpidUserDefined + 1;
+
+static const CStatProp kArcProps[] = {
+    {NULL, kpidReadOnly, VT_BOOL},   {"Read-only limitations", kpidReadLimitations, VT_BSTR},
+    {NULL, kpidFileSystem, VT_BSTR}, {NULL, kpidClusterSize, VT_UI4},
+    {NULL, kpidFreeSpace, VT_UI8},   {NULL, kpidHeadersSize, VT_UI8},
+    {NULL, kpidMTime, VT_FILETIME},  {NULL, kpidVolumeName, VT_BSTR},
+
+    {"FATs", kpidNumFats, VT_UI4},   {NULL, kpidSectorSize, VT_UI4},
+    {NULL, kpidId, VT_UI4},
+    // { "OEM Name", kpidOemName, VT_BSTR},
+    // { "Volume Name", kpidVolName, VT_BSTR},
+    // { "File System Type", kpidFileSysType, VT_BSTR}
+    // { NULL, kpidSectorsPerTrack, VT_UI4},
+    // { NULL, kpidNumHeads, VT_UI4},
+    // { NULL, kpidHiddenSectors, VT_UI4}
+};
+
+IMP_IInArchive_Props IMP_IInArchive_ArcProps_WITH_NAME
+
+    static void
+    FatTimeToProp(UInt32 dosTime, UInt32 ms10, NWindows::NCOM::CPropVariant &prop) {
+    FILETIME localFileTime, utc;
+    int64_t seconds;
+    uint32_t nsec;
+    fat_linux_time(dosTime, (Byte)ms10, &seconds, &nsec);
+    if (NWindows::NTime::UnixTime64_To_FileTime(seconds, localFileTime))
+        if (LocalFileTimeToFileTime(&localFileTime, &utc)) {
+            UInt64 t64 = (((UInt64)utc.dwHighDateTime) << 32) + utc.dwLowDateTime;
+            t64 += nsec / 100;
+            utc.dwLowDateTime = (DWORD)t64;
+            utc.dwHighDateTime = (DWORD)(t64 >> 32);
+            prop.SetAsTimeFrom_FT_Prec(utc, k_PropVar_TimePrec_Base + 2);
+        }
+}
+
+/*
+static void StringToProp(const Byte *src, unsigned size, NWindows::NCOM::CPropVariant &prop)
+{
+  char dest[32];
+  memcpy(dest, src, size);
+  dest[size] = 0;
+  prop = FatStringToUnicode(dest);
+}
+
+#define STRING_TO_PROP(s, p) StringToProp(s, sizeof(s), prop)
+*/
+
+Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
+    COM_TRY_BEGIN
+    NWindows::NCOM::CPropVariant prop;
+    switch (propID) {
+    case kpidErrorFlags:
+        if (RootDirectoryIncomplete || RootUnavailable)
+            prop = UInt32(kpv_ErrorFlags_HeadersError);
+        break;
+    case kpidError:
+        if (RootUnavailable)
+            prop = "The FAT root directory could not be read. No readable entries were found.";
+        break;
+    case kpidReadOnly:
+        prop = true;
+        break;
+    case kpidReadLimitations: {
+        AString reasons;
+        if (Header.Dirty)
+            reasons = "The FAT volume was not properly unmounted. Some data may be corrupt.";
+        if (SourceTruncated) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "The FAT source is shorter than the declared volume. Some files may be "
+                       "incomplete or unreadable.";
+        }
+        if (DirectoryLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some FAT directories could not be read completely. Files or names may "
+                       "be missing. Readable files remain accessible.";
+        }
+        if (FileLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some FAT file chains are incomplete. Only readable prefixes of affected "
+                       "files are available; copying them reports an error.";
+        }
+        if (TableLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some FAT table entries could not be read. Free space is unknown; some "
+                       "files or directories may be incomplete or unreadable.";
+        }
+        if (CrossLinkedFiles) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some FAT files share clusters with directories. File contents may include "
+                       "directory entries or unrelated data. Copying remains available but reports "
+                       "an error.";
+        }
+        if (!reasons.IsEmpty())
+            prop = reasons;
+        break;
+    }
+    case kpidFileSystem: {
+        char s[16];
+        s[0] = 'F';
+        s[1] = 'A';
+        s[2] = 'T';
+        ConvertUInt32ToString(Header.NumFatBits, s + 3);
+        prop = s;
+        break;
+    }
+    case kpidClusterSize:
+        prop = Header.ClusterSize();
+        break;
+    case kpidPhySize:
+        prop = PhySize;
+        break;
+    case kpidFreeSpace:
+        if (TableLimitations)
+            break;
+        prop = (UInt64)NumFreeClusters << Header.ClusterSizeLog;
+        break;
+    case kpidHeadersSize:
+        prop = GetHeadersSize();
+        break;
+    case kpidMTime:
+        if (VolItem_Defined)
+            FatTimeToProp(Vol_MTime, 0, prop);
+        break;
+    case kpidShortComment:
+    case kpidVolumeName:
+        if (VolItem_Defined)
+            GetVolName(VolLabel, prop);
+        break;
+    case kpidNumFats:
+        if (Header.NumFats != 2)
+            prop = Header.NumFats;
+        break;
+    case kpidSectorSize:
+        prop = (UInt32)1 << Header.SectorSizeLog;
+        break;
+    // case kpidSectorsPerTrack: prop = Header.SectorsPerTrack; break;
+    // case kpidNumHeads: prop = Header.NumHeads; break;
+    // case kpidOemName: STRING_TO_PROP(Header.OemName, prop); break;
+    case kpidId:
+        prop = Header.VolId;
+        break;
+    case kpidIsTree:
+        prop = true;
+        break;
+    // case kpidVolName: if (Header.VolFieldsDefined) STRING_TO_PROP(Header.VolName, prop); break;
+    // case kpidFileSysType: if (Header.VolFieldsDefined) STRING_TO_PROP(Header.FileSys, prop);
+    // break; case kpidHiddenSectors: prop = Header.NumHiddenSectors; break;
+    case kpidWarningFlags: {
+        UInt32 v = 0;
+        if (Header.HeadersWarning)
+            v |= kpv_ErrorFlags_HeadersError;
+        if (v != 0)
+            prop = v;
+        break;
+    }
+    }
+    prop.Detach(value);
+    return S_OK;
+    COM_TRY_END
+}
+
+Z7_COM7F_IMF(CHandler::GetNumRawProps(UInt32 *numProps)) {
+    *numProps = 0;
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CHandler::GetRawPropInfo(UInt32 /* index */, BSTR *name, PROPID *propID)) {
+    *name = NULL;
+    *propID = 0;
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CHandler::GetParent(UInt32 index, UInt32 *parent, UInt32 *parentType)) {
+    *parentType = NParentType::kDir;
+    int par = -1;
+    if (index < Items.Size())
+        par = Items[index].Parent;
+    *parent = (UInt32)(Int32)par;
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CHandler::GetRawProp(UInt32 index, PROPID propID, const void **data, UInt32 *dataSize,
+                                  UInt32 *propType)) {
+    *data = NULL;
+    *dataSize = 0;
+    *propType = 0;
+
+    // Linux canonicalizes invalid UTF-16 during name conversion. Publish that
+    // same name through GetProperty rather than exposing unsanitized raw slots.
+    (void)index;
+    (void)propID;
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *value)) {
+    COM_TRY_BEGIN
+    NWindows::NCOM::CPropVariant prop;
+    const CItem &item = Items[index];
+    switch (propID) {
+    case kpidError:
+        if (item.DirectoryIncomplete)
+            prop = "The FAT directory could not be read completely.";
+        else if (item.FileIncomplete)
+            prop = "The FAT file chain is incomplete. Only the readable prefix is available.";
+        else if (item.FileCrossLinked)
+            prop = "The FAT file shares clusters with a directory. Its contents are unverified.";
+        break;
+    case kpidPath:
+    case kpidName:
+    case kpidShortName: {
+        UString s;
+        if (propID == kpidPath)
+            GetItemPath(index, s);
+        else if (propID == kpidName)
+            item.GetName(s);
+        else
+            item.GetShortName(s);
+        prop = s;
+        break;
+    }
+        /*
+            case kpidCharacts:
+            {
+              if (item.LongName.Size())
+                prop = "LFN";
+              break;
+            }
+        */
+    case kpidIsDir:
+        prop = item.IsDir();
+        break;
+    case kpidMTime:
+        FatTimeToProp(item.MTime, 0, prop);
+        break;
+    case kpidCTime:
+        FatTimeToProp(item.CTime, item.CTime2, prop);
+        break;
+    case kpidATime:
+        FatTimeToProp((UInt32)item.ADate << 16, 0, prop);
+        break;
+    case kpidAttrib:
+        prop = (UInt32)item.Attrib;
+        break;
+    case kpidSize:
+        if (!item.IsDir())
+            prop = item.Size;
+        break;
+    case kpidPackSize:
+        if (!item.IsDir())
+            prop = Header.GetFilePackSize(item.Size);
+        break;
+    }
+    prop.Detach(value);
+    return S_OK;
+    COM_TRY_END
+}
+
+// clang-format off
+Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallback *callback))
+{
+    COM_TRY_BEGIN
+    {
+        if (!fat_linux_charset_available())
+        {
+            Close();
+            return E_NOTIMPL;
+        }
+        OpenCallback = callback;
+        InStream = stream;
+        RootUnavailable = false;
+        HRESULT res;
+        try
+        {
+            res = CDatabase::Open();
+            if (res == S_OK && RootDirectoryIncomplete && Items.IsEmpty())
+            {
+                Close();
+                RootUnavailable = true;
+                return S_FALSE;
+            }
+            if (res == S_OK)
+                return S_OK;
+        }
+        catch (...)
+        {
+            Close();
+            throw;
+        }
+        Close();
+        return res;
+    }
+    COM_TRY_END
+}
+// clang-format on
+
+Z7_COM7F_IMF(CHandler::Close()) {
+    ClearAndClose();
+    RootUnavailable = false;
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 testMode,
+                               IArchiveExtractCallback *extractCallback)) {
+    COM_TRY_BEGIN
+    const bool all = numItems == UInt32(-1);
+    const auto finish = [&]() -> HRESULT {
+        if (!RootDirectoryIncomplete ||
+            !(all || (numItems && numItems == Items.Size() &&
+                      std::set<UInt32>(indices, indices + numItems).size() == numItems)))
+            return S_OK;
+        CMyComPtr<IArchiveExtractCallbackMessage2> messages;
+        extractCallback->QueryInterface(IID_IArchiveExtractCallbackMessage2, (void **)&messages);
+        if (messages)
+            return messages->ReportExtractResult(NEventIndexType::kNoIndex, 0,
+                                                 NExtract::NOperationResult::kHeadersError);
+        return S_FALSE;
+    };
+    if (numItems == (UInt32)(Int32)-1) {
+        indices = NULL;
+        numItems = Items.Size();
+        if (numItems == 0)
+            return finish();
+    } else {
+        if (numItems == 0)
+            return S_OK;
+        if (!indices)
+            return E_INVALIDARG;
+    }
+    UInt64 totalSize = 0;
+    {
+        UInt32 i = 0;
+        do {
+            UInt32 index = i;
+            if (indices)
+                index = indices[i];
+            const CItem &item = Items[index];
+            if (!item.IsDir())
+                totalSize += item.Size;
+        } while (++i != numItems);
+    }
+    RINOK(extractCallback->SetTotal(totalSize))
+
+    CMyComPtr2_Create<ICompressProgressInfo, CLocalProgress> lps;
+    lps->Init(extractCallback, false);
+    CMyComPtr2_Create<ICompressCoder, NCompress::CCopyCoder> copyCoder;
+
+    UInt64 totalPackSize;
+    totalSize = totalPackSize = 0;
+
+    UInt32 i;
+    for (i = 0;; i++) {
+        lps->InSize = totalPackSize;
+        lps->OutSize = totalSize;
+        RINOK(lps->SetCur())
+        if (i == numItems)
+            break;
+        int res;
+        {
+            CMyComPtr<ISequentialOutStream> realOutStream;
+            const Int32 askMode =
+                testMode ? NExtract::NAskMode::kTest : NExtract::NAskMode::kExtract;
+            UInt32 index = i;
+            if (indices)
+                index = indices[i];
+            const CItem &item = Items[index];
+            RINOK(extractCallback->GetStream(index, &realOutStream, askMode))
+
+            if (item.IsDir()) {
+                RINOK(extractCallback->PrepareOperation(askMode))
+                res = NExtract::NOperationResult::kOK;
+                if (item.DirectoryIncomplete)
+                    res = NExtract::NOperationResult::kDataError;
+                RINOK(extractCallback->SetOperationResult(res))
+                continue;
+            }
+
+            totalPackSize += Header.GetFilePackSize(item.Size);
+            totalSize += item.Size;
+
+            if (!testMode && !realOutStream)
+                continue;
+            RINOK(extractCallback->PrepareOperation(askMode))
+            res = NExtract::NOperationResult::kDataError;
+            CMyComPtr<ISequentialInStream> inStream;
+            ISequentialOutStream *copyOutput = realOutStream;
+            CFileExtractionIO *io = new CFileExtractionIO;
+            CMyComPtr<IInStream> ioOwner = io;
+            io->Input = InStream;
+            io->Output = realOutStream;
+            if (realOutStream)
+                copyOutput = static_cast<ISequentialOutStream *>(io);
+            const HRESULT hres = GetFileStream(index, &inStream, io);
+            if (hres != S_FALSE) {
+                RINOK(hres)
+                if (inStream) {
+                    const HRESULT copyResult =
+                        copyCoder.Interface()->Code(inStream, copyOutput, NULL, NULL, lps);
+                    RINOK(io->OutputResult)
+                    if (!(copyResult == S_FALSE && io->SourceError))
+                        RINOK(copyResult)
+                    if (copyResult == S_OK && copyCoder->TotalSize == item.Size &&
+                        !item.FileCrossLinked)
+                        res = NExtract::NOperationResult::kOK;
+                }
+            }
+        }
+        RINOK(extractCallback->SetOperationResult(res))
+    }
+    return finish();
+    COM_TRY_END
+}
+
+Z7_COM7F_IMF(CHandler::GetNumberOfItems(UInt32 *numItems)) {
+    *numItems = Items.Size();
+    return S_OK;
+}
+
+REGISTER_ARC_I_NO_SIG("FAT", "fat img", NULL, 0xDA, 0, NArcInfoFlags::kPureStartOpen,
+                      IsArc_Fat_Linux)
+}
+}

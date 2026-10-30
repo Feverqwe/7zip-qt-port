@@ -148,7 +148,7 @@ verification: 422 exact, 221 adapted, 11 local units, одна upstream revision
 возврата обоих исходных 7-Zip units; текущими изменениями они не вызваны.
 После восстановления адаптированных units runtime и affected targets
 пересобраны, десять focused suites повторно PASS. Сам `check.sh` остановился
-на форматировании неизменённого `src/erofsreader.h`; общий gate не объявляется
+на форматировании неизменённого `src/formats/erofs/erofsreader.h`; общий gate не объявляется
 успешным. Slow suites и UI appearance acceptance не выполнялись.
 
 Проверки ограничены fixtures; реальные носители, firmware/device callbacks,

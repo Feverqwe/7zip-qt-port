@@ -14,5 +14,9 @@
   ],
   "adapted": [
     "block/partitions/msdos.c"
-  ]
+  ],
+  "owners": {
+    "block/partitions/msdos.c": "src/formats/mbr/msdos.c",
+    "include/linux/msdos_partition.h": "third_party/linux/include/linux/msdos_partition.h"
+  }
 }

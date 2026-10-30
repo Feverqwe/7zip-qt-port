@@ -79,7 +79,7 @@ the compiler's CRT/ASan libraries even when the official console itself uses a
 static CRT. CMake stages those dependencies in the owned deployment, and isolated
 console fixtures copy them with the engine.
 
-The adapted `src/C/DllSecur.c` registers only that executable's absolute directory
+The adapted `src/platform/loader/DllSecur.c` registers only that executable's absolute directory
 through `AddDllDirectory` for sanitizer development builds. Original default
 directory flags and release behavior remain intact; PATH/current-directory lookup
 is not enabled. The native Windows builder sets the development flag only for

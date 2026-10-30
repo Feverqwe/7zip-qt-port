@@ -33,5 +33,12 @@
   "replaced_dependencies": {
     "include/linux/lz4.h": "lz4-frame-baseline.json: lib/lz4.h",
     "lib/lz4/lz4_decompress.c": "lz4-frame-baseline.json: lib/lz4.c"
+  },
+  "owners": {
+    "lib/decompress_unlz4.c": "src/codecs/frames/decompress_unlz4.c",
+    "lib/decompress_unlzo.c": "src/codecs/frames/decompress_unlzo.c",
+    "lib/lzo/lzo1x_decompress_safe.c": "src/codecs/lzo/lzo1x_decompress_safe.c",
+    "include/linux/lzo.h": "src/compat/linux/include/linux/lzo.h",
+    "lib/crc/crc32-main.c": "src/checksums/linux/crc32-main.c"
   }
 }
